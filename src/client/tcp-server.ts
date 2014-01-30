@@ -33,14 +33,13 @@ function getStringOfArrayBuffer(buf) {
   return s;
 }
 
-
-(function(exports) {
+module TCP {
 
   var DEFAULT_MAX_CONNECTIONS = 1048576;
 
   // Define some local variables here.
   // TODO: throw an Error if this isn't here.
-  var socket = exports.socket;
+  var socket = freedom['core.socket']();
 
   /**
    * Create an instance of the server
@@ -49,7 +48,7 @@ function getStringOfArrayBuffer(buf) {
    * allowHalfOpen: bool }.
    * @param {function} connect_callback Called when socket is connected.
    */
-  function TcpServer(server_address, port, options) {
+  export function Server(server_address, port, options?) {
     this.addr = server_address;
     this.port = port;
     this.maxConnections = typeof(options) != 'undefined' &&
@@ -75,9 +74,7 @@ function getStringOfArrayBuffer(buf) {
       removed: this.removeFromServer.bind(this)
     };
 
-    // Sockets open
-    this.openConnections = {};
-
+    this.openConnections = {};  // Open sockets.
     // Server socket (accepts and opens one socket per client)
     this.serverSocketId = null;
   }
@@ -85,7 +82,7 @@ function getStringOfArrayBuffer(buf) {
   /**
    * This is called.
    */
-  TcpServer.prototype.addToServer = function(tcpConnection) {
+  Server.prototype.addToServer = function(tcpConnection) {
     // console.log("adding connection " + tcpConnection.socketId + " to server.");
     this.openConnections[tcpConnection.socketId] = tcpConnection;
   };
@@ -93,7 +90,7 @@ function getStringOfArrayBuffer(buf) {
   /**
    * This is never called.
    */
-  TcpServer.prototype.removeFromServer = function(tcpConnection) {
+  Server.prototype.removeFromServer = function(tcpConnection) {
     // console.log("removing connection " + tcpConnection.socketId + " from server");
     delete this.openConnections[tcpConnection.socketId];
   };
@@ -106,7 +103,7 @@ function getStringOfArrayBuffer(buf) {
    * @param {Function} callback The function to call with the available network
    * interfaces. The callback parameter is an array of
    * {name(string), address(string)} objects. Use the address property of the
-   * preferred network as the addr parameter on TcpServer contructor.
+   * preferred network as the addr parameter on Server contructor.
    */
   // getNetworkAddresses = function(callback) {
     // socket.getNetworkList().done(callback);
@@ -120,9 +117,9 @@ function getStringOfArrayBuffer(buf) {
    * @param {Function} callback The function to call with the available network
    * interfaces. The callback parameter is an array of
    * {name(string), address(string)} objects. Use the address property of the
-   * preferred network as the addr parameter on TcpServer contructor.
+   * preferred network as the addr parameter on Server contructor.
    */
-  TcpServer.prototype.isConnected = function() {
+  Server.prototype.isConnected = function() {
     return this.serverSocketId > 0;
   };
 
@@ -132,11 +129,11 @@ function getStringOfArrayBuffer(buf) {
    *
    * 'listening' takes TODO: complete.
    */
-  TcpServer.prototype.on = function(eventName, callback) {
+  Server.prototype.on = function(eventName, callback) {
     if (eventName in this.callbacks) {
       this.callbacks[eventName] = callback;
     } else {
-      console.error('TcpServer: on failed for ' + eventName);
+      console.error('Server: on failed for ' + eventName);
     }
   };
 
@@ -146,7 +143,7 @@ function getStringOfArrayBuffer(buf) {
    * @see http://developer.chrome.com/trunk/apps/socket.html#method-create
    * @param {Function} callback The function to call on connection.
    */
-  TcpServer.prototype.listen = function() {
+  Server.prototype.listen = function() {
     socket.create('tcp', {}).done(this._onCreate.bind(this));
     console.log('Tcp server listening...');
   };
@@ -156,9 +153,9 @@ function getStringOfArrayBuffer(buf) {
    *
    * @see http://developer.chrome.com/trunk/apps/socket.html#method-disconnect
    */
-  TcpServer.prototype.disconnect = function() {
+  Server.prototype.disconnect = function() {
     if (this.serverSocketId) {
-      console.log('TcpServer: disconnecting server socket ' + this.serverSocketId);
+      console.log('Server: disconnecting server socket ' + this.serverSocketId);
       socket.disconnect(this.serverSocketId);
       socket.destroy(this.serverSocketId);
     }
@@ -184,15 +181,17 @@ function getStringOfArrayBuffer(buf) {
    * @see http://developer.chrome.com/trunk/apps/socket.html#method-connect
    * @param {Object} createInfo The socket details.
    */
-  TcpServer.prototype._onCreate = function(createInfo) {
+  Server.prototype._onCreate = function(createInfo) {
+    console.log('Creating socket... ', createInfo);
     this.serverSocketId = createInfo.socketId;
     if (this.serverSocketId > 0) {
+      console.log(this);
       console.log(JSON.stringify([this.serverSocketId, this.addr, this.port]));
       socket.listen(this.serverSocketId, this.addr, this.port)
-  .done(this._onListenComplete.bind(this));
+        .done(this._onListenComplete.bind(this));
       this.isListening = true;
     } else {
-      console.error('TcpServer: create socket failed for ' + this.addr + ':' +
+      console.error('Server: create socket failed for ' + this.addr + ':' +
           this.port);
     }
   };
@@ -204,7 +203,7 @@ function getStringOfArrayBuffer(buf) {
    *
    * @private
    */
-  TcpServer.prototype._onListenComplete = function(resultCode) {
+  Server.prototype._onListenComplete = function(resultCode) {
     if (resultCode === 0) {
       socket.on('onConnection', function accept(acceptValue) {
         if (this.serverSocketId !== acceptValue.serverSocketId) {
@@ -215,7 +214,7 @@ function getStringOfArrayBuffer(buf) {
         if (connectionsCount >= this.maxConnections) {
           socket.disconnect(acceptValue.clientSocketId);
           socket.destroy(acceptValue.clientSocketId);
-          console.warn('TcpServer: too many connections: ' + connectionsCount);
+          console.warn('Server: too many connections: ' + connectionsCount);
           return;
         }
         this._createTcpConnection(acceptValue.clientSocketId);
@@ -233,12 +232,12 @@ function getStringOfArrayBuffer(buf) {
 
       this.callbacks.listening && this.callbacks.listening();
     } else {
-      console.error('TcpServer: listen failed for ' + this.addr + ':' +
+      console.error('Server: listen failed for ' + this.addr + ':' +
           this.port + '. Resultcode=' + resultCode);
     }
   };
 
-  TcpServer.prototype._createTcpConnection = function(socketId) {
+  Server.prototype._createTcpConnection = function(socketId) {
     new TcpConnection(socketId, this.callbacks.connection,
           this.connectionCallbacks);
   };
@@ -247,9 +246,9 @@ function getStringOfArrayBuffer(buf) {
    * Holds a connection to a client
    *
    * @param {number} socketId The ID of the server<->client socket.
-   * @param {TcpServer.callbacks.connection}  serverConnectionCallback
+   * @param {Server.callbacks.connection}  serverConnectionCallback
    *                                          Called when the new TCP connection is formed and initialized, passing itself as a parameter.
-   * @param {TcpServer.connectionCallbacks} callbacks
+   * @param {Server.connectionCallbacks} callbacks
    */
   function TcpConnection(socketId, serverConnectionCallback, callbacks) {
     this.socketId = socketId;
@@ -277,7 +276,7 @@ function getStringOfArrayBuffer(buf) {
       this._initialized = true;
 
       // Connection has been established, so make the connection callback.
-      //console.log('TcpServer: client connected, socketInfo=' +
+      //console.log('Server: client connected, socketInfo=' +
       //    JSON.stringify(socketInfo));
       if (serverConnectionCallback) {
         serverConnectionCallback(this);
@@ -496,6 +495,6 @@ function getStringOfArrayBuffer(buf) {
     f.readAsArrayBuffer(bb);
   }
 
-  exports.TcpServer = TcpServer;
-  exports.TcpConnection = TcpConnection;
-})(window);
+  // exports.Server = Server;
+  // exports.TcpConnection = TcpConnection;
+}

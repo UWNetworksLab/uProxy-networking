@@ -5,10 +5,13 @@
   For the RFC for socks, see:
     http://tools.ietf.org/html/rfc1928
 */
+/// <reference path='tcp-server.ts' />
+
 declare var chrome:any;
-interface Window {
-  TcpServer:any;
-}
+// interface Window {
+  // TcpServer:any;
+// }
+
 
 /**
  * SocksUtil
@@ -180,11 +183,12 @@ module SocksUtil {
 
 }  // module SocksUtil
 
-(function(exports) {
 
-  var socket = exports.socket || (typeof chrome != 'undefined' && chrome.socket);
+declare var SocksClientConnection:any;  // Remove once ts'd.
 
+module Socks {
 
+  // var socket = exports.socket || (typeof chrome != 'undefined' && chrome.socket);
 
   //----------------------------------------------------------------------------
   // SocksServer
@@ -193,37 +197,37 @@ module SocksUtil {
    * destination_callback = function(tcpConnection, address, port,
         connectedToDestinationCallback) {...}
    */
-  function SocksServer(address, port, destinationCallback) {
-    var self = this;
-    // Holds index from socketId
-    this.destinationCallback = destinationCallback;
+  export class Server {
+    tcpServer:any;
 
-    this.tcpServer = new window.TcpServer(address || 'localhost',
-                                          port || 1080);
+    constructor(address, port,
+        // Holds index from socketId
+        public destinationCallback) {
+      this.tcpServer = new TCP.Server(address || 'localhost',
+                                      port || 1080);
+      // When we start listening, print it out.
+      this.tcpServer.on('listening', () => {
+        console.log('LISTENING ' + this.tcpServer.addr + ':' + this.tcpServer.port);
+      });
 
-    // When we start listening, print it out.
-    this.tcpServer.on('listening', function() {
-      console.log('LISTENING ' + self.tcpServer.addr + ':' + self.tcpServer.port);
-    });
+      // When we receieve a new connection make a new SocksClientConnection.
+      // and log to info.
+      this.tcpServer.on('connection', (tcpConnection) => {
+       console.log('CONNECTED(' + tcpConnection.socketId + ') ' +
+           tcpConnection.socketInfo.peerAddress + ':' + tcpConnection.socketInfo.peerPort);
+        tcpConnection.on('recv', function(buffer) {
+         console.log('new SocksClientConnection (' + tcpConnection.socketId + '): \n' +
+             '* Got data: ' + JSON.stringify(tcpConnection.state()) + ';\n' +
+             '      data: ' + getHexStringOfArrayBuffer(buffer));
+          tcpConnection.socksClient =
+              new SocksClientConnection(tcpConnection, buffer,
+                                        this.destinationCallback);
+        }, {minByteLength: 3});
+      });
+    }
 
-    // When we receieve a new connection make a new SocksClientConnection.
-    // and log to info.
-    this.tcpServer.on('connection', function(tcpConnection) {
-     console.log('CONNECTED(' + tcpConnection.socketId + ') ' +
-         tcpConnection.socketInfo.peerAddress + ':' + tcpConnection.socketInfo.peerPort);
-      tcpConnection.on('recv', function(buffer) {
-//        console.log('new SocksClientConnection (' + tcpConnection.socketId + '): \n' +
-//            '* Got data: ' + JSON.stringify(tcpConnection.state()) + ';\n' +
-//            '      data: ' + getHexStringOfArrayBuffer(buffer));
-        tcpConnection.socksClient =
-            new SocksClientConnection(tcpConnection, buffer,
-                                      self.destinationCallback);
-      }, {minByteLength: 3});
-    });
-  }
-
-  SocksServer.prototype.disconnect = function() {
-    this.tcpServer.disconnect();
+    listen()     { this.tcpServer.listen(); }
+    disconnect() { this.tcpServer.disconnect(); }
   }
 
   //----------------------------------------------------------------------------
@@ -232,7 +236,7 @@ module SocksUtil {
   /**
    * Connection to a particular socks client
    */
-  function SocksClientConnection(tcpConnection, buffer, destinationCallback) {
+  export function SocksClientConnection(tcpConnection, buffer, destinationCallback) {
     this.tcpConnection = tcpConnection;  // to the client.
     this.destinationCallback = destinationCallback;
     this.method_count = 0;
@@ -374,7 +378,7 @@ module SocksUtil {
   };
 
   //----------------------------------------------------------------------------
-  exports.SocksUtil = SocksUtil;
-  exports.SocksServer = SocksServer;
-  exports.SocksClientConnection = SocksClientConnection;
-})(window);
+  // exports.SocksUtil = SocksUtil;
+  // exports.SocksServer = SocksServer;
+  // exports.SocksClientConnection = SocksClientConnection;
+}

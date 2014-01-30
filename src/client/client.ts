@@ -1,20 +1,19 @@
 /*
   Client which passes socks requests over WebRTC datachannels.
 */
+/// <reference path='socks.ts' />
 
 declare var freedom:any;
-interface Window {
-  socket: any;
-  core: any;
-  SocksServer: any;
-}
+// interface Window {
+  // core: any;
+  // SocksServer: any;
+// }
 console.log('SOCKS5 client: ' + self.location.href);
 
 // TODO: this is really gross and freedom should fix this.
-var x:any = {}; window = x;
+// var x:any = {}; window = x;
 
-window.socket = freedom['core.socket']();
-window.core = freedom.core();
+var core = freedom.core();
 
 
 function onClose(label, connection) {
@@ -25,17 +24,12 @@ function onClose(label, connection) {
 
 function initClient() {
 
-  // The socks TCP Server.
-  var _socksServer = null;
-  // The Freedom sctp-peer connection.
-  var _sctpPc = null;
+  var _socksServer = null;  // socks TCP Server.
+  var _sctpPc = null;       // Freedom sctp-peer connection.
   var _peerId = null;
-  // The signalling channel
   var _signallingChannel = null;
   var _messageQueue = [];
-  // Each TcpConnection that is active, indexed by it's corresponding sctp
-  // channel id.
-  var _conns = {};
+  var _conns = {};  // Index each active TcpConnection by sctp channel id.
 
   var printSelf = function () {
     var ret ="<failed to self-stringify.>";
@@ -49,26 +43,27 @@ function initClient() {
     return ret;
   }
 
-  // Stop running as a _socksServer. Close all connections both to data
-  // channels and tcp.
-  var shutdown = function() {
-    console.log("Shutting down Peer client.");
+  // Stop running as a _socksServer and close data channels and pcs.
+  function shutdown() {
+    console.log('Shutting down Peer client...');
     if (_socksServer) {
-      _socksServer.tcpServer.disconnect();
+      _socksServer.disconnect();  // Disconnects internal TCP server.
       _socksServer = null;
     }
     for (var channelLabel in _conns) {
       onClose(channelLabel, _conns[channelLabel]);
     }
-    if(_sctpPc) { _sctpPc.close(); }
     _conns = {};
-    _sctpPc = null;
-    _peerId = null;
+    if(_sctpPc) {
+      _sctpPc.close();
+      _sctpPc = null;
+    }
     _signallingChannel = null;
+    _peerId = null;
   };
 
   // Close a particular tcp-connection and data channel pair.
-  var closeConnection = function(channelLabel) {
+  function closeConnection(channelLabel) {
     if (_conns[channelLabel]) {
       _conns[channelLabel].disconnect();
       delete _conns[channelLabel];
@@ -81,14 +76,14 @@ function initClient() {
   };
 
   // A simple wrapper function to send data to the peer.
-  var _sendToPeer = function (channelLabel, buffer) {
+  function _sendToPeer(channelLabel, buffer) {
     // console.log("_sendToPeer (buffer) to channelLabel: " + channelLabel);
     _sctpPc.send({'channelLabel': channelLabel, 'buffer': buffer});
   }
 
   // A SOCKS5 connection request has been received, setup the data channel and
   // start socksServering the corresponding tcp-connection to the data channel.
-  var onConnection = function(conn, address, port, connectedCallback) {
+  function onConnection(conn, address, port, connectedCallback) {
     if (!_sctpPc) {
       console.error("onConnection called without a _sctpPc.");
       return;
@@ -116,21 +111,9 @@ function initClient() {
     connectedCallback({ipAddrString: '127.0.0.1', port: 0});
   };
 
-  // Set-up a session with a peer.
-  freedom.on('start', function(options) {
-    console.log('Client: on(start)... ' + JSON.stringify(options));
-    _peerId = options.peerId;
-    if (!_peerId) {
-      console.error('Client: No Peer ID provided! Cannot connect.');
-      return false;
-    }
-    shutdown();  // Reset socks server.
-    _socksServer = new window.SocksServer(options.host, options.port, onConnection);
-    _socksServer.tcpServer.listen();
-
-    // Create sctp connection to a peer.
-    _sctpPc = freedom['core.sctp-peerconnection']();
-    _sctpPc.on('onReceived', function(message) {
+  function _createSCTPPeerConnection() {
+    var pc = freedom['core.sctp-peerconnection']();
+    pc.on('onReceived', function(message) {
       if (message.channelLabel) {
         if (message.buffer) {
           _conns[message.channelLabel].sendRaw(message.buffer);
@@ -148,17 +131,37 @@ function initClient() {
             + JSON.stringify(message));
       }
     });
-
     // When WebRTC data-channel transport is closed, shut everything down.
-    _sctpPc.on('onCloseDataChannel', closeConnection);
+    pc.on('onCloseDataChannel', closeConnection);
+    return pc;
+  }
+
+  // Set-up a session with a peer.
+  freedom.on('start', function(options) {
+    console.log('Client: on(start)... ' + JSON.stringify(options));
+    _peerId = options.peerId;
+    if (!_peerId) {
+      console.error('Client: No Peer ID provided! Cannot connect.');
+      return false;
+    }
+
+    shutdown();  // Reset everything.
+
+    // Create SOCKS server and start listening.
+    _socksServer = new Socks.Server(options.host, options.port, onConnection);
+    _socksServer.listen();
+
+    // Create sctp connection to a peer.
+    _sctpPc = _createSCTPPeerConnection();
 
     var _peerId = _peerId;  // Bind peerID to scope so promise can work.
+
     // Create a freedom-channel to act as the signaling channel.
-    window.core.createChannel().done(function(chan) {  // When the signaling channel is created.
+    core.createChannel().done(function(chan) {  // When the signaling channel is created.
       // chan.identifier is a freedom-_socksServer (not a socks _socksServer) for the
       // signalling channel used for signalling.
       console.log('Preparing SCTP peer connection! peerId: ' + _peerId);
-      _sctpPc.setup(chan.identifier, "client-to-" + _peerId, true);
+      _sctpPc.setup(chan.identifier, 'client-to-' + _peerId, true);
 
       // when the channel is complete, setup handlers.
       chan.channel.done(function(signallingChannel) {

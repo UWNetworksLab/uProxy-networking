@@ -3,9 +3,9 @@
   "description": "Listen for incoming requests, and relay them through a transport.",
   "app": {
     "script": [
-      "client.js",
       "tcp-server.js",
-      "socks.js"
+      "socks.js",
+      "client.js"
     ]
   },
   "dependencies": {
