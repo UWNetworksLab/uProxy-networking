@@ -6,6 +6,9 @@ interface Window {
   socket:any;
 }
 declare var freedom:any;
+
+// TODO: this is really gross and freedom should fix this.
+var x:any = {}; window = x;
 window.socket = freedom['core.socket']();
 
 // TODO: write a unit test using this and tcp-server.

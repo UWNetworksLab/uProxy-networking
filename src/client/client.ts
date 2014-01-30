@@ -10,6 +10,8 @@ interface Window {
 }
 console.log('SOCKS5 client: ' + self.location.href);
 
+// TODO: this is really gross and freedom should fix this.
+var x:any = {}; window = x;
 
 window.socket = freedom['core.socket']();
 window.core = freedom.core();
@@ -175,7 +177,7 @@ function initClient() {
         signallingChannel.on('ready', function() {
           _signallingChannel = signallingChannel;
           console.log('Client channel to sctpPc ready.');
-          console.log('Manually preparing a data channel to catalyze SDP handshake.');
+          // console.log('Manually preparing a data channel to catalyze SDP handshake.');
           while(_messageQueue.length > 0) {
             _signallingChannel.emit('message', _messageQueue.shift());
           }
@@ -206,6 +208,7 @@ function initClient() {
   // Setup completed, now emit the ready message.
   freedom.emit('ready', {});
 
+  console.log('socks-rtc Client initialized.');
 }
 
 

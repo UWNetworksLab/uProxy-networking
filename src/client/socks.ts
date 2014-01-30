@@ -203,14 +203,14 @@ module SocksUtil {
 
     // When we start listening, print it out.
     this.tcpServer.on('listening', function() {
-      // console.log('LISTENING ' + self.tcpServer.addr + ':' + self.tcpServer.port);
+      console.log('LISTENING ' + self.tcpServer.addr + ':' + self.tcpServer.port);
     });
 
     // When we receieve a new connection make a new SocksClientConnection.
     // and log to info.
     this.tcpServer.on('connection', function(tcpConnection) {
-//      console.log('CONNECTED(' + tcpConnection.socketId + ') ' +
-//          tcpConnection.socketInfo.peerAddress + ':' + tcpConnection.socketInfo.peerPort);
+     console.log('CONNECTED(' + tcpConnection.socketId + ') ' +
+         tcpConnection.socketInfo.peerAddress + ':' + tcpConnection.socketInfo.peerPort);
       tcpConnection.on('recv', function(buffer) {
 //        console.log('new SocksClientConnection (' + tcpConnection.socketId + '): \n' +
 //            '* Got data: ' + JSON.stringify(tcpConnection.state()) + ';\n' +

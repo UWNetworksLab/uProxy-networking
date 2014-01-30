@@ -148,6 +148,7 @@ function getStringOfArrayBuffer(buf) {
    */
   TcpServer.prototype.listen = function() {
     socket.create('tcp', {}).done(this._onCreate.bind(this));
+    console.log('Tcp server listening...');
   };
 
   /**
@@ -206,29 +207,30 @@ function getStringOfArrayBuffer(buf) {
   TcpServer.prototype._onListenComplete = function(resultCode) {
     if (resultCode === 0) {
       socket.on('onConnection', function accept(acceptValue) {
-      if (this.serverSocketId !== acceptValue.serverSocketId) {
-        return;
-      }
+        if (this.serverSocketId !== acceptValue.serverSocketId) {
+          return;
+        }
 
-      var connectionsCount = Object.keys(this.openConnections).length;
-      if (connectionsCount >= this.maxConnections) {
+        var connectionsCount = Object.keys(this.openConnections).length;
+        if (connectionsCount >= this.maxConnections) {
           socket.disconnect(acceptValue.clientSocketId);
           socket.destroy(acceptValue.clientSocketId);
           console.warn('TcpServer: too many connections: ' + connectionsCount);
           return;
         }
-      this._createTcpConnection(acceptValue.clientSocketId);
+        this._createTcpConnection(acceptValue.clientSocketId);
       }.bind(this));
 
       // The underlying socket_chrome socket.
       socket.on('onDisconnect', function disconnect(socketInfo) {
-        console.log("connection " + socketInfo.socketId + " remotely disconnected.");
+        console.log('connection ' + socketInfo.socketId + ' remotely disconnected.');
         // this.callbacks.socketRemotelyClosed && this.socketRemotelyClosed(socketInfo.socketId);
         var disconnect_cb = this.openConnections[socketInfo.socketId].callbacks.disconnect;
         disconnect_cb && disconnect_cb(socketInfo.socketId);
         this.openConnections[socketInfo.socketId].disconnect();
         this.removeFromServer(socketInfo);
       }.bind(this));
+
       this.callbacks.listening && this.callbacks.listening();
     } else {
       console.error('TcpServer: listen failed for ' + this.addr + ':' +

@@ -1,0 +1,17 @@
+{
+  "name": "socks-rtc",
+  "description": "socks-rtc Freedom manifest",
+  "app": {
+    "script": [
+      "smell_socks.js"
+    ]
+  },
+  "dependencies": {
+    "client": { "url": "js/client/client.json" },
+    "server": { "url": "js/server/server.json" }
+  },
+  "permissions": [
+    "core.socket",
+    "core.sctp-peerconnection"
+  ]
+}

@@ -191,6 +191,8 @@ function initServer() {
 
   freedom.on('stop', resetServer);
   freedom.emit('ready', {});
+
+  console.log('socks-rtc Server initialized.');
 }
 
 initServer();

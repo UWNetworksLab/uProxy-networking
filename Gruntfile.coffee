@@ -1,11 +1,33 @@
+
+# app_files = [
+  # 'build/**',
+  # 'node_modules/freedom/freedom.js'
+# ]
+
 module.exports = (grunt) ->
 
   grunt.initConfig {
     pkg: grunt.file.readJSON('package.json'),
 
     copy: {
-      lib: {
+      app: {
         files: [
+          {
+            src: ['**']
+            dest: 'chrome/js/'
+            expand: true,
+            # flatten: false
+            cwd: 'build'
+          }, {
+            src: 'node_modules/freedom/freedom.js'
+            dest: 'chrome/js/freedom.js'
+          }, {
+            src: ['**/*.json']
+            dest: 'chrome/js/'
+            expand: true,
+            # flatten: false
+            cwd: 'src'
+          },
         ]
       }
     }
@@ -44,8 +66,9 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-ts'
 
   grunt.registerTask 'default', [
-    'ts:client'
-    'ts:server'
+    'ts:client',
+    'ts:server',
+    'copy:app'
   ]
 
   # Freedom doesn't build correctly by itself - run this task when in a clean
