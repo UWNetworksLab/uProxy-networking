@@ -1,9 +1,9 @@
 {
-  "name": "APairOfSocks",
-  "description": "SOCKS5 over WebRTC with Promises",
+  "name": "socks-rtc",
+  "description": "Library for proxying SOCKS5 over WebRTC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/keroserene/apairofsocks"
+    "url": "https://github.com/keroserene/socks-rtc"
   },
   "devDependencies": {
     "grunt": "~0.4.1",
@@ -12,7 +12,9 @@
     "grunt-contrib-clean": "~0.5.0",
     "grunt-contrib-coffee": "~0.7.0",
     "grunt-contrib-copy": "~0.4.1",
-    "grunt-ts": "~1.6.4"
+    "grunt-shell": "~0.3.1",
+    "grunt-ts": "~1.6.4",
+    "freedom": "0.1.0"
   },
   "scripts": {
     "test": "grunt --verbose"
