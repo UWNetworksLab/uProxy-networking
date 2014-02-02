@@ -3,7 +3,7 @@
   "description": "socks-rtc Freedom manifest",
   "app": {
     "script": [
-      "js/client/tcp-server.js",
+      "js/client/tcp.js",
       "smell_socks.js"
     ]
   },

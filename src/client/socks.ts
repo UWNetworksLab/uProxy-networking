@@ -5,7 +5,7 @@
   For the RFC for socks, see:
     http://tools.ietf.org/html/rfc1928
 */
-/// <reference path='tcp-server.ts' />
+/// <reference path='tcp.ts' />
 
 declare var chrome:any;
 // interface Window {

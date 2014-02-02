@@ -59,9 +59,15 @@ module.exports = (grunt) ->
         options: {stdout: true, stderr: true, failOnError: true, execOptions: {cwd: 'node_modules/freedom'}}
       }
     }
+
+    clean: [
+      'build/**',
+      'chrome/js/**'
+    ]
   }
 
   grunt.loadNpmTasks 'grunt-contrib-copy'
+  grunt.loadNpmTasks 'grunt-contrib-clean'
   grunt.loadNpmTasks 'grunt-shell'
   grunt.loadNpmTasks 'grunt-ts'
 
