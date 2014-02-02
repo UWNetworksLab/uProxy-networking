@@ -1,4 +1,6 @@
 /*
+  This is a TCP server based on Freedom's sockets API.
+
   Based on:
     https://github.com/GoogleChrome/chrome-app-samples/tree/master/tcpserver
 */
@@ -33,6 +35,10 @@ function getStringOfArrayBuffer(buf) {
   return s;
 }
 
+/**
+ * Exports:
+ *   TCP.Server
+ */
 module TCP {
 
   var DEFAULT_MAX_CONNECTIONS = 1048576;
@@ -44,203 +50,173 @@ module TCP {
   /**
    * Create an instance of the server
    *
+   * Aside: see http://developer.chrome.com/trunk/apps/socket.html#method-getNetworkList
+   *
    * @param {Object} options Options of the form { maxConnections: integer,
    * allowHalfOpen: bool }.
    * @param {function} connect_callback Called when socket is connected.
    */
-  export function Server(server_address, port, options?) {
-    this.addr = server_address;
-    this.port = port;
-    this.maxConnections = typeof(options) != 'undefined' &&
-        options.maxConnections || DEFAULT_MAX_CONNECTIONS;
+  export class Server {
 
-    // Callback functions.
-    this.callbacks = {
-      listening: null,  // Called when server starts listening for connections.
-      connection: null, // Called when a new socket connection happens.
-      disconnect: null, // Called when server stops listening for connections.
-      // Called when a socket is closed from the other side.  Passed socketId as an arg.
-      socketRemotelyClosed: null
-    };
+    // TODO: finish typing these members
+    maxConnections:number;
+    callbacks:any;
+    connectionCallbacks:any;
+    openConnections:any;
+    serverSocketId:number;
 
-    // Default callbacks for when we create new TcpConnections.
-    this.connectionCallbacks = {
-      disconnect: null, // Called when a socket is closed
-      recv: null,       // Called when server receives data.
-      sent: null,       // Called when server has sent data.
-      // Called when a tcpConnection belonging to this server is created.
-      created: this.addToServer.bind(this),
-      // Called when a tcpConnection belonging to this server is removed.
-      removed: this.removeFromServer.bind(this)
-    };
+    constructor(public addr, public port, options?) {
+      this.maxConnections = typeof(options) != 'undefined' &&
+          options.maxConnections || DEFAULT_MAX_CONNECTIONS;
 
-    this.openConnections = {};  // Open sockets.
-    // Server socket (accepts and opens one socket per client)
-    this.serverSocketId = null;
-  }
+      // Callback functions.
+      this.callbacks = {
+        listening: null,  // Called when server starts listening for connections.
+        connection: null, // Called when a new socket connection happens.
+        disconnect: null, // Called when server stops listening for connections.
+        // Called when a socket is closed from the other side.  Passed socketId as an arg.
+        socketRemotelyClosed: null
+      };
 
-  /**
-   * This is called.
-   */
-  Server.prototype.addToServer = function(tcpConnection) {
-    // console.log("adding connection " + tcpConnection.socketId + " to server.");
-    this.openConnections[tcpConnection.socketId] = tcpConnection;
-  };
+      // Default callbacks for when we create new TcpConnections.
+      this.connectionCallbacks = {
+        disconnect: null, // Called when a socket is closed
+        recv: null,       // Called when server receives data.
+        sent: null,       // Called when server has sent data.
+        // TCP.Connection creation and removal callbacks.
+        created: this._addToServer,
+        removed: this._removeFromServer
+      };
 
-  /**
-   * This is never called.
-   */
-  Server.prototype.removeFromServer = function(tcpConnection) {
-    // console.log("removing connection " + tcpConnection.socketId + " from server");
-    delete this.openConnections[tcpConnection.socketId];
-  };
-
-  /**
-   * Static method to return available network interfaces.
-   *
-   * @see http://developer.chrome.com/trunk/apps/socket.html#method-getNetworkList
-   *
-   * @param {Function} callback The function to call with the available network
-   * interfaces. The callback parameter is an array of
-   * {name(string), address(string)} objects. Use the address property of the
-   * preferred network as the addr parameter on Server contructor.
-   */
-  // getNetworkAddresses = function(callback) {
-    // socket.getNetworkList().done(callback);
-  // };
-
-  /**
-   * Static method to return available network interfaces.
-   *
-   * @see http://developer.chrome.com/trunk/apps/socket.html#method-getNetworkList
-   *
-   * @param {Function} callback The function to call with the available network
-   * interfaces. The callback parameter is an array of
-   * {name(string), address(string)} objects. Use the address property of the
-   * preferred network as the addr parameter on Server contructor.
-   */
-  Server.prototype.isConnected = function() {
-    return this.serverSocketId > 0;
-  };
-
-  /**
-   * Set an event handler. See http://developer.chrome.com/trunk/apps/socket.
-   * html for more about the events than can happen.
-   *
-   * 'listening' takes TODO: complete.
-   */
-  Server.prototype.on = function(eventName, callback) {
-    if (eventName in this.callbacks) {
-      this.callbacks[eventName] = callback;
-    } else {
-      console.error('Server: on failed for ' + eventName);
+      this.openConnections = {};  // Open sockets.
+      // Server socket (accepts and opens one socket per client)
+      this.serverSocketId = null;
     }
-  };
 
-  /**
-   * Listens for TCP requests (opens a socket).
-   *
-   * @see http://developer.chrome.com/trunk/apps/socket.html#method-create
-   * @param {Function} callback The function to call on connection.
-   */
-  Server.prototype.listen = function() {
-    socket.create('tcp', {}).done(this._onCreate.bind(this));
-    console.log('Tcp server listening...');
-  };
-
-  /**
-   * Disconnects all sockets, and stops listening.
-   *
-   * @see http://developer.chrome.com/trunk/apps/socket.html#method-disconnect
-   */
-  Server.prototype.disconnect = function() {
-    if (this.serverSocketId) {
-      console.log('Server: disconnecting server socket ' + this.serverSocketId);
-      socket.disconnect(this.serverSocketId);
-      socket.destroy(this.serverSocketId);
+    /** Open a socket to listen for TCP requests. */
+    public listen() {
+      socket.create('tcp', {}).done(this._onCreate.bind(this));
+      console.log('Tcp server listening...');
     }
-    for (var i in this.openConnections) {
-      try {
-        this.openConnections[i].disconnect();
-        this.removeFromServer(this.openConnections[i]);
-      } catch (ex) {
-        console.warn(ex);
+
+    /** Disconnect all sockets and stops listening. */
+    public disconnect() {
+      if (this.serverSocketId) {
+        console.log('Server: disconnecting server socket ' + this.serverSocketId);
+        socket.disconnect(this.serverSocketId);
+        socket.destroy(this.serverSocketId);
+      }
+      for (var i in this.openConnections) {
+        try {
+          this.openConnections[i].disconnect();
+          this._removeFromServer(this.openConnections[i]);
+        } catch (ex) {
+          console.warn(ex);
+        }
+      }
+      this.serverSocketId = 0;
+      // this.isListening = false;
+      this.callbacks.disconnect && this.callbacks.disconnect();
+    }
+
+    /**
+     * Called when a new tcp connection
+     */
+    private _addToServer = (tcpConnection) => {
+      // console.log("adding connection " + tcpConnection.socketId + " to server.");
+      this.openConnections[tcpConnection.socketId] = tcpConnection;
+    }
+
+    /**
+     * This is never called.
+     */
+    private _removeFromServer = (tcpConnection) => {
+      // console.log("removing connection " + tcpConnection.socketId + " from server");
+      delete this.openConnections[tcpConnection.socketId];
+    }
+
+    isConnected() { return this.serverSocketId > 0; }
+
+    /**
+     * Set an event handler. See http://developer.chrome.com/trunk/apps/socket.
+     * html for more about the events than can happen.
+     *
+     * 'listening' takes TODO: complete.
+     */
+    public on(eventName, callback) {
+      if (eventName in this.callbacks) {
+        this.callbacks[eventName] = callback;
+      } else {
+        console.error('Server: on failed for ' + eventName);
       }
     }
-    this.serverSocketId = 0;
-    this.isListening = false;
-    this.callbacks.disconnect && this.callbacks.disconnect();
-  };
 
-  /**
-   * The callback function used for when we attempt to have Chrome
-   * create a socket. If the socket is successfully created
-   * we go ahead and start listening for incoming connections.
-   *
-   * @private
-   * @see http://developer.chrome.com/trunk/apps/socket.html#method-connect
-   * @param {Object} createInfo The socket details.
-   */
-  Server.prototype._onCreate = function(createInfo) {
-    console.log('Creating socket... ', createInfo);
-    this.serverSocketId = createInfo.socketId;
-    if (this.serverSocketId > 0) {
-      console.log(this);
-      console.log(JSON.stringify([this.serverSocketId, this.addr, this.port]));
-      socket.listen(this.serverSocketId, this.addr, this.port)
-        .done(this._onListenComplete.bind(this));
-      this.isListening = true;
-    } else {
-      console.error('Server: create socket failed for ' + this.addr + ':' +
-          this.port);
+    /**
+     * Callback upon creation of a socket. If socket was successfully created,
+     * begin listening for incoming connections.
+     */
+    private _onCreate(createInfo) {
+      console.log('Creating socket... ', createInfo);
+      this.serverSocketId = createInfo.socketId;
+      if (this.serverSocketId > 0) {
+        console.log(JSON.stringify([this.serverSocketId, this.addr, this.port]));
+        socket.listen(this.serverSocketId, this.addr, this.port)
+          .done(this._onListenComplete.bind(this));
+        // this.isListening = true;
+      } else {
+        console.error('Server: create socket failed for ' + this.addr + ':' +
+            this.port);
+      }
     }
-  };
 
-  /**
-   * The callback function used for when we attempt to have Chrome
-   * connect to the remote side. If a successful connection is
-   * made then we accept it by opening it in a new socket (accept method)
-   *
-   * @private
-   */
-  Server.prototype._onListenComplete = function(resultCode) {
-    if (resultCode === 0) {
-      socket.on('onConnection', function accept(acceptValue) {
-        if (this.serverSocketId !== acceptValue.serverSocketId) {
-          return;
-        }
-
-        var connectionsCount = Object.keys(this.openConnections).length;
-        if (connectionsCount >= this.maxConnections) {
-          socket.disconnect(acceptValue.clientSocketId);
-          socket.destroy(acceptValue.clientSocketId);
-          console.warn('Server: too many connections: ' + connectionsCount);
-          return;
-        }
-        this._createTcpConnection(acceptValue.clientSocketId);
-      }.bind(this));
-
-      // The underlying socket_chrome socket.
-      socket.on('onDisconnect', function disconnect(socketInfo) {
-        console.log('connection ' + socketInfo.socketId + ' remotely disconnected.');
-        // this.callbacks.socketRemotelyClosed && this.socketRemotelyClosed(socketInfo.socketId);
-        var disconnect_cb = this.openConnections[socketInfo.socketId].callbacks.disconnect;
-        disconnect_cb && disconnect_cb(socketInfo.socketId);
-        this.openConnections[socketInfo.socketId].disconnect();
-        this.removeFromServer(socketInfo);
-      }.bind(this));
-
-      this.callbacks.listening && this.callbacks.listening();
-    } else {
-      console.error('Server: listen failed for ' + this.addr + ':' +
-          this.port + '. Resultcode=' + resultCode);
+    /**
+     * Callback upon having heard the remote side. If connection was
+     * successful, then accept and open a new socket.
+     */
+    private _onListenComplete(resultCode) {
+      if (0 === resultCode) {
+        socket.on('onConnection', this._accept);
+        socket.on('onDisconnect', this._disconnect.bind);
+        // Start the listening callback if it exists.
+        this.callbacks.listening && this.callbacks.listening();
+      } else {
+        console.error('Server: listen failed for ' + this.addr + ':' +
+            this.port + '. Resultcode=' + resultCode);
+      }
     }
-  };
 
-  Server.prototype._createTcpConnection = function(socketId) {
-    new TcpConnection(socketId, this.callbacks.connection,
-          this.connectionCallbacks);
-  };
+    /** Accept a connection. */
+    private _accept = (acceptValue) => {
+      if (this.serverSocketId !== acceptValue.serverSocketId) {
+        console.warn('Connected to unexpected socket ID: ',
+                     this.serverSocketId);
+        return;
+      }
+      var connectionsCount = Object.keys(this.openConnections).length;
+      if (connectionsCount >= this.maxConnections) {
+        socket.disconnect(acceptValue.clientSocketId);
+        socket.destroy(acceptValue.clientSocketId);
+        console.warn('Server: too many connections: ' + connectionsCount);
+        return;
+      }
+      this._createTcpConnection(acceptValue.clientSocketId);
+    }
+
+    private _disconnect = (socketInfo) => {
+      console.log('connection ' + socketInfo.socketId + ' remotely disconnected.');
+      var disconnect_cb = this.openConnections[socketInfo.socketId].callbacks.disconnect;
+      disconnect_cb && disconnect_cb(socketInfo.socketId);
+      this.openConnections[socketInfo.socketId].disconnect();
+      this._removeFromServer(socketInfo);
+    }
+
+    private _createTcpConnection(socketId) {
+      new TcpConnection(socketId, this.callbacks.connection,
+            this.connectionCallbacks);
+    }
+
+  }  // class TCP.Server
+
 
   /**
    * Holds a connection to a client
@@ -495,6 +471,4 @@ module TCP {
     f.readAsArrayBuffer(bb);
   }
 
-  // exports.Server = Server;
-  // exports.TcpConnection = TcpConnection;
-}
+}  // module TCP
