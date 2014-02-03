@@ -7,20 +7,12 @@
 */
 /// <reference path='tcp.ts' />
 
-declare var chrome:any;
-// interface Window {
-  // TcpServer:any;
-// }
 
-
-/**
- * SocksUtil
- */
 module SocksUtil {
-/**
- * version 5 of socks
- * @const {number}
- */
+  /**
+   * version 5 of socks
+   * @const {number}
+   */
   export var VERSION5 = 0x05;
 
   /*
@@ -188,21 +180,17 @@ declare var SocksClientConnection:any;  // Remove once ts'd.
 
 module Socks {
 
-  // var socket = exports.socket || (typeof chrome != 'undefined' && chrome.socket);
-
-  //----------------------------------------------------------------------------
-  // SocksServer
-  //----------------------------------------------------------------------------
   /**
-   * destination_callback = function(tcpConnection, address, port,
-        connectedToDestinationCallback) {...}
+   * Socks.Server
    */
   export class Server {
-    tcpServer:any;
 
+    tcpServer:TCP.Server;
+
+    /** Construct a new SocksServer based on TCP. */
     constructor(address, port,
-        // Holds index from socketId
-        public destinationCallback) {
+        public destinationCallback  // Holds index from socketId
+        ) {
       this.tcpServer = new TCP.Server(address || 'localhost',
                                       port || 1080);
       // When we start listening, print it out.
@@ -210,17 +198,16 @@ module Socks {
         console.log('LISTENING ' + this.tcpServer.addr + ':' + this.tcpServer.port);
       });
 
-      // When we receieve a new connection make a new SocksClientConnection.
-      // and log to info.
+      // Each new connection make a new Socks.ClientConnection.
       this.tcpServer.on('connection', (tcpConnection) => {
-       console.log('CONNECTED(' + tcpConnection.socketId + ') ' +
-           tcpConnection.socketInfo.peerAddress + ':' + tcpConnection.socketInfo.peerPort);
-        tcpConnection.on('recv', function(buffer) {
-         console.log('new SocksClientConnection (' + tcpConnection.socketId + '): \n' +
+       // console.log('CONNECTED(' + tcpConnection.socketId + ') ' +
+           // tcpConnection.socketInfo.peerAddress + ':' + tcpConnection.socketInfo.peerPort);
+        tcpConnection.on('recv', (buffer) => {
+          console.log('new Socks.ClientConnection (' + tcpConnection.socketId + '): \n' +
              '* Got data: ' + JSON.stringify(tcpConnection.state()) + ';\n' +
              '      data: ' + getHexStringOfArrayBuffer(buffer));
           tcpConnection.socksClient =
-              new SocksClientConnection(tcpConnection, buffer,
+              new Socks.ClientConnection(tcpConnection, buffer,
                                         this.destinationCallback);
         }, {minByteLength: 3});
       });
@@ -230,152 +217,152 @@ module Socks {
     disconnect() { this.tcpServer.disconnect(); }
   }
 
-  //----------------------------------------------------------------------------
-  // SocksClientConnection
-  //----------------------------------------------------------------------------
   /**
-   * Connection to a particular socks client
+   * Socks.ClientConnection
    */
-  export function SocksClientConnection(tcpConnection, buffer, destinationCallback) {
-    this.tcpConnection = tcpConnection;  // to the client.
-    this.destinationCallback = destinationCallback;
-    this.method_count = 0;
-    this.auth_methods = [];
-    this.request = null;
-    var self = this;
-    var response;  // Uint8Array;
+  export class ClientConnection {
 
-/*    console.log('SocksClientConnection(' + this.tcpConnection.socketId + '): ' +
-        'Auth (length=' + buffer.byteLength + ')'); */
+    method_count:number = 0;
+    auth_methods:any[] = [];
+    request:any = null;
+    result:any;
 
-    // We are no longer at waiting for a proxy request on this tcp connection.
-    // this.tcpConnection.on('recv', null);
+    constructor(
+        public tcpConnection:TCP.Connection,
+        buffer,
+        public destinationCallback) {
+      var response;  // Uint8Array;
 
-    var byteArray = new Uint8Array(buffer);
-    // Only SOCKS Version 5 is supported
-    if (byteArray[0] != SocksUtil.VERSION5) {
-      console.error('SocksClientConnection(' + this.tcpConnection.socketId + '): ' +
-          'unsupported socks version: ' + byteArray[0]);
-      this.tcpConnection.disconnect();
-      return;
-    }
+      console.log('Socks.ClientConnection(' + this.tcpConnection.socketId + '): ' +
+          'Auth (length=' + buffer.byteLength + ')');
 
-    // Number of authentication methods
-    var methodCount = byteArray[1];
-    // Get the supported authentication methods.
-    // i starts on 1, since we've read byteArray 0 & 1 already
-    for (var i = 2; i < methodCount + 2; i++) {
-      this.auth_methods.push(byteArray[i]);
-    }
-    // Make sure the client supports no authentication.
-    if (this.auth_methods.indexOf(SocksUtil.AUTHENTICATION.NOAUTH) <= -1) {
-      console.error('SocksClientConnection: no auth methods',
-          SocksUtil.AUTHENTICATION.NOAUTH);
+      // We are no longer at waiting for a proxy request on this tcp connection.
+      // this.tcpConnection.on('recv', null);
+
+      var byteArray = new Uint8Array(buffer);
+      // Only SOCKS Version 5 is supported
+      if (SocksUtil.VERSION5 != byteArray[0]) {
+        console.error('Socks.ClientConnection(' + this.tcpConnection.socketId + '): ' +
+            'unsupported socks version: ' + byteArray[0]);
+        this.tcpConnection.disconnect();
+        return;
+      }
+
+      // Number of authentication methods
+      var methodCount = byteArray[1];
+      // Get the supported authentication methods.
+      // i starts on 1, since we've read byteArray 0 & 1 already
+      for (var i = 2; i < methodCount + 2; i++) {
+        this.auth_methods.push(byteArray[i]);
+      }
+      // Make sure the client supports no authentication.
+      if (this.auth_methods.indexOf(SocksUtil.AUTHENTICATION.NOAUTH) <= -1) {
+        console.error('Socks.ClientConnection: no auth methods',
+            SocksUtil.AUTHENTICATION.NOAUTH);
+        response = new Uint8Array(2);
+        response[0] = SocksUtil.VERSION5;
+        response[1] = SocksUtil.AUTHENTICATION.NONE;
+        this.tcpConnection.sendRaw(response.buffer);
+        this.tcpConnection.disconnect();
+        return;
+      }
+
+      // Handle more data with request handler.
+      this.tcpConnection.on('recv', this._handleRequest);
+      // Send request to use NOAUTH for authentication
       response = new Uint8Array(2);
       response[0] = SocksUtil.VERSION5;
-      response[1] = SocksUtil.AUTHENTICATION.NONE;
+      response[1] = SocksUtil.AUTHENTICATION.NOAUTH;
       this.tcpConnection.sendRaw(response.buffer);
-      this.tcpConnection.disconnect();
-      return;
     }
 
-    // Handle more data with request handler.
-    this.tcpConnection.on('recv', this._handleRequest.bind(this));
-    // Send request to use NOAUTH for authentication
-    response = new Uint8Array(2);
-    response[0] = SocksUtil.VERSION5;
-    response[1] = SocksUtil.AUTHENTICATION.NOAUTH;
-    this.tcpConnection.sendRaw(response.buffer);
-  };
-
-  // Given an array buffer of data (buffer) interpret the SOCKS request.
-  SocksClientConnection.prototype._handleRequest = function(buffer) {
-    // We only handle one request per tcp connection. Note that pending data
-    // will be stored and sent to the next non-null callback.
-//    console.log('got response.');
-    this.tcpConnection.on('recv', null);
+    // Given an array buffer of data (buffer) interpret the SOCKS request.
+    private _handleRequest = (buffer) => {
+      // We only handle one request per tcp connection. Note that pending data
+      // will be stored and sent to the next non-null callback.
+      //  console.log('got response.');
+      this.tcpConnection.on('recv', null);
 
 /*    console.log('SocksClientConnection(' + this.tcpConnection.socketId + '): handleRequest\n' +
         '*got data: ' + JSON.stringify(this.tcpConnection.state()) + '; \n' +
         ' data: ' + getHexStringOfArrayBuffer(buffer)); */
 
-    var byteArray = new Uint8Array(buffer);
-    this.result = SocksUtil.interpretSocksRequest(byteArray);
+      var byteArray = new Uint8Array(buffer);
+      this.result = SocksUtil.interpretSocksRequest(byteArray);
 
 //    console.log('SocksClientConnection(' + this.tcpConnection.socketId + '): parsed request: ' +
 //        JSON.stringify(this.result));
 
-    if (this.result == null) {
-      console.error('SocksClientConnection(' + this.tcpConnection.socketId + '): bad request ' +
-          '(length ' + byteArray.length + ')');
-      this.tcpConnection.disconnect();
-      return;
-    } else if ('failure' in this.result) {
-      var response = new Uint8Array(2);
+      if (this.result == null) {
+        console.error('SocksClientConnection(' + this.tcpConnection.socketId + '): bad request ' +
+            '(length ' + byteArray.length + ')');
+        this.tcpConnection.disconnect();
+        return;
+      } else if ('failure' in this.result) {
+        var response = new Uint8Array(2);
+        response[0] = SocksUtil.VERSION5;
+        response[1] = this.result.failure;
+        this.tcpConnection.sendRaw(response.buffer);
+        this.tcpConnection.disconnect();
+        console.error('SocksClientConnection(' + this.tcpConnection.socketId + '): ' +
+            'unsupported request: ' + this.result.failure);
+        return;
+      }
+
+  /*    console.log('SocksClientConnection(' + this.tcpConnection.socketId + '): Request: ' +
+          '{cmd: ' + this.result.cmd + ', atyp: ' + this.result.atyp + '} ' +
+          'to: ' + this.result.addressString + ':' + this.result.port); */
+      // TODO: add a handler for failure to reach destination.
+      this.destinationCallback(this, this.result.addressString, this.result.port,
+          this._connectedToDestination.bind(this));
+    }
+
+    /**
+     * Called when the connection to the final destination site is made.
+     * This tells the client the address of the destination reached.
+     */
+    private _connectedToDestination = (connectionDetails, continuation) => {
+  /*    console.log('SocksClientConnection(' + this.tcpConnection.socketId + '): ' +
+          'connected to destination ' + connectionDetails.ipAddrString + ':' +
+          connectionDetails.port); */
+      var response = [];
+      // creating response
       response[0] = SocksUtil.VERSION5;
-      response[1] = this.result.failure;
-      this.tcpConnection.sendRaw(response.buffer);
-      this.tcpConnection.disconnect();
-      console.error('SocksClientConnection(' + this.tcpConnection.socketId + '): ' +
-          'unsupported request: ' + this.result.failure);
-      return;
-    }
+      response[1] = SocksUtil.RESPONSE.SUCCEEDED;
+      response[2] = 0x00;
+      response[3] = SocksUtil.ATYP.IP_V4;
 
-/*    console.log('SocksClientConnection(' + this.tcpConnection.socketId + '): Request: ' +
-        '{cmd: ' + this.result.cmd + ', atyp: ' + this.result.atyp + '} ' +
-        'to: ' + this.result.addressString + ':' + this.result.port); */
-    // TODO: add a handler for failure to reach destination.
-    this.destinationCallback(this, this.result.addressString, this.result.port,
-        this._connectedToDestination.bind(this));
-  };
+      var v4 = '([\\d]{1,3})';
+      var v4d = '\\.';
+      var v4complete = v4+v4d+v4+v4d+v4+v4d+v4
+      var v4regex = new RegExp(v4complete);
 
-  /**
-   * Called when the connection to the final destination site is made.
-   * This tells the client the address of the destination reached.
-   */
-  SocksClientConnection.prototype._connectedToDestination = function(
-      connectionDetails,
-      continuation) {
-/*    console.log('SocksClientConnection(' + this.tcpConnection.socketId + '): ' +
-        'connected to destination ' + connectionDetails.ipAddrString + ':' +
-        connectionDetails.port); */
-    var response = [];
-    // creating response
-    response[0] = SocksUtil.VERSION5;
-    response[1] = SocksUtil.RESPONSE.SUCCEEDED;
-    response[2] = 0x00;
-    response[3] = SocksUtil.ATYP.IP_V4;
-
-    var v4 = '([\\d]{1,3})';
-    var v4d = '\\.';
-    var v4complete = v4+v4d+v4+v4d+v4+v4d+v4
-    var v4regex = new RegExp(v4complete);
-
-    var ipv4 = connectionDetails.ipAddrString.match(v4regex);
-    if (ipv4) {
-      response[4] = parseInt(ipv4[1]);
-      response[5] = parseInt(ipv4[2]);
-      response[6] = parseInt(ipv4[3]);
-      response[7] = parseInt(ipv4[3]);
+      var ipv4 = connectionDetails.ipAddrString.match(v4regex);
+      if (ipv4) {
+        response[4] = parseInt(ipv4[1]);
+        response[5] = parseInt(ipv4[2]);
+        response[6] = parseInt(ipv4[3]);
+        response[7] = parseInt(ipv4[3]);
+      }
+      // TODO: support IPv6
+      response[8] = connectionDetails.port & 0xF0;
+      response[9] = connectionDetails.port & 0x0F;
+      var responseArray = new Uint8Array(response);
+      /* var j = 4;
+      if (this.result.atyp == ATYP.DNS) {
+        response[j] = this.result.addressSize;
+        j++;
+      }
+      for (var i = 0; i < this.result.addressSize; ++i) {
+        response[i + j] = this.result.address[i];
+      }
+      response[this.result.addressSize + j] = this.result.portByte1;
+      response[this.result.addressSize + j + 1] = this.result.portByte2;
+      */
+      this.tcpConnection.sendRaw(responseArray.buffer);
+      if (continuation) { continuation(); }
     }
-    // TODO: support IPv6
-    response[8] = connectionDetails.port & 0xF0;
-    response[9] = connectionDetails.port & 0x0F;
-    var responseArray = new Uint8Array(response);
-    /* var j = 4;
-    if (this.result.atyp == ATYP.DNS) {
-      response[j] = this.result.addressSize;
-      j++;
-    }
-    for (var i = 0; i < this.result.addressSize; ++i) {
-      response[i + j] = this.result.address[i];
-    }
-    response[this.result.addressSize + j] = this.result.portByte1;
-    response[this.result.addressSize + j + 1] = this.result.portByte2;
-    */
-    this.tcpConnection.sendRaw(responseArray.buffer);
-    if (continuation) { continuation(); }
-  };
+  }  // Socks.ClientConnection
 
   //----------------------------------------------------------------------------
   // exports.SocksUtil = SocksUtil;

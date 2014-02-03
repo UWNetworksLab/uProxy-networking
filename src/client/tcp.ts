@@ -40,9 +40,9 @@ module TCP {
 
   var DEFAULT_MAX_CONNECTIONS = 1048576;
 
-  // Define some local variables here.
+  // Freedom Sockets API.
   // TODO: throw an Error if this isn't here.
-  var FSocket = freedom['core.socket']();
+  var FSockets = freedom['core.socket']();
 
   /**
    * TCP.Server
@@ -91,7 +91,7 @@ module TCP {
 
     /** Open a socket to listen for TCP requests. */
     public listen() {
-      FSocket.create('tcp', {}).done(this._onCreate.bind(this));
+      FSockets.create('tcp', {}).done(this._onCreate.bind(this));
       console.log('Tcp server listening...');
     }
 
@@ -99,8 +99,8 @@ module TCP {
     public disconnect() {
       if (this.serverSocketId) {
         console.log('Server: disconnecting server socket ' + this.serverSocketId);
-        FSocket.disconnect(this.serverSocketId);
-        FSocket.destroy(this.serverSocketId);
+        FSockets.disconnect(this.serverSocketId);
+        FSockets.destroy(this.serverSocketId);
       }
       for (var i in this.openConnections) {
         try {
@@ -156,7 +156,7 @@ module TCP {
       this.serverSocketId = createInfo.socketId;
       if (this.serverSocketId > 0) {
         console.log(JSON.stringify([this.serverSocketId, this.addr, this.port]));
-        FSocket.listen(this.serverSocketId, this.addr, this.port)
+        FSockets.listen(this.serverSocketId, this.addr, this.port)
           .done(this._onListenComplete.bind(this));
         // this.isListening = true;
       } else {
@@ -171,8 +171,8 @@ module TCP {
      */
     private _onListenComplete(resultCode) {
       if (0 === resultCode) {
-        FSocket.on('onConnection', this._accept);
-        FSocket.on('onDisconnect', this._disconnect.bind);
+        FSockets.on('onConnection', this._accept);
+        FSockets.on('onDisconnect', this._disconnect.bind);
         // Start the listening callback if it exists.
         this.callbacks.listening && this.callbacks.listening();
       } else {
@@ -190,8 +190,8 @@ module TCP {
       }
       var connectionsCount = Object.keys(this.openConnections).length;
       if (connectionsCount >= this.maxConnections) {
-        FSocket.disconnect(acceptValue.clientSocketId);
-        FSocket.destroy(acceptValue.clientSocketId);
+        FSockets.disconnect(acceptValue.clientSocketId);
+        FSockets.destroy(acceptValue.clientSocketId);
         console.warn('Server: too many connections: ' + connectionsCount);
         return;
       }
@@ -206,6 +206,7 @@ module TCP {
       this._removeFromServer(socketInfo);
     }
 
+    /** Create a TCP connection. */
     private _createConnection(socketId) {
       new Connection(socketId, this.callbacks.connection,
             this.connectionCallbacks);
@@ -223,7 +224,7 @@ module TCP {
    *    passing itself as a parameter.
    * @param {Server.connectionCallbacks} callbacks
    */
-  class Connection {
+  export class Connection {
 
     socketInfo:any = null;
     isConnected:boolean = false;
@@ -251,14 +252,14 @@ module TCP {
       this.pendingRead = false;
       this.callbacks.created(this);
 
-      FSocket.on('onData', this._onRead);
-      FSocket.getInfo(socketId).done(function(socketInfo) {
+      FSockets.on('onData', this._onRead);
+      FSockets.getInfo(socketId).done(function(socketInfo) {
         this.socketInfo = socketInfo;
         this._initialized = true;
 
-        // Connection has been established, so make the connection callback.
-        //console.log('Server: client connected, socketInfo=' +
-        //    JSON.stringify(socketInfo));
+        // Fire connection callback for the server.
+        console.log('Server: client connected, socketInfo=' +
+                    JSON.stringify(socketInfo));
         if (serverConnectionCallback) {
           serverConnectionCallback(this);
         }
@@ -275,7 +276,7 @@ module TCP {
      * @param {string} eventName Enumerated instance of valid callback.
      * @param {function} callback Callback function.
      */
-    private on(eventName, callback, options) {
+    public on(eventName, callback, options?) {
       if (eventName in this.callbacks) {
         this.callbacks[eventName] = callback;
         // For receiving, if recv is set to null at some point, we may end up with
@@ -331,18 +332,18 @@ module TCP {
     /**
      * Sends a message pre-formatted into an arrayBuffer.
      */
-    public sendRaw(msg, callback) {
+    public sendRaw(msg, callback?) {
       if(!this.isConnected) {
         console.warn('Connection(' + this.socketId + '):' +
             ' sendRaw when disconnected.');
         return;
       }
       var realCallback = callback || this.callbacks.sent || function() {};
-      FSocket.write(this.socketId, msg).done(realCallback);
+      FSockets.write(this.socketId, msg).done(realCallback);
     }
 
     /** Disconnects from the remote side. */
-    private disconnect() {
+    public disconnect() {
       if(!this.isConnected) return;
       this.isConnected = false;
       // Temporarily remember disconnect callback.
@@ -352,8 +353,8 @@ module TCP {
       this.callbacks.recv = null;
       this.callbacks.sent = null;
       // Close the socket.
-      FSocket.disconnect(this.socketId);
-      FSocket.destroy(this.socketId);
+      FSockets.disconnect(this.socketId);
+      FSockets.destroy(this.socketId);
       // Make disconnect callback if not null
       disconnectCallback && disconnectCallback(this);
       // Fire removal callback for the Server containing this callback.
@@ -407,7 +408,7 @@ module TCP {
     }
 
     /** Output the state of this connection */
-    private state = () => {
+    public state = () => {
       return {
         socketId: this.socketId,
         socketInfo: this.socketInfo,
@@ -418,6 +419,8 @@ module TCP {
         pendingRead: this.pendingRead
       };
     }
+
+    // TODO(keroserene): add a toString for this
 
   }  // class TCP.Connection
 

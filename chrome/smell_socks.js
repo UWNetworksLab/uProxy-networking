@@ -26,10 +26,9 @@ TcpEchoServer = function(address, port) {
 }
 
 console.log('TcpEchoServer installed');
+// TcpEchoServer('127.0.0.1', 9998);
 
-TcpEchoServer('127.0.0.1', 9998);
 
-/*
 var server = freedom.server();
 var client = freedom.client();
 server.emit('start');
@@ -72,4 +71,3 @@ function passSignalToClient(signal) {
 }
 
 proxyClientThroughServer();
-*/
