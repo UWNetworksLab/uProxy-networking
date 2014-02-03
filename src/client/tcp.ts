@@ -67,9 +67,9 @@ module TCP {
 
       // Callback functions.
       this.callbacks = {
-        listening: null,  // Called when server starts listening for connections.
-        connection: null, // Called when a new socket connection happens.
-        disconnect: null, // Called when server stops listening for connections.
+        listening:  null,  // Called when server starts listening for connections.
+        connection: null,  // Called when a new socket connection happens.
+        disconnect: null,  // Called when server stops listening for connections.
         // Called when a socket is closed from the other side.  Passed socketId as an arg.
         socketRemotelyClosed: null
       };
@@ -91,17 +91,18 @@ module TCP {
 
     /** Open a socket to listen for TCP requests. */
     public listen() {
-      FSockets.create('tcp', {}).done(this._onCreate.bind(this));
-      console.log('Tcp server listening...');
+      FSockets.create('tcp', {}).done(this._onCreate);
     }
 
     /** Disconnect all sockets and stops listening. */
     public disconnect() {
-      if (this.serverSocketId) {
-        console.log('Server: disconnecting server socket ' + this.serverSocketId);
-        FSockets.disconnect(this.serverSocketId);
-        FSockets.destroy(this.serverSocketId);
+      var serverSocketId = this.serverSocketId;
+      if (serverSocketId) {
+        console.log('TCP.Server: Disconnecting server socket ' + serverSocketId);
+        FSockets.disconnect(serverSocketId);
+        FSockets.destroy(serverSocketId);
       }
+      this.serverSocketId = 0;
       for (var i in this.openConnections) {
         try {
           this.openConnections[i].disconnect();
@@ -110,16 +111,13 @@ module TCP {
           console.warn(ex);
         }
       }
-      this.serverSocketId = 0;
-      // this.isListening = false;
       this.callbacks.disconnect && this.callbacks.disconnect();
     }
 
     /**
-     * Called when a new tcp connection
+     * Called when a new tcp connection is created.
      */
     private _addToServer = (tcpConnection) => {
-      // console.log("adding connection " + tcpConnection.socketId + " to server.");
       this.openConnections[tcpConnection.socketId] = tcpConnection;
     }
 
@@ -143,7 +141,7 @@ module TCP {
       if (eventName in this.callbacks) {
         this.callbacks[eventName] = callback;
       } else {
-        console.error('Server: on failed for ' + eventName);
+        console.error('TCP.Server: on() failure for ' + eventName);
       }
     }
 
@@ -151,14 +149,13 @@ module TCP {
      * Callback upon creation of a socket. If socket was successfully created,
      * begin listening for incoming connections.
      */
-    private _onCreate(createInfo) {
-      console.log('Creating socket... ', createInfo);
+    private _onCreate = (createInfo) => {
+      console.log('TCP.Server: Creating socket ', createInfo);
       this.serverSocketId = createInfo.socketId;
       if (this.serverSocketId > 0) {
         console.log(JSON.stringify([this.serverSocketId, this.addr, this.port]));
         FSockets.listen(this.serverSocketId, this.addr, this.port)
-          .done(this._onListenComplete.bind(this));
-        // this.isListening = true;
+          .done(this._onListenComplete);
       } else {
         console.error('Server: create socket failed for ' + this.addr + ':' +
             this.port);
@@ -169,10 +166,10 @@ module TCP {
      * Callback upon having heard the remote side. If connection was
      * successful, then accept and open a new socket.
      */
-    private _onListenComplete(resultCode) {
+    private _onListenComplete = (resultCode) => {
       if (0 === resultCode) {
         FSockets.on('onConnection', this._accept);
-        FSockets.on('onDisconnect', this._disconnect.bind);
+        FSockets.on('onDisconnect', this._disconnect);
         // Start the listening callback if it exists.
         this.callbacks.listening && this.callbacks.listening();
       } else {
@@ -253,7 +250,7 @@ module TCP {
       this.callbacks.created(this);
 
       FSockets.on('onData', this._onRead);
-      FSockets.getInfo(socketId).done(function(socketInfo) {
+      FSockets.getInfo(socketId).done((socketInfo) => {
         this.socketInfo = socketInfo;
         this._initialized = true;
 
@@ -263,7 +260,7 @@ module TCP {
         if (serverConnectionCallback) {
           serverConnectionCallback(this);
         }
-      }.bind(this));
+      });
     }
 
     /**
@@ -286,16 +283,15 @@ module TCP {
           if(options) { this.recvOptions = options; }
           else { this.recvOptions = null; }
 
+          // TODO: write a test for the pending buffer.
           if (this.pendingReadBuffer) {
-            /*console.log('Connection(' + this.socketId + '):' +
-                ' calling recv from "on".'); */
             this._bufferedCallRecv();
           }
         }
       } else {
         console.error('Connection(' + this.socketId + '):' +
             'no such event for on: ' + eventName + ".  Available keys are " +
-                JSON.stringify({available_keys: Object.keys(this.callbacks)}));
+            JSON.stringify({available_keys: Object.keys(this.callbacks)}));
       }
     }
 
@@ -305,7 +301,6 @@ module TCP {
     private _bufferedCallRecv = () => {
       if(this.recvOptions && this.recvOptions.minByteLength &&
           this.recvOptions.minByteLength > this.pendingReadBuffer.byteLength) return;
-      // console.log("Sending " + this.pendingReadBuffer.byteLength + " bytes to the callback");
       var tmpBuf = this.pendingReadBuffer;
       this.pendingReadBuffer = null;
       this.callbacks.recv(tmpBuf);
@@ -318,15 +313,14 @@ module TCP {
      * @param {String} msg The message to send.
      * @param {Function} callback The function to call when the message has sent.
      */
-    private send(msg, callback) {
+    public send(msg, callback?) {
       // Register sent callback.
       if ((typeof msg) != "string") {
         console.log("Connection.send: got non-string object.");
       }
-      _stringToArrayBuffer(msg + '\n', function(msg) {
-        // TODO: need bind?
+      _stringToArrayBuffer(msg + '\n', (msg) => {
         this.sendRaw(msg, callback);
-      }.bind(this));
+      });
     }
 
     /**
@@ -385,9 +379,7 @@ module TCP {
         console.warn('onRead: received data for the wrong socketId: ',
                      this.socketId);
         return;
-      } /*else {
-        console.log('onRead: found.');
-      }*/
+      }
       if (this.callbacks.recv && this._initialized) {
         this._addPendingData(readInfo.data);
         this._bufferedCallRecv();
@@ -421,6 +413,9 @@ module TCP {
     }
 
     // TODO(keroserene): add a toString for this
+    public toString = () => {
+      return JSON.stringify(this.state());
+    }
 
   }  // class TCP.Connection
 
