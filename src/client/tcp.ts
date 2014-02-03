@@ -11,21 +11,6 @@
  *
  * @param {ArrayBuffer} buf The buffer to convert.
  */
-function getHexStringOfArrayBuffer(buf) {
-  var uInt8Buf = new Uint8Array(buf);
-  var a = [];
-  for (var i = 0; i < buf.byteLength; ++i) {
-    a.push(uInt8Buf[i].toString(16));
-  }
-  return a.join('.');
-}
-
-/**
- * Converts an array buffer to a string of hex codes and interpretations as
- * a char code.
- *
- * @param {ArrayBuffer} buf The buffer to convert.
- */
 function getStringOfArrayBuffer(buf) {
   var uInt8Buf = new Uint8Array(buf);
   var s = '';

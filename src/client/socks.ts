@@ -113,7 +113,7 @@ module Socks {
       result.addressString = byteArray[4] + '.' + byteArray[5] + '.' +
                              byteArray[6] + '.' + byteArray[7];
       result.portOffset = result.addressSize + 4;
-    } else if (result.atyp == ATYP.DNS) {
+    } else if (ATYP.DNS == result.atyp) {
       result.addressSize = byteArray[4];
       result.address = byteArray.subarray(5, result.addressSize);
       result.addressString = '';
@@ -121,7 +121,7 @@ module Socks {
         result.addressString += String.fromCharCode(byteArray[5 + i]);
       }
       result.portOffset = result.addressSize + 5;
-    } else if (result.atyp == ATYP.IP_V6) {
+    } else if (ATYP.IP_V6 == result.atyp) {
       result.addressSize = 16;
       result.address = byteArray.subarray(5, result.addressSize);
       var byteDataView = new DataView(byteArray.buffer);
@@ -168,7 +168,7 @@ module Socks {
         tcpConnection.on('recv', (buffer) => {
           console.log('new Socks.ClientConnection (' + tcpConnection.socketId + '): \n' +
              '* Got data: ' + tcpConnection + ' \n' +
-             '      data: ' + getHexStringOfArrayBuffer(buffer));
+             '      data: ' + Util.getHexStringOfArrayBuffer(buffer));
           tcpConnection.socksClient =
               new ClientConnection(tcpConnection, buffer,
                                    this.destinationCallback);
@@ -322,3 +322,23 @@ module Socks {
   }  // Socks.ClientConnection
 
 }  // module Socks
+
+
+module Util {
+
+  /**
+   * Converts an array buffer to a string of hex codes and interpretations as
+   * a char code.
+   *
+   * @param {ArrayBuffer} buf The buffer to convert.
+   */
+  export function getHexStringOfArrayBuffer(buf) {
+    var uInt8Buf = new Uint8Array(buf);
+    var a = [];
+    for (var i = 0; i < buf.byteLength; ++i) {
+      a.push(uInt8Buf[i].toString(16));
+    }
+    return a.join('.');
+  }
+
+}
