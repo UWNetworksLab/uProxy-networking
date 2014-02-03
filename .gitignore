@@ -1,5 +1,5 @@
 node_modules/*
 *.swp
 *.swo
-build/*
+tmp/*
 chrome/js

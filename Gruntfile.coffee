@@ -1,9 +1,3 @@
-
-# app_files = [
-  # 'build/**',
-  # 'node_modules/freedom/freedom.js'
-# ]
-
 module.exports = (grunt) ->
 
   grunt.initConfig {
@@ -17,7 +11,7 @@ module.exports = (grunt) ->
             dest: 'chrome/js/'
             expand: true,
             # flatten: false
-            cwd: 'build'
+            cwd: 'tmp'
           }, {
             src: 'node_modules/freedom/freedom.js'
             dest: 'chrome/js/freedom.js'
@@ -32,17 +26,18 @@ module.exports = (grunt) ->
       }
     }
 
+    # All typescript compiles to tmp/ initially.
     ts: {
       client: {
         src: ['src/client/*.ts'],
-        outDir: 'build/client',
+        outDir: 'tmp/client',
         options: {
           sourceMap: false
         }
       }
       server: {
         src: ['src/server/*.ts'],
-        outDir: 'build/server',
+        outDir: 'tmp/server',
         options: {
           sourceMap: false
         }
@@ -61,7 +56,7 @@ module.exports = (grunt) ->
     }
 
     clean: [
-      'build/**',
+      'tmp/**',
       'chrome/js/**'
     ]
   }
