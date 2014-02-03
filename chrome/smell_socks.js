@@ -2,34 +2,9 @@
   Runs the client and server (in separate webworkers) and tests that they can
   signal and set up a proxy connection.
 */
+var LOCALHOST = '127.0.0.1';
+var DEFAULT_PORT = 9999;
 var SERVER_PEER_ID = 'ATotallyFakePeerID';  // Can be any string.
-
-TcpEchoServer = function(address, port) {
-  console.log('TcpEchoServer(' + address + ', ' + port + ')');
-  this.server = new TCP.Server(address, port);
-  this.address = address;
-  this.port = port;
-
-  this.server.on('listening', function(address, port) {
-    console.log('Listening on ' + address + ':' + port); // + ', this=' + JSON.stringify(this));
-  }.bind(this, address, port));
-
-  this.server.on('connection', function(tcp_conn) {
-    console.log('Connected on sock ' + tcp_conn.socketId + ' to ' +
-    tcp_conn.socketInfo.peerAddress + ':' + tcp_conn.socketInfo.peerPort);
-    tcp_conn.on('recv', function(buffer) {
-      tcp_conn.sendRaw(buffer, null);
-    });
-  }, {minByteLength: 1});
-
-  this.server.listen();
-}
-
-console.log('TcpEchoServer installed');
-
-TcpEchoServer('127.0.0.1', 9998);
-
-/*
 var server = freedom.server();
 var client = freedom.client();
 server.emit('start');
@@ -38,7 +13,8 @@ server.emit('start');
 // the server.
 function proxyClientThroughServer() {
   client.emit('start', {
-    'host': '127.0.0.1', 'port': 9999,
+    'host':   LOCALHOST,
+    'port':   DEFAULT_PORT,
     'peerId': SERVER_PEER_ID
   });
 }
@@ -72,4 +48,3 @@ function passSignalToClient(signal) {
 }
 
 proxyClientThroughServer();
-*/
