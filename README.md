@@ -26,3 +26,12 @@ At the moment this only supports chrome.
 Assuming you've done initial setup:
 - Run `grunt`.
 - Reload extension.
+
+### End-to-End Test
+At the moment, the way to test that this works is to just curl a webpage
+through the proxy which socks-rtc sets up if you've built it successfully.
+For example:
+
+`curl -x SOCKS5://localhost:9999 www.google.com`
+
+There will be actual tests soon!

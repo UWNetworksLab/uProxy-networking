@@ -24,11 +24,10 @@ TcpEchoServer = function(address, port) {
 
   this.server.listen();
 }
-
 console.log('TcpEchoServer installed');
-// TcpEchoServer('127.0.0.1', 9998);
 
-
+var DEFAULT_PORT = 9999;
+var LOCALHOST = '127.0.0.1';
 var server = freedom.server();
 var client = freedom.client();
 server.emit('start');
@@ -37,7 +36,8 @@ server.emit('start');
 // the server.
 function proxyClientThroughServer() {
   client.emit('start', {
-    'host': '127.0.0.1', 'port': 9999,
+    'host':   LOCALHOST,
+    'port':   DEFAULT_PORT,
     'peerId': SERVER_PEER_ID
   });
 }
