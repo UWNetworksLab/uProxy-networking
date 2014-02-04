@@ -111,7 +111,7 @@ module SocksToRTC {
 
     // Callback to be fired once receiving a SOCKS5 connection.
     // Setup the data channel and pass the corresponding tcp-connection to the data channel.
-    private onConnection_ = (conn:Socks.ClientConnection, address, port, connectedCallback) => {
+    private onConnection_ = (conn:Socks.Session, address, port, connectedCallback) => {
       if (!this.sctpPc) {
         console.error('SocksToRTC.Peer: onConnection called without SCTP peer connection.');
         return;
