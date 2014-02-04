@@ -10,7 +10,7 @@ console.log('SOCKS5 server: ' + self.location.href);
 
 var NetClient = window.NetClient;  // From netclient.ts
 
-var _core = freedom.core();
+var FCore = freedom.core();
 var _active = true;  // this variable can only make things worse.
 var _peers = {};
 
@@ -25,7 +25,7 @@ var resetServer = function() {
 // Close the peerId. Closes all tcp sockets open for this peer.
 var closePeer = function(peerId) {
   //conn.disconnect();
-  for (var i in _peers[peerId].netClients[peerId]) {
+  for (var i in _peers[peerId].netClients) {
     _peers[peerId].netClients[i].close();
   }
   _peers[peerId].sctpPc.shutdown();
@@ -76,7 +76,7 @@ var _initPeer = function(peerId) {
     _peers[peerId] = {};
   }
 
-  var sctpPc = freedom['core.sctp-peerconnection']();
+  var sctpPc = freedom['core.peerconnection']();
   var netClients = {};
   var peer = {
     // The peer connection.
@@ -93,9 +93,9 @@ var _initPeer = function(peerId) {
   };
   _peers[peerId] = peer;
 
-  sctpPc.on('onReceived', function(message) {
+  sctpPc.on('onReceived', (message) => {
     // console.log("Server got message: " + JSON.stringify(message));
-    if (! message.channelLabel) {
+    if (!message.channelLabel) {
       console.error("Message received but missing channelLabel. Msg: " +
           JSON.stringify(message));
       return;
@@ -110,9 +110,9 @@ var _initPeer = function(peerId) {
           _closeClient.bind(null, sctpPc, message.channelLabel),
           JSON.parse(message.text));
     } else if (message.buffer) {
-      if(!(message.channelLabel in netClients)) {
-        console.error("Message received for non-existent channel. Msg: " +
-          JSON.stringify(message));
+      if (!(message.channelLabel in netClients)) {
+        console.error('Message received for non-existent channel. Msg: ' +
+          JSON.stringify(message) + ' \n' + JSON.stringify(netClients));
         return;
       }
       // Buffer from the peer is data for the destination.
@@ -127,25 +127,26 @@ var _initPeer = function(peerId) {
     _closePeer(true, arg.channelId);
   });
 
-  _core.createChannel().done(function(chan) {
-    sctpPc.setup(chan.identifier, "server-for-" + peerId, false);
-    chan.channel.done(function(channel) {
-      // console.log("Server channel to sctpPc created");
-      channel.on('message', function(msg) {
-        freedom.emit('sendSignalToPeer', { peerId: peerId, data: msg });
-      });
-      // sctpPc will emit 'ready' when it is ready, and at that point we
-      // have successfully initialised this peer connection and can set the
-      // signalling channel and process any messages we have been sent.
-      //setupPromise.done(function() {
-      channel.on('ready', function() {
-        // console.log("Server channel to sctpPc ready.");
-        peer.signallingChannel = channel;
-        while(peer.messageQueue.length > 0) {
-          peer.signallingChannel.emit('message', peer.messageQueue.shift());
-        }
+  FCore.createChannel().done((cinfo) => {
+    sctpPc.setup(cinfo.identifier, 'server-for-' + peerId, false);
+    var sC = cinfo.channel;  // Signalling Channel immediately ready.
+    console.log('Created signalling channel', cinfo);
+    // Pass signalling channel messages to peer.
+    sC.on('message', (msg) => {
+      freedom.emit('sendSignalToPeer', {
+          peerId: peerId,
+          data: msg
       });
     });
+    // sctpPc will emit 'ready' when it is ready, and at that point we
+    // have successfully initialised this peer connection and can set the
+    // signalling channel and process any messages we have been sent.
+    // sC.on('ready', () => {
+    peer.signallingChannel = sC;
+    while(peer.messageQueue.length > 0) {
+      peer.signallingChannel.emit('message', peer.messageQueue.shift());
+    }
+    // });
   });
   console.log('_initPeer(' + peerId + ') complete.');
 };
@@ -162,7 +163,7 @@ function initServer() {
   // msg.data : message body received peerId signalling channel, typically
   //            contains SDP headers.
   //
-  freedom.on('handleSignalFromPeer', function(msg) {
+  freedom.on('handleSignalFromPeer', (msg) => {
     console.log("server handleSignalFromPeer:" + JSON.stringify(msg));
     if (!_active) {
       console.log("server is not active, returning");

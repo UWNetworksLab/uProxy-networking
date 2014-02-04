@@ -13,6 +13,6 @@
   },
   "permissions": [
     "core.socket",
-    "core.sctp-peerconnection"
+    "core.peerconnection"
   ]
 }

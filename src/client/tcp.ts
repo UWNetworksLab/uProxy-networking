@@ -47,10 +47,9 @@ module TCP {
     serverSocketId:number = null;  // Server accepts & opens 1 per client.
 
     constructor(public addr, public port, options?) {
-      this.maxConnections = typeof(options) != 'undefined' &&
-          options.maxConnections || DEFAULT_MAX_CONNECTIONS;
+      this.maxConnections = (options && options.maxConnections) ||
+                            DEFAULT_MAX_CONNECTIONS;
 
-      // Callback functions.
       this.callbacks = {
         listening:  null,  // Called when server starts listening for connections.
         connection: null,  // Called when a new socket connection happens.
@@ -61,10 +60,9 @@ module TCP {
 
       // Default callbacks for when we create new Connections.
       this.connectionCallbacks = {
-        disconnect: null, // Called when a socket is closed
+        disconnect: null, // Called when a client socket is closed
         recv: null,       // Called when server receives data.
         sent: null,       // Called when server has sent data.
-        // TCP.Connection creation and removal callbacks.
         created: this.addToServer_,
         removed: this.removeFromServer_
       };
@@ -356,8 +354,8 @@ module TCP {
      */
     private onRead_ = (readInfo) => {
       if (readInfo.socketId !== this.socketId) {
-        console.warn('onRead: received data for socket ' +
-                     readInfo.socketId + ', expected ' + this.socketId);
+        // Currently onRead_ is attached to all sockets because no dynamic.
+        // TODO: make it O(1) instead of O(N)
         return;
       }
       if (this.callbacks.recv && this.initialized_) {
