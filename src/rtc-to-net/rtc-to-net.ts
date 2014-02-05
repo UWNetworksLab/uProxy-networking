@@ -2,18 +2,16 @@
   ipeer is a server which handles socks connections over
   WebRTC datachannels.
 */
-
-declare var freedom:any;
-interface Window {
-  NetClient:any;
-}
 console.log('SOCKS5 server: ' + self.location.href);
+declare var freedom:any;
 
-var NetClient = window.NetClient;  // From netclient.ts
+/// <reference path='netclient.ts' />
+
 
 var _core = freedom.core();
 var _active = true;  // this variable can only make things worse.
 var _peers = {};
+
 
 var resetServer = function() {
   for (var contact in _peers) {
@@ -106,7 +104,7 @@ var _initPeer = function(peerId) {
       // Text from the peer is used to set a new destination request.
       // Assumes "message.text" is a json of form:
       // { host: string, port: number }
-      netClients[message.channelLabel] = new window.NetClient(
+      netClients[message.channelLabel] = new Net.Client(
           _sendDataToPeer.bind(null, sctpPc, message.channelLabel),
           _closeClient.bind(null, sctpPc, message.channelLabel),
           JSON.parse(message.text));
