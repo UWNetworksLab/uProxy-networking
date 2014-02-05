@@ -1,5 +1,6 @@
 /*
-  Server which handles socks connections over WebRTC datachannels.
+  ipeer is a server which handles socks connections over
+  WebRTC datachannels.
 */
 
 declare var freedom:any;

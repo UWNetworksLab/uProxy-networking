@@ -1,5 +1,5 @@
 /*
-  Client which passes socks requests over WebRTC datachannels.
+  upeer passes socks requests over WebRTC datachannels.
   TODO: Cleanups and typescripting.
 */
 /// <reference path='socks.ts' />

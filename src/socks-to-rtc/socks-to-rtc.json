@@ -1,11 +1,11 @@
 {
-  "name": "Socks Client",
+  "name": "SOCKs to RTC peer",
   "description": "Listen for incoming requests, and relay them through a transport.",
   "app": {
     "script": [
       "tcp.js",
       "socks.js",
-      "client.js"
+      "socks-to-rtc.js"
     ]
   },
   "dependencies": {
