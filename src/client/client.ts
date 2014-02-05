@@ -86,6 +86,7 @@ function initClient() {
     }
     for (var channelLabel in _conns) {
       onClose(channelLabel, _conns[channelLabel]);
+      closeConnection(channelLabel);
     }
     _conns = {};
     if(_sctpPc) {

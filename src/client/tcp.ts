@@ -177,6 +177,7 @@ module TCP {
         console.warn('Server: too many connections: ' + connectionsCount);
         return;
       }
+      console.log('Server: got a connection socket=' + acceptValue.clientSocketId);
       this._createConnection(acceptValue.clientSocketId);
     }
 
