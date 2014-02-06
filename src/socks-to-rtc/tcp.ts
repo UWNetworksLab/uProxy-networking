@@ -339,7 +339,7 @@ module TCP {
       if (!this.pendingReadBuffer_) {
         this.pendingReadBuffer_ = buffer;
       } else {
-        var temp = Uint8Array(this.pendingReadBuffer_.byteLength +
+        var temp = new Uint8Array(this.pendingReadBuffer_.byteLength +
                               buffer.byteLength);
         temp.set(new Uint8Array(this.pendingReadBuffer_), 0);
         temp.set(new Uint8Array(buffer), this.pendingReadBuffer_.byteLength);
