@@ -147,12 +147,26 @@ module TCP {
                       ' \n Result Code ' + resultCode);
         return;
       }
+
       // Success. Attach accept and disconnect handlers.
       FSockets.on('onConnection', this.accept_);
       FSockets.on('onDisconnect', this.disconnect_);
+      FSockets.on('onData', this.connectionRead_);
+
       // Start the listening callback if it exists.
       this.callbacks.listening && this.callbacks.listening();
     }
+
+    /** Read data from one of the connection. */
+    private connectionRead_ = (readInfo) => {
+      if (!(readInfo.socketId in this.openConnections)) {
+        console.log('connectionRead: received data for non-existing socket ' +
+                     readInfo.socketId);
+        return;
+      }
+      this.openConnections[readInfo.socketId].read(readInfo.data)
+    }
+
 
     /** Accept a connection. */
     private accept_ = (acceptValue) => {
@@ -161,7 +175,7 @@ module TCP {
                      this.serverSocketId + ' vs ' + acceptValue.serverSocketId);
         return;
       }
-      console.log('Tcp.Server connected to ' + acceptValue.clientSocketId);
+      console.log('Tcp.Server accepted connection ' + acceptValue.clientSocketId);
       var connectionsCount = Object.keys(this.openConnections).length;
       if (connectionsCount >= this.maxConnections) {
         FSockets.disconnect(acceptValue.clientSocketId);
@@ -229,7 +243,6 @@ module TCP {
       this.pendingRead_ = false;
       this.callbacks.created(this);
 
-      FSockets.on('onData', this.onRead_);
       FSockets.getInfo(socketId).done((socketInfo) => {
         this.socketInfo = socketInfo;
         this.initialized_ = true;
@@ -348,26 +361,17 @@ module TCP {
     }
 
     /**
-     * Callback function for when data has been read from the socket.
-     * Converts the array buffer that is read in to a string
-     * and sends it on for further processing by passing it to
-     * the previously assigned callback function.
-     * See freedom core.socket onData event.
-     */
-    private onRead_ = (readInfo) => {
-      if (readInfo.socketId !== this.socketId) {
-        console.warn('onRead: received data for socket ' +
-                     readInfo.socketId + ', expected ' + this.socketId);
-        return;
-      }
+     * Reads data from the socket.
+     */ 
+    public read = (data) => {
       if (this.callbacks.recv && this.initialized_) {
-        this.addPendingData_(readInfo.data);
+        this.addPendingData_(data);
         this.bufferedCallRecv_();
       } else {
         // If we are not receiving data at the moment, we store the received
         // data in a pendingReadBuffer_ for the next time this.callbacks.recv is
         // turned on.
-        this.addPendingData_(readInfo.data);
+        this.addPendingData_(data);
         this.pendingRead_ = false;
       }
     }

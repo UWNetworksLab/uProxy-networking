@@ -51,6 +51,7 @@ module RtcToNet {
           // Text from the peer is used to set a new destination request.
           // Assumes "message.text" is a json of form:
           // { host: string, port: number }
+          console.log('rtc-to-net was asked to reach: ' + message.text);
           var dest:Net.Destination = JSON.parse(message.text);
           this.netClients[label] = new Net.Client(
               (data) => { this.sendDataToPeer_(label, data); },  // onResponse

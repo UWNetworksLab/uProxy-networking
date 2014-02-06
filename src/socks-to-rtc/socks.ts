@@ -93,6 +93,7 @@ module Socks {
     // Fail if client is not talking Socks version 5.
     result.version = byteArray[0];
     if (result.version !== VERSION5) {
+      console.error('Invalid Socks5 request: ' + Util.getStringOfArrayBuffer(byteArray))
       result.failure = RESPONSE.FAILURE;
       return result;
     }
@@ -281,10 +282,10 @@ module Socks {
         return;
 
       } else if ('failure' in this.request) {
+        console.error('Socks.Session(' + this.tcpConnection.socketId +
+                      ') failed request received: ' + JSON.stringify(this.request));
         this.sendReply_(this.request.failure);
         this.tcpConnection.disconnect();
-        console.error('Socks.Session(' + this.tcpConnection.socketId + '): ' +
-                      'unsupported request: ' + this.request.failure);
         return;
       }
 
@@ -360,4 +361,17 @@ module Util {
     return a.join('.');
   }
 
+  /**
+   * Converts an array buffer to a string. 
+   *
+   * @param {ArrayBuffer} buf The buffer to convert.
+   */
+  export function getStringOfArrayBuffer(buf) {
+    var uInt8Buf = new Uint8Array(buf);
+    var a = [];
+    for (var i = 0; i < buf.byteLength; ++i) {
+      a.push(String.fromCharCode(buf[i]));
+    }
+    return a.join('');
+  }
 }
