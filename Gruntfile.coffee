@@ -26,14 +26,14 @@ module.exports = (grunt) ->
 
     # All typescript compiles to tmp/ initially.
     ts: {
-      s2r: {
+      socks2rtc: {
         src: ['src/socks-to-rtc/*.ts'],
         outDir: 'tmp/socks-to-rtc',
         options: {
           sourceMap: false
         }
       }
-      r2n: {
+      rtc2net: {
         src: ['src/rtc-to-net/*.ts'],
         outDir: 'tmp/rtc-to-net',
         options: {
@@ -65,8 +65,8 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-ts'
 
   grunt.registerTask 'default', [
-    'ts:s2r',
-    'ts:r2n',
+    'ts:socks2rtc',
+    'ts:rtc2net',
     'copy:app'
   ]
 

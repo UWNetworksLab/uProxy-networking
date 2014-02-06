@@ -15,12 +15,16 @@ module Net {
     CLOSED            // 'CLOSED'
   }
 
+  export interface Destination {
+    host:string;
+    port:number;
+  }
+
   /*
     Net.Client
     // TODO: write a unit test using this and tcp-server.
   */
   export class Client {
-
 
     socketId:string = null;
     queue:any[] = [];
@@ -28,8 +32,10 @@ module Net {
 
     /*
       Constructing a Net.Client immediately begins a socket connection.
+
       onResponse: function (buffer) { ... }
       A function to handle the data from a packet that came from the destination.
+
       onClose: function() { ...}
       A function to handle closure of the socket.
 
@@ -39,23 +45,22 @@ module Net {
     constructor (
         public onResponse,
         public onClose,
-        public destination) {
+        public destination:Destination) {
       this.state = State.CREATING_SOCKET;
       FSockets.create('tcp', {}).done(this.onCreate_);
     }
 
     public send = (buffer) => {
-      if (this.state == State.CLOSED) {
-        console.warn("Attempted to send data to a closed socket :(");
+      if (State.CLOSED == this.state) {
+        console.warn('Net.Client: attempted to send data to closed socket :(');
         return;
       }
-      if (this.state == State.CONNECTED) {
+      if (State.CONNECTED == this.state) {
         FSockets.write(this.socketId, buffer).done(this.onWrite_);
       } else {
         this.queue.push(buffer);
       }
     }
-
 
     public close = function() {
       this.onClose_();
@@ -65,7 +70,7 @@ module Net {
     private onCreate_ = (createInfo) => {
       this.socketId = createInfo.socketId;
       if (!this.socketId) {
-        console.error("Failed to create socket. createInfo", createInfo);
+        console.error('Failed to create socket. createInfo', createInfo);
         return;
       }
       FSockets.connect(this.socketId,
@@ -78,6 +83,7 @@ module Net {
     // Attach handlers once connected to socket, and send queued up data.
     private onConnected_ = () => {
       this.state = State.CONNECTED;
+      // TODO: Update the onRead to socket-specific when that happens.
       FSockets.on('onData', this.onRead_);
       if (0 < this.queue.length) {
         this.send(this.queue.shift());
@@ -88,12 +94,12 @@ module Net {
       // console.log("Bytes written: " + writeInfo.bytesWritten);
       // TODO: change sockets to having an explicit failure rather than giving -1
       // in the bytesWritten field.
-      if (writeInfo.bytesWritten < 0) {
+      if (0 >= writeInfo.bytesWritten) {
         this.onClose_();
         return;
       }
       // If there is more to write, write it.
-      if (this.queue.length > 0) {
+      while (0 < this.queue.length) {
         this.send(this.queue.shift());
       }
     }
@@ -110,13 +116,13 @@ module Net {
     }
 
     private onClose_ = () => {
-      // console.log("NetClient: closing socket " + this.socketId);
       this.state = State.CLOSED;
+      console.log('Net.Client: closing socket ' + this.socketId);
       if (this.socketId) {
         FSockets.destroy(this.socketId);
       }
       this.socketId = null;
-      this.onClose();
+      this.onClose();  // Fire external callback;
     }
 
   }  // Net.Client
