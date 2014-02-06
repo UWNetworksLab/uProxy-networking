@@ -16,6 +16,26 @@ var Socket_chrome = function(channel) {
 // Error codes can be found at:
 // https://code.google.com/p/chromium/codesearch#chromium/src/net/base/net_error_list.h
 
+var ERROR_MAP = {
+  '-1': 'IO_PENDING',
+  '-2': 'FAILED',
+  '-3': 'ABORTED',
+  '-4': 'INVALID_ARGUMENT',
+  '-5': 'INVALID_HANDLE',
+  '-7': 'TIMED_OUT',
+  '-13': 'OUT_OF_MEMORY',
+  '-15': 'SOCKET_NOT_CONNECTED',
+  '-21': 'NETWORK_CHANGED',
+  '-23': 'SOCKET_IS_CONNECTED',
+  '-100': 'CONNECTION_CLOSED',
+  '-101': 'CONNECTION_RESET',
+  '-102': 'CONNECTION_REFUSED',
+  '-103': 'CONNECTION_ABORTED',
+  '-104': 'CONNECTION_FAILED',
+  '-105': 'NAME_NOT_RESOLVED',
+  '-106': 'INTERNET_DISCONNECTED',
+};
+
 /*
  * Continuously reads data in from the given socket and dispatches the data to
  * the socket user.
@@ -26,30 +46,25 @@ var readSocket = function(socketId) {
     if (readInfo.resultCode > 0) {
       var arg = {socketId: socketId, data: readInfo.data};
       this.dispatchEvent('onData', arg);
-      readLoop();
-    } else if (readInfo.resultCode === 0 || readInfo.resultCode === -15 ||
-        readInfo.resultCode === -2) {
-      // The result code is -15 if the connection was closed, which can
-      // can happen in usual program flow, so we will not log the error.
-      // console.warn('Got a disconnection for socket ' + socketId);
-      if (readInfo.resultCode === -2) {
-        console.log('HACKITY HACK: Ignoring an unexpected -2 from a socket.  ' +
-            'Deal with it later');
-      }
-      this.dispatchEvent('onDisconnect', {socketId: socketId});
+      chrome.socket.read(socketId, null, dataRead);
+    } else if (readInfo.resultCode === 0) {
+      console.log('socket ' + socketId + ' has been closed.')
+      this.dispatchEvent('onDisconnect', {socketId: socketId, error: msg});
     } else {
-      console.error('Error with result code ' + readInfo.resultCode +
-      ' occured when reading from socket ' + socketId);
+      var msg = '' + readInfo.resultCode;
+      if (msg in ERROR_MAP) {
+          msg = ERROR_MAP[msg];
+      }
+      console.error('When reading from socket ' + socketId + ', return encounter error ' + msg);
+      this.dispatchEvent('onDisconnect', {socketId: socketId, error: msg});
     };
   }.bind(this);
-  var readLoop = function () {
-    chrome.socket.read(socketId, null, dataRead);
-  };
-  readLoop();
+  chrome.socket.read(socketId, null, dataRead);
 };
 
 Socket_chrome.prototype.connect = function(socketId, hostname, port, callback) {
   chrome.socket.connect(socketId, hostname, port, function connectCallback(result) {
+    console.log('connect socketId: ' + socketId + ' hostname=' + hostname + ' port=' + port)
     callback(result);
     readSocket.call(this, socketId);
   }.bind(this));
@@ -64,7 +79,7 @@ Socket_chrome.prototype.listen = function(socketId, address, port, callback) {
           this.dispatchEvent('onConnection',
                          {serverSocketId: socketId,
                           clientSocketId: acceptInfo.socketId});
-          acceptLoop();
+          chrome.socket.accept(socketId, acceptCallback);
           readSocket.call(this, acceptInfo.socketId);
         } else if (acceptInfo.resultCode !== -15) {
           console.error('Error ' + acceptInfo.resultCode
@@ -72,10 +87,7 @@ Socket_chrome.prototype.listen = function(socketId, address, port, callback) {
               + socketId);
         }
       }.bind(this);
-      var acceptLoop = function() {
-        chrome.socket.accept(socketId, acceptCallback);
-      };
-      acceptLoop();
+      chrome.socket.accept(socketId, acceptCallback);
     }
   }.bind(this));
 };
