@@ -1,10 +1,10 @@
 {
-  "name": "Socks Server",
+  "name": "RTC to Net peer",
   "description": "Proxy remote connections to their destination.",
   "app": {
     "script": [
       "netclient.js",
-      "server.js"
+      "rtc-to-net.js"
     ]
   },
   "dependencies": {

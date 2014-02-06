@@ -1,5 +1,5 @@
 /*
-  Client which passes socks requests over WebRTC datachannels.
+  SocksToRTC.Peer passes socks requests over WebRTC datachannels.
   TODO: Cleanups and typescripting.
 */
 /// <reference path='socks.ts' />
@@ -14,12 +14,6 @@ module SocksToRTC {
 
   var FCore = freedom.core();
 
-  // TODO: Actually implement this. Without this, you cannot stop & restart.
-  function onClose(label, connection) {
-    console.warn('onClose not implemented.');
-    return false;
-  }
-
   /**
    * SocksToRTC.Peer
    *
@@ -28,16 +22,15 @@ module SocksToRTC {
    */
   export class Peer {
 
-    socksServer:Socks.Server = null;  // Local SOCKS server.
-    signallingChannel:any = null;     // NAT piercing route.
-    sctpPc:any = null;                // SCTP Peer Connection for actual data.
+    private socksServer:Socks.Server = null;  // Local SOCKS server.
+    private signallingChannel:any = null;     // NAT piercing route.
+    private sctpPc:any = null;                // SCTP Peer Connection for actual data.
 
     // Active TCP connections by sctp channel id.
-    tcpConns:{[label:number]:TCP.Connection;} = {};
-    messageQueue_:any[] = [];
-    peerId:string = null;
-
-    constructor() {}
+    // private tcpConns:{[label:number]:TCP.Connection} = {};
+    private sessions:{[label:number]:Socks.Session} = {};
+    private messageQueue_:any[] = [];
+    private peerId:string = null;
 
     /** Start the Peer. */
     public start = (options) => {
@@ -95,37 +88,34 @@ module SocksToRTC {
         this.socksServer.disconnect();  // Disconnects internal TCP server.
         this.socksServer = null;
       }
-      for (var channelLabel in this.tcpConns) {
-        onClose(channelLabel, this.tcpConns[channelLabel]);
+      for (var channelLabel in this.sessions) {
+        this.closeConnection_(channelLabel);
       }
-      this.tcpConns = {};
+      this.sessions = {};
       if(this.sctpPc) {
         this.sctpPc.close();
         this.sctpPc = null;
+      }
+      if (this.signallingChannel) {  // TODO: is this actually right?
+        this.signallingChannel.emit('close');
       }
       this.signallingChannel = null;
       this.peerId = null;
     }
 
-    // Callback to be fired once receiving a SOCKS5 connection.
-    // Setup the data channel and pass the corresponding tcp-connection to the data channel.
-    private onConnection_ = (conn:Socks.Session, address, port, connectedCallback) => {
+    // Setup data channel and tie to corresponding SOCKS5 session.
+    private onConnection_ = (session:Socks.Session, address, port,
+                             connectedCallback) => {
       if (!this.sctpPc) {
         console.error('SocksToRTC.Peer: onConnection called without SCTP peer connection.');
         return;
       }
       var channelLabel = obtainChannelLabel();
-      this.tcpConns[channelLabel] = conn.tcpConnection;
-
+      this.sessions[channelLabel] = session;
       // When the TCP-connection receives data, send to sctp peer.
       // When it disconnects, clear the |channelLabel|.
-      conn.tcpConnection.on('recv', (buf) => {
-        this.sendToPeer_(channelLabel, buf);
-      });
-      conn.tcpConnection.on('disconnect', () => {
-        this.closeConnection_(channelLabel);
-      });
-
+      session.onRecv((buf) => { this.sendToPeer_(channelLabel, buf); });
+      session.onDisconnect(() => { this.closeConnection_(channelLabel); });
       this.sctpPc.send({
           'channelLabel': channelLabel,
           'text': JSON.stringify({ host: address, port: port })
@@ -134,15 +124,17 @@ module SocksToRTC {
       // TODO: we are not connected yet... should we have some message passing
       // back from the other end of the data channel to tell us when it has
       // happened, instead of just pretended?
+
+      // Allow SOCKs headers
       // TODO: determine if these need to be accurate.
       connectedCallback({ ipAddrString: '127.0.0.1', port: 0 });
     }
 
     // Close a particular tcp-connection and data channel pair.
-    private closeConnection_ = (channelLabel) => {
-      if (this.tcpConns[channelLabel]) {
-        this.tcpConns[channelLabel].disconnect();
-        delete this.tcpConns[channelLabel];
+    private closeConnection_ = (channelLabel:string) => {
+      if (this.sessions[channelLabel]) {
+        this.sessions[channelLabel].disconnect();
+        delete this.sessions[channelLabel];
       }
       if (this.sctpPc) {
         // Further closeConnection_ calls may occur after shutdown (from TCP
@@ -154,22 +146,23 @@ module SocksToRTC {
     private createSCTPPeerConnection_ = () => {
       // Create an instance of freedom's data peer.
       var pc = freedom['core.peerconnection']();
+      // Handler for receiving data back from the remote RtcToNet.Peer.
       pc.on('onReceived', (msg) => {
-        if (msg.channelLabel) {
-          var tcpConnection = this.tcpConns[msg.channelLabel];
-          if (msg.buffer) {
-            tcpConnection.sendRaw(msg.buffer);
-          } else if (msg.text) {
-            // TODO: we should use text as a signalling/control channel, e.g. to
-            // give back the actaul address that was connected to as per socks
-            // official spec.
-            tcpConnection.sendRaw(msg.text);
-          } else {
-            console.error('Message type isn\'t specified properly. Msg: ' +
-                JSON.stringify(msg));
-          }
-        } else {
+        if (!msg.channelLabel) {
           console.error('Message received but missing channelLabel. Msg: ' +
+              JSON.stringify(msg));
+          return;
+        }
+        var session = this.sessions[msg.channelLabel];
+        if (msg.buffer) {
+          session.sendData(msg.buffer);  // Back across underlying TCP socket.
+        } else if (msg.text) {
+          // TODO: we should use text as a signalling/control channel, e.g. to
+          // give back the actual address that was connected to as per socks
+          // official spec.
+          session.sendData(msg.text);
+        } else {
+          console.error('Message type isn\'t specified properly. Msg: ' +
               JSON.stringify(msg));
         }
       });
@@ -210,12 +203,12 @@ module SocksToRTC {
                                sctpPc: this.sctpPc,
                                peerId: this.peerId,
                                signallingChannel: this.signallingChannel,
-                               tcpConns: this.tcpConns});
+                               sessions: this.sessions });
       } catch (e) {}
       return ret;
     }
 
-  }  // SocksToRTC.Proxy
+  }  // SocksToRTC.Peer
 
 
   // TODO: reuse channelLabels from a pool.

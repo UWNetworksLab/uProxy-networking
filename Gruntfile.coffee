@@ -10,7 +10,6 @@ module.exports = (grunt) ->
             src: ['**']
             dest: 'chrome/js/'
             expand: true,
-            # flatten: false
             cwd: 'tmp'
           }, {
             src: 'node_modules/freedom/freedom.js'
@@ -19,7 +18,6 @@ module.exports = (grunt) ->
             src: ['**/*.json']
             dest: 'chrome/js/'
             expand: true,
-            # flatten: false
             cwd: 'src'
           },
         ]
@@ -28,16 +26,16 @@ module.exports = (grunt) ->
 
     # All typescript compiles to tmp/ initially.
     ts: {
-      client: {
-        src: ['src/client/*.ts'],
-        outDir: 'tmp/client',
+      socks2rtc: {
+        src: ['src/socks-to-rtc/*.ts'],
+        outDir: 'tmp/socks-to-rtc',
         options: {
           sourceMap: false
         }
       }
-      server: {
-        src: ['src/server/*.ts'],
-        outDir: 'tmp/server',
+      rtc2net: {
+        src: ['src/rtc-to-net/*.ts'],
+        outDir: 'tmp/rtc-to-net',
         options: {
           sourceMap: false
         }
@@ -67,8 +65,8 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-ts'
 
   grunt.registerTask 'default', [
-    'ts:client',
-    'ts:server',
+    'ts:socks2rtc',
+    'ts:rtc2net',
     'copy:app'
   ]
 
