@@ -149,7 +149,7 @@ module Socks {
    */
   export class Server {
 
-    tcpServer:TCP.Server;
+    private tcpServer:TCP.Server;
 
     /** Construct a new SocksServer based on TCP. */
     constructor(address, port,
@@ -173,7 +173,7 @@ module Socks {
           new Session(tcpConnection, buffer,
                       this.destinationCallback);
         }, {
-          minByteLength: 3
+          minByteLength: 3  // Type the 'recv options' thing with TCP.
         });
       });
 
@@ -191,13 +191,13 @@ module Socks {
    */
   export class Session {
 
-    request:any = null;
+    private request:any = null;
 
     // Create SOCKS session atop existing TCP connection.
     // TODO: Implement SOCKS authentication in the future.
     //       (Not urgent because this part is local for now.)
     constructor(
-        public tcpConnection:TCP.Connection,
+        private tcpConnection:TCP.Connection,
         buffer,
         public destinationCallback) {
 
@@ -237,6 +237,26 @@ module Socks {
       this.sendReply_(Socks.AUTH.NOAUTH);
     }
 
+    // Install recv handler for underlying cp connection
+    public onRecv = (callback:(buf)=>void) => {
+      this.tcpConnection.on('recv', callback);
+    }
+
+    public sendData = (buffer) => {
+      this.tcpConnection.sendRaw(buffer);
+    }
+
+    public onDisconnect = (callback:(buf)=>void) => {
+      this.tcpConnection.on('disconnect', callback);
+    }
+
+    public disconnect = () => {
+      // TODO: This will fire the disconnect handler from the underlying TCP
+      // connection, but it's actually just some other callback. Clean this up
+      // with promises.
+      this.tcpConnection.disconnect();
+    }
+
     // Send an authentication response. Assumes |tcpConnection| is valid.
     private sendReply_(authType:Socks.AUTH) {
       var response:Uint8Array = new Uint8Array(2);
@@ -255,8 +275,8 @@ module Socks {
       this.request = Socks.interpretSocksRequest(byteArray);
 
       if (null == this.request) {
-        console.error('Socks.Session(' + this.tcpConnection.socketId + '): bad request ' +
-            '(length ' + byteArray.length + ')');
+        console.error('Socks.Session(' + this.tcpConnection.socketId +
+            '): bad request length ' + byteArray.length + ')');
         this.tcpConnection.disconnect();
         return;
 

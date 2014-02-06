@@ -39,16 +39,18 @@ module TCP {
    */
   export class Server {
 
-    // TODO: finish typing these members
-    maxConnections:number;
-    callbacks:any;
-    connectionCallbacks:any;
-    openConnections:any = {};
-    serverSocketId:number = null;  // Server accepts & opens 1 per client.
+    // Server accepts & opens one socket per client.
+    private serverSocketId:number = null;
+    private maxConnections:number;
+    private openConnections:{[socketId:number]:TCP.Connection} = {};
+
+    // TODO: replace with promises.
+    private callbacks:any;
+    private connectionCallbacks:any;
 
     constructor(public addr, public port, options?) {
-      this.maxConnections = typeof(options) != 'undefined' &&
-          options.maxConnections || DEFAULT_MAX_CONNECTIONS;
+      this.maxConnections = (options && options.maxConnections) ||
+                            DEFAULT_MAX_CONNECTIONS;
 
       // Callback functions.
       this.callbacks = {
@@ -98,25 +100,21 @@ module TCP {
     /**
      * Called when a new tcp connection is created.
      */
-    private addToServer_ = (tcpConnection) => {
-      this.openConnections[tcpConnection.socketId] = tcpConnection;
+    private addToServer_ = (conn:TCP.Connection) => {
+      this.openConnections[conn.socketId] = conn;
     }
 
-    /**
-     * This is never called.
-     */
-    private removeFromServer_ = (tcpConnection) => {
-      // console.log("removing connection " + tcpConnection.socketId + " from server");
-      delete this.openConnections[tcpConnection.socketId];
+    private removeFromServer_ = (conn:TCP.Connection) => {
+      delete this.openConnections[conn.socketId];
     }
 
-    isConnected() { return this.serverSocketId > 0; }
+    public isOn() { return this.serverSocketId > 0; }
 
     /**
      * Set an event handler. See http://developer.chrome.com/trunk/apps/socket.
      * html for more about the events than can happen.
      */
-    public on(eventName, callback) {
+    public on(eventName:string, callback) {
       if (!(eventName in this.callbacks)) {
         console.error('TCP.Server: on() failure for ' + eventName);
         return;
@@ -163,6 +161,7 @@ module TCP {
                      this.serverSocketId + ' vs ' + acceptValue.serverSocketId);
         return;
       }
+      console.log('Tcp.Server connected to ' + acceptValue.clientSocketId);
       var connectionsCount = Object.keys(this.openConnections).length;
       if (connectionsCount >= this.maxConnections) {
         FSockets.disconnect(acceptValue.clientSocketId);
@@ -175,7 +174,8 @@ module TCP {
 
     /** Remote socket disconnected. */
     private disconnect_ = (socketInfo) => {
-      console.log('TCP.Server socket#' + socketInfo.socketId + ' remotely disconnected.');
+      console.log('TCP.Server: socket ' + socketInfo.socketId +
+                  ' remotely disconnected.');
       var disconnect_cb = this.openConnections[socketInfo.socketId].callbacks.disconnect;
       disconnect_cb && disconnect_cb(socketInfo.socketId);
       this.openConnections[socketInfo.socketId].disconnect();
@@ -185,7 +185,7 @@ module TCP {
     /** Create a TCP connection. */
     private createConnection_(socketId) {
       new Connection(socketId, this.callbacks.connection,
-            this.connectionCallbacks);
+                     this.connectionCallbacks);
     }
 
   }  // class TCP.Server
@@ -202,16 +202,16 @@ module TCP {
    */
   export class Connection {
 
-    socketInfo:any = null;
-    isConnected:boolean = false;
-    recvOptions:any;
+    public isConnected:boolean = false;
+    private socketInfo:any = null;
+    private recvOptions:any;
 
-    pendingReadBuffer_:any;
-    pendingRead_:boolean;
+    private pendingReadBuffer_:any;
+    private pendingRead_:boolean;
     // Right now this is only false until the socket has all the information a
     // user might need (ie socketInfo). The socket shouldn't be doing work for
     // the user until the internals are ready.
-    initialized_:boolean = false;
+    private initialized_:boolean = false;
 
     constructor(
         public socketId,
@@ -293,12 +293,12 @@ module TCP {
      * @param {String} msg The message to send.
      * @param {Function} callback The function to call when the message has sent.
      */
-    public send(msg, callback?) {
+    public send(msg:string, callback?) {
       // Register sent callback.
-      if ((typeof msg) != "string") {
-        console.log("Connection.send: got non-string object.");
+      if ('string' !== (typeof msg)) {
+        console.warn('Connection.send: got non-string object.');
       }
-      Util._stringToArrayBuffer(msg + '\n', (msg) => {
+      Util.stringToArrayBuffer(msg + '\n', (msg) => {
         this.sendRaw(msg, callback);
       });
     }
@@ -318,7 +318,7 @@ module TCP {
 
     /** Disconnects from the remote side. */
     public disconnect() {
-      if(!this.isConnected) return;
+      if (!this.isConnected) return;
       this.isConnected = false;
       // Temporarily remember disconnect callback.
       var disconnectCallback = this.callbacks.disconnect;
@@ -412,7 +412,7 @@ module Util {
    * @param {Function} callback The function to call when conversion is
    * complete.
    */
-  export function _arrayBufferToString(buf, callback) {
+  export function arrayBufferToString(buf, callback) {
     var bb = new Blob([new Uint8Array(buf)]);
     var f = new FileReader();
     f.onload = function(e) {
@@ -429,11 +429,11 @@ module Util {
    * @param {Function} callback The function to call when conversion is
    * complete.
    */
-  export function _stringToArrayBuffer(str, callback) {
+  export function stringToArrayBuffer(str, callback) {
     var bb = new Blob([str]);
     var f = new FileReader();
     f.onload = function(e) {
-        callback(e.target.result);
+      callback(e.target.result);
     };
     f.readAsArrayBuffer(bb);
   }
