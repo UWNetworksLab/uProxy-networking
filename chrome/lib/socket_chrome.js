@@ -48,7 +48,7 @@ var readSocket = function(socketId) {
       this.dispatchEvent('onData', arg);
       chrome.socket.read(socketId, null, dataRead);
     } else if (readInfo.resultCode === 0) {
-      console.error('socket ' + socketId + ' has been closed.')
+      console.log('socket ' + socketId + ' has been closed.')
       this.dispatchEvent('onDisconnect', {socketId: socketId, error: msg});
     } else {
       var msg = '' + readInfo.resultCode;
