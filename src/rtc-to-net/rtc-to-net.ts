@@ -51,10 +51,11 @@ module RtcToNet {
           // Text from the peer is used to set a new destination request.
           // Assumes "message.text" is a json of form:
           // { host: string, port: number }
+          var dest:Net.Destination = JSON.parse(message.text);
           this.netClients[label] = new Net.Client(
-              this.sendDataToPeer_.bind(this, label),
-              this.closeClient_.bind(this, label),
-              JSON.parse(message.text));
+              (data) => { this.sendDataToPeer_(label, data); },  // onResponse
+              () => { this.closeClient_(label); },              // onClose
+              dest);
         } else if (message.buffer) {
           if(!(label in this.netClients)) {
             console.error('Message received for non-existent channel. Msg: ' +
@@ -68,6 +69,7 @@ module RtcToNet {
               JSON.stringify(message));
         }
       });
+
       this.sctpPc.on('onCloseDataChannel', (arg) => {
         this.closePeer_(true, arg.channelId);
       });
@@ -111,7 +113,6 @@ module RtcToNet {
 
     // Close peer connection and all tcp sockets open for this peer.
     public close = () => {
-      //conn.disconnect();
       for (var i in this.netClients) {
         this.netClients[i].close();
       }
@@ -127,7 +128,6 @@ module RtcToNet {
 
     private closeClient_ = (channelLabel) => {
       var cl = channelLabel;
-      // console.log('Closing DC ' + channelLabel);
       this.closePeer_(false, cl);
       this.sctpPc.closeDataChannel(cl);
     }
