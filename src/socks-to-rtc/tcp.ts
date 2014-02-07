@@ -75,7 +75,7 @@ module TCP {
      *
      * Returns: Promise that this server is now listening.
      */
-    public listen():Promise<void> {
+    public listen():Promise<any> {
       var listenPromise = this.createSocket_()
           .then(this.startListening_)
           .then(this.attachSocketHandlers_);
@@ -128,24 +128,29 @@ module TCP {
       fSockets.on('onData', this.connectionRead_);
     }
 
-    /** Disconnect all sockets and stops listening. */
-    public disconnect() {
-      var serverSocketId = this.serverSocketId;
-      if (serverSocketId) {
-        console.log('TCP.Server: Disconnecting server socket ' + serverSocketId);
-        fSockets.disconnect(serverSocketId);
-        fSockets.destroy(serverSocketId);
-      }
-      this.serverSocketId = 0;
-      for (var i in this.openConnections) {
-        try {
-          this.openConnections[i].disconnect();
-          this.removeFromServer_(this.openConnections[i]);
-        } catch (ex) {
-          console.warn(ex);
+    /**
+     * Disconnect all sockets and stops listening.
+     */
+    public disconnect():Promise<any> {
+      return new Promise((F,R) => {
+        var serverSocketId = this.serverSocketId;
+        if (serverSocketId) {
+          console.log('TCP.Server: Disconnecting server socket ' + serverSocketId);
+          // Block on disconnection and destruction.
+          fSockets.disconnect(serverSocketId).fail(R);
+          fSockets.destroy(serverSocketId).fail(R);
         }
-      }
-      this.callbacks.disconnect && this.callbacks.disconnect();
+        this.serverSocketId = 0;
+        for (var i in this.openConnections) {
+          try {
+            this.openConnections[i].disconnect();
+            this.removeFromServer_(this.openConnections[i]);
+          } catch (ex) {
+            console.warn(ex);
+          }
+        }
+        F();  // Fulfill.
+      });
     }
 
     /**

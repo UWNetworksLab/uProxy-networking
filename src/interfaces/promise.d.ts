@@ -1,7 +1,7 @@
 // Based on http://www.html5rocks.com/en/tutorials/es6/promises/#toc-api
 
 interface Thenable<T> {
-  then:(fulfill:(t:T) => void,
+  then:(fulfill:(t?:T) => void,
         reject?:(e:Error) => void) => Thenable<T>;
 }
 
@@ -14,7 +14,7 @@ interface Thenable<T> {
  */
 declare class Promise<T> {
 
-  constructor (f:(fulfill:(t:T)=>void,
+  constructor (f:(fulfill:(t?:T)=>void,
                   reject:(e:Error)=>void)=>void);
 
   // |onTulfilled| either returns a promise...
