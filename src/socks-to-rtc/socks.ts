@@ -110,13 +110,12 @@ module Socks {
     result.atyp = byteArray[3];
     if (ATYP.IP_V4 == result.atyp) {
       result.addressSize = 4;
-      result.address = byteArray.subarray(4, result.addressSize);
-      result.addressString = byteArray[4] + '.' + byteArray[5] + '.' +
-                             byteArray[6] + '.' + byteArray[7];
+      result.address = byteArray.subarray(4, 4 + result.addressSize);
+      result.addressString = Array.prototype.join.call(result.address, '.');
       result.portOffset = result.addressSize + 4;
     } else if (ATYP.DNS == result.atyp) {
       result.addressSize = byteArray[4];
-      result.address = byteArray.subarray(5, result.addressSize);
+      result.address = byteArray.subarray(5, 5 + result.addressSize);
       result.addressString = '';
       for (var i = 0; i < result.addressSize; ++i) {
         result.addressString += String.fromCharCode(byteArray[5 + i]);
@@ -124,12 +123,11 @@ module Socks {
       result.portOffset = result.addressSize + 5;
     } else if (ATYP.IP_V6 == result.atyp) {
       result.addressSize = 16;
-      result.address = byteArray.subarray(5, result.addressSize);
-      var byteDataView = new DataView(byteArray.buffer);
-      result.addressString = byteDataView.getUint32(5).toString(16) + '.' +
-                             byteDataView.getUint32(5 + 4).toString(16) +
-                             byteDataView.getUint32(5 + 8).toString(16) +
-                             byteDataView.getUint32(5 + 12).toString(16);
+      result.address = byteArray.subarray(4, 4 + result.addressSize);
+      var uint16View = new Uint16Array(byteArray.buffer, 4, 8);
+      result.addressString = Array.prototype.map.call(uint16View, function(i){
+        return i.toString(16);
+      }).join(':');
       result.portOffset = result.addressSize + 4;
     } else {
       return null;
