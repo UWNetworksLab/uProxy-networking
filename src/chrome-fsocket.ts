@@ -10,6 +10,7 @@ declare var chrome:any;
 interface ISockets {
   create:any;
   listen:any;
+  connect:any;
   write:any;
   getInfo:any;
   disconnect:any;
