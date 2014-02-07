@@ -5,19 +5,11 @@ console.log('SOCKS5 server: ' + self.location.href);
 declare var freedom:any;
 
 /// <reference path='netclient.ts' />
+/// <reference path='../interfaces/peerconnection.d.ts' />
 
 module RtcToNet {
 
   var fCore = freedom.core();
-
-  interface PeerConnection {
-    // TODO: Make these more typeful and probably shove into freedom.
-    on:(event:string,f:any)=>void;
-    setup:any;
-    shutdown:any;
-    send:any;
-    closeDataChannel:any
-  }
 
   /**
    * RtcToNet.Peer - serves net requests from WebRTC peer connections.

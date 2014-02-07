@@ -27,14 +27,16 @@ module.exports = (grunt) ->
     # All typescript compiles to tmp/ initially.
     ts: {
       socks2rtc: {
-        src: ['src/socks-to-rtc/*.ts'],
+        src: ['src/interfaces/*.d.ts',
+              'src/socks-to-rtc/*.ts'],
         outDir: 'tmp/socks-to-rtc',
         options: {
           sourceMap: false
         }
       }
       rtc2net: {
-        src: ['src/rtc-to-net/*.ts'],
+        src: ['src/interfaces/*.d.ts',
+              'src/rtc-to-net/*.ts'],
         outDir: 'tmp/rtc-to-net',
         options: {
           sourceMap: false

@@ -3,6 +3,7 @@
   TODO: Cleanups and typescripting.
 */
 /// <reference path='socks.ts' />
+/// <reference path='../interfaces/peerconnection.d.ts' />
 
 // TODO replace with a reference to freedom ts interface once it exists.
 declare var freedom:any;
@@ -12,27 +13,28 @@ console.log('SOCKS5 client: ' + self.location.href);
 // TODO: Change into SocksToRTC and RTCtoNet module way of doing things.
 module SocksToRTC {
 
-  var FCore = freedom.core();
+  var fCore = freedom.core();
 
   /**
    * SocksToRTC.Peer
    *
-   * Acts as a local SOCKS server which passes requests remotely through
+   * Contains a local SOCKS server which passes requests remotely through
    * WebRTC peer connections.
    */
   export class Peer {
 
     private socksServer:Socks.Server = null;  // Local SOCKS server.
     private signallingChannel:any = null;     // NAT piercing route.
-    private sctpPc:any = null;                // SCTP Peer Connection for actual data.
+    private sctpPc:PeerConnection = null;     // For actual proxying.
 
-    // Active TCP connections by sctp channel id.
-    // private tcpConns:{[label:number]:TCP.Connection} = {};
-    private sessions:{[label:number]:Socks.Session} = {};
+    // Active SOCKS sessions by corresponding SCTP channel id.
+    private socksSessions:{[label:number]:Socks.Session} = {};
     private messageQueue_:any[] = [];
     private peerId:string = null;
 
-    /** Start the Peer. */
+    /**
+     * Start the Peer.
+     */
     public start = (options) => {
       console.log('Client: on(start)... ' + JSON.stringify(options));
       // Bind peerID to scope so promise can work.
@@ -53,16 +55,15 @@ module SocksToRTC {
       this.sctpPc = this.createSCTPPeerConnection_();
 
       // Create a freedom-channel to act as the signaling channel.
-      FCore.createChannel().done((chan) => {
-        // chan.identifier is a freedom-socksServer (not a socks socksServer) for the
-        // signalling channel used for signalling.
+      fCore.createChannel().done((chan) => {
         console.log('Preparing SCTP peer connection. peerId: ' + peerId);
         this.sctpPc.setup(chan.identifier, 'client-to-' + peerId, true);
         // when the channel is complete, setup handlers.
         chan.channel.done((signallingChannel) => {
           console.log('Client channel to sctpPc created');
-          // when the signalling channel gets a message, send that message to the
-          // freedom 'fromClient' handlers.
+          // Pass messages received via signalling channel to the local
+          // local client, which needs to take care of sending the data through
+          // alternate means.
           signallingChannel.on('message', function(msg) {
             freedom.emit('sendSignalToPeer', {
                 peerId: peerId,
@@ -70,29 +71,32 @@ module SocksToRTC {
             });
           });
 
-          // When the signalling channel is ready, set the global variable.
+          // TODO: remove once we're using freedom 0.2.0, where signalling
+          // channels will automatically be ready.
           signallingChannel.on('ready', () => {
             this.signallingChannel = signallingChannel;
             console.log('Client channel to sctpPc ready.');
             while(0 < this.messageQueue_.length) {
               signallingChannel.emit('message', this.messageQueue_.shift());
             }
-          });  // signallingCHannel.on('ready')
+          });
         });  // chan.channel
-      });  // FCore.createChannel
+      });  // fCore.createChannel
     }
 
-    /** Stop SOCKS server and close data channels and peer connections. */
+    /**
+     * Stop SOCKS server and close data channels and peer connections.
+     */
     public shutdown = () => {
       console.log('Shutting down SocksToRTC.Peer...');
       if (this.socksServer) {
         this.socksServer.disconnect();  // Disconnects internal TCP server.
         this.socksServer = null;
       }
-      for (var channelLabel in this.sessions) {
+      for (var channelLabel in this.socksSessions) {
         this.closeConnection_(channelLabel);
       }
-      this.sessions = {};
+      this.socksSessions = {};
       if(this.sctpPc) {
         this.sctpPc.close();
         this.sctpPc = null;
@@ -104,15 +108,18 @@ module SocksToRTC {
       this.peerId = null;
     }
 
-    // Setup data channel and tie to corresponding SOCKS5 session.
+    /**
+     * Setup data channel and tie to corresponding SOCKS5 session.
+     */
     private onConnection_ = (session:Socks.Session, address, port,
                              connectedCallback) => {
       if (!this.sctpPc) {
-        console.error('SocksToRTC.Peer: onConnection called without SCTP peer connection.');
+        console.error('SocksToRTC.Peer: onConnection called without ' +
+                      'SCTP peer connection.');
         return;
       }
       var channelLabel = obtainChannelLabel();
-      this.sessions[channelLabel] = session;
+      this.socksSessions[channelLabel] = session;
       // When the TCP-connection receives data, send to sctp peer.
       // When it disconnects, clear the |channelLabel|.
       session.onRecv((buf) => { this.sendToPeer_(channelLabel, buf); });
@@ -131,11 +138,13 @@ module SocksToRTC {
       connectedCallback({ ipAddrString: '127.0.0.1', port: 0 });
     }
 
-    // Close a particular tcp-connection and data channel pair.
+    /**
+     * Close a particular tcp-connection and data channel pair.
+     */
     private closeConnection_ = (channelLabel:string) => {
-      if (this.sessions[channelLabel]) {
-        this.sessions[channelLabel].disconnect();
-        delete this.sessions[channelLabel];
+      if (this.socksSessions[channelLabel]) {
+        this.socksSessions[channelLabel].disconnect();
+        delete this.socksSessions[channelLabel];
       }
       if (this.sctpPc) {
         // Further closeConnection_ calls may occur after shutdown (from TCP
@@ -144,9 +153,12 @@ module SocksToRTC {
       }
     }
 
-    private createSCTPPeerConnection_ = () => {
+    /**
+     * Prepare and attach handlers to a PeerConnection.
+     */
+    private createSCTPPeerConnection_ = ():PeerConnection => {
       // Create an instance of freedom's data peer.
-      var pc = freedom['core.sctp-peerconnection']();
+      var pc:PeerConnection = freedom['core.sctp-peerconnection']();
 
       // Handler for receiving data back from the remote RtcToNet.Peer.
       pc.on('onReceived', (msg) => {
@@ -155,7 +167,7 @@ module SocksToRTC {
               JSON.stringify(msg));
           return;
         }
-        var session = this.sessions[msg.channelLabel];
+        var session = this.socksSessions[msg.channelLabel];
         if (msg.buffer) {
           session.sendData(msg.buffer);  // Back across underlying TCP socket.
         } else if (msg.text) {
@@ -173,16 +185,26 @@ module SocksToRTC {
       return pc;
     }
 
-    // A simple wrapper function to send data to the peer.
-    private sendToPeer_ = (channelLabel, buffer) => {
-      // console.log('sendToPeer_ (buffer) to channelLabel: ' + channelLabel);
+    /**
+     * Send data over SCTP to peer, via data channel |channelLabel|.
+     *
+     * Side note: When PeerConnection encounters a 'new' |channelLabel|, it
+     * implicitly creates a new data channel.
+     */
+    private sendToPeer_ = (channelLabel:string, buffer) => {
+      if (!this.sctpPc) {
+        console.warn('SocksToRtc.Peer: SCTP peer connection not ready!');
+        return;
+      }
       this.sctpPc.send({ 'channelLabel': channelLabel, 'buffer': buffer });
     }
 
-    // Pass any messages coming from remote peer through the signalling channel
-    // handled by freedom, which goes to the signalling channel input of the
-    // peer connection.
-    // msg : {peerId : string, data : json-string}
+    /**
+     * Pass any messages coming from remote peer through the signalling channel
+     * handled by freedom, which goes to the signalling channel input of the
+     * peer connection.
+     * msg : {peerId : string, data : json-string}
+     */
     public handlePeerSignal = (msg) => {
       console.log('client handleSignalFromPeer: ' + JSON.stringify(msg) +
                   ' with state ' + this.toString());
@@ -200,7 +222,7 @@ module SocksToRTC {
                                sctpPc: this.sctpPc,
                                peerId: this.peerId,
                                signallingChannel: this.signallingChannel,
-                               sessions: this.sessions });
+                               socksSessions: this.socksSessions });
       } catch (e) {}
       return ret;
     }
