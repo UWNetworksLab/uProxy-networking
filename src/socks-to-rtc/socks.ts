@@ -156,10 +156,6 @@ module Socks {
         ) {
       var tcpServer = new TCP.Server(address || 'localhost',
                                      port    || 1080);
-      tcpServer.on('listening', () => {
-        // When we start listening, print it out.
-        console.log('LISTENING ' + tcpServer.addr + ':' + tcpServer.port);
-      });
 
       // Each new TCP connection attaches a |recv| handler which creates a new
       // Socks.Session.
@@ -179,7 +175,12 @@ module Socks {
       this.tcpServer = tcpServer;
     }
 
-    listen()     { this.tcpServer.listen(); }
+    listen() {
+      return this.tcpServer.listen().then(() => {
+        console.log('LISTENING ' + this.tcpServer.addr + ':' + this.tcpServer.port);
+        return null;
+      });
+    }
     disconnect() { this.tcpServer.disconnect(); }
 
   }  // Socks.Server

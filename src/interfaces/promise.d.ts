@@ -16,7 +16,13 @@ declare class Promise<F,R> {
   constructor (f:(onFulfilled:(fulfillObj:F)=>void,
                   onRejected:(rejectObj?:R)=>void)=>void);
 
-  then<F2,R2> (onFulfilled:(F) => Promise<F2,R2>,
+  // |onFulfilled| either returns a promise...
+  then<F2,R2> (onFulfilled?:(F) => Promise<F2,R2>,
+               onRejected?:(R) => void)
+      :Promise<F2,R2>;
+
+  // or the next fulfillment object directly.
+  then<F2,R2> (onFulfilled?:(F) => F2,
                onRejected?:(R) => void)
       :Promise<F2,R2>;
 

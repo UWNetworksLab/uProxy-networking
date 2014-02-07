@@ -12,6 +12,8 @@
  * @param {ArrayBuffer} buf The buffer to convert.
  */
 /// <reference path='../chrome-fsocket.ts' />
+/// <reference path='../interfaces/promise.d.ts' />
+
 
 module TCP {
 
@@ -20,6 +22,10 @@ module TCP {
   // Freedom Sockets API.
   // TODO: throw an Error if this isn't here.
   var fSockets:ISockets = freedom['core.socket']();
+
+  interface ICreateInfo {
+    socketId:number;
+  }
 
   /**
    * TCP.Server
@@ -35,6 +41,7 @@ module TCP {
     private serverSocketId:number = null;
     private maxConnections:number;
     private openConnections:{[socketId:number]:TCP.Connection} = {};
+    private endpoint_:string = null;
 
     // TODO: replace with promises.
     private callbacks:any;
@@ -43,10 +50,9 @@ module TCP {
     constructor(public addr, public port, options?) {
       this.maxConnections = (options && options.maxConnections) ||
                             DEFAULT_MAX_CONNECTIONS;
-
-      // Callback functions.
+      this.endpoint_ = addr + ':' + port;
+      // Callback functions. TODO: remove when promises are here.
       this.callbacks = {
-        listening:  null,  // Called when server starts listening for connections.
         connection: null,  // Called when a new socket connection happens.
         disconnect: null,  // Called when server stops listening for connections.
         // Called when a socket is closed from the other side.  Passed socketId as an arg.
@@ -64,9 +70,64 @@ module TCP {
       };
     }
 
-    /** Open a socket to listen for TCP requests. */
-    public listen() {
-      fSockets.create('tcp', {}).done(this.onCreate_);
+    /**
+     * Open new socket and listen for TCP requests.
+     *
+     * Returns: Promise that this server is now listening.
+     */
+    public listen():Promise<any,Error> {
+      var listenPromise = this.createSocket_()
+          .then(this.startListening_)
+          .then(this.attachSocketHandlers_);
+      listenPromise.catch((err:Error) => {
+        console.error('TCP.Server: ' + err.message);
+      });
+      return listenPromise;
+    }
+
+    /**
+     * Promise the creation of a freedom socket.
+     * TODO: When freedom uses promises, simplify this function away.
+     */
+    private createSocket_ = ()
+        : Promise<ICreateInfo,Error> => {
+      return new Promise((F, R) => {
+        fSockets.create('tcp', {}).done(F).fail(R);
+      });
+    }
+
+    /**
+     * Promise that socket begins listening.
+     */
+    private startListening_ = (createInfo:ICreateInfo)
+        : Promise<number,Error>  => {
+      this.serverSocketId = createInfo.socketId;
+      if (this.serverSocketId <= 0) {
+        return Promise.reject(new Error('failed to create socket on ' +
+                                        this.endpoint_));
+      }
+      console.log('TCP.Server: created socket ' + this.serverSocketId +
+          ' listening at ' + this.endpoint_);
+      return new Promise((F, R) => {
+        fSockets.listen(this.serverSocketId, this.addr, this.port)
+            .done(F).fail(R);
+      });
+    }
+
+    /**
+     * Promise attachment of connection and data handlers if socket listening
+     * was successful.
+     */
+    private attachSocketHandlers_ = (resultCode:number) => {
+      if (0 !== resultCode) {
+        return Promise.reject(new Error(
+            'listen failed on ' + this.endpoint_ +
+            ' \n Result Code: ' + resultCode));
+      }
+      // Success. Attach accept and disconnect handlers.
+      fSockets.on('onConnection', this.accept_);
+      fSockets.on('onDisconnect', this.disconnect_);
+      fSockets.on('onData', this.connectionRead_);
     }
 
     /** Disconnect all sockets and stops listening. */
@@ -112,41 +173,6 @@ module TCP {
         return;
       }
       this.callbacks[eventName] = callback;
-    }
-
-    /**
-     * Callback upon creation of a socket. If socket was successfully created,
-     * begin listening for incoming connections.
-     */
-    private onCreate_ = (createInfo) => {
-      this.serverSocketId = createInfo.socketId;
-      if (0 >= this.serverSocketId) {
-        console.error('TCP.Server: socket creation failed for ' +
-                      this.addr + ':' + this.port);
-        return;
-      }
-      fSockets.listen(this.serverSocketId, this.addr, this.port)
-        .done(this.onListenComplete_);
-      console.log('TCP.Server: created socket ' + this.serverSocketId +
-          ' listening at ' + this.addr + ':' + this.port);
-    }
-
-    /** Callback upon having heard the remote side. */
-    private onListenComplete_ = (resultCode) => {
-      if (0 !== resultCode) {
-        console.error('TCP.Server: listen failed for ' +
-                      this.addr + ':' + this.port +
-                      ' \n Result Code ' + resultCode);
-        return;
-      }
-
-      // Success. Attach accept and disconnect handlers.
-      fSockets.on('onConnection', this.accept_);
-      fSockets.on('onDisconnect', this.disconnect_);
-      fSockets.on('onData', this.connectionRead_);
-
-      // Start the listening callback if it exists.
-      this.callbacks.listening && this.callbacks.listening();
     }
 
     /** Read data from one of the connection. */
