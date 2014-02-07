@@ -126,7 +126,7 @@ module Socks {
       result.address = byteArray.subarray(4, 4 + result.addressSize);
       var uint16View = new Uint16Array(byteArray.buffer, 4, 8);
       result.addressString = Array.prototype.map.call(uint16View, function(i){
-        return i.toString(16);
+        return (((i & 0xFF) << 8) | ((i >> 8) & 0xFF)).toString(16);
       }).join(':');
       result.portOffset = result.addressSize + 4;
     } else {
