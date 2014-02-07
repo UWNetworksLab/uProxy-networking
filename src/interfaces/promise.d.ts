@@ -13,8 +13,8 @@ interface Thenable<F,R> {
  */
 declare class Promise<F,R> {
 
-  constructor (onFulfilled:(fulfillObj : F) => void,
-               onRejected:(rejectObj? : R) => void);
+  constructor (f:(onFulfilled:(fulfillObj:F)=>void,
+                  onRejected:(rejectObj?:R)=>void)=>void);
 
   then<F2,R2> (onFulfilled:(F) => Promise<F2,R2>,
                onRejected?:(R) => void)
