@@ -2,9 +2,7 @@
 interface PeerConnection {
   on:(event:string,f:any)=>void;
   setup:any;
-  // TODO: Why is there both a shutdown and a close?
-  shutdown?:any;
-  close?:any;
+  close:any;
   send:any;
   closeDataChannel:any
 }

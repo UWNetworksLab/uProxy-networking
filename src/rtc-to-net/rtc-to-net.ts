@@ -77,7 +77,7 @@ module RtcToNet {
       for (var i in this.netClients) {
         this.netClients[i].close();  // Will close its data channel.
       }
-      this.sctpPc.shutdown();
+      this.sctpPc.close();
     }
 
     /**
