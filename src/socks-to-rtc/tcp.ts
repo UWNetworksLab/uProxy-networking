@@ -75,7 +75,7 @@ module TCP {
      *
      * Returns: Promise that this server is now listening.
      */
-    public listen():Promise<any,Error> {
+    public listen():Promise<void> {
       var listenPromise = this.createSocket_()
           .then(this.startListening_)
           .then(this.attachSocketHandlers_);
@@ -89,8 +89,7 @@ module TCP {
      * Promise the creation of a freedom socket.
      * TODO: When freedom uses promises, simplify this function away.
      */
-    private createSocket_ = ()
-        : Promise<ICreateInfo,Error> => {
+    private createSocket_ = ():Promise<ICreateInfo> => {
       return new Promise((F, R) => {
         fSockets.create('tcp', {}).done(F).fail(R);
       });
@@ -99,8 +98,7 @@ module TCP {
     /**
      * Promise that socket begins listening.
      */
-    private startListening_ = (createInfo:ICreateInfo)
-        : Promise<number,Error>  => {
+    private startListening_ = (createInfo:ICreateInfo):Promise<number>  => {
       this.serverSocketId = createInfo.socketId;
       if (this.serverSocketId <= 0) {
         return Promise.reject(new Error('failed to create socket on ' +

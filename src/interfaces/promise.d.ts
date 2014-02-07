@@ -1,47 +1,48 @@
 // Based on http://www.html5rocks.com/en/tutorials/es6/promises/#toc-api
 
-interface Thenable<F,R> {
-  then:(onFulfilled:(F) => void,
-        onRejected:(R) => void) => Thenable<F,R>;
+interface Thenable<T> {
+  then:(fulfill:(t:T) => void,
+        reject?:(e:Error) => void) => Thenable<T>;
 }
 
 /**
- * Generic Promise class.
+ * Generic Promise for built-in js Promises.
  *
- * F is the `fullfilled` type given to onFulfilled function.
- * R is the `rejected` type given to the onRejected object.
+ * T is the `fullfillment object` type given to onTulfilled function.
+ *
+ * The rejection object is always a javascript Error.
  */
-declare class Promise<F,R> {
+declare class Promise<T> {
 
-  constructor (f:(onFulfilled:(fulfillObj:F)=>void,
-                  onRejected:(rejectObj?:R)=>void)=>void);
+  constructor (f:(fulfill:(t:T)=>void,
+                  reject:(e:Error)=>void)=>void);
 
-  // |onFulfilled| either returns a promise...
-  then<F2,R2> (onFulfilled?:(F) => Promise<F2,R2>,
-               onRejected?:(R) => void)
-      :Promise<F2,R2>;
+  // |onTulfilled| either returns a promise...
+  then<T2> (fulfill:(t:T) => Promise<T2>,
+            reject?:(e:Error) => void)
+      :Promise<T2>;
 
   // or the next fulfillment object directly.
-  then<F2,R2> (onFulfilled?:(F) => F2,
-               onRejected?:(R) => void)
-      :Promise<F2,R2>;
+  then<T2> (fulfill?:(t:T) => T2,
+            reject?:(e:Error) => void)
+      :Promise<T2>;
 
-  catch (catchFn:(rejectObj:R) => void)
-      :Promise<F,R>;
+  catch (catchTn:(e:Error) => void)
+      :Promise<T>;
 
-  static resolve<F,R> (thenable:Thenable<F,R>)
-      :Promise<F,R>;
+  static resolve<T> (thenable:Thenable<T>)
+      :Promise<T>;
 
-  static resolve<F,R> (fulfillObj:F)
-      :Promise<F,R>;
+  static resolve<T> (t?:T)
+      :Promise<T>;
 
-  static reject<F,R>  (rejectObj:R)
-      :Promise<F,R>;
+  static reject<T> (e:Error)
+      :Promise<T>;
 
-  static all<F,R> (...args:Thenable<F,R>[])
-      :Promise<F,R>;
+  static all<T> (...args:Thenable<T>[])
+      :Promise<T>;
 
-  static race<F,R> (...args:Thenable<F,R>[])
-      :Promise<F,R>;
+  static race<T> (...args:Thenable<T>[])
+      :Promise<T>;
 
 }
