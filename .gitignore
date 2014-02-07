@@ -1,5 +1,8 @@
 node_modules/*
 *.swp
 *.swo
+*.swm
+*.swn
+*.bak
 tmp/*
 chrome/js

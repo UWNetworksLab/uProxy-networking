@@ -11,15 +11,7 @@
  *
  * @param {ArrayBuffer} buf The buffer to convert.
  */
-function getStringOfArrayBuffer(buf) {
-  var uInt8Buf = new Uint8Array(buf);
-  var s = '';
-  for (var i = 0; i < buf.byteLength; ++i) {
-    s += String.fromCharCode(uInt8Buf[i]);
-  }
-  return s;
-}
-
+/// <reference path='../chrome-fsocket.ts' />
 
 module TCP {
 
@@ -27,7 +19,7 @@ module TCP {
 
   // Freedom Sockets API.
   // TODO: throw an Error if this isn't here.
-  var FSockets = freedom['core.socket']();
+  var fSockets:ISockets = freedom['core.socket']();
 
   /**
    * TCP.Server
@@ -74,7 +66,7 @@ module TCP {
 
     /** Open a socket to listen for TCP requests. */
     public listen() {
-      FSockets.create('tcp', {}).done(this.onCreate_);
+      fSockets.create('tcp', {}).done(this.onCreate_);
     }
 
     /** Disconnect all sockets and stops listening. */
@@ -82,8 +74,8 @@ module TCP {
       var serverSocketId = this.serverSocketId;
       if (serverSocketId) {
         console.log('TCP.Server: Disconnecting server socket ' + serverSocketId);
-        FSockets.disconnect(serverSocketId);
-        FSockets.destroy(serverSocketId);
+        fSockets.disconnect(serverSocketId);
+        fSockets.destroy(serverSocketId);
       }
       this.serverSocketId = 0;
       for (var i in this.openConnections) {
@@ -133,7 +125,7 @@ module TCP {
                       this.addr + ':' + this.port);
         return;
       }
-      FSockets.listen(this.serverSocketId, this.addr, this.port)
+      fSockets.listen(this.serverSocketId, this.addr, this.port)
         .done(this.onListenComplete_);
       console.log('TCP.Server: created socket ' + this.serverSocketId +
           ' listening at ' + this.addr + ':' + this.port);
@@ -149,9 +141,9 @@ module TCP {
       }
 
       // Success. Attach accept and disconnect handlers.
-      FSockets.on('onConnection', this.accept_);
-      FSockets.on('onDisconnect', this.disconnect_);
-      FSockets.on('onData', this.connectionRead_);
+      fSockets.on('onConnection', this.accept_);
+      fSockets.on('onDisconnect', this.disconnect_);
+      fSockets.on('onData', this.connectionRead_);
 
       // Start the listening callback if it exists.
       this.callbacks.listening && this.callbacks.listening();
@@ -178,8 +170,8 @@ module TCP {
       console.log('Tcp.Server accepted connection ' + acceptValue.clientSocketId);
       var connectionsCount = Object.keys(this.openConnections).length;
       if (connectionsCount >= this.maxConnections) {
-        FSockets.disconnect(acceptValue.clientSocketId);
-        FSockets.destroy(acceptValue.clientSocketId);
+        fSockets.disconnect(acceptValue.clientSocketId);
+        fSockets.destroy(acceptValue.clientSocketId);
         console.warn('TCP.Server: too many connections: ' + connectionsCount);
         return;
       }
@@ -243,7 +235,7 @@ module TCP {
       this.pendingRead_ = false;
       this.callbacks.created(this);
 
-      FSockets.getInfo(socketId).done((socketInfo) => {
+      fSockets.getInfo(socketId).done((socketInfo) => {
         this.socketInfo = socketInfo;
         this.initialized_ = true;
 
@@ -326,7 +318,7 @@ module TCP {
         return;
       }
       var realCallback = callback || this.callbacks.sent || function() {};
-      FSockets.write(this.socketId, msg).done(realCallback);
+      fSockets.write(this.socketId, msg).done(realCallback);
     }
 
     /** Disconnects from the remote side. */
@@ -340,8 +332,8 @@ module TCP {
       this.callbacks.recv = null;
       this.callbacks.sent = null;
       // Close the socket.
-      FSockets.disconnect(this.socketId);
-      FSockets.destroy(this.socketId);
+      fSockets.disconnect(this.socketId);
+      fSockets.destroy(this.socketId);
       // Make disconnect callback if not null
       disconnectCallback && disconnectCallback(this);
       // Fire removal callback for the Server containing this callback.
