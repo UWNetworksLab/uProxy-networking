@@ -76,13 +76,10 @@ module TCP {
      * Returns: Promise that this server is now listening.
      */
     public listen():Promise<any> {
-      var listenPromise = this.createSocket_()
+      return this.createSocket_()
           .then(this.startListening_)
-          .then(this.attachSocketHandlers_);
-      listenPromise.catch((err:Error) => {
-        console.error('TCP.Server: ' + err.message);
-      });
-      return listenPromise;
+          .then(this.attachSocketHandlers_)
+          .catch(this.handleError_);
     }
 
     /**
@@ -123,9 +120,46 @@ module TCP {
             ' \n Result Code: ' + resultCode));
       }
       // Success. Attach accept and disconnect handlers.
-      fSockets.on('onConnection', this.accept_);
+      // TODO: Figure out if there is a way to wrap promise generator outside
+      // the freedom callback installer. The conflict here is that those
+      // callbacks get fired multiple times whereas promises can only be
+      // resolved once.
+      fSockets.on('onConnection', this.handleNewConnection_);
       fSockets.on('onDisconnect', this.disconnect_);
       fSockets.on('onData', this.connectionRead_);
+    }
+
+    private handleNewConnection_ = (arg) => {
+      return Promise.resolve(arg)
+          .then(this.accept_)
+          .then(this.createConnection_)
+          .catch(this.handleError_);
+    }
+
+    /**
+     * Promise for accepting a connection.
+     */
+    private accept_ = (acceptValue):Promise<any> => {
+      if (this.serverSocketId !== acceptValue.serverSocketId) {
+        return Promise.reject(new Error('cannot accept unexpected socket ID: ' +
+            this.serverSocketId + ' vs ' + acceptValue.serverSocketId));
+      }
+      console.log('TCP.Server accepted connection ' + acceptValue.clientSocketId);
+      var connectionsCount = Object.keys(this.openConnections).length;
+      // Stop too many connections.
+      if (connectionsCount >= this.maxConnections) {
+        fSockets.disconnect(acceptValue.clientSocketId);
+        fSockets.destroy(acceptValue.clientSocketId);
+        return Promise.reject(new Error('too many connections: ' + connectionsCount));
+      }
+      return acceptValue.clientSocketId;
+    }
+
+    /** Create a TCP connection. */
+    private createConnection_ = (socketId) => {
+      var conn = new Connection(socketId,
+          this.callbacks.connection,
+          this.connectionCallbacks);
     }
 
     /**
@@ -181,30 +215,12 @@ module TCP {
     /** Read data from one of the connection. */
     private connectionRead_ = (readInfo) => {
       if (!(readInfo.socketId in this.openConnections)) {
-        console.log('connectionRead: received data for non-existing socket ' +
+        console.error('connectionRead: received data for non-existing socket ' +
                      readInfo.socketId);
+        console.log(new Error());
         return;
       }
       this.openConnections[readInfo.socketId].read(readInfo.data)
-    }
-
-
-    /** Accept a connection. */
-    private accept_ = (acceptValue) => {
-      if (this.serverSocketId !== acceptValue.serverSocketId) {
-        console.error('TCP.Server: cannot accept unexpected socket ID: ' +
-                     this.serverSocketId + ' vs ' + acceptValue.serverSocketId);
-        return;
-      }
-      console.log('Tcp.Server accepted connection ' + acceptValue.clientSocketId);
-      var connectionsCount = Object.keys(this.openConnections).length;
-      if (connectionsCount >= this.maxConnections) {
-        fSockets.disconnect(acceptValue.clientSocketId);
-        fSockets.destroy(acceptValue.clientSocketId);
-        console.warn('TCP.Server: too many connections: ' + connectionsCount);
-        return;
-      }
-      this.createConnection_(acceptValue.clientSocketId);
     }
 
     /** Remote socket disconnected. */
@@ -217,10 +233,9 @@ module TCP {
       this.removeFromServer_(socketInfo);
     }
 
-    /** Create a TCP connection. */
-    private createConnection_(socketId) {
-      new Connection(socketId, this.callbacks.connection,
-                     this.connectionCallbacks);
+    private handleError_ = (err:Error) => {
+      console.error('TCP.Server: ' + err.message);
+      console.error(err.stack);
     }
 
   }  // class TCP.Server
@@ -247,12 +262,13 @@ module TCP {
     // user might need (ie socketInfo). The socket shouldn't be doing work for
     // the user until the internals are ready.
     private initialized_:boolean = false;
+    public callbacks;
 
     constructor(
         public socketId,
         public serverConnectionCallback,
-        public callbacks) {
-
+        callbacks) {
+      this.callbacks = callbacks;
       this.callbacks.recv = callbacks.recv;
       this.callbacks.disconnect = callbacks.disconnect;
       this.callbacks.sent = callbacks.sent;
@@ -262,7 +278,9 @@ module TCP {
       this.pendingReadBuffer_ = null;
       this.recvOptions = null;
       this.pendingRead_ = false;
-      this.callbacks.created(this);
+
+      console.log('MEOWED. ' + socketId);
+      this.callbacks.created(this);  // Fire server's creation handler.
 
       fSockets.getInfo(socketId).done((socketInfo) => {
         this.socketInfo = socketInfo;

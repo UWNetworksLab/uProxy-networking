@@ -1,4 +1,5 @@
 // Based on http://www.html5rocks.com/en/tutorials/es6/promises/#toc-api
+// Promise Spec: http://promises-aplus.github.io/promises-spec/
 
 interface Thenable<T> {
   then:(fulfill:(t?:T) => void,
@@ -46,3 +47,10 @@ declare class Promise<T> {
       :Promise<T>;
 
 }
+
+
+// Add .stack attribute to Errors (which actually does exist in js).
+interface Error {
+  stack?:any;
+}
+
