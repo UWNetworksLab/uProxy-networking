@@ -125,20 +125,13 @@ module TCP {
       // the freedom callback installer. The conflict here is that those
       // callbacks get fired multiple times whereas promises can only be
       // resolved once.
-      fSockets.on('onConnection', this.handleNewConnection_);
+      fSockets.on('onConnection', this.accept_);
       fSockets.on('onDisconnect', this.disconnect_);
       fSockets.on('onData', this.readConnectionData_);
     }
 
-    private handleNewConnection_ = (arg) => {
-      return Promise.resolve(arg)
-          .then(this.accept_)
-          .then(this.createConnection_)
-          .catch(this.handleError_);
-    }
-
     /**
-     * Accept connection. Return socketId.
+     * Accept and promise creation of new TCP connection.
      */
     private accept_ = (acceptValue) => {
       if (this.serverSocketId !== acceptValue.serverSocketId) {
@@ -146,42 +139,17 @@ module TCP {
             this.serverSocketId + ' vs ' + acceptValue.serverSocketId));
       }
       var socketId = acceptValue.clientSocketId;
-      console.log('TCP.Server accepted connection ' + socketId);
       var connectionsCount = Object.keys(this.openConnections).length;
-      // Stop too many connections.
       if (connectionsCount >= this.maxConnections) {
+        // Stop too many connections.
         fSockets.disconnect(socketId);
         fSockets.destroy(socketId);
         return Promise.reject(new Error('too many connections: ' + connectionsCount));
       }
-      return socketId;
-    }
-
-    /**
-     * Promise the creation of a TCP connection.
-     */
-    private createConnection_ = (socketId) => {
+      console.log('TCP.Server accepted connection ' + socketId);
       var promise = this.conns[socketId] = Connection.Create(
           socketId, this.connectionCallbacks);
       promise.then(this.callbacks.connection);  // External connect handler
-      return promise;
-    }
-
-    /**
-     * Read data from one of the connection.
-     * Assumes that the connection exists.
-     */
-    private readConnectionData_ = (readInfo) => {
-      if (!(readInfo.socketId in this.conns)) { //openConnections)) {
-        console.error('connectionRead: received data for non-existing socket ' +
-                     readInfo.socketId);
-        console.log(readInfo.data);
-        return;
-      }
-      console.log('attempting to read for ' + readInfo.socketId);
-      this.conns[readInfo.socketId].then((conn) => {
-        conn.read(readInfo.data);
-      });
     }
 
     /**
@@ -209,8 +177,23 @@ module TCP {
       });
     }
 
+    /**
+     * Read data from one of the connection.
+     * Assumes that the connection exists.
+     */
+    private readConnectionData_ = (readInfo) => {
+      if (!(readInfo.socketId in this.conns)) {
+        console.error('connectionRead: received data for non-existing socket ' +
+                     readInfo.socketId);
+        return;
+      }
+      this.conns[readInfo.socketId].then((conn) => {
+        conn.read(readInfo.data);
+      });
+    }
+
     private removeFromServer_ = (conn:TCP.Connection) => {
-      delete this.openConnections[conn.socketId];
+      delete this.conns[conn.socketId];
     }
 
     public isOn() { return this.serverSocketId > 0; }
@@ -276,8 +259,8 @@ module TCP {
           conn.socketInfo = socketInfo;
           conn.initialized_ = true;
           // Fire connection callback for the server.
-          console.log('TCP.Connection connected ... socketInfo=' +
-                      JSON.stringify(socketInfo));
+          // console.log('TCP.Connection connected ... socketInfo=' +
+                      // JSON.stringify(socketInfo));
           F(conn);
         });
       });
