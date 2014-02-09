@@ -41,6 +41,7 @@ module TCP {
     private serverSocketId:number = null;
     private maxConnections:number;
     private openConnections:{[socketId:number]:TCP.Connection} = {};
+    private conns:{[socketId:number]:Promise<TCP.Connection>} = {};
     private endpoint_:string = null;
 
     // TODO: replace with promises.
@@ -65,7 +66,7 @@ module TCP {
         recv: null,       // Called when server receives data.
         sent: null,       // Called when server has sent data.
         // TCP.Connection creation and removal callbacks.
-        created: this.addToServer_,
+        // created: this.addToServer_,
         removed: this.removeFromServer_
       };
     }
@@ -126,7 +127,7 @@ module TCP {
       // resolved once.
       fSockets.on('onConnection', this.handleNewConnection_);
       fSockets.on('onDisconnect', this.disconnect_);
-      fSockets.on('onData', this.connectionRead_);
+      fSockets.on('onData', this.readConnectionData_);
     }
 
     private handleNewConnection_ = (arg) => {
@@ -137,29 +138,50 @@ module TCP {
     }
 
     /**
-     * Promise for accepting a connection.
+     * Accept connection. Return socketId.
      */
-    private accept_ = (acceptValue):Promise<any> => {
+    private accept_ = (acceptValue) => {
       if (this.serverSocketId !== acceptValue.serverSocketId) {
         return Promise.reject(new Error('cannot accept unexpected socket ID: ' +
             this.serverSocketId + ' vs ' + acceptValue.serverSocketId));
       }
-      console.log('TCP.Server accepted connection ' + acceptValue.clientSocketId);
+      var socketId = acceptValue.clientSocketId;
+      console.log('TCP.Server accepted connection ' + socketId);
       var connectionsCount = Object.keys(this.openConnections).length;
       // Stop too many connections.
       if (connectionsCount >= this.maxConnections) {
-        fSockets.disconnect(acceptValue.clientSocketId);
-        fSockets.destroy(acceptValue.clientSocketId);
+        fSockets.disconnect(socketId);
+        fSockets.destroy(socketId);
         return Promise.reject(new Error('too many connections: ' + connectionsCount));
       }
-      return acceptValue.clientSocketId;
+      return socketId;
     }
 
-    /** Create a TCP connection. */
+    /**
+     * Promise the creation of a TCP connection.
+     */
     private createConnection_ = (socketId) => {
-      var conn = new Connection(socketId,
-          this.callbacks.connection,
-          this.connectionCallbacks);
+      var promise = this.conns[socketId] = Connection.Create(
+          socketId, this.connectionCallbacks);
+      promise.then(this.callbacks.connection);  // External connect handler
+      return promise;
+    }
+
+    /**
+     * Read data from one of the connection.
+     * Assumes that the connection exists.
+     */
+    private readConnectionData_ = (readInfo) => {
+      if (!(readInfo.socketId in this.conns)) { //openConnections)) {
+        console.error('connectionRead: received data for non-existing socket ' +
+                     readInfo.socketId);
+        console.log(readInfo.data);
+        return;
+      }
+      console.log('attempting to read for ' + readInfo.socketId);
+      this.conns[readInfo.socketId].then((conn) => {
+        conn.read(readInfo.data);
+      });
     }
 
     /**
@@ -187,13 +209,6 @@ module TCP {
       });
     }
 
-    /**
-     * Called when a new tcp connection is created.
-     */
-    private addToServer_ = (conn:TCP.Connection) => {
-      this.openConnections[conn.socketId] = conn;
-    }
-
     private removeFromServer_ = (conn:TCP.Connection) => {
       delete this.openConnections[conn.socketId];
     }
@@ -210,17 +225,6 @@ module TCP {
         return;
       }
       this.callbacks[eventName] = callback;
-    }
-
-    /** Read data from one of the connection. */
-    private connectionRead_ = (readInfo) => {
-      if (!(readInfo.socketId in this.openConnections)) {
-        console.error('connectionRead: received data for non-existing socket ' +
-                     readInfo.socketId);
-        console.log(new Error());
-        return;
-      }
-      this.openConnections[readInfo.socketId].read(readInfo.data)
     }
 
     /** Remote socket disconnected. */
@@ -264,35 +268,38 @@ module TCP {
     private initialized_:boolean = false;
     public callbacks;
 
+    // Static connection creation function which returns a promise.
+    static Create = (socketId, callbacks):Promise<Connection> => {
+      return new Promise((F,R) => {
+        var conn = new Connection(socketId, callbacks);
+        fSockets.getInfo(socketId).done((socketInfo) => {
+          conn.socketInfo = socketInfo;
+          conn.initialized_ = true;
+          // Fire connection callback for the server.
+          console.log('TCP.Connection connected ... socketInfo=' +
+                      JSON.stringify(socketInfo));
+          F(conn);
+        });
+      });
+    }
+
+    /**
+     * This constructor should not be called directly.
+     */
     constructor(
         public socketId,
-        public serverConnectionCallback,
         callbacks) {
       this.callbacks = callbacks;
       this.callbacks.recv = callbacks.recv;
       this.callbacks.disconnect = callbacks.disconnect;
       this.callbacks.sent = callbacks.sent;
-      this.callbacks.created = callbacks.created;
       this.callbacks.removed = callbacks.removed;
       this.isConnected = true;
       this.pendingReadBuffer_ = null;
       this.recvOptions = null;
       this.pendingRead_ = false;
 
-      console.log('MEOWED. ' + socketId);
-      this.callbacks.created(this);  // Fire server's creation handler.
-
-      fSockets.getInfo(socketId).done((socketInfo) => {
-        this.socketInfo = socketInfo;
-        this.initialized_ = true;
-
-        // Fire connection callback for the server.
-        console.log('TCP.Connection connected ... socketInfo=' +
-                    JSON.stringify(socketInfo));
-        if (serverConnectionCallback) {
-          serverConnectionCallback(this);
-        }
-      });
+      console.log('created tcp connection ' + socketId);
     }
 
     /**
@@ -329,6 +336,7 @@ module TCP {
      * Buffer the calls to |recv| if there is a minByeLength.
      */
     private bufferedCallRecv_ = () => {
+      console.log('buffered call rcv' + this.pendingReadBuffer_ + this);
       if (this.recvOptions && this.recvOptions.minByteLength &&
           this.recvOptions.minByteLength > this.pendingReadBuffer_.byteLength) {
         return;
@@ -401,7 +409,7 @@ module TCP {
 
     /**
      * Reads data from the socket.
-     */ 
+     */
     public read = (data) => {
       if (this.callbacks.recv && this.initialized_) {
         this.addPendingData_(data);
@@ -435,9 +443,10 @@ module TCP {
       };
     }
 
-    // TODO(keroserene): add a toString for this
     public toString = () => {
-      return JSON.stringify(this.state());
+      // return JSON.stringify(this.state());
+      return '<TCP.Connection[' + this.socketId +
+          '] (' + (this.isConnected? 'connected' : 'disconnected') + ')>';
     }
 
   }  // class TCP.Connection
