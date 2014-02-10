@@ -40,7 +40,7 @@ module TCP {
     // Server accepts & opens one socket per client.
     private serverSocketId:number = null;
     private maxConnections:number;
-    private openConnections:{[socketId:number]:TCP.Connection} = {};
+    // private openConnections:{[socketId:number]:TCP.Connection} = {};
     private conns:{[socketId:number]:Promise<TCP.Connection>} = {};
     private endpoint_:string = null;
 
@@ -56,18 +56,13 @@ module TCP {
       this.callbacks = {
         connection: null,  // Called when a new socket connection happens.
         disconnect: null,  // Called when server stops listening for connections.
-        // Called when a socket is closed from the other side.  Passed socketId as an arg.
-        socketRemotelyClosed: null
       };
 
       // Default callbacks for when we create new Connections.
       this.connectionCallbacks = {
-        disconnect: null, // Called when a socket is closed
+        // disconnect: null, // Called when a socket is closed
         recv: null,       // Called when server receives data.
         sent: null,       // Called when server has sent data.
-        // TCP.Connection creation and removal callbacks.
-        // created: this.addToServer_,
-        removed: this.removeFromServer_
       };
     }
 
@@ -120,13 +115,9 @@ module TCP {
             'listen failed on ' + this.endpoint_ +
             ' \n Result Code: ' + resultCode));
       }
-      // Success. Attach accept and disconnect handlers.
-      // TODO: Figure out if there is a way to wrap promise generator outside
-      // the freedom callback installer. The conflict here is that those
-      // callbacks get fired multiple times whereas promises can only be
-      // resolved once.
+      // Success. Attach connect, disconnect, and data handlers.
       fSockets.on('onConnection', this.accept_);
-      fSockets.on('onDisconnect', this.disconnect_);
+      fSockets.on('onDisconnect', this.disconnectSocket_);
       fSockets.on('onData', this.readConnectionData_);
     }
 
@@ -139,17 +130,17 @@ module TCP {
             this.serverSocketId + ' vs ' + acceptValue.serverSocketId));
       }
       var socketId = acceptValue.clientSocketId;
-      var connectionsCount = Object.keys(this.openConnections).length;
+      var connectionsCount = Object.keys(this.conns).length;
       if (connectionsCount >= this.maxConnections) {
         // Stop too many connections.
         fSockets.disconnect(socketId);
         fSockets.destroy(socketId);
         return Promise.reject(new Error('too many connections: ' + connectionsCount));
       }
-      console.log('TCP.Server accepted connection ' + socketId);
       var promise = this.conns[socketId] = Connection.Create(
           socketId, this.connectionCallbacks);
-      promise.then(this.callbacks.connection);  // External connect handler
+      console.log('TCP.Server accepted connection ' + socketId);
+      promise.then(this.callbacks.connection);  // External connect handler.
     }
 
     /**
@@ -165,10 +156,11 @@ module TCP {
           fSockets.destroy(serverSocketId).fail(R);
         }
         this.serverSocketId = 0;
-        for (var i in this.openConnections) {
+        for (var i in this.conns) { //openConnections) {
           try {
-            this.openConnections[i].disconnect();
-            this.removeFromServer_(this.openConnections[i]);
+            this.conns[i]
+                .then(Connection.disconnect)
+                .then(this.removeFromServer_);
           } catch (ex) {
             console.warn(ex);
           }
@@ -211,13 +203,13 @@ module TCP {
     }
 
     /** Remote socket disconnected. */
-    private disconnect_ = (socketInfo) => {
+    private disconnectSocket_ = (socketInfo) => {
       console.log('TCP.Server: socket ' + socketInfo.socketId +
                   ' remotely disconnected.');
-      var disconnect_cb = this.openConnections[socketInfo.socketId].callbacks.disconnect;
-      disconnect_cb && disconnect_cb(socketInfo.socketId);
-      this.openConnections[socketInfo.socketId].disconnect();
-      this.removeFromServer_(socketInfo);
+      this.conns[socketInfo.socketId]
+          .then(Connection.disconnect)
+          .then(this.removeFromServer_);
+      // TODO: Do we need an external callback here?
     }
 
     private handleError_ = (err:Error) => {
@@ -255,12 +247,10 @@ module TCP {
     static Create = (socketId, callbacks):Promise<Connection> => {
       return new Promise((F,R) => {
         var conn = new Connection(socketId, callbacks);
+        console.log('making new tcp conn' + socketId);
         fSockets.getInfo(socketId).done((socketInfo) => {
           conn.socketInfo = socketInfo;
           conn.initialized_ = true;
-          // Fire connection callback for the server.
-          // console.log('TCP.Connection connected ... socketInfo=' +
-                      // JSON.stringify(socketInfo));
           F(conn);
         });
       });
@@ -269,19 +259,12 @@ module TCP {
     /**
      * This constructor should not be called directly.
      */
-    constructor(
-        public socketId,
-        callbacks) {
+    constructor(public socketId, callbacks) {
       this.callbacks = callbacks;
-      this.callbacks.recv = callbacks.recv;
-      this.callbacks.disconnect = callbacks.disconnect;
-      this.callbacks.sent = callbacks.sent;
-      this.callbacks.removed = callbacks.removed;
       this.isConnected = true;
       this.pendingReadBuffer_ = null;
       this.recvOptions = null;
       this.pendingRead_ = false;
-
       console.log('created tcp connection ' + socketId);
     }
 
@@ -316,10 +299,27 @@ module TCP {
     }
 
     /**
+     * Obtain a promise for a buffer as the result of a recv.
+     */
+    public promiseRecv = (minByteLength?:number):Promise<any> => {
+      return new Promise((F, R) => {
+        if (minByteLength) {
+          this.recvOptions = {
+            minByteLength: minByteLength
+          };
+          if (this.pendingReadBuffer_) {
+            this.bufferedCallRecv_();
+          }
+        }
+        this.on('recv', F);
+      });
+    }
+
+    /**
      * Buffer the calls to |recv| if there is a minByeLength.
      */
     private bufferedCallRecv_ = () => {
-      console.log('buffered call rcv' + this.pendingReadBuffer_ + this);
+      // console.log('buffered call rcv' + this.pendingReadBuffer_ + this);
       if (this.recvOptions && this.recvOptions.minByteLength &&
           this.recvOptions.minByteLength > this.pendingReadBuffer_.byteLength) {
         return;
@@ -359,23 +359,34 @@ module TCP {
       fSockets.write(this.socketId, msg).done(realCallback);
     }
 
-    /** Disconnects from the remote side. */
+    /**
+     * Static version of disconnect which returns a promise.
+     */
+    public static disconnect(conn:Connection) {
+      conn.disconnect();
+      return Promise.resolve(conn);
+    }
+
+    /**
+     * Disconnect underlying socket.
+     */
     public disconnect() {
-      if (!this.isConnected) return;
+      if (!this.isConnected) {
+        return;
+      }
       this.isConnected = false;
       // Temporarily remember disconnect callback.
-      var disconnectCallback = this.callbacks.disconnect;
+      // var disconnectCallback = this.callbacks.disconnect;
       // Remove all callbacks.
-      this.callbacks.disconnect = null;
-      this.callbacks.recv = null;
-      this.callbacks.sent = null;
+      // this.callbacks.disconnect = null;
+      // this.callbacks.recv = null;
+      // this.callbacks.sent = null;
       // Close the socket.
       fSockets.disconnect(this.socketId);
       fSockets.destroy(this.socketId);
       // Make disconnect callback if not null
-      disconnectCallback && disconnectCallback(this);
-      // Fire removal callback for the Server containing this callback.
-      this.callbacks.removed(this);
+      // disconnectCallback && disconnectCallback(this);
+      return this;
     }
 
     private addPendingData_(buffer) {

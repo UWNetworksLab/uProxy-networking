@@ -110,6 +110,7 @@ module SocksToRTC {
 
     /**
      * Setup data channel and tie to corresponding SOCKS5 session.
+     * Returns: IP and port of destination.
      */
     private onConnection_ = (session:Socks.Session, address, port,
                              connectedCallback) => {
@@ -118,6 +119,7 @@ module SocksToRTC {
                       'SCTP peer connection.');
         return;
       }
+      console.log('New SOCKS session - setting up data channel.');
       var channelLabel = obtainChannelLabel();
       this.socksSessions[channelLabel] = session;
       // When the TCP-connection receives data, send to sctp peer.
@@ -135,7 +137,9 @@ module SocksToRTC {
 
       // Allow SOCKs headers
       // TODO: determine if these need to be accurate.
-      connectedCallback({ ipAddrString: '127.0.0.1', port: 0 });
+      // connectedCallback({ ipAddrString: '127.0.0.1', port: 0 });
+      console.log('responding...');
+      return { ipAddrString: '127.0.0.1', port: 0 };
     }
 
     /**
