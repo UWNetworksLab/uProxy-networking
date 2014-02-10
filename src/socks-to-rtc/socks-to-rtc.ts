@@ -123,7 +123,7 @@ module SocksToRTC {
       // When the TCP-connection receives data, send to sctp peer.
       // When it disconnects, clear the |channelLabel|.
       session.onRecv((buf) => { this.sendToPeer_(channelLabel, buf); });
-      session.onDisconnect()
+      session.oncenDisconnected()
           .then(() => {
             this.closeConnection_(channelLabel);
           });

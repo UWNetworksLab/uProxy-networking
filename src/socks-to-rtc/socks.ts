@@ -357,7 +357,7 @@ module Socks {
     /**
      * Return disconnection promise from underlying TCP connection.
      */
-    public onDisconnect = () => { return this.tcpConnection.onDisconnect(); }
+    public onceDisconnected = () => { return this.tcpConnection.onDisconnect(); }
 
     public toString() {
       return 'Socks.Session[' + this.tcpConnection.socketId + ']';
