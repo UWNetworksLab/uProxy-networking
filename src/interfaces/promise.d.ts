@@ -28,14 +28,17 @@ declare class Promise<T> {
             reject?:(e:Error) => void)
       :Promise<T2>;
 
-  catch (catchTn:(e:Error) => void)
+  catch (catchFn:(e:Error) => void)
       :Promise<T>;
 
   static resolve<T> (thenable:Thenable<T>)
       :Promise<T>;
 
-  static resolve<T> (t?:T)
+  static resolve<T> (t:T)
       :Promise<T>;
+
+  static resolve ()
+      :Promise<void>;
 
   static reject<T> (e:Error)
       :Promise<T>;
