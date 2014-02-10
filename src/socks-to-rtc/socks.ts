@@ -172,7 +172,7 @@ module Socks {
      */
     private establishSession = (conn:TCP.Connection) => {
       // One-time initial recv creates the session.
-      return conn.promiseRecv(3)
+      return conn.receive(3)
           .then(Socks.Session.GetHandshakeBytes)
           .then(Socks.Session.CheckVersion)
           .then(Socks.Session.CheckAuth)
@@ -188,7 +188,7 @@ module Socks {
 
       // Handle the request over this session.
       .then((session:Socks.Session) => {
-        return conn.promiseRecv()
+        return conn.receive()
             .then(Socks.Session.InterpretRequest)
             .then(Socks.Session.CheckRequestFailure)
             .then((request) => {
@@ -196,7 +196,7 @@ module Socks {
                   request.addressString, request.port)
             }, (e:Error) => {
               // Send specific request failure response to client.
-              // session.sendReply_(request.failure);
+              Socks.Session.SendReply(conn, parseInt(e.message));  // request.failure
               return e;
             })
             .then(Socks.Session.ComposeEndpointResponse)
@@ -249,7 +249,7 @@ module Socks {
       var socksVersion = handshakeBytes[0];
       if (Socks.VERSION5 != socksVersion) {
         // Only SOCKS Version 5 is supported.
-        return Promise.reject(new Error('unsupported version: ' + socksVersion));
+        return Util.Reject('unsupported version: ' + socksVersion);
       }
       return Promise.resolve(handshakeBytes);
     }
@@ -269,7 +269,7 @@ module Socks {
         console.error('Socks.Session: no auth methods',
             Socks.AUTH.NOAUTH);
         // this.tcpConnection.disconnect();
-        return Promise.reject(new Error('no auth methods: ' + Socks.AUTH.NOAUTH));
+        return Util.Reject('no auth methods: ' + Socks.AUTH.NOAUTH);
       }
     }
 
@@ -328,17 +328,15 @@ module Socks {
       if (null == request) {
         // console.error('Socks.Session(' + this.tcpConnection.socketId +
             // '): bad request length ' + byteArray.length + ')');
-        return Promise.reject(new Error('bad request length'));
+        return Util.Reject('bad request length: ' + byteArray.length);
       }
       return request;
     }
 
     public static CheckRequestFailure(request) {
       if ('failure' in request) {
-        // console.error('Socks.Session(' + this.tcpConnection.socketId +
-                      // ') failed request received: ' + JSON.stringify(this.request));
         // this.sendReply_(this.request.failure);
-        return Promise.reject(new Error('failed request'));
+        return Util.Reject(request.failure);
       }
       return request;
     }

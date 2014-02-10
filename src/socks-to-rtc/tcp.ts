@@ -94,8 +94,7 @@ module TCP {
     private startListening_ = (createInfo:ICreateInfo):Promise<number>  => {
       this.serverSocketId = createInfo.socketId;
       if (this.serverSocketId <= 0) {
-        return Promise.reject(new Error('failed to create socket on ' +
-                                        this.endpoint_));
+        return Util.Reject('failed to create socket on ' + this.endpoint_);
       }
       console.log('TCP.Server: created socket ' + this.serverSocketId +
           ' listening at ' + this.endpoint_);
@@ -111,9 +110,8 @@ module TCP {
      */
     private attachSocketHandlers_ = (resultCode:number) => {
       if (0 !== resultCode) {
-        return Promise.reject(new Error(
-            'listen failed on ' + this.endpoint_ +
-            ' \n Result Code: ' + resultCode));
+        return Util.Reject('listen failed on ' + this.endpoint_ +
+                             ' \n Result Code: ' + resultCode);
       }
       // Success. Attach connect, disconnect, and data handlers.
       fSockets.on('onConnection', this.accept_);
@@ -126,8 +124,8 @@ module TCP {
      */
     private accept_ = (acceptValue) => {
       if (this.serverSocketId !== acceptValue.serverSocketId) {
-        return Promise.reject(new Error('cannot accept unexpected socket ID: ' +
-            this.serverSocketId + ' vs ' + acceptValue.serverSocketId));
+        return Util.Reject('cannot accept unexpected socket ID: ' +
+            this.serverSocketId + ' vs ' + acceptValue.serverSocketId);
       }
       var socketId = acceptValue.clientSocketId;
       var connectionsCount = Object.keys(this.conns).length;
@@ -135,7 +133,7 @@ module TCP {
         // Stop too many connections.
         fSockets.disconnect(socketId);
         fSockets.destroy(socketId);
-        return Promise.reject(new Error('too many connections: ' + connectionsCount));
+        return Util.Reject('too many connections: ' + connectionsCount);
       }
       var promise = this.conns[socketId] = Connection.Create(
           socketId, this.connectionCallbacks);
@@ -301,7 +299,7 @@ module TCP {
     /**
      * Obtain a promise for a buffer as the result of a recv.
      */
-    public promiseRecv = (minByteLength?:number):Promise<any> => {
+    public receive = (minByteLength?:number):Promise<any> => {
       return new Promise((F, R) => {
         if (minByteLength) {
           this.recvOptions = {
@@ -482,6 +480,13 @@ module Util {
       callback(e.target.result);
     };
     f.readAsArrayBuffer(bb);
+  }
+
+  /**
+   * Wrapper around creating a Promise rejection with Error.
+   */
+  export function Reject(msg:string) {
+    return Promise.reject(new Error(msg));
   }
 
 }  // module Util
