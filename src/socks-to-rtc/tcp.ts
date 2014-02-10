@@ -154,7 +154,7 @@ module TCP {
           fSockets.destroy(serverSocketId).fail(R);
         }
         this.serverSocketId = 0;
-        for (var i in this.conns) { //openConnections) {
+        for (var i in this.conns) {
           try {
             this.conns[i]
                 .then(Connection.disconnect)
@@ -373,16 +373,10 @@ module TCP {
         return;
       }
       this.isConnected = false;
-      // Temporarily remember disconnect callback.
       // var disconnectCallback = this.callbacks.disconnect;
-      // Remove all callbacks.
-      // this.callbacks.disconnect = null;
-      // this.callbacks.recv = null;
-      // this.callbacks.sent = null;
       // Close the socket.
       fSockets.disconnect(this.socketId);
       fSockets.destroy(this.socketId);
-      // Make disconnect callback if not null
       // disconnectCallback && disconnectCallback(this);
       return this;
     }

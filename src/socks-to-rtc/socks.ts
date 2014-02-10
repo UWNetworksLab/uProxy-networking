@@ -156,63 +156,60 @@ module Socks {
      * Construct a new Socks.Server based on TCP.
      */
     constructor(address, port, public destinationCallback) {
-      var tcpServer = new TCP.Server(address || 'localhost',
+      this.tcpServer = new TCP.Server(address || 'localhost',
                                      port    || 1080);
-
-      // Each new TCP connection attaches a |recv| handler which creates a new
-      // Socks.Session. The same |recv| handler then gets replaced with a
-      // continuous session handler.
-      tcpServer.on('connection', this.establishSession);
-
-      this.tcpServer = tcpServer;
+      // Create Socks.Session over each new TCP connection.
+      this.tcpServer.on('connection', this.establishSession_);
     }
 
     /**
-     * Promise the establishment of a SOCKs session on a TCP connection.
+     * Promise a handshake-validated SOCKS session over TCP connection.
      */
-    private establishSession = (conn:TCP.Connection) => {
+    private establishSession_ = (conn:TCP.Connection) => {
       // One-time initial recv creates the session.
       return conn.receive(3)
           .then(Socks.Session.GetHandshakeBytes)
           .then(Socks.Session.CheckVersion)
           .then(Socks.Session.CheckAuth)
+          // Success - Create new session.
           .then(() => {
-            // Success - Create new session.
             conn.on('recv', null);  // Disable recv until session is ready.
             return Socks.Session.Create(conn);
-          }, (e:Error) => {
-            // Send specific no auth reply.
-            Socks.Session.SendReply(conn, Socks.AUTH.NONE);  // Unacceptable!
+          // AUTH error. (Required method not available).
+          }, (e) => {
+            Socks.Session.SendReply(conn, Socks.AUTH.NONE);
             return e;
           })
+          .then(this.handleRequest_)
+          .catch((e) => { conn.disconnect(); });
+    }
 
-      // Handle the request over this session.
-      .then((session:Socks.Session) => {
-        return conn.receive()
-            .then(Socks.Session.InterpretRequest)
-            .then(Socks.Session.CheckRequestFailure)
-            .then((request) => {
-              return this.destinationCallback(session,
-                  request.addressString, request.port)
-            }, (e:Error) => {
-              // Send specific request failure response to client.
-              Socks.Session.SendReply(conn, parseInt(e.message));  // request.failure
-              return e;
-            })
-            .then(Socks.Session.ComposeEndpointResponse)
-            // Tell client the address of the newly connected destination.
-            .then((response) => {
-              conn.sendRaw(response.buffer);
-            })
-            .catch((e) => {
-              console.error(session + ': ' + e.message);
-              // TODO: Make disconnections server-handled to prevent
-              // bidirectional callbacks.
-              return e;
-            });
-      }).catch((e) => {
-        conn.disconnect();
-      });
+    /**
+     * Handle request over SOCKS session.
+     */
+    private handleRequest_ = (session:Socks.Session) => {
+      var conn = session.tcpConnection;
+      return conn.receive()
+          .then(Socks.Session.InterpretRequest)
+          .then(Socks.Session.CheckRequestFailure)
+          // Valid request - fire external callback.
+          .then((request) => {
+            return this.destinationCallback(session,
+                request.addressString, request.port)
+          // Invalid request - notify client with |request.failure|.
+          }, (e) => {
+            Socks.Session.SendReply(conn, parseInt(e.message));
+            return e;
+          })
+          // Pass endpoint from external callback to client.
+          .then(Socks.Session.ComposeEndpointResponse)
+          .then((response) => { conn.sendRaw(response.buffer); })
+          .catch((e) => {
+            console.error(session + ': ' + e.message);
+            // TODO: Make disconnections server-handled to prevent
+            // bidirectional callbacks.
+            return e;
+          });
     }
 
     listen() {
@@ -233,6 +230,10 @@ module Socks {
   export class Session {
 
     private request:any = null;
+
+    public static Create(conn:TCP.Connection) {
+      return new Session(conn);
+    }
 
     public static GetHandshakeBytes(handshake) {
       // console.log('new Socks.Session (' + conn.socketId + '): \n' +
@@ -273,16 +274,11 @@ module Socks {
       }
     }
 
-    public static Create(conn:TCP.Connection) {
-      return new Session(conn);
-    }
-
-    // Create SOCKS session atop existing TCP connection.
     // TODO: Implement SOCKS authentication in the future.
     //       (Not urgent because this part is local for now.)
-    constructor(private tcpConnection:TCP.Connection) {
+    constructor(public tcpConnection:TCP.Connection) {
       // console.log(this + ': Auth (length=' + buffer.byteLength + ')');
-      // Install request handler on the TCP connection and skip auth.
+      // Skip auth.
       this.sendReply_(Socks.AUTH.NOAUTH);
     }
 
@@ -326,8 +322,6 @@ module Socks {
       var byteArray:Uint8Array = new Uint8Array(buffer);
       var request = Socks.interpretSocksRequest(byteArray);
       if (null == request) {
-        // console.error('Socks.Session(' + this.tcpConnection.socketId +
-            // '): bad request length ' + byteArray.length + ')');
         return Util.Reject('bad request length: ' + byteArray.length);
       }
       return request;
@@ -335,7 +329,6 @@ module Socks {
 
     public static CheckRequestFailure(request) {
       if ('failure' in request) {
-        // this.sendReply_(this.request.failure);
         return Util.Reject(request.failure);
       }
       return request;
@@ -382,38 +375,6 @@ module Socks {
       return responseArray;
     }
 
-    /*
-    public static validateRequest = (buffer) => {
-      // Only handle one request per tcp connection, so disable the |recv|
-      // callback for now. Pending data will be stored for the next handler.
-      this.tcpConnection.on('recv', null);
-
-      var byteArray:Uint8Array = new Uint8Array(buffer);
-      this.request = Socks.interpretSocksRequest(byteArray);
-
-      if (null == this.request) {
-        console.error('Socks.Session(' + this.tcpConnection.socketId +
-            '): bad request length ' + byteArray.length + ')');
-        this.tcpConnection.disconnect();
-        return;
-
-      } else if ('failure' in this.request) {
-        console.error('Socks.Session(' + this.tcpConnection.socketId +
-                      ') failed request received: ' + JSON.stringify(this.request));
-        this.sendReply_(this.request.failure);
-        this.tcpConnection.disconnect();
-        return;
-      }
-
-      this.destinationCallback(
-          this,
-          this.request.addressString, this.request.port,
-          this.connectedToDestination_);
-      // TODO: add a handler for failure to reach destination.
-    }
-    */
-
-
     public toString() {
       return 'Socks.Session[' + this.tcpConnection.socketId + ']';
     }
@@ -441,7 +402,7 @@ module Util {
   }
 
   /**
-   * Converts an array buffer to a string. 
+   * Converts an array buffer to a string.
    *
    * @param {ArrayBuffer} buf The buffer to convert.
    */
