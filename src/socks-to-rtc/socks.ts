@@ -157,7 +157,7 @@ module Socks {
      */
     constructor(address, port, public destinationCallback) {
       this.tcpServer = new TCP.Server(address || 'localhost',
-                                     port    || 1080);
+                                      port    || 1080);
       // Create Socks.Session over each new TCP connection.
       this.tcpServer.on('connection', this.establishSession_);
     }
@@ -221,6 +221,10 @@ module Socks {
 
     disconnect() { this.tcpServer.disconnect(); }
 
+    public endSession(session:Session) {
+      this.tcpServer.endConnection(session.tcpConnection.socketId);
+    }
+
   }  // Socks.Server
 
 
@@ -236,27 +240,24 @@ module Socks {
     }
 
     public static GetHandshakeBytes(handshake) {
-      // console.log('new Socks.Session (' + conn.socketId + '): \n' +
-         // '* Got data: ' + conn + ' \n' +
       console.log('New SOCKs handshake data: ' +
           Util.getHexStringOfArrayBuffer(handshake));
       return new Uint8Array(handshake);
     }
 
     /**
-     * Check acceptable SOCKS version.
+     * Only SOCKS Version 5 is supported.
      */
     public static CheckVersion(handshakeBytes:Uint8Array) {
       var socksVersion = handshakeBytes[0];
       if (Socks.VERSION5 != socksVersion) {
-        // Only SOCKS Version 5 is supported.
         return Util.Reject('unsupported version: ' + socksVersion);
       }
       return Promise.resolve(handshakeBytes);
     }
 
     /**
-     * Check AUTH methods on SOCKs handshake.
+     * Check AUTH methods on SOCKS handshake.
      */
     public static CheckAuth(handshakeBytes:Uint8Array) {
       // Get supported auth methods. Starts from 1, since 0 is already read.
@@ -269,7 +270,6 @@ module Socks {
       if (authMethods.indexOf(Socks.AUTH.NOAUTH) <= -1) {
         console.error('Socks.Session: no auth methods',
             Socks.AUTH.NOAUTH);
-        // this.tcpConnection.disconnect();
         return Util.Reject('no auth methods: ' + Socks.AUTH.NOAUTH);
       }
     }
@@ -277,9 +277,7 @@ module Socks {
     // TODO: Implement SOCKS authentication in the future.
     //       (Not urgent because this part is local for now.)
     constructor(public tcpConnection:TCP.Connection) {
-      // console.log(this + ': Auth (length=' + buffer.byteLength + ')');
-      // Skip auth.
-      this.sendReply_(Socks.AUTH.NOAUTH);
+      this.sendReply_(Socks.AUTH.NOAUTH);  // Skip auth.
     }
 
     // Install recv handler for underlying cp connection
@@ -287,19 +285,17 @@ module Socks {
       this.tcpConnection.on('recv', callback);
     }
 
-    public sendData = (buffer) => {
-      this.tcpConnection.sendRaw(buffer);
-    }
+    /**
+     * Send |buffer| to session's TCP client.
+     */
+    public sendData = (buffer) => { this.tcpConnection.sendRaw(buffer); }
 
-    public onDisconnect = (callback:(buf)=>void) => {
-      this.tcpConnection.on('disconnect', callback);
-    }
-
-    public disconnect = () => {
-      // TODO: This will fire the disconnect handler from the underlying TCP
-      // connection, but it's actually just some other callback. Clean this up
-      // with promises.
-      return this.tcpConnection.disconnect();
+    /**
+     * Return disconnection promise from underlying TCP connection.
+     */
+    public onDisconnect = () => {
+      console.log('on disconnect..');
+      return this.tcpConnection.onDisconnect();
     }
 
     /**

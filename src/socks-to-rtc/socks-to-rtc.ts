@@ -38,17 +38,17 @@ module SocksToRTC {
     public start = (options) => {
       console.log('Client: on(start)... ' + JSON.stringify(options));
       // Bind peerID to scope so promise can work.
-      var peerId = this.peerId = options.peerId;
+      var peerId = options.peerId;
       if (!peerId) {
         console.error('SocksToRTC.Peer: No Peer ID provided! Cannot connect.');
         return false;
       }
       this.shutdown();  // Reset everything.
+      this.peerId = peerId;
 
       // Create SOCKS server and start listening.
-      this.socksServer = new Socks.Server(
-          options.host, options.port,
-          this.onConnection_);
+      this.socksServer = new Socks.Server(options.host, options.port,
+                                          this.onConnection_);
       this.socksServer.listen();
 
       // Create sctp connection to a peer.
@@ -112,20 +112,22 @@ module SocksToRTC {
      * Setup data channel and tie to corresponding SOCKS5 session.
      * Returns: IP and port of destination.
      */
-    private onConnection_ = (session:Socks.Session, address, port,
-                             connectedCallback) => {
+    private onConnection_ = (session:Socks.Session, address, port) => {
       if (!this.sctpPc) {
         console.error('SocksToRTC.Peer: onConnection called without ' +
                       'SCTP peer connection.');
         return;
       }
-      console.log('New SOCKS session - setting up data channel.');
       var channelLabel = obtainChannelLabel();
       this.socksSessions[channelLabel] = session;
       // When the TCP-connection receives data, send to sctp peer.
       // When it disconnects, clear the |channelLabel|.
       session.onRecv((buf) => { this.sendToPeer_(channelLabel, buf); });
-      session.onDisconnect(() => { this.closeConnection_(channelLabel); });
+      session.onDisconnect()
+          .then(() => {
+            this.closeConnection_(channelLabel);
+          });
+
       this.sctpPc.send({
           'channelLabel': channelLabel,
           'text': JSON.stringify({ host: address, port: port })
@@ -134,11 +136,8 @@ module SocksToRTC {
       // TODO: we are not connected yet... should we have some message passing
       // back from the other end of the data channel to tell us when it has
       // happened, instead of just pretended?
-
       // Allow SOCKs headers
       // TODO: determine if these need to be accurate.
-      // connectedCallback({ ipAddrString: '127.0.0.1', port: 0 });
-      console.log('responding...');
       return { ipAddrString: '127.0.0.1', port: 0 };
     }
 
@@ -146,8 +145,9 @@ module SocksToRTC {
      * Close a particular tcp-connection and data channel pair.
      */
     private closeConnection_ = (channelLabel:string) => {
+      console.log('CLOSE CHANNEL ' + channelLabel);
       if (this.socksSessions[channelLabel]) {
-        this.socksSessions[channelLabel].disconnect();
+        this.socksServer.endSession(this.socksSessions[channelLabel]);
         delete this.socksSessions[channelLabel];
       }
       if (this.sctpPc) {

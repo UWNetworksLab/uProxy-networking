@@ -40,7 +40,6 @@ module TCP {
     // Server accepts & opens one socket per client.
     private serverSocketId:number = null;
     private maxConnections:number;
-    // private openConnections:{[socketId:number]:TCP.Connection} = {};
     private conns:{[socketId:number]:Promise<TCP.Connection>} = {};
     private endpoint_:string = null;
 
@@ -60,7 +59,6 @@ module TCP {
 
       // Default callbacks for when we create new Connections.
       this.connectionCallbacks = {
-        // disconnect: null, // Called when a socket is closed
         recv: null,       // Called when server receives data.
         sent: null,       // Called when server has sent data.
       };
@@ -115,8 +113,8 @@ module TCP {
       }
       // Success. Attach connect, disconnect, and data handlers.
       fSockets.on('onConnection', this.accept_);
-      fSockets.on('onDisconnect', this.disconnectSocket_);
       fSockets.on('onData', this.readConnectionData_);
+      fSockets.on('onDisconnect', this.disconnectSocket_);
     }
 
     /**
@@ -200,11 +198,26 @@ module TCP {
       this.callbacks[eventName] = callback;
     }
 
-    /** Remote socket disconnected. */
+    /**
+     * Fired when remote socket disconnected.
+     */
     private disconnectSocket_ = (socketInfo) => {
+      var socketId = socketInfo.socketID;
+      if (!(socketId in this.conns)) {
+        console.warn('Socket ' + socketId + ' D.N.E. for disconnect.');
+        return;
+      }
       console.log('TCP.Server: socket ' + socketInfo.socketId +
                   ' remotely disconnected.');
-      this.conns[socketInfo.socketId]
+      this.endConnection(socketId);
+    }
+
+    /**
+     * Stop a TCP connection and remove from server.
+     */
+    public endConnection = (socketId) => {
+      console.log('ENDING ' + socketId);
+      this.conns[socketId]
           .then(Connection.disconnect)
           .then(this.removeFromServer_);
       // TODO: Do we need an external callback here?
@@ -241,11 +254,13 @@ module TCP {
     private initialized_:boolean = false;
     public callbacks;
 
+    private disconnectPromise:Promise<void> = null;
+    private fulfillDisconnect = null;
+
     // Static connection creation function which returns a promise.
     static Create = (socketId, callbacks):Promise<Connection> => {
       return new Promise((F,R) => {
         var conn = new Connection(socketId, callbacks);
-        console.log('making new tcp conn' + socketId);
         fSockets.getInfo(socketId).done((socketInfo) => {
           conn.socketInfo = socketInfo;
           conn.initialized_ = true;
@@ -263,6 +278,9 @@ module TCP {
       this.pendingReadBuffer_ = null;
       this.recvOptions = null;
       this.pendingRead_ = false;
+      this.disconnectPromise = new Promise<void>((F, R) => {
+        this.fulfillDisconnect = F;  // To be fired on disconnect.
+      })
       console.log('created tcp connection ' + socketId);
     }
 
@@ -324,7 +342,7 @@ module TCP {
       }
       var tmpBuf = this.pendingReadBuffer_;
       this.pendingReadBuffer_ = null;
-      this.callbacks.recv(tmpBuf);
+      this.callbacks.recv(tmpBuf);  // Fire external recv callback.
     }
 
     /**
@@ -358,28 +376,19 @@ module TCP {
     }
 
     /**
-     * Static version of disconnect which returns a promise.
-     */
-    public static disconnect(conn:Connection) {
-      conn.disconnect();
-      return Promise.resolve(conn);
-    }
-
-    /**
      * Disconnect underlying socket.
      */
     public disconnect() {
-      if (!this.isConnected) {
-        return;
-      }
+      if (!this.isConnected) { return; }
       this.isConnected = false;
-      // var disconnectCallback = this.callbacks.disconnect;
       // Close the socket.
       fSockets.disconnect(this.socketId);
       fSockets.destroy(this.socketId);
-      // disconnectCallback && disconnectCallback(this);
+      this.fulfillDisconnect();  // Fire the disconnect Promise.
       return this;
     }
+    public onDisconnect() { return this.disconnectPromise; }
+    public static disconnect(conn:Connection) { return conn.disconnect(); }
 
     private addPendingData_(buffer) {
       if (!this.pendingReadBuffer_) {
@@ -401,8 +410,8 @@ module TCP {
         this.addPendingData_(data);
         this.bufferedCallRecv_();
       } else {
-        // If we are not receiving data at the moment, we store the received
-        // data in a pendingReadBuffer_ for the next time this.callbacks.recv is
+        // If not receiving data at the moment, store the received data in a
+        // pendingReadBuffer_ for the next time this.callbacks.recv is
         // turned on.
         this.addPendingData_(data);
         this.pendingRead_ = false;
