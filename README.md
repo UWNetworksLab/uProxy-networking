@@ -32,6 +32,6 @@ At the moment, the way to test that this works is to just curl a webpage
 through the proxy which socks-rtc sets up if you've built it successfully.
 For example:
 
-`curl -x SOCKS5://localhost:9999 www.google.com`
+`curl -x socks5h://localhost:9999 www.google.com`
 
 There will be actual tests soon!

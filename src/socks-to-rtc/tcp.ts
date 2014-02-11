@@ -278,8 +278,8 @@ module TCP {
      */
     constructor(public socketId, callbacks) {
       this.callbacks = {
-        recv: () => { console.log(this + ' no recv callback.'); },
-        sent: () => { console.log(this + ' no sent callback.'); }
+        recv: () => {};
+        sent: () => {}
       };
       this.isConnected = true;
       this.pendingReadBuffer_ = null;
