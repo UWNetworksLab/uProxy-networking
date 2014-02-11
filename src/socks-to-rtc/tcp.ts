@@ -174,7 +174,7 @@ module TCP {
      * Read data from one of the connection.
      * Assumes that the connection exists.
      */
-    private readConnectionData_ = (readInfo) => {
+    private readConnectionData_ = (readInfo:ISocketReadInfo) => {
       if (!(readInfo.socketId in this.conns)) {
         console.error('connectionRead: received data for non-existing socket ' +
                      readInfo.socketId);
@@ -255,7 +255,7 @@ module TCP {
     // user might need (ie socketInfo). The socket shouldn't be doing work for
     // the user until the internals are ready.
     private initialized_:boolean = false;
-    public callbacks;
+    private callbacks:IConnectionCallbacks;
 
     private disconnectPromise:Promise<void> = null;
     private fulfillDisconnect = null;
@@ -277,7 +277,10 @@ module TCP {
      * This constructor should not be called directly.
      */
     constructor(public socketId, callbacks) {
-      this.callbacks = callbacks;
+      this.callbacks = {
+        recv: () => { console.log(this + ' no recv callback.'); },
+        sent: () => { console.log(this + ' no sent callback.'); }
+      };
       this.isConnected = true;
       this.pendingReadBuffer_ = null;
       this.recvOptions = null;
@@ -285,7 +288,6 @@ module TCP {
       this.disconnectPromise = new Promise<void>((F, R) => {
         this.fulfillDisconnect = F;  // To be fired on disconnect.
       })
-      console.log('created tcp connection ' + socketId);
     }
 
     /**
@@ -356,7 +358,7 @@ module TCP {
      * @param {String} msg The message to send.
      * @param {Function} callback The function to call when the message has sent.
      */
-    public send(msg:string, callback?) {
+    public send = (msg:string, callback?) => {
       // Register sent callback.
       if ('string' !== (typeof msg)) {
         console.warn('Connection.send: got non-string object.');
@@ -369,7 +371,7 @@ module TCP {
     /**
      * Sends a message pre-formatted into an arrayBuffer.
      */
-    public sendRaw(msg, callback?) {
+    public sendRaw = (msg, callback?) => {
       if(!this.isConnected) {
         console.warn('TCP.Connection socket#' + this.socketId + ' - ' +
             ' sendRaw() whilst disconnected.');
@@ -395,7 +397,7 @@ module TCP {
 
     public onceDisconnected() { return this.disconnectPromise; }
 
-    private addPendingData_(buffer:ArrayBuffer) {
+    private addPendingData_ = (buffer:ArrayBuffer) => {
       if (!this.pendingReadBuffer_) {
         this.pendingReadBuffer_ = buffer;
       } else {
@@ -410,7 +412,7 @@ module TCP {
     /**
      * Reads data from the socket.
      */
-    public read = (data) => {
+    public read = (data:ArrayBuffer) => {
       if (this.callbacks.recv && this.initialized_) {
         this.addPendingData_(data);
         this.bufferedCallRecv_();
@@ -435,7 +437,7 @@ module TCP {
       return {
         socketId: this.socketId,
         socketInfo: this.socketInfo,
-        callbacks: this.callbacks,
+        // callbacks: this.callbacks,
         isConnected: this.isConnected,
         pendingReadBuffer_: this.pendingReadBuffer_,
         recvOptions: this.recvOptions,

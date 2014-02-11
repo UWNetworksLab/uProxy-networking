@@ -2,21 +2,9 @@
  * Chrome sockets over freedom sockets.
  * TODO: This should be refactored into freedom someday...
  */
+/// <reference path='interfaces/socket.d.ts' />
 
 declare var chrome:any;
-
-
-// Platform independent interface. TODO: Put somewhere so firefox can use it.
-interface ISockets {
-  create:any;
-  listen:any;
-  connect:any;
-  write:any;
-  getInfo:any;
-  disconnect:any;
-  destroy:any;
-  on?:any;
-}
 
 
 // http://developer.chrome.com/apps/socket.html
@@ -104,23 +92,24 @@ var ERROR_MAP = {
  * the socket user.
  */
 var readSocket = function(socketId) {
-  var saved_socketId = socketId;
-  var dataRead = (readInfo) => {
-    if (readInfo.resultCode > 0) {
-      var arg = {socketId: socketId, data: readInfo.data};
+  var dataRead = function (readInfo) {
+    var resultCode = readInfo.resultCode;
+    if (resultCode > 0) {
+      var arg = { socketId: socketId, data: readInfo.data };
       this.dispatchEvent('onData', arg);
       chrome.socket.read(socketId, null, dataRead);
-    } else if (0 === readInfo.resultCode) {
+      return;
+    }
+    var msg = '' + resultCode;
+    if (msg in ERROR_MAP) {
+        msg = ERROR_MAP[msg];
+    }
+    if (0 === resultCode) {
       console.log('socket ' + socketId + ' has been closed.')
-      this.dispatchEvent('onDisconnect', { socketId: socketId, error: msg });
     } else {
-      var msg = '' + readInfo.resultCode;
-      if (msg in ERROR_MAP) {
-          msg = ERROR_MAP[msg];
-      }
-      console.error('When reading from socket ' + socketId + ', return encounter error ' + msg);
-      this.dispatchEvent('onDisconnect', { socketId: socketId, error: msg });
-    };
-  };
+      console.error('socket ' + socketId + ': ' + msg);
+    }
+    this.dispatchEvent('onDisconnect', { socketId: socketId, error: msg });
+  }.bind(this);
   chrome.socket.read(socketId, null, dataRead);
 };
