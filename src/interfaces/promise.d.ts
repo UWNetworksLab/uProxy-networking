@@ -18,18 +18,19 @@ declare class Promise<T> {
   constructor (f:(fulfill:(t?:T)=>void,
                   reject:(e:Error)=>void)=>void);
 
-  // |onTulfilled| either returns a promise...
+  // |onFulfilled| either returns a promise...
   then<T2> (fulfill:(t:T) => Promise<T2>,
-            reject?:(e:Error) => void)
+            reject?:(e:Error) => Promise<T2>)
       :Promise<T2>;
 
   // or the next fulfillment object directly.
   then<T2> (fulfill?:(t:T) => T2,
-            reject?:(e:Error) => void)
+            reject?:(e:Error) => T2)
       :Promise<T2>;
 
-  catch (catchFn:(e:Error) => void)
-      :Promise<T>;
+  catch (catchFn:(e:Error) => Promise<T>):Promise<T>;
+  catch (catchFn:(e:Error) => T):Promise<T>;
+  catch (catchFn:(e:Error) => void):Promise<void>;
 
   static resolve<T> (thenable:Thenable<T>)
       :Promise<T>;

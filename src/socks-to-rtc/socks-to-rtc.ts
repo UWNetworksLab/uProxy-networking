@@ -43,7 +43,7 @@ module SocksToRTC {
         console.error('SocksToRTC.Peer: No Peer ID provided! Cannot connect.');
         return false;
       }
-      this.shutdown();  // Reset everything.
+      this.reset();  // Reset everything.
       this.peerId = peerId;
 
       // Create SOCKS server and start listening.
@@ -87,8 +87,8 @@ module SocksToRTC {
     /**
      * Stop SOCKS server and close data channels and peer connections.
      */
-    public shutdown = () => {
-      console.log('Shutting down SocksToRTC.Peer...');
+    public reset = () => {
+      console.log('Resetting SocksToRTC.Peer...');
       if (this.socksServer) {
         this.socksServer.disconnect();  // Disconnects internal TCP server.
         this.socksServer = null;
@@ -123,7 +123,7 @@ module SocksToRTC {
       // When the TCP-connection receives data, send to sctp peer.
       // When it disconnects, clear the |channelLabel|.
       session.onRecv((buf) => { this.sendToPeer_(channelLabel, buf); });
-      session.oncenDisconnected()
+      session.onceDisconnected()
           .then(() => {
             this.closeConnection_(channelLabel);
           });
@@ -146,12 +146,14 @@ module SocksToRTC {
      */
     private closeConnection_ = (channelLabel:string) => {
       console.log('CLOSE CHANNEL ' + channelLabel);
-      if (this.socksSessions[channelLabel]) {
-        this.socksServer.endSession(this.socksSessions[channelLabel]);
-        delete this.socksSessions[channelLabel];
+      if (!(channelLabel in this.socksSessions)) {
+        throw Error('Unexpected missing SOCKs session to close for ' +
+                    channelLabel);
       }
+      this.socksServer.endSession(this.socksSessions[channelLabel]);
+      delete this.socksSessions[channelLabel];
       if (this.sctpPc) {
-        // Further closeConnection_ calls may occur after shutdown (from TCP
+        // Further closeConnection_ calls may occur after reset (from TCP
         // disconnections).
         this.sctpPc.closeDataChannel(channelLabel);
       }
@@ -249,7 +251,7 @@ function initClient() {
   var peer = new SocksToRTC.Peer();
   freedom.on('handleSignalFromPeer', peer.handlePeerSignal);
   freedom.on('start', peer.start);
-  freedom.on('stop', peer.shutdown);
+  freedom.on('stop', peer.reset);
   console.log('SOCKs to RTC peer created.');
   freedom.emit('ready', {});
 }

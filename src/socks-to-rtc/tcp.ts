@@ -27,6 +27,11 @@ module TCP {
     socketId:number;
   }
 
+  interface IConnectionCallbacks {
+    recv:any;
+    sent:any;
+  }
+
   /**
    * TCP.Server
    *
@@ -45,7 +50,7 @@ module TCP {
 
     // TODO: replace with promises.
     private callbacks:any;
-    private connectionCallbacks:any;
+    private connectionCallbacks:IConnectionCallbacks;
 
     constructor(public addr, public port, options?) {
       this.maxConnections = (options && options.maxConnections) ||
@@ -92,7 +97,7 @@ module TCP {
     private startListening_ = (createInfo:ICreateInfo):Promise<number>  => {
       this.serverSocketId = createInfo.socketId;
       if (this.serverSocketId <= 0) {
-        return Util.Reject('failed to create socket on ' + this.endpoint_);
+        return Util.reject('failed to create socket on ' + this.endpoint_);
       }
       console.log('TCP.Server: created socket ' + this.serverSocketId +
           ' listening at ' + this.endpoint_);
@@ -108,7 +113,7 @@ module TCP {
      */
     private attachSocketHandlers_ = (resultCode:number) => {
       if (0 !== resultCode) {
-        return Util.Reject('listen failed on ' + this.endpoint_ +
+        return Util.reject('listen failed on ' + this.endpoint_ +
                              ' \n Result Code: ' + resultCode);
       }
       // Success. Attach connect, disconnect, and data handlers.
@@ -122,7 +127,7 @@ module TCP {
      */
     private accept_ = (acceptValue) => {
       if (this.serverSocketId !== acceptValue.serverSocketId) {
-        return Util.Reject('cannot accept unexpected socket ID: ' +
+        return Util.reject('cannot accept unexpected socket ID: ' +
             this.serverSocketId + ' vs ' + acceptValue.serverSocketId);
       }
       var socketId = acceptValue.clientSocketId;
@@ -131,7 +136,7 @@ module TCP {
         // Stop too many connections.
         fSockets.disconnect(socketId);
         fSockets.destroy(socketId);
-        return Util.Reject('too many connections: ' + connectionsCount);
+        return Util.reject('too many connections: ' + connectionsCount);
       }
       var promise = this.conns[socketId] = Connection.Create(
           socketId, this.connectionCallbacks);
@@ -184,8 +189,6 @@ module TCP {
       delete this.conns[conn.socketId];
     }
 
-    public isOn() { return this.serverSocketId > 0; }
-
     /**
      * Set an event handler. See http://developer.chrome.com/trunk/apps/socket.
      * html for more about the events than can happen.
@@ -217,7 +220,7 @@ module TCP {
      */
     public endConnection = (socketId) => {
       console.log('ENDING ' + socketId);
-      this.conns[socketId]
+      return this.conns[socketId]
           .then(Connection.disconnect)
           .then(this.removeFromServer_);
       // TODO: Do we need an external callback here?
@@ -258,7 +261,8 @@ module TCP {
     private fulfillDisconnect = null;
 
     // Static connection creation function which returns a promise.
-    static Create = (socketId, callbacks):Promise<Connection> => {
+    static Create = (socketId:number, callbacks:IConnectionCallbacks)
+        :Promise<Connection> => {
       return new Promise((F,R) => {
         var conn = new Connection(socketId, callbacks);
         fSockets.getInfo(socketId).done((socketInfo) => {
@@ -317,7 +321,7 @@ module TCP {
     /**
      * Obtain a promise for a buffer as the result of a recv.
      */
-    public receive = (minByteLength?:number):Promise<any> => {
+    public receive = (minByteLength?:number):Promise<ArrayBuffer> => {
       return new Promise((F, R) => {
         if (minByteLength) {
           this.recvOptions = {
@@ -387,10 +391,11 @@ module TCP {
       this.fulfillDisconnect();  // Fire the disconnect Promise.
       return this;
     }
-    public onDisconnect() { return this.disconnectPromise; }
     public static disconnect(conn:Connection) { return conn.disconnect(); }
 
-    private addPendingData_(buffer) {
+    public onceDisconnected() { return this.disconnectPromise; }
+
+    private addPendingData_(buffer:ArrayBuffer) {
       if (!this.pendingReadBuffer_) {
         this.pendingReadBuffer_ = buffer;
       } else {
@@ -488,7 +493,7 @@ module Util {
   /**
    * Wrapper around creating a Promise rejection with Error.
    */
-  export function Reject(msg:string) {
+  export function reject(msg:string) {
     return Promise.reject(new Error(msg));
   }
 
