@@ -38,17 +38,17 @@ module SocksToRTC {
     public start = (options) => {
       console.log('Client: on(start)... ' + JSON.stringify(options));
       // Bind peerID to scope so promise can work.
-      var peerId = this.peerId = options.peerId;
+      var peerId = options.peerId;
       if (!peerId) {
         console.error('SocksToRTC.Peer: No Peer ID provided! Cannot connect.');
         return false;
       }
-      this.shutdown();  // Reset everything.
+      this.reset();  // Reset everything.
+      this.peerId = peerId;
 
       // Create SOCKS server and start listening.
-      this.socksServer = new Socks.Server(
-          options.host, options.port,
-          this.onConnection_);
+      this.socksServer = new Socks.Server(options.host, options.port,
+                                          this.onConnection_);
       this.socksServer.listen();
 
       // Create sctp connection to a peer.
@@ -87,8 +87,8 @@ module SocksToRTC {
     /**
      * Stop SOCKS server and close data channels and peer connections.
      */
-    public shutdown = () => {
-      console.log('Shutting down SocksToRTC.Peer...');
+    public reset = () => {
+      console.log('Resetting SocksToRTC.Peer...');
       if (this.socksServer) {
         this.socksServer.disconnect();  // Disconnects internal TCP server.
         this.socksServer = null;
@@ -110,9 +110,9 @@ module SocksToRTC {
 
     /**
      * Setup data channel and tie to corresponding SOCKS5 session.
+     * Returns: IP and port of destination.
      */
-    private onConnection_ = (session:Socks.Session, address, port,
-                             connectedCallback) => {
+    private onConnection_ = (session:Socks.Session, address, port) => {
       if (!this.sctpPc) {
         console.error('SocksToRTC.Peer: onConnection called without ' +
                       'SCTP peer connection.');
@@ -123,7 +123,11 @@ module SocksToRTC {
       // When the TCP-connection receives data, send to sctp peer.
       // When it disconnects, clear the |channelLabel|.
       session.onRecv((buf) => { this.sendToPeer_(channelLabel, buf); });
-      session.onDisconnect(() => { this.closeConnection_(channelLabel); });
+      session.onceDisconnected()
+          .then(() => {
+            this.closeConnection_(channelLabel);
+          });
+
       this.sctpPc.send({
           'channelLabel': channelLabel,
           'text': JSON.stringify({ host: address, port: port })
@@ -132,22 +136,24 @@ module SocksToRTC {
       // TODO: we are not connected yet... should we have some message passing
       // back from the other end of the data channel to tell us when it has
       // happened, instead of just pretended?
-
       // Allow SOCKs headers
       // TODO: determine if these need to be accurate.
-      connectedCallback({ ipAddrString: '127.0.0.1', port: 0 });
+      return { ipAddrString: '127.0.0.1', port: 0 };
     }
 
     /**
      * Close a particular tcp-connection and data channel pair.
      */
     private closeConnection_ = (channelLabel:string) => {
-      if (this.socksSessions[channelLabel]) {
-        this.socksSessions[channelLabel].disconnect();
-        delete this.socksSessions[channelLabel];
+      console.log('CLOSE CHANNEL ' + channelLabel);
+      if (!(channelLabel in this.socksSessions)) {
+        throw Error('Unexpected missing SOCKs session to close for ' +
+                    channelLabel);
       }
+      this.socksServer.endSession(this.socksSessions[channelLabel]);
+      delete this.socksSessions[channelLabel];
       if (this.sctpPc) {
-        // Further closeConnection_ calls may occur after shutdown (from TCP
+        // Further closeConnection_ calls may occur after reset (from TCP
         // disconnections).
         this.sctpPc.closeDataChannel(channelLabel);
       }
@@ -245,7 +251,7 @@ function initClient() {
   var peer = new SocksToRTC.Peer();
   freedom.on('handleSignalFromPeer', peer.handlePeerSignal);
   freedom.on('start', peer.start);
-  freedom.on('stop', peer.shutdown);
+  freedom.on('stop', peer.reset);
   console.log('SOCKs to RTC peer created.');
   freedom.emit('ready', {});
 }
