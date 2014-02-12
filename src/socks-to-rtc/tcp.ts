@@ -36,9 +36,6 @@ module TCP {
    * TCP.Server
    *
    * Aside: see http://developer.chrome.com/trunk/apps/socket.html#method-getNetworkList
-   * @param {Object} options Options of the form { maxConnections: integer,
-   * allowHalfOpen: bool }.
-   * @param {function} connect_callback Called when socket is connected.
    */
   export class Server {
 
@@ -50,8 +47,12 @@ module TCP {
 
     // TODO: replace with promises.
     private callbacks:any;
-    private connectionCallbacks:IConnectionCallbacks;
 
+    /**
+     * Create TCP server.
+     * @param {Object} options Options of the form { maxConnections: integer,
+     * allowHalfOpen: bool }.
+     */
     constructor(public addr, public port, options?) {
       this.maxConnections = (options && options.maxConnections) ||
                             DEFAULT_MAX_CONNECTIONS;
@@ -60,12 +61,6 @@ module TCP {
       this.callbacks = {
         connection: null,  // Called when a new socket connection happens.
         disconnect: null,  // Called when server stops listening for connections.
-      };
-
-      // Default callbacks for when we create new Connections.
-      this.connectionCallbacks = {
-        recv: null,       // Called when server receives data.
-        sent: null,       // Called when server has sent data.
       };
     }
 
@@ -138,8 +133,7 @@ module TCP {
         fSockets.destroy(socketId);
         return Util.reject('too many connections: ' + connectionsCount);
       }
-      var promise = this.conns[socketId] = Connection.Create(
-          socketId, this.connectionCallbacks);
+      var promise = this.conns[socketId] = Connection.Create(socketId);
       console.log('TCP.Server accepted connection ' + socketId);
       promise.then(this.callbacks.connection);  // External connect handler.
     }
@@ -238,10 +232,6 @@ module TCP {
    * TCP.Connection - Holds a TCP connection to a client
    *
    * @param {number} socketId The ID of the server<->client socket.
-   * @param {Server.callbacks.connection}  serverConnectionCallback
-   *    Called when the new TCP connection is formed and initialized,
-   *    passing itself as a parameter.
-   * @param {Server.connectionCallbacks} callbacks
    */
   export class Connection {
 
@@ -261,10 +251,9 @@ module TCP {
     private fulfillDisconnect = null;
 
     // Static connection creation function which returns a promise.
-    static Create = (socketId:number, callbacks:IConnectionCallbacks)
-        :Promise<Connection> => {
+    static Create = (socketId:number):Promise<Connection> => {
       return new Promise((F,R) => {
-        var conn = new Connection(socketId, callbacks);
+        var conn = new Connection(socketId);
         fSockets.getInfo(socketId).done((socketInfo) => {
           conn.socketInfo = socketInfo;
           conn.initialized_ = true;
@@ -276,9 +265,9 @@ module TCP {
     /**
      * This constructor should not be called directly.
      */
-    constructor(public socketId, callbacks) {
+    constructor(public socketId) {
       this.callbacks = {
-        recv: () => {};
+        recv: () => {},
         sent: () => {}
       };
       this.isConnected = true;
