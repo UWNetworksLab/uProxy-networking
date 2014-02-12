@@ -3,5 +3,5 @@
 */
 window.freedomcfg = function(register) {
   // Necessary so we can actually use chrome sockets.
-  register('core.socket', ChromeSockets);  // src/chrome-fsocket.ts
+  register('core.socket', Sockets.Chrome);  // src/chrome-fsocket.ts
 }

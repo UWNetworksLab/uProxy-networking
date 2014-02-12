@@ -29,7 +29,7 @@ module.exports = (grunt) ->
       socks2rtc: {
         src: ['src/interfaces/*.d.ts',
               'src/socks-to-rtc/*.ts'],
-        outDir: 'tmp/',
+        outDir: 'tmp/socks-to-rtc/',
         options: {
           sourceMap: false
         }
@@ -37,7 +37,7 @@ module.exports = (grunt) ->
       rtc2net: {
         src: ['src/interfaces/*.d.ts',
               'src/rtc-to-net/*.ts'],
-        outDir: 'tmp/',
+        outDir: 'tmp/rtc-to-net/',
         options: {
           sourceMap: false
         }
