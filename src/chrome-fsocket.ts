@@ -61,16 +61,12 @@ module Sockets {
     }
 
     public destroy = (socketId:number, continuation) => {
-      if (chrome && chrome.socket) {
-        chrome.socket.destroy(socketId);
-      }
+      chrome.socket.destroy(socketId);
       continuation();
     }
 
     public disconnect = (socketId:number, continuation) => {
-      if (chrome && chrome.socket) {
-        chrome.socket.disconnect(socketId);
-      }
+      chrome.socket.disconnect(socketId);
       continuation();
     }
 
@@ -79,27 +75,28 @@ module Sockets {
      * the socket user.
      */
     private doReadLoop_ = (socketId:number) => {
-      return this.promiseRead_(socketId)
-          .then(this.checkResultCode_)
-          .then((data) => {
-            // This still dispatches to *all* handlers attached to onData, and
-            // puts the responsibility on the user of this object to act only for
-            // the socket corresponding to |socketId|. Really bad.
-            // TODO: Make the events a bijection.
-            this.fireEvent('onData', {
-              socketId: socketId,
-              data: data
-            });
-            return socketId;
-          })
-          .then(this.doReadLoop_)
-          .catch((e) => {
-            console.log('ChromeSocket ' + socketId + ': ' + e.message);
-            this.fireEvent('onDisconnect', {
+      var loop = () => {
+        return this.promiseRead_(socketId)
+            .then(this.checkResultCode_)
+            .then((data) => {
+              // This still dispatches to *all* handlers attached to onData, and
+              // puts the responsibility on the user of this object to act only for
+              // the socket corresponding to |socketId|. Really bad.
+              // TODO: Make the events a bijection.
+              this.fireEvent('onData', {
                 socketId: socketId,
-                error: e.message
-            });
-          })
+                data: data
+              });
+            })
+            .then(loop);
+      }
+      var readLoop = loop().catch((e) => {
+        console.log('ChromeSocket ' + socketId + ': ' + e.message);
+        this.fireEvent('onDisconnect', {
+            socketId: socketId,
+            error: e.message
+        });
+      })
     }
 
     /**
@@ -115,13 +112,13 @@ module Sockets {
      */
     private checkResultCode_ = (readInfo:ChromeReadInfo) => {
       var code = readInfo.resultCode;
-      if (code <= 0) {
+      if (0 === code) {
+        return Promise.reject(new Error('remotely closed.'));
+      }
+      if (code < 0) {
         var msg = '' + code;
         if (msg in ERROR_MAP) {
           msg = ERROR_MAP[msg];
-        }
-        if (0 === code) {
-          return Promise.reject(new Error('remotely closed.'));
         }
         return Promise.reject(new Error(msg));
       }
