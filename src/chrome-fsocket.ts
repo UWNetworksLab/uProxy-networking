@@ -20,7 +20,7 @@ module Sockets {
    *   (http://developer.chrome.com/apps/socket.html)
    * for the freedom interface.
    */
-  export class Chrome implements ISockets {
+  export class Chrome implements Sockets.API {
 
     constructor (public channel) {}
 

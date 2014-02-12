@@ -11,7 +11,7 @@
  *
  * @param {ArrayBuffer} buf The buffer to convert.
  */
-/// <reference path='../chrome-fsocket.ts' />
+/// <reference path='../interfaces/socket.d.ts' />
 /// <reference path='../interfaces/promise.d.ts' />
 
 
@@ -20,16 +20,19 @@ module TCP {
   var DEFAULT_MAX_CONNECTIONS = 1048576;
 
   // Freedom Sockets API.
-  // TODO: throw an Error if this isn't here.
-  var fSockets:ISockets = freedom['core.socket']();
-
-  interface ICreateInfo {
-    socketId:number;
-  }
+  var fSockets:Sockets.API = freedom['core.socket']();
 
   interface IConnectionCallbacks {
     recv:any;
     sent:any;
+  }
+
+  /**
+   * TCP.ServerOptions
+   */
+  export interface ServerOptions {
+    maxConnections?:number;
+    allowHalfOpen?:boolean;
   }
 
   /**
@@ -50,10 +53,8 @@ module TCP {
 
     /**
      * Create TCP server.
-     * @param {Object} options Options of the form { maxConnections: integer,
-     * allowHalfOpen: bool }.
      */
-    constructor(public addr, public port, options?) {
+    constructor(public addr, public port, options?:ServerOptions) {
       this.maxConnections = (options && options.maxConnections) ||
                             DEFAULT_MAX_CONNECTIONS;
       this.endpoint_ = addr + ':' + port;
@@ -77,10 +78,9 @@ module TCP {
     }
 
     /**
-     * Promise the creation of a freedom socket.
-     * TODO: When freedom uses promises, simplify this function away.
+     * Wrapper which returns a promise for a created socket.
      */
-    private createSocket_ = ():Promise<ICreateInfo> => {
+    private createSocket_ = ():Promise<Sockets.CreateInfo> => {
       return new Promise((F, R) => {
         fSockets.create('tcp', {}).done(F).fail(R);
       });
@@ -89,7 +89,7 @@ module TCP {
     /**
      * Promise that socket begins listening.
      */
-    private startListening_ = (createInfo:ICreateInfo):Promise<number>  => {
+    private startListening_ = (createInfo:Sockets.CreateInfo):Promise<number>  => {
       this.serverSocketId = createInfo.socketId;
       if (this.serverSocketId <= 0) {
         return Util.reject('failed to create socket on ' + this.endpoint_);
@@ -168,7 +168,7 @@ module TCP {
      * Read data from one of the connection.
      * Assumes that the connection exists.
      */
-    private readConnectionData_ = (readInfo:ISocketReadInfo) => {
+    private readConnectionData_ = (readInfo:Sockets.ReadInfo) => {
       if (!(readInfo.socketId in this.conns)) {
         console.error('connectionRead: received data for non-existing socket ' +
                      readInfo.socketId);
@@ -344,7 +344,6 @@ module TCP {
      * Sends a message down the wire to the remote side
      *
      * @see http://developer.chrome.com/trunk/apps/socket.html#method-write
-     * @param {String} msg The message to send.
      * @param {Function} callback The function to call when the message has sent.
      */
     public send = (msg:string, callback?) => {
