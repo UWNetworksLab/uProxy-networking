@@ -91,7 +91,7 @@ module Sockets {
             .then(loop);
       }
       var readLoop = loop().catch((e) => {
-        console.log('ChromeSocket ' + socketId + ': ' + e.message);
+        console.warn('ChromeSocket ' + socketId + ': ' + e.message);
         this.fireEvent('onDisconnect', {
             socketId: socketId,
             error: e.message
@@ -108,7 +108,7 @@ module Sockets {
 
     /**
      * Check the result code of a read - if non-positive, reject the promise.
-     * Othrerwise, pass along read data.
+     * Otherwise, pass along read data.
      */
     private checkResultCode_ = (readInfo:ChromeReadInfo) => {
       var code = readInfo.resultCode;

@@ -10,6 +10,14 @@ declare module Channel {
 
 }  // module Channel
 
+
+// Target peer's information, to be sent over a signalling channel.
+interface PeerInfo {
+  host:string;
+  port:number;
+  peerId:string;
+}
+
 interface PeerSignal {
   peerId:string;
   data:string;  // Expected in JSON-format.

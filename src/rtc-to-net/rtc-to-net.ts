@@ -34,7 +34,7 @@ module RtcToNet {
 
       // Create a signalling channel.
       fCore.createChannel().done((chan) => {
-        this.sctpPc.setup(chan.identifier, 'server-for-' + this.peerId, false);
+        this.sctpPc.setup(chan.identifier, 'RtcToNet-' + this.peerId, false);
         chan.channel.done((channel) => {
           channel.on('message', (msg) => {
             freedom.emit('sendSignalToPeer', {
@@ -78,25 +78,28 @@ module RtcToNet {
       for (var i in this.netClients) {
         this.netClients[i].close();  // Will close its data channel.
       }
-      this.sctpPc.close();
+        this.sctpPc.close();
     }
 
     /**
      * Pass messages from peer connection to net.
      */
     private passPeerDataToNet_ = (message:Channel.Message) => {
+      // TODO: This handler is also O(n) for ALL the data channels. Super
+      // terrible. Maybe it's fixed after freedom 0.2?
       var label = message.channelLabel;
       if (!label) {
         console.error('Message received but missing channelLabel. Msg: ' +
                       JSON.stringify(message));
         return;
       }
+
       if (message.text) {
         // Text from the peer indicates request for a new destination.
         // Assumes |message.text| is a Net.Destination.
-        console.log('new request for: ' + message.text);
+        console.log(label + ' <- new request: ' + message.text);
         if (label in this.netClients) {
-          console.error('Net.Client already exists for data channel: ' + label);
+          console.warn('Net.Client already exists for data channel: ' + label);
           return;
         }
         this.prepareNetChannelLifecycle_(label, JSON.parse(message.text));
@@ -119,6 +122,10 @@ module RtcToNet {
      * Return data from Net to Peer.
      */
     private serveDataToPeer_ = (channelLabel:string, data:ArrayBuffer) => {
+      // TODO: peer connection is firing a response for *every* channelLabel.
+      // There is no way to actualy distinguish.
+      console.log('RtcToNet: replying with ' + data.byteLength + ' bytes '+
+                  '-----> ' + channelLabel);
       this.sctpPc.send({
           'channelLabel': channelLabel,
           'buffer': data
@@ -147,6 +154,7 @@ module RtcToNet {
         console.warn('No Net.Client to close for ' + arg.channelId)
         return;
       }
+      console.log('Net.Client: CLOSE! ' + arg.channelId);
       this.netClients[arg.channelId].close();
       delete this.netClients[arg.channelId];
     }
@@ -182,7 +190,7 @@ module RtcToNet {
         return;
       }
       // TODO: Check for access control?
-      console.log('RtcToNet: sending signal to transport.');  // + JSON.stringify(signal.data));
+      console.log('RtcToNet: sending signal to transport: ' + JSON.stringify(signal.data));
       var peer = this.fetchOrCreatePeer_(signal.peerId);
       peer.sendSignal(signal.data);
     }
@@ -195,7 +203,6 @@ module RtcToNet {
       if (peer) {
         return peer;
       }
-      console.log('rtc-to-net.ts: new peer: ' + peerId);
       this.peers_[peerId] = peer = new RtcToNet.Peer(peerId);
       return peer;
     }

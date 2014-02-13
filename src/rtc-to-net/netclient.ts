@@ -41,7 +41,7 @@ module Net {
      */
     constructor (
         // External callback for data coming back over this socket.
-        private onResponse:(buffer:any)=>any,
+        private onResponse:(buffer:ArrayBuffer)=>any,
         private destination:Destination) {
       this.state = State.CREATING_SOCKET;
       this.closePromise = new Promise<void>((F, R) => {
@@ -70,7 +70,7 @@ module Net {
       }
     }
 
-    public close = this.onClose_;
+    public close = () => { this.onClose_ };
 
     /**
      * Wrapper which returns a promise for a created socket.
@@ -107,18 +107,17 @@ module Net {
         return Promise.reject(new Error('connect error ' + result));
       }
       this.state = State.CONNECTED;
-      // TODO: Update the onRead to socket-specific when that happens.
-      fSockets.on('onData', this.readConnectionData_);
+      fSockets.on('onData', this.readData_);
+      fSockets.on('onDisconnect', this.close);
       if (0 < this.queue.length) {
         this.send(this.queue.shift());
       }
     }
 
     /**
-     * Read data from one of the connection.
-     * Assumes that the connection exists.
+     * Read data from the destination.
      */
-    private readConnectionData_ = (readInfo:Sockets.ReadInfo) => {
+    private readData_ = (readInfo:Sockets.ReadInfo) => {
       if (readInfo.socketId !== this.socketId) {
         // TODO: currently our Freedom socket API sends all messages to every
         // listener. Most crappy. Fix so that we tell it to listen to a
@@ -132,7 +131,7 @@ module Net {
      * After writing data to socket...
      */
     private onWrite_ = (writeInfo) => {
-      console.log('Bytes written: ' + writeInfo.bytesWritten);
+      // console.log('Bytes written: ' + writeInfo.bytesWritten);
       // TODO: change sockets to having an explicit failure rather than giving -1
       // in the bytesWritten field.
       if (0 >= writeInfo.bytesWritten) {
