@@ -81,11 +81,20 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-shell'
   grunt.loadNpmTasks 'grunt-ts'
 
-  grunt.registerTask 'default', [
+  grunt.registerTask 'build', [
     'ts:socks2rtc',
     'ts:rtc2net',
     'ts:chromeFSocket',
     'copy:app'
+  ]
+
+  grunt.registerTask 'test', [
+    'build',
+    'jasmine'
+  ]
+
+  grunt.registerTask 'default', [
+    'build'
   ]
 
   # Freedom doesn't build correctly by itself - run this task when in a clean
