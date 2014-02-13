@@ -29,7 +29,7 @@ module.exports = (grunt) ->
       socks2rtc: {
         src: ['src/interfaces/*.d.ts',
               'src/socks-to-rtc/*.ts'],
-        outDir: 'tmp/',
+        outDir: 'tmp/socks-to-rtc/',
         options: {
           sourceMap: false
         }
@@ -37,7 +37,7 @@ module.exports = (grunt) ->
       rtc2net: {
         src: ['src/interfaces/*.d.ts',
               'src/rtc-to-net/*.ts'],
-        outDir: 'tmp/',
+        outDir: 'tmp/rtc-to-net/',
         options: {
           sourceMap: false
         }
@@ -60,6 +60,15 @@ module.exports = (grunt) ->
       }
     }
 
+    jasmine: {
+      # Eventually, this should be a wildcard once we've figured out how to run
+      # more dependencies under Jasmine.
+      src: 'chrome/js/socks-to-rtc/socks.js',
+      options : {
+        specs : 'spec/**/*_spec.js'
+      }
+    }
+
     clean: [
       'tmp/**',
       'chrome/js/**'
@@ -68,6 +77,7 @@ module.exports = (grunt) ->
 
   grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-clean'
+  grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-shell'
   grunt.loadNpmTasks 'grunt-ts'
 
