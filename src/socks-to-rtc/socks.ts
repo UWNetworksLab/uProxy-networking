@@ -74,12 +74,14 @@ module Socks {
           o  DST.PORT desired destination port in network octet
              order
   // TODO: typescript the SOCKS Request interface
+  // TODO: document all fields populated by interpretSocksRequest
   interface Request {
     version:number;
     cmd:REQUEST_CMD;
-    rsv:number;
     atyp:ATYP;
     failure:RESPONSE;
+    addressString:string;
+    port:number;
   }
   */
 
@@ -88,10 +90,14 @@ module Socks {
    * Parse byte array into a SOCKS request object.
    */
   export function interpretSocksRequest(byteArray:Uint8Array) {
-    if(byteArray.length < 9) {
-      return null;
-    }
     var result:any = {};
+
+    // Fail if the request is too short to be valid.
+    if(byteArray.length < 9) {
+      result.failure = RESPONSE.FAILURE;
+      return result;
+    }
+
     // Fail if client is not talking Socks version 5.
     result.version = byteArray[0];
     if (result.version !== VERSION5) {
@@ -104,7 +110,7 @@ module Socks {
     // Fail unless we got a CONNECT (to TCP) command.
     if (result.cmd != REQUEST_CMD.CONNECT) {
       result.failure = RESPONSE.UNSUPPORTED_COMMAND;
-      return;
+      return result;
     }
 
     // Parse address and port and set the callback to be handled by the
