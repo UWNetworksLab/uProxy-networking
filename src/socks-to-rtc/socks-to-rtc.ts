@@ -4,6 +4,7 @@
 */
 /// <reference path='socks.ts' />
 /// <reference path='../interfaces/peerconnection.d.ts' />
+/// <reference path='../interfaces/communications.d.ts' />
 
 // TODO replace with a reference to freedom ts interface once it exists.
 declare var freedom:any;
@@ -29,7 +30,7 @@ module SocksToRTC {
 
     // Active SOCKS sessions by corresponding SCTP channel id.
     private socksSessions:{[label:number]:Socks.Session} = {};
-    private messageQueue_:any[] = [];
+    private messageQueue_:string[] = [];  // Remove with freedom 0.2.0
     private peerId:string = null;
 
     /**
@@ -167,7 +168,7 @@ module SocksToRTC {
       var pc:PeerConnection = freedom['core.sctp-peerconnection']();
 
       // Handler for receiving data back from the remote RtcToNet.Peer.
-      pc.on('onReceived', (msg) => {
+      pc.on('onReceived', (msg:Channel.Message) => {
         if (!msg.channelLabel) {
           console.error('Message received but missing channelLabel. Msg: ' +
               JSON.stringify(msg));
@@ -197,7 +198,7 @@ module SocksToRTC {
      * Side note: When PeerConnection encounters a 'new' |channelLabel|, it
      * implicitly creates a new data channel.
      */
-    private sendToPeer_ = (channelLabel:string, buffer) => {
+    private sendToPeer_ = (channelLabel:string, buffer:ArrayBuffer) => {
       if (!this.sctpPc) {
         console.warn('SocksToRtc.Peer: SCTP peer connection not ready!');
         return;
@@ -211,9 +212,9 @@ module SocksToRTC {
      * peer connection.
      * msg : {peerId : string, data : json-string}
      */
-    public handlePeerSignal = (msg) => {
-      console.log('client handleSignalFromPeer: ' + JSON.stringify(msg) +
-                  ' with state ' + this.toString());
+    public handlePeerSignal = (msg:PeerSignal) => {
+      // console.log('client handleSignalFromPeer: ' + JSON.stringify(msg) +
+                  // ' with state ' + this.toString());
       if (this.signallingChannel) {
         this.signallingChannel.emit('message', msg.data);
       } else {

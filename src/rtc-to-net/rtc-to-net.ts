@@ -6,6 +6,7 @@ declare var freedom:any;
 
 /// <reference path='netclient.ts' />
 /// <reference path='../interfaces/peerconnection.d.ts' />
+/// <reference path='../interfaces/communications.d.ts' />
 
 module RtcToNet {
 
@@ -19,7 +20,7 @@ module RtcToNet {
     private signallingChannel:any = null;
     private sctpPc:PeerConnection;
     private netClients:{[channelLabel:string]:Net.Client} = {};
-    private messageQueue:any[] = [];  // Remove with freedom 0.2.0
+    private messageQueue:string[] = [];  // Remove with freedom 0.2.0
 
     constructor (public peerId:string) {
       console.log('New RtcToNet.Peer: ' + peerId);
@@ -60,7 +61,7 @@ module RtcToNet {
     /**
      * Send data over the peer's signalling channel, or queue if not ready.
      */
-    public sendSignal = (data:any) => {
+    public sendSignal = (data:string) => {
       if (!this.signallingChannel) {
         console.log('RtcToNet:Peer[' + this.peerId + '] signallingChannel ' +
                     'not yet ready. Adding to queue... ');
@@ -83,7 +84,7 @@ module RtcToNet {
     /**
      * Pass messages from peer connection to net.
      */
-    private passPeerDataToNet_ = (message) => {
+    private passPeerDataToNet_ = (message:Channel.Message) => {
       var label = message.channelLabel;
       if (!label) {
         console.error('Message received but missing channelLabel. Msg: ' +
@@ -112,7 +113,7 @@ module RtcToNet {
     /**
      * Return data from Net to Peer.
      */
-    private serveDataToPeer_ = (channelLabel:string, data) => {
+    private serveDataToPeer_ = (channelLabel:string, data:ArrayBuffer) => {
       this.sctpPc.send({
           'channelLabel': channelLabel,
           'buffer': data
@@ -138,12 +139,11 @@ module RtcToNet {
      * TODO: Figure out type for |arg|.
      */
     private closeNetClient_ = (arg) => {
-      var netClient = this.netClients[arg.channelId];
-      if (!netClient) {
+      if (!(arg.channelId in this.netClients)) {
         console.warn('No Net.Client to close for ' + arg.channelId)
         return;
       }
-      netClient.close();
+      this.netClients[arg.channelId].close();
       delete this.netClients[arg.channelId];
     }
 
@@ -170,17 +170,15 @@ module RtcToNet {
     private peers_:{[peerId:string]:Peer} = {};
 
     /**
-     * signal.peerId : of the peer sending the signal.
-     * signal.data : message body from signalling channel, typically SDP headers.
+     * Send PeerSignal over peer's signallin chanel.
      */
-    public handleSignal = (signal) => {
-      console.log('server handleSignalFromPeer:' + JSON.stringify(signal));
+    public handleSignal = (signal:PeerSignal) => {
       if (!signal.peerId) {
         console.error('RtcToNet.Server: signal received with no peerId!');
         return;
       }
       // TODO: Check for access control?
-      console.log('sending to transport: ' + JSON.stringify(signal.data));
+      console.log('RtcToNet: sending signal to transport.');  // + JSON.stringify(signal.data));
       var peer = this.fetchOrCreatePeer_(signal.peerId);
       peer.sendSignal(signal.data);
     }
