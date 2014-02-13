@@ -34,4 +34,4 @@ For example:
 
 `curl -x socks5h://localhost:9999 www.google.com`
 
-There will more tests soon!
+There will be more tests soon!
