@@ -33,16 +33,20 @@ module Net {
     private queue:any[] = [];
     private state:State = State.CLOSED;
 
+    private closePromise:Promise<void>;
+    private fulfillClose:()=>void;
+
     /**
      * Constructing a Net.Client immediately begins a socket connection.
      */
     constructor (
         // External callback for data coming back over this socket.
         private onResponse:(buffer:any)=>any,
-        // External callback for closure of this socket.
-        private onClose,
         private destination:Destination) {
       this.state = State.CREATING_SOCKET;
+      this.closePromise = new Promise<void>((F, R) => {
+        this.fulfillClose = F;  // To be fired on close.
+      });
       this.createSocket_()  // Initialize client TCP socket.
           .then(this.connect_)
           .then(this.attachHandlers_)
@@ -156,8 +160,13 @@ module Net {
         fSockets.destroy(this.socketId);
       }
       this.socketId = null;
-      this.onClose();  // Fire external callback;
+      this.fulfillClose();
     }
+
+    /**
+     * Promise the future closing of this client.
+     */
+    public onceClosed = () => { return this.closePromise; }
 
   }  // Net.Client
 

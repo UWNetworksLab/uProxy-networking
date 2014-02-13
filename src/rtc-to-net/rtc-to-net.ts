@@ -95,7 +95,12 @@ module RtcToNet {
         // Text from the peer indicates request for a new destination.
         // Assumes |message.text| is a Net.Destination.
         console.log('new request for: ' + message.text);
-        this.createNetClient_(label, JSON.parse(message.text));
+        if (label in this.netClients) {
+          console.error('Net.Client already exists for data channel: ' + label);
+          return;
+        }
+        this.prepareNetChannelLifecycle_(label, JSON.parse(message.text));
+
       } else if (message.buffer) {
         if(!(label in this.netClients)) {
           console.error('Message received for non-existent channel. Msg: ' +
@@ -121,16 +126,15 @@ module RtcToNet {
     }
 
     /**
-     * Create a Net.Client on a particular |dest| for data channel |label|.
+     * Tie a Net.Client for Destination |dest| to data-channel |label|.
      */
-    private createNetClient_(label:string, dest:Net.Destination) {
-      if (this.netClients[label]) {
-        console.warn('Net.Client already exists for data channel: ' + label);
-      }
-      this.netClients[label] = new Net.Client(
+    private prepareNetChannelLifecycle_ =
+        (label:string, dest:Net.Destination) => {
+      var netClient = this.netClients[label] = new Net.Client(
           (data) => { this.serveDataToPeer_(label, data); },  // onResponse
-          ()     => { this.closeDataChannel_(label); },       // onClose
           dest);
+      netClient.onceClosed()
+          .then(() => { this.closeDataChannel_(label) });
     }
 
     /**
