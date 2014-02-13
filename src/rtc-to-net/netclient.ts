@@ -1,13 +1,13 @@
 /*
   Wrapper which terminates relayed web requests through a native socket object.
 */
-/// <reference path='../chrome-fsocket.ts' />
+/// <reference path='../interfaces/socket.d.ts' />
 
 declare var freedom:any;
 
 module Net {
 
-  var fSockets:ISockets = freedom['core.socket']();
+  var fSockets:Sockets.API = freedom['core.socket']();
 
   enum State {
     CREATING_SOCKET,  // 'CREATING_SOCKET',

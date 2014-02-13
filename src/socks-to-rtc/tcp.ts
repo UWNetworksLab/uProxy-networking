@@ -11,7 +11,7 @@
  *
  * @param {ArrayBuffer} buf The buffer to convert.
  */
-/// <reference path='../chrome-fsocket.ts' />
+/// <reference path='../interfaces/socket.d.ts' />
 /// <reference path='../interfaces/promise.d.ts' />
 
 
@@ -20,12 +20,7 @@ module TCP {
   var DEFAULT_MAX_CONNECTIONS = 1048576;
 
   // Freedom Sockets API.
-  // TODO: throw an Error if this isn't here.
-  var fSockets:ISockets = freedom['core.socket']();
-
-  interface ICreateInfo {
-    socketId:number;
-  }
+  var fSockets:Sockets.API = freedom['core.socket']();
 
   interface IConnectionCallbacks {
     recv:any;
@@ -33,12 +28,17 @@ module TCP {
   }
 
   /**
+   * TCP.ServerOptions
+   */
+  export interface ServerOptions {
+    maxConnections?:number;
+    allowHalfOpen?:boolean;
+  }
+
+  /**
    * TCP.Server
    *
    * Aside: see http://developer.chrome.com/trunk/apps/socket.html#method-getNetworkList
-   * @param {Object} options Options of the form { maxConnections: integer,
-   * allowHalfOpen: bool }.
-   * @param {function} connect_callback Called when socket is connected.
    */
   export class Server {
 
@@ -50,9 +50,11 @@ module TCP {
 
     // TODO: replace with promises.
     private callbacks:any;
-    private connectionCallbacks:IConnectionCallbacks;
 
-    constructor(public addr, public port, options?) {
+    /**
+     * Create TCP server.
+     */
+    constructor(public addr, public port, options?:ServerOptions) {
       this.maxConnections = (options && options.maxConnections) ||
                             DEFAULT_MAX_CONNECTIONS;
       this.endpoint_ = addr + ':' + port;
@@ -60,12 +62,6 @@ module TCP {
       this.callbacks = {
         connection: null,  // Called when a new socket connection happens.
         disconnect: null,  // Called when server stops listening for connections.
-      };
-
-      // Default callbacks for when we create new Connections.
-      this.connectionCallbacks = {
-        recv: null,       // Called when server receives data.
-        sent: null,       // Called when server has sent data.
       };
     }
 
@@ -82,10 +78,9 @@ module TCP {
     }
 
     /**
-     * Promise the creation of a freedom socket.
-     * TODO: When freedom uses promises, simplify this function away.
+     * Wrapper which returns a promise for a created socket.
      */
-    private createSocket_ = ():Promise<ICreateInfo> => {
+    private createSocket_ = ():Promise<Sockets.CreateInfo> => {
       return new Promise((F, R) => {
         fSockets.create('tcp', {}).done(F).fail(R);
       });
@@ -94,7 +89,7 @@ module TCP {
     /**
      * Promise that socket begins listening.
      */
-    private startListening_ = (createInfo:ICreateInfo):Promise<number>  => {
+    private startListening_ = (createInfo:Sockets.CreateInfo):Promise<number>  => {
       this.serverSocketId = createInfo.socketId;
       if (this.serverSocketId <= 0) {
         return Util.reject('failed to create socket on ' + this.endpoint_);
@@ -138,8 +133,7 @@ module TCP {
         fSockets.destroy(socketId);
         return Util.reject('too many connections: ' + connectionsCount);
       }
-      var promise = this.conns[socketId] = Connection.Create(
-          socketId, this.connectionCallbacks);
+      var promise = this.conns[socketId] = Connection.Create(socketId);
       console.log('TCP.Server accepted connection ' + socketId);
       promise.then(this.callbacks.connection);  // External connect handler.
     }
@@ -174,7 +168,7 @@ module TCP {
      * Read data from one of the connection.
      * Assumes that the connection exists.
      */
-    private readConnectionData_ = (readInfo) => {
+    private readConnectionData_ = (readInfo:Sockets.ReadInfo) => {
       if (!(readInfo.socketId in this.conns)) {
         console.error('connectionRead: received data for non-existing socket ' +
                      readInfo.socketId);
@@ -238,10 +232,6 @@ module TCP {
    * TCP.Connection - Holds a TCP connection to a client
    *
    * @param {number} socketId The ID of the server<->client socket.
-   * @param {Server.callbacks.connection}  serverConnectionCallback
-   *    Called when the new TCP connection is formed and initialized,
-   *    passing itself as a parameter.
-   * @param {Server.connectionCallbacks} callbacks
    */
   export class Connection {
 
@@ -255,16 +245,15 @@ module TCP {
     // user might need (ie socketInfo). The socket shouldn't be doing work for
     // the user until the internals are ready.
     private initialized_:boolean = false;
-    public callbacks;
+    private callbacks:IConnectionCallbacks;
 
     private disconnectPromise:Promise<void> = null;
     private fulfillDisconnect = null;
 
     // Static connection creation function which returns a promise.
-    static Create = (socketId:number, callbacks:IConnectionCallbacks)
-        :Promise<Connection> => {
+    static Create = (socketId:number):Promise<Connection> => {
       return new Promise((F,R) => {
-        var conn = new Connection(socketId, callbacks);
+        var conn = new Connection(socketId);
         fSockets.getInfo(socketId).done((socketInfo) => {
           conn.socketInfo = socketInfo;
           conn.initialized_ = true;
@@ -276,8 +265,11 @@ module TCP {
     /**
      * This constructor should not be called directly.
      */
-    constructor(public socketId, callbacks) {
-      this.callbacks = callbacks;
+    constructor(public socketId) {
+      this.callbacks = {
+        recv: () => {},
+        sent: () => {}
+      };
       this.isConnected = true;
       this.pendingReadBuffer_ = null;
       this.recvOptions = null;
@@ -285,7 +277,6 @@ module TCP {
       this.disconnectPromise = new Promise<void>((F, R) => {
         this.fulfillDisconnect = F;  // To be fired on disconnect.
       })
-      console.log('created tcp connection ' + socketId);
     }
 
     /**
@@ -353,10 +344,9 @@ module TCP {
      * Sends a message down the wire to the remote side
      *
      * @see http://developer.chrome.com/trunk/apps/socket.html#method-write
-     * @param {String} msg The message to send.
      * @param {Function} callback The function to call when the message has sent.
      */
-    public send(msg:string, callback?) {
+    public send = (msg:string, callback?) => {
       // Register sent callback.
       if ('string' !== (typeof msg)) {
         console.warn('Connection.send: got non-string object.');
@@ -369,7 +359,7 @@ module TCP {
     /**
      * Sends a message pre-formatted into an arrayBuffer.
      */
-    public sendRaw(msg, callback?) {
+    public sendRaw = (msg, callback?) => {
       if(!this.isConnected) {
         console.warn('TCP.Connection socket#' + this.socketId + ' - ' +
             ' sendRaw() whilst disconnected.');
@@ -395,7 +385,7 @@ module TCP {
 
     public onceDisconnected() { return this.disconnectPromise; }
 
-    private addPendingData_(buffer:ArrayBuffer) {
+    private addPendingData_ = (buffer:ArrayBuffer) => {
       if (!this.pendingReadBuffer_) {
         this.pendingReadBuffer_ = buffer;
       } else {
@@ -410,7 +400,7 @@ module TCP {
     /**
      * Reads data from the socket.
      */
-    public read = (data) => {
+    public read = (data:ArrayBuffer) => {
       if (this.callbacks.recv && this.initialized_) {
         this.addPendingData_(data);
         this.bufferedCallRecv_();
@@ -435,7 +425,7 @@ module TCP {
       return {
         socketId: this.socketId,
         socketInfo: this.socketInfo,
-        callbacks: this.callbacks,
+        // callbacks: this.callbacks,
         isConnected: this.isConnected,
         pendingReadBuffer_: this.pendingReadBuffer_,
         recvOptions: this.recvOptions,
