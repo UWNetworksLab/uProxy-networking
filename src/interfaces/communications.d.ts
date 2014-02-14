@@ -15,6 +15,10 @@ declare module Channel {
     port:number;
   }
 
+  interface CloseData {
+    channelId:string;
+  }
+
 }  // module Channel
 
 

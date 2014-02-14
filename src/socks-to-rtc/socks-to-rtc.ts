@@ -143,7 +143,9 @@ module SocksToRTC {
       // When it disconnects, clear the |channelLabel|.
       session.onRecv((buf) => { this.sendToPeer_(label, buf); });
       session.onceDisconnected()
-          .then(() => { this.closeConnection_(label); });
+          // TODO: When we start re-using datachannels, stop closing the
+          // datachannels but remap them instead.
+          .then(() => { this.sctpPc.closeDataChannel(label); });
 
     }
 
@@ -181,19 +183,18 @@ module SocksToRTC {
     }
 
     /**
-     * Close a particular tcp-connection and data channel pair.
+     * Close a particular SOCKS session - data channel pair.
      */
-    private closeConnection_ = (channelLabel:string) => {
-      if (!(channelLabel in this.socksSessions)) {
+    private closeConnection_ = (channel:Channel.CloseData) => {
+      var label = channel.channelId;
+      dbg('ending SOCKS session for channel ' + label);
+      if (!(label in this.socksSessions)) {
         throw Error('Unexpected missing SOCKs session to close for ' +
-                    channelLabel);
+                    label);
       }
-      this.sctpPc.closeDataChannel(channelLabel);
-      dbg('closed data channel ' + channelLabel);
-      this.socksServer.endSession(this.socksSessions[channelLabel]);
-      delete this.socksSessions[channelLabel];
-      // Further closeConnection_ calls may occur after reset (from TCP
-      // disconnections).
+      // End SOCKS session.
+      this.socksServer.endSession(this.socksSessions[label]);
+      delete this.socksSessions[label];
     }
 
     /**

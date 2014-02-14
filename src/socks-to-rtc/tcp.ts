@@ -146,7 +146,7 @@ module TCP {
       return new Promise((F,R) => {
         var serverSocketId = this.serverSocketId;
         if (serverSocketId) {
-          console.log('TCP.Server: Disconnecting server socket ' + serverSocketId);
+          dbg('disconnecting server socket ' + serverSocketId);
           // Block on disconnection and destruction.
           fSockets.disconnect(serverSocketId).fail(R);
           fSockets.destroy(serverSocketId).fail(R);
@@ -195,15 +195,14 @@ module TCP {
         console.error('TCP.Server: on() failure for ' + eventName);
         return;
       }
-      dbg('install ' + eventName + ' handler: ' + callback);
       this.callbacks[eventName] = callback;
     }
 
     /**
      * Fired when remote socket disconnected.
      */
-    private disconnectSocket_ = (socketInfo) => {
-      var socketId = socketInfo.socketID;
+    private disconnectSocket_ = (socketInfo:Sockets.DisconnectInfo) => {
+      var socketId = socketInfo.socketId;
       var msg = socketInfo.error;
       if (!(socketId in this.conns)) {
         dbgWarn('socket ' + socketId + ' D.N.E. for disconnect.');
@@ -217,7 +216,10 @@ module TCP {
      * Stop a TCP connection and remove from server.
      */
     public endConnection = (socketId) => {
-      dbg('ending connection on ' + socketId);
+      if (!(socketId in this.conns)) {
+        return;  // Do nothing, silently. There are multiple directions in which
+                 // tcp connections must be closed, so this is expected.
+      }
       return this.conns[socketId]
           .then(Connection.disconnect)
           .then(this.removeFromServer_);
@@ -366,8 +368,7 @@ module TCP {
      */
     public sendRaw = (msg, callback?) => {
       if(!this.isConnected) {
-        console.warn('TCP.Connection socket#' + this.socketId + ' - ' +
-            ' sendRaw() whilst disconnected.');
+        dbgWarn(this.socketId + ' - sendRaw() whilst disconnected.');
         return;
       }
       var realCallback = callback || this.callbacks.sent || function() {};
@@ -383,7 +384,6 @@ module TCP {
       // Close the socket.
       fSockets.disconnect(this.socketId);
       fSockets.destroy(this.socketId);
-      dbg('disconnecting ' + this.socketId);
       this.fulfillDisconnect(0);  // Fire the disconnect Promise.
       return this;
     }

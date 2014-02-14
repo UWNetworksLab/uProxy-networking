@@ -70,16 +70,6 @@ module Sockets {
       continuation();
     }
 
-    // /**
-     // * Promise the future disconnection of a socket.
-     // */
-    // public onceDisconnected = (socketId:number):Promise<number> => {
-      // if (!(socketId in this.disconnectPromises)) {
-        // dbgErr('no disconnection promise available for ' + socketId);
-        // return;
-      // }
-      // return this.disconnectPromises[socketId];
-    // }
     /*
      * Continuously reads data in from the given socket and dispatches the data to
      * the socket user.
@@ -142,7 +132,7 @@ module Sockets {
      */
     private fireEvent = (event:string, data:any) => {
       this['dispatchEvent'](event, data);
-      dbg('fired \'' + event + '\' with ' + JSON.stringify(data));
+      // dbg('fired \'' + event + '\' with ' + JSON.stringify(data));
     }
 
   }  // class ChromeSockets
