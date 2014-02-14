@@ -94,8 +94,8 @@ module TCP {
       if (this.serverSocketId <= 0) {
         return Util.reject('failed to create socket on ' + this.endpoint_);
       }
-      console.log('TCP.Server: created socket ' + this.serverSocketId +
-          ' listening at ' + this.endpoint_);
+      dbg('create server socket ' + this.serverSocketId +
+          ' listening on ' + this.endpoint_);
       return new Promise((F, R) => {
         fSockets.listen(this.serverSocketId, this.addr, this.port)
             .done(F).fail(R);
@@ -133,19 +133,20 @@ module TCP {
         fSockets.destroy(socketId);
         return Util.reject('too many connections: ' + connectionsCount);
       }
-      var promise = this.conns[socketId] = Connection.Create(socketId);
       console.log('TCP.Server accepted connection ' + socketId);
-      promise.then(this.callbacks.connection);  // External connect handler.
+      var connectionReady = this.conns[socketId] = Connection.Create(socketId);
+      // External connect handler.
+      connectionReady.then(this.callbacks.connection);
     }
 
     /**
      * Disconnect all sockets and stops listening.
      */
-    public disconnect():Promise<any> {
+    public disconnect = ():Promise<any> => {
       return new Promise((F,R) => {
         var serverSocketId = this.serverSocketId;
         if (serverSocketId) {
-          console.log('TCP.Server: Disconnecting server socket ' + serverSocketId);
+          dbg('disconnecting server socket ' + serverSocketId);
           // Block on disconnection and destruction.
           fSockets.disconnect(serverSocketId).fail(R);
           fSockets.destroy(serverSocketId).fail(R);
@@ -175,6 +176,8 @@ module TCP {
         return;
       }
       this.conns[readInfo.socketId].then((conn) => {
+        dbg('reading ' + readInfo.data.byteLength +
+            ' bytes from socket ' + readInfo.socketId);
         conn.read(readInfo.data);
       });
     }
@@ -198,14 +201,14 @@ module TCP {
     /**
      * Fired when remote socket disconnected.
      */
-    private disconnectSocket_ = (socketInfo) => {
-      var socketId = socketInfo.socketID;
+    private disconnectSocket_ = (socketInfo:Sockets.DisconnectInfo) => {
+      var socketId = socketInfo.socketId;
+      var msg = socketInfo.error;
       if (!(socketId in this.conns)) {
-        console.warn('Socket ' + socketId + ' D.N.E. for disconnect.');
+        dbgWarn('socket ' + socketId + ' D.N.E. for disconnect.');
         return;
       }
-      console.log('TCP.Server: socket ' + socketInfo.socketId +
-                  ' remotely disconnected.');
+      dbg('disconnect ' + socketInfo.socketId + ' - ' + msg);
       this.endConnection(socketId);
     }
 
@@ -213,7 +216,10 @@ module TCP {
      * Stop a TCP connection and remove from server.
      */
     public endConnection = (socketId) => {
-      console.log('ENDING ' + socketId);
+      if (!(socketId in this.conns)) {
+        return;  // Do nothing, silently. There are multiple directions in which
+                 // tcp connections must be closed, so this is expected.
+      }
       return this.conns[socketId]
           .then(Connection.disconnect)
           .then(this.removeFromServer_);
@@ -247,8 +253,9 @@ module TCP {
     private initialized_:boolean = false;
     private callbacks:IConnectionCallbacks;
 
-    private disconnectPromise:Promise<void> = null;
-    private fulfillDisconnect = null;
+    // Promise for the disconnection of this connection.
+    private disconnectPromise:Promise<number>;
+    private fulfillDisconnect:(number)=>void;
 
     // Static connection creation function which returns a promise.
     static Create = (socketId:number):Promise<Connection> => {
@@ -274,9 +281,9 @@ module TCP {
       this.pendingReadBuffer_ = null;
       this.recvOptions = null;
       this.pendingRead_ = false;
-      this.disconnectPromise = new Promise<void>((F, R) => {
+      this.disconnectPromise = new Promise<number>((F, R) => {
         this.fulfillDisconnect = F;  // To be fired on disconnect.
-      })
+      });
     }
 
     /**
@@ -361,8 +368,7 @@ module TCP {
      */
     public sendRaw = (msg, callback?) => {
       if(!this.isConnected) {
-        console.warn('TCP.Connection socket#' + this.socketId + ' - ' +
-            ' sendRaw() whilst disconnected.');
+        dbgWarn(this.socketId + ' - sendRaw() whilst disconnected.');
         return;
       }
       var realCallback = callback || this.callbacks.sent || function() {};
@@ -378,12 +384,12 @@ module TCP {
       // Close the socket.
       fSockets.disconnect(this.socketId);
       fSockets.destroy(this.socketId);
-      this.fulfillDisconnect();  // Fire the disconnect Promise.
+      this.fulfillDisconnect(0);  // Fire the disconnect Promise.
       return this;
     }
     public static disconnect(conn:Connection) { return conn.disconnect(); }
 
-    public onceDisconnected() { return this.disconnectPromise; }
+    public onceDisconnected = () => { return this.disconnectPromise; }
 
     private addPendingData_ = (buffer:ArrayBuffer) => {
       if (!this.pendingReadBuffer_) {
@@ -420,26 +426,17 @@ module TCP {
       }
     }
 
-    /** Output the state of this connection */
-    public state = () => {
-      return {
-        socketId: this.socketId,
-        socketInfo: this.socketInfo,
-        // callbacks: this.callbacks,
-        isConnected: this.isConnected,
-        pendingReadBuffer_: this.pendingReadBuffer_,
-        recvOptions: this.recvOptions,
-        pendingRead: this.pendingRead_
-      };
-    }
-
     public toString = () => {
-      // return JSON.stringify(this.state());
       return '<TCP.Connection[' + this.socketId +
           '] (' + (this.isConnected? 'connected' : 'disconnected') + ')>';
     }
 
   }  // class TCP.Connection
+
+  var modulePrefix_ = '[TCP] ';
+  function dbg(msg:string) { console.log(modulePrefix_ + msg); }
+  function dbgWarn(msg:string) { console.warn(modulePrefix_ + msg); }
+  function dbgErr(msg:string) { console.error(modulePrefix_ + msg); }
 
 }  // module TCP
 

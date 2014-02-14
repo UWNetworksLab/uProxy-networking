@@ -22,7 +22,10 @@ module Sockets {
    */
   export class Chrome implements Sockets.API {
 
-    constructor (public channel) {}
+    constructor (
+        private channel,
+        private dispatchEvent:(event:string,data:any)=>void) {
+    }
 
     public create = chrome.socket.create;
     public write = chrome.socket.write;
@@ -30,7 +33,7 @@ module Sockets {
 
     public connect = (socketId, hostname, port, callback) => {
       chrome.socket.connect(socketId, hostname, port, (result) => {
-        console.log('connect socketId: ' + socketId + ' hostname=' + hostname + ' port=' + port)
+        dbg('connecting ' + socketId + ' hostname=' + hostname + ' port=' + port)
         callback(result);
         this.doReadLoop_(socketId);
       });
@@ -43,7 +46,7 @@ module Sockets {
         // Begin accept-loop on this socket.
         var acceptCallback = (acceptInfo) => {
           if (0 === acceptInfo.resultCode) {
-            this.fireEvent('onConnection', {
+            this.dispatchEvent('onConnection', {
                 serverSocketId: socketId,
                 clientSocketId: acceptInfo.socketId
             });
@@ -51,7 +54,7 @@ module Sockets {
             this.doReadLoop_(acceptInfo.socketId);
           // -15 is SOCKET_NOT_CONNECTED
           } else if (-15 !== acceptInfo.resultCode) {
-            console.error('Error ' + acceptInfo.resultCode
+            dbgErr('CODE ' + acceptInfo.resultCode
             + ' while trying to accept connection on socket '
                 + socketId);
           }
@@ -83,7 +86,7 @@ module Sockets {
               // puts the responsibility on the user of this object to act only for
               // the socket corresponding to |socketId|. Really bad.
               // TODO: Make the events a bijection.
-              this.fireEvent('onData', {
+              this.dispatchEvent('onData', {
                 socketId: socketId,
                 data: data
               });
@@ -92,8 +95,8 @@ module Sockets {
       }
       var readLoop = loop()
             .catch((e) => {
-              console.warn('ChromeSocket ' + socketId + ': ' + e.message);
-              this.fireEvent('onDisconnect', {
+              dbgWarn(socketId + ': ' + e.message);
+              this.dispatchEvent('onDisconnect', {
                   socketId: socketId,
                   error: e.message
               });
@@ -126,15 +129,6 @@ module Sockets {
       return Promise.resolve(readInfo.data);
     }
 
-    /**
-     * Freedom currently attaches the 'dispatchEvent' function afterwards, which
-     * breaks type checking. TODO: Remove when that's fixed.
-     */
-    private fireEvent = (event:string, data:any) => {
-      this['dispatchEvent'](event, data);
-      // console.log('Sockets.Chrome dispatching ' + event + ' with ' + data);
-    }
-
   }  // class ChromeSockets
 
   // Error codes can be found at:
@@ -158,5 +152,10 @@ module Sockets {
     '-105': 'NAME_NOT_RESOLVED',
     '-106': 'INTERNET_DISCONNECTED',
   };
+
+  var modulePrefix_ = '[socket] ';
+  function dbg(msg:string) { console.log(modulePrefix_ + msg); }
+  function dbgWarn(msg:string) { console.warn(modulePrefix_ + msg); }
+  function dbgErr(msg:string) { console.error(modulePrefix_ + msg); }
 
 }  // module Sockets

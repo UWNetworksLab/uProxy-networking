@@ -209,7 +209,7 @@ module Socks {
 
     listen() {
       return this.tcpServer.listen().then(() => {
-        console.log('LISTENING ' + this.tcpServer.addr + ':' + this.tcpServer.port);
+        dbg('LISTENING ' + this.tcpServer.addr + ':' + this.tcpServer.port);
       });
     }
 
