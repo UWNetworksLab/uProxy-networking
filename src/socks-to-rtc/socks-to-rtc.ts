@@ -59,7 +59,8 @@ module SocksToRTC {
       fCore.createChannel().done((chan) => {
         console.log('Preparing SCTP peer connection. peerId: ' + peerId +
             ' chan id: ' + chan.identifier);
-        this.sctpPc.setup(chan.identifier, 'SocksToRtc-' + peerId, true);
+        var stunServers = [];  // TODO: actually pass stun servers in
+        this.sctpPc.setup(chan.identifier, 'SocksToRtc-' + peerId, stunServers);
         this.signallingChannel = chan.channel;
         console.log('Client channel to sctpPc created');
         // Pass messages received via signalling channel to the local
@@ -100,42 +101,61 @@ module SocksToRTC {
     }
 
     /**
-     * Setup data channel and tie to corresponding SOCKS5 session.
+     * Setup new data channel and tie to corresponding SOCKS5 session.
      * Returns: IP and port of destination.
      */
-    private onConnection_ = (session:Socks.Session, address, port) => {
+    private onConnection_ = (session:Socks.Session, address, port)
+        :Promise<Channel.EndpointInfo> => {
       if (!this.sctpPc) {
-        console.error('SocksToRTC.Peer: onConnection called without ' +
+        console.error('[SocksToRtc] onConnection called without ' +
                       'SCTP peer connection.');
         return;
       }
+
       var channelLabel = obtainChannelLabel();
-      console.log('socks-to-rtc: NEW DATA CHANNEL ' + channelLabel);
-      this.sctpPc.openDataChannel(channelLabel);
-      this.socksSessions[channelLabel] = session;
-      // When the TCP-connection receives data, send to sctp peer.
-      // When it disconnects, clear the |channelLabel|.
-      session.onRecv((buf) => { this.sendToPeer_(channelLabel, buf); });
-      session.onceDisconnected()
+      return this.createDataChannel_(channelLabel)
           .then(() => {
-            this.closeConnection_(channelLabel);
-          });
-
-      var newRequest = {
-          'channelLabel': channelLabel,
-          'text': { host: address, port: port }
-          // 'text': JSON.stringify({ host: address, port: port })
-      };
-      this.sctpPc.send(newRequest);
-      console.log('SocksToRtc: send new request ' +
-                  '-----> ' + channelLabel + ' \n ' + JSON.stringify(newRequest));
-
+            console.log('[SocksToRtc] created datachannel ' + channelLabel);
+            this.tieSessionToChannel_(session, channelLabel);
+          })
+          // Send initial request header over the data channel.
+          .then(() => {
+            var newRequest = {
+                channelLabel: channelLabel,
+                'text': JSON.stringify({ host: address, port: port })
+            };
+            this.sctpPc.send(newRequest);
+            console.log('[SocksToRtc] new request -----> ' + channelLabel +
+                        ' \n ' + JSON.stringify(newRequest));
       // TODO: we are not connected yet... should we have some message passing
       // back from the other end of the data channel to tell us when it has
       // happened, instead of just pretended?
       // Allow SOCKs headers
-      // TODO: determine if these need to be accurate.
-      return { ipAddrString: '127.0.0.1', port: 0 };
+          })
+          .then(() => {
+            // TODO: determine if these need to be accurate.
+            return { ipAddrString: '127.0.0.1', port: 0 };
+          });
+    }
+
+    private createDataChannel_ = (label:string):Promise<void> => {
+      return new Promise<void>((F, R) => {
+        this.sctpPc.openDataChannel(label).done(F).fail(R);
+      });
+    }
+
+    /**
+     * Create one-to-one relationship between a SOCKS session and
+     * peer-connection data channel.
+     */
+    private tieSessionToChannel_ = (session:Socks.Session, label:string) => {
+      this.socksSessions[label] = session;
+      // When the TCP-connection receives data, send to sctp peer.
+      // When it disconnects, clear the |channelLabel|.
+      session.onRecv((buf) => { this.sendToPeer_(label, buf); });
+      session.onceDisconnected()
+          .then(() => { this.closeConnection_(label); });
+
     }
 
     /**
@@ -201,8 +221,8 @@ module SocksToRTC {
         console.warn('SocksToRtc.Peer: SCTP peer connection not ready!');
         return;
       }
-      var payload = { 'channelLabel': channelLabel, 'buffer': buffer };
-      console.log('SocksToRtc: send ' + buffer.byteLength + ' bytes ' +
+      var payload = { channelLabel: channelLabel, 'buffer': buffer };
+      console.log('[SocksToRtc] send ' + buffer.byteLength + ' bytes ' +
                   '-----> ' + channelLabel + ' \n ' + JSON.stringify(payload));
       this.sctpPc.send(payload);
     }

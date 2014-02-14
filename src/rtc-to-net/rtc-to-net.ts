@@ -35,7 +35,8 @@ module RtcToNet {
       // Create a signalling channel.
       fCore.createChannel().done((chan) => {
         // this.sctpPc.setup(chan.identifier, 'RtcToNet-' + this.peerId, false);
-        this.sctpPc.setup(chan.identifier, 'RtcToNet-' + this.peerId);
+        var stunServers = [];
+        this.sctpPc.setup(chan.identifier, 'RtcToNet-' + this.peerId, []);
         var channel = chan.channel;
         // chan.channel.done((channel) => {
         channel.on('message', (msg) => {
@@ -87,23 +88,24 @@ module RtcToNet {
                       JSON.stringify(message));
         return;
       }
-      console.log('RtcToNet: ' + label + '<----- received ' +
-          JSON.stringify(message));
-
       if (message.text) {
+        console.log('[RtcToNet] encountered new datachannel ' + label);
         // Text from the peer indicates request for a new destination.
         // Assumes |message.text| is a Net.Destination.
-        console.log(label + ' <- new request: ' + message.text);
+        console.log('[RtcToNet]' + label + ' <--- new request: ' + message.text);
         if (label in this.netClients) {
+          // This shouldn't be fired!
           console.warn('Net.Client already exists for data channel: ' + label);
           return;
         }
         this.prepareNetChannelLifecycle_(label, JSON.parse(message.text));
 
       } else if (message.buffer) {
-        if(!(label in this.netClients)) {
-          console.error('Message received for non-existent channel. Msg: ' +
+        console.log('[RtcToNet]' + label + ' <--- received ' +
             JSON.stringify(message));
+        if(!(label in this.netClients)) {
+          console.error('[RtcToNet] non-existent channel! Msg: ' +
+              JSON.stringify(message));
           return;
         }
         // Buffer from the peer is data for the destination.
@@ -114,13 +116,19 @@ module RtcToNet {
       }
     }
 
+    private createDataChannel_ = (label:string):Promise<void> => {
+      return new Promise<void>((F, R) => {
+        this.sctpPc.openDataChannel(label).done(F).fail(R);
+      });
+    }
+
     /**
      * Return data from Net to Peer.
      */
     private serveDataToPeer_ = (channelLabel:string, data:ArrayBuffer) => {
       // TODO: peer connection is firing a response for *every* channelLabel.
       // There is no way to actualy distinguish.
-      console.log('RtcToNet: replying with ' + data.byteLength + ' bytes '+
+      console.log('[RtcToNet] reply ' + data.byteLength + ' bytes '+
                   '-----> ' + channelLabel);
       this.sctpPc.send({
           'channelLabel': channelLabel,
@@ -136,10 +144,8 @@ module RtcToNet {
       var netClient = this.netClients[label] = new Net.Client(
           (data) => { this.serveDataToPeer_(label, data); },  // onResponse
           dest);
-      this.sctpPc.openDataChannel(label);
       netClient.onceClosed()
           .then(() => { this.closeDataChannel_(label) });
-      console.log('RtcToNet: preparing new datachannel ' + label);
     }
 
     /**
@@ -186,7 +192,7 @@ module RtcToNet {
         return;
       }
       // TODO: Check for access control?
-      console.log('RtcToNet: sending signal to transport: ' + JSON.stringify(signal.data));
+      // console.log('RtcToNet: sending signal to transport: ' + JSON.stringify(signal.data));
       var peer = this.fetchOrCreatePeer_(signal.peerId);
       peer.sendSignal(signal.data);
     }

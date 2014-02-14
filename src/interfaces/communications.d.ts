@@ -8,6 +8,13 @@ declare module Channel {
     buffer?:ArrayBuffer;
   }
 
+  // Should be returned after tieing a data-channel with SOCKS, back to form an
+  // endpoint response to the local TCP server.
+  interface EndpointInfo {
+    ipAddrString:string;
+    port:number;
+  }
+
 }  // module Channel
 
 

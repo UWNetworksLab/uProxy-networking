@@ -132,7 +132,7 @@ module Sockets {
      */
     private fireEvent = (event:string, data:any) => {
       this['dispatchEvent'](event, data);
-      console.log('Sockets.Chrome dispatching ' + event + ' with ' + data);
+      // console.log('Sockets.Chrome dispatching ' + event + ' with ' + data);
     }
 
   }  // class ChromeSockets

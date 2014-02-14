@@ -5,11 +5,11 @@
 
 interface PeerConnection {
   on:(event:string,f:any)=>void;
-  setup:any;
+  setup:(channelId:string, peerName:string, stunServers:string[])=>void;
   close:any;
   send:any;
 
-  openDataChannel:(channelLabel:string)=>void;
+  openDataChannel:(channelLabel:string, callback?:any)=>any;
   closeDataChannel:(channelLabel:string)=>void;
 
   // onOpenDataChannel:(handler:(channelLabel:string)=>void)=>void;

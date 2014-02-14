@@ -264,6 +264,7 @@ module Socks {
 
     /**
      * Handle request over SOCKS session.
+     * |callback| is external.
      */
     public handleRequest = (callback) => {
       var conn = this.tcpConnection;
@@ -307,7 +308,8 @@ module Socks {
     /**
      * Given an endpoint, compose a response.
      */
-    public static ComposeEndpointResponse(connectionDetails) {
+    public static ComposeEndpointResponse(
+        connectionDetails:Channel.EndpointInfo) {
       var response:number[] = [];
       response[0] = Socks.VERSION5;
       response[1] = Socks.RESPONSE.SUCCEEDED;
