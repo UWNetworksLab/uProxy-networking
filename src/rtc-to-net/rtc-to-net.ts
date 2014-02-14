@@ -1,12 +1,12 @@
 /*
   Server which handles socks connections over WebRTC datachannels.
 */
-console.log('SOCKS5 server: ' + self.location.href);
-declare var freedom:any;
-
 /// <reference path='netclient.ts' />
 /// <reference path='../interfaces/peerconnection.d.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
+
+declare var freedom:any;
+console.log('WEBWORKER - RtcToNet: ' + self.location.href);
 
 module RtcToNet {
 
@@ -20,36 +20,25 @@ module RtcToNet {
     private signallingChannel:any = null;
     private sctpPc:PeerConnection;
     private netClients:{[channelLabel:string]:Net.Client} = {};
-    private messageQueue:string[] = [];  // Remove with freedom 0.2.0
 
     constructor (public peerId:string) {
-      console.log('New RtcToNet.Peer: ' + peerId);
-      this.netClients = {};
-
-      // Set up peer connection to tie data channels to Net.Clients.
-      // There is a bijection between data channels and Net.Clients.
+      dbg('created new peer: ' + peerId);
+      // peerconnection's data channels biject ot Net.Clients.
       this.sctpPc = freedom['core.peerconnection']();
       this.sctpPc.on('onReceived', this.passPeerDataToNet_);
       this.sctpPc.on('onCloseDataChannel', this.closeNetClient_);
-
-      // Create a signalling channel.
+      // Create signalling channel for NAT piercing.
       fCore.createChannel().done((chan) => {
-        // this.sctpPc.setup(chan.identifier, 'RtcToNet-' + this.peerId, false);
-        var stunServers = [];
+        var stunServers = [];  // TODO: use real stun servers
         this.sctpPc.setup(chan.identifier, 'RtcToNet-' + this.peerId, []);
-        var channel = chan.channel;
-        // chan.channel.done((channel) => {
-        channel.on('message', (msg) => {
+        this.signallingChannel = chan.channel;
+        this.signallingChannel.on('message', (msg) => {
           freedom.emit('sendSignalToPeer', {
               peerId: this.peerId,
               data: msg
           });
         });
-          // sctpPc will emit 'ready' when it is ready, and at that point we
-          // have successfully initialised this peer connection and can set the
-          // signalling channel and process any messages we have been sent.
-          // setupPromise.done(function() {
-        this.signallingChannel = channel;
+        dbg('signalling channel to SCTP peer connection ready.');
       });
     }
 
@@ -58,9 +47,7 @@ module RtcToNet {
      */
     public sendSignal = (data:string) => {
       if (!this.signallingChannel) {
-        console.log('RtcToNet:Peer[' + this.peerId + '] signallingChannel ' +
-                    'not yet ready. Adding to queue... ');
-        this.messageQueue.push(data);
+        dbgErr('signalling channel missing!');
         return;
       }
       this.signallingChannel.emit('message', data);
@@ -84,34 +71,33 @@ module RtcToNet {
       // terrible. Maybe it's fixed after freedom 0.2?
       var label = message.channelLabel;
       if (!label) {
-        console.error('Message received but missing channelLabel. Msg: ' +
+        dbgErr('Message received but missing channelLabel. Msg: ' +
                       JSON.stringify(message));
         return;
       }
       if (message.text) {
-        console.log('[RtcToNet] encountered new datachannel ' + label);
+        dbg('encountered new datachannel ' + label);
         // Text from the peer indicates request for a new destination.
         // Assumes |message.text| is a Net.Destination.
-        console.log('[RtcToNet]' + label + ' <--- new request: ' + message.text);
+        dbg(label + ' <--- new request: ' + message.text);
         if (label in this.netClients) {
-          // This shouldn't be fired!
-          console.warn('Net.Client already exists for data channel: ' + label);
+          // TODO: This shouldn't be fired! This is bad!
+          dbgWarn('Net.Client already exists for data channel: ' + label);
           return;
         }
         this.prepareNetChannelLifecycle_(label, JSON.parse(message.text));
 
       } else if (message.buffer) {
-        console.log('[RtcToNet]' + label + ' <--- received ' +
-            JSON.stringify(message));
+        dbg(label + ' <--- received ' + JSON.stringify(message));
         if(!(label in this.netClients)) {
-          console.error('[RtcToNet] non-existent channel! Msg: ' +
+          dbgErr('[RtcToNet] non-existent channel! Msg: ' +
               JSON.stringify(message));
           return;
         }
         // Buffer from the peer is data for the destination.
         this.netClients[label].send(message.buffer);
       } else {
-        console.error('Message received but missing valid data field. Msg: ' +
+        dbgErr('Message received but missing valid data field. Msg: ' +
             JSON.stringify(message));
       }
     }
@@ -127,9 +113,8 @@ module RtcToNet {
      */
     private serveDataToPeer_ = (channelLabel:string, data:ArrayBuffer) => {
       // TODO: peer connection is firing a response for *every* channelLabel.
-      // There is no way to actualy distinguish.
-      console.log('[RtcToNet] reply ' + data.byteLength + ' bytes '+
-                  '-----> ' + channelLabel);
+      // This needs to be fixed.
+      dbg('reply ' + data.byteLength + ' bytes ---> ' + channelLabel);
       this.sctpPc.send({
           'channelLabel': channelLabel,
           'buffer': data
@@ -152,9 +137,9 @@ module RtcToNet {
      * Close an individual Net.Client when its data channel closes.
      */
     private closeNetClient_ = (channelId:string) => {
-      console.log('Net.Client: CLOSING channel ' + channelId);
+      dbg('closing datachannel ' + channelId);
       if (!(channelId in this.netClients)) {
-        console.warn('No Net.Client to close for ' + channelId)
+        dbgWarn('no Net.Client to close for ' + channelId)
         return;
       }
       this.netClients[channelId].close();
@@ -188,11 +173,11 @@ module RtcToNet {
      */
     public handleSignal = (signal:PeerSignal) => {
       if (!signal.peerId) {
-        console.error('RtcToNet.Server: signal received with no peerId!');
+        dbgErr('signal received with no peerId!');
         return;
       }
       // TODO: Check for access control?
-      // console.log('RtcToNet: sending signal to transport: ' + JSON.stringify(signal.data));
+      // dbg('sending signal to transport: ' + JSON.stringify(signal.data));
       var peer = this.fetchOrCreatePeer_(signal.peerId);
       peer.sendSignal(signal.data);
     }
@@ -221,6 +206,11 @@ module RtcToNet {
     }
 
   }  // class RtcToNet.Server
+
+  var modulePrefix_ = '[RtcToNet] ';
+  function dbg(msg:string) { console.log(modulePrefix_ + msg); }
+  function dbgWarn(msg:string) { console.warn(modulePrefix_ + msg); }
+  function dbgErr(msg:string) { console.error(modulePrefix_ + msg); }
 
 }  // module RtcToNet
 
