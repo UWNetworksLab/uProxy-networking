@@ -187,7 +187,7 @@ module SocksToRTC {
      */
     private closeConnection_ = (channel:Channel.CloseData) => {
       var label = channel.channelId;
-      dbg('ending SOCKS session for channel ' + label);
+      dbg('datachannel ' + label + ' has closed. ending SOCKS session for channel.');
       if (!(label in this.socksSessions)) {
         throw Error('Unexpected missing SOCKs session to close for ' +
                     label);

@@ -22,7 +22,10 @@ module Sockets {
    */
   export class Chrome implements Sockets.API {
 
-    constructor (public channel) {}
+    constructor (
+        private channel,
+        private dispatchEvent:(event:string,data:any)=>void) {
+    }
 
     public create = chrome.socket.create;
     public write = chrome.socket.write;
@@ -43,7 +46,7 @@ module Sockets {
         // Begin accept-loop on this socket.
         var acceptCallback = (acceptInfo) => {
           if (0 === acceptInfo.resultCode) {
-            this.fireEvent('onConnection', {
+            this.dispatchEvent('onConnection', {
                 serverSocketId: socketId,
                 clientSocketId: acceptInfo.socketId
             });
@@ -83,7 +86,7 @@ module Sockets {
               // puts the responsibility on the user of this object to act only for
               // the socket corresponding to |socketId|. Really bad.
               // TODO: Make the events a bijection.
-              this.fireEvent('onData', {
+              this.dispatchEvent('onData', {
                 socketId: socketId,
                 data: data
               });
@@ -93,7 +96,7 @@ module Sockets {
       var readLoop = loop()
             .catch((e) => {
               dbgWarn(socketId + ': ' + e.message);
-              this.fireEvent('onDisconnect', {
+              this.dispatchEvent('onDisconnect', {
                   socketId: socketId,
                   error: e.message
               });
@@ -124,15 +127,6 @@ module Sockets {
         return Promise.reject(new Error(msg));
       }
       return Promise.resolve(readInfo.data);
-    }
-
-    /**
-     * Freedom currently attaches the 'dispatchEvent' function afterwards, which
-     * breaks type checking. TODO: Remove when that's fixed.
-     */
-    private fireEvent = (event:string, data:any) => {
-      this['dispatchEvent'](event, data);
-      // dbg('fired \'' + event + '\' with ' + JSON.stringify(data));
     }
 
   }  // class ChromeSockets
