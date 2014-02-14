@@ -55,34 +55,27 @@ module SocksToRTC {
       // Create sctp connection to a peer.
       this.sctpPc = this.createSCTPPeerConnection_();
 
+      /*
       // Create a freedom-channel to act as the signaling channel.
       fCore.createChannel().done((chan) => {
-        console.log('Preparing SCTP peer connection. peerId: ' + peerId);
+        console.log('Preparing SCTP peer connection. peerId: ' + peerId +
+            ' chan id: ' + chan.identifier);
         this.sctpPc.setup(chan.identifier, 'SocksToRtc-' + peerId, true);
         // when the channel is complete, setup handlers.
-        chan.channel.done((signallingChannel) => {
-          console.log('Client channel to sctpPc created');
-          // Pass messages received via signalling channel to the local
-          // client, which needs to take care of sending the data through
-          // alternate means.
-          signallingChannel.on('message', function(msg) {
-            freedom.emit('sendSignalToPeer', {
-                peerId: peerId,
-                data: msg
-            });
+        this.signallingChannel = chan.channel;
+        console.log('Client channel to sctpPc created');
+        // Pass messages received via signalling channel to the local
+        // client, which needs to take care of sending the data through
+        // alternate means.
+        this.signallingChannel.on('message', function(msg) {
+          freedom.emit('sendSignalToPeer', {
+              peerId: peerId,
+              data: msg
           });
-
-          // TODO: remove once we're using freedom 0.2.0, where signalling
-          // channels will automatically be ready.
-          signallingChannel.on('ready', () => {
-            this.signallingChannel = signallingChannel;
-            console.log('Client channel to sctpPc ready.');
-            while(0 < this.messageQueue_.length) {
-              signallingChannel.emit('message', this.messageQueue_.shift());
-            }
-          });
-        });  // chan.channel
+        });
+        console.log('Client channel to sctpPc ready.');
       });  // fCore.createChannel
+      */
     }
 
     /**
@@ -166,7 +159,7 @@ module SocksToRTC {
      */
     private createSCTPPeerConnection_ = ():PeerConnection => {
       // Create an instance of freedom's data peer.
-      var pc:PeerConnection = freedom['core.sctp-peerconnection']();
+      var pc:PeerConnection = freedom['core.peerconnection']();
 
       // Handler for receiving data back from the remote RtcToNet.Peer.
       pc.on('onReceived', (msg:Channel.Message) => {

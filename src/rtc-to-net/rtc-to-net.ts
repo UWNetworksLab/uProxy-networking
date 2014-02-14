@@ -28,33 +28,27 @@ module RtcToNet {
 
       // Set up peer connection to tie data channels to Net.Clients.
       // There is a bijection between data channels and Net.Clients.
-      this.sctpPc = freedom['core.sctp-peerconnection']();
+      this.sctpPc = freedom['core.peerconnection']();
       this.sctpPc.on('onReceived', this.passPeerDataToNet_);
       this.sctpPc.on('onCloseDataChannel', this.closeNetClient_);
 
       // Create a signalling channel.
       fCore.createChannel().done((chan) => {
-        this.sctpPc.setup(chan.identifier, 'RtcToNet-' + this.peerId, false);
-        chan.channel.done((channel) => {
-          channel.on('message', (msg) => {
-            freedom.emit('sendSignalToPeer', {
-                peerId: this.peerId,
-                data: msg
-            });
+        // this.sctpPc.setup(chan.identifier, 'RtcToNet-' + this.peerId, false);
+        this.sctpPc.setup(chan.identifier, 'RtcToNet-' + this.peerId);
+        var channel = chan.channel;
+        // chan.channel.done((channel) => {
+        channel.on('message', (msg) => {
+          freedom.emit('sendSignalToPeer', {
+              peerId: this.peerId,
+              data: msg
           });
+        });
           // sctpPc will emit 'ready' when it is ready, and at that point we
           // have successfully initialised this peer connection and can set the
           // signalling channel and process any messages we have been sent.
           // setupPromise.done(function() {
-          // TODO: remove once we're using freedom 0.2.0, where signalling
-          // channels will automatically be ready.
-          channel.on('ready', () => {
-            this.signallingChannel = channel;
-            while(this.messageQueue.length > 0) {
-              this.signallingChannel.emit('message', this.messageQueue.shift());
-            }
-          });
-        });
+        this.signallingChannel = channel;
       });
     }
 
