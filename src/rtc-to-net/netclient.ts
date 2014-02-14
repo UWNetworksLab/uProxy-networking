@@ -50,9 +50,8 @@ module Net {
       this.createSocket_()  // Initialize client TCP socket.
           .then(this.connect_)
           .then(this.attachHandlers_)
-          .catch((e) => {
-            console.error('Net.Client: ' + e.message);
-          });
+          .catch((e) => { dbgErr(e.message); });
+      dbg('created connection to ' + JSON.stringify(destination));
     }
 
     /**
@@ -60,7 +59,7 @@ module Net {
      */
     public send = (buffer) => {
       if (State.CLOSED == this.state) {
-        console.warn('Net.Client: attempted to send data to closed socket :(');
+        dbgWarn('attempted to send data to closed socket!');
         return;
       }
       if (State.CONNECTED == this.state) {
@@ -108,7 +107,13 @@ module Net {
       }
       this.state = State.CONNECTED;
       fSockets.on('onData', this.readData_);
-      fSockets.on('onDisconnect', this.close);
+      fSockets.on('onDisconnect', (socketInfo:Sockets.DisconnectInfo) => {
+        if (socketInfo.socketId != this.socketId) {
+          return;  // duplicity of socket events.
+        }
+        dbg('closed ' + this.socketId + ' - ' + socketInfo.error);
+        this.close();
+      });
       if (0 < this.queue.length) {
         this.send(this.queue.shift());
       }
@@ -153,7 +158,7 @@ module Net {
         return;
       }
       this.state = State.CLOSED;
-      console.log('Net.Client: closing socket ' + this.socketId);
+      dbg('closing ' + this.socketId + ' of ' + JSON.stringify(this.destination));
       if (this.socketId) {
         fSockets.disconnect(this.socketId);
         fSockets.destroy(this.socketId);
@@ -168,5 +173,10 @@ module Net {
     public onceClosed = () => { return this.closePromise; }
 
   }  // Net.Client
+
+  var modulePrefix_ = '[Net] ';
+  function dbg(msg:string) { console.log(modulePrefix_ + msg); }
+  function dbgWarn(msg:string) { console.warn(modulePrefix_ + msg); }
+  function dbgErr(msg:string) { console.error(modulePrefix_ + msg); }
 
 }  // module Net
