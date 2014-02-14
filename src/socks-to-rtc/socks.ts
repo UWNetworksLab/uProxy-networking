@@ -187,7 +187,7 @@ module Socks {
           // AUTH error. (Required method not available).
           }, (e) => {
             replyToTCP(conn, Socks.AUTH.NONE);
-            console.warn('SOCKS Server - handshake problem: ' + e.message);
+            dbgWarn('handshake problem: ' + e.message);
             return Util.reject('failed to establish session.');
           })
           // Handle a remote request over SOCKS.
@@ -196,7 +196,7 @@ module Socks {
           })
           // Always disconnect underlying TCP when problems occur.
           .catch((e) => {
-            console.warn('SOCKS Server: ' + e.message);
+            dbgWarn(e.message);
             conn.disconnect();
           });
     }
@@ -248,8 +248,7 @@ module Socks {
       }
       // Make sure the client supports 'no authentication'.
       if (authMethods.indexOf(Socks.AUTH.NOAUTH) <= -1) {
-        console.error('Socks.Session: no auth methods',
-            Socks.AUTH.NOAUTH);
+        dbgErr('Socks.Session: no auth methods ' + Socks.AUTH.NOAUTH);
         return Util.reject('no auth methods: ' + Socks.AUTH.NOAUTH);
       }
     }
@@ -264,6 +263,7 @@ module Socks {
 
     /**
      * Handle request over SOCKS session.
+     * |callback| is external.
      */
     public handleRequest = (callback) => {
       var conn = this.tcpConnection;
@@ -279,10 +279,10 @@ module Socks {
             return Util.reject('invalid request.');
           })
           // Pass endpoint from external callback to client.
-          .then(Socks.Session.ComposeEndpointResponse)
+          .then(Socks.Session.composeEndpointResponse)
           .then((response) => { conn.sendRaw(response.buffer); })
           .catch((e) => {
-            console.error(this + ': ' + e.message);
+            dbgErr(this + ': ' + e.message);
             return Util.reject('response error.');
           });
     }
@@ -307,7 +307,8 @@ module Socks {
     /**
      * Given an endpoint, compose a response.
      */
-    public static ComposeEndpointResponse(connectionDetails) {
+    public static composeEndpointResponse(
+        connectionDetails:Channel.EndpointInfo) {
       var response:number[] = [];
       response[0] = Socks.VERSION5;
       response[1] = Socks.RESPONSE.SUCCEEDED;
@@ -367,6 +368,13 @@ module Socks {
     }
 
   }  // Socks.Session
+
+
+  // Debug helpers.
+  var modulePrefix_ = '[SOCKS] ';
+  function dbg(msg:string) { console.log(modulePrefix_ + msg); }
+  function dbgWarn(msg:string) { console.warn(modulePrefix_ + msg); }
+  function dbgErr(msg:string) { console.error(modulePrefix_ + msg); }
 
 }  // module Socks
 

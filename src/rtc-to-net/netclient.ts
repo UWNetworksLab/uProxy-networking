@@ -2,6 +2,7 @@
   Wrapper which terminates relayed web requests through a native socket object.
 */
 /// <reference path='../interfaces/socket.d.ts' />
+/// <reference path='../interfaces/promise.d.ts' />
 
 declare var freedom:any;
 
@@ -10,10 +11,10 @@ module Net {
   var fSockets:Sockets.API = freedom['core.socket']();
 
   enum State {
-    CREATING_SOCKET,  // 'CREATING_SOCKET',
-    CONNECTING,       // 'CONNECTING',
-    CONNECTED,        // 'CONNECTED',
-    CLOSED            // 'CLOSED'
+    CREATING_SOCKET,
+    CONNECTING,
+    CONNECTED,
+    CLOSED
   }
 
   export interface Destination {
@@ -28,23 +29,30 @@ module Net {
    */
   export class Client {
 
-    socketId:string = null;
-    queue:any[] = [];
+    private socketId:number = null;
+    private queue:any[] = [];
     private state:State = State.CLOSED;
+
+    private closePromise:Promise<void>;
+    private fulfillClose:()=>void;
 
     /**
      * Constructing a Net.Client immediately begins a socket connection.
-     * TODO: Replace external callbacks with promises.
      */
     constructor (
         // External callback for data coming back over this socket.
-        private onResponse:(buffer:any)=>any,
-        // External callback for closure of this socket.
-        private onClose,
-        // destination: { host : "string", port : number }
+        private onResponse:(buffer:ArrayBuffer)=>any,
         private destination:Destination) {
       this.state = State.CREATING_SOCKET;
-      fSockets.create('tcp', {}).done(this.onCreate_);
+      this.closePromise = new Promise<void>((F, R) => {
+        this.fulfillClose = F;  // To be fired on close.
+      });
+      this.createSocket_()  // Initialize client TCP socket.
+          .then(this.connect_)
+          .then(this.attachHandlers_)
+          .catch((e) => {
+            console.error('Net.Client: ' + e.message);
+          });
     }
 
     /**
@@ -62,41 +70,68 @@ module Net {
       }
     }
 
-    public close = function() { this.onClose_(); }
+    public close = () => { this.onClose_ };
 
     /**
-     * Connect the socket once created.
+     * Wrapper which returns a promise for a created socket.
      */
-    private onCreate_ = (createInfo) => {
-      this.socketId = createInfo.socketId;
-      if (!this.socketId) {
-        console.error('Failed to create socket. createInfo: ', createInfo);
-        return;
-      }
-      fSockets.connect(this.socketId,
-                       this.destination.host,
-                       this.destination.port)
-        .done(this.onConnected_);
+    private createSocket_ = ():Promise<Sockets.CreateInfo> => {
+      return new Promise((F, R) => {
+        fSockets.create('tcp', {}).done(F).fail(R);
+      }).then((createInfo:Sockets.CreateInfo) => {
+        this.socketId = createInfo.socketId;
+        if (!this.socketId) {
+          return Promise.reject(new Error(
+              'Failed to create socket. createInfo: ' + createInfo));
+        }
+      })
+    }
+
+    /**
+     * Connect the socket. Assumes it was successfully created.
+     */
+    private connect_ = ():Promise<number> => {
       this.state = State.CONNECTING;
+      return new Promise((F, R) => {
+        fSockets.connect(this.socketId,
+                         this.destination.host,
+                         this.destination.port).done(F);
+      });
     }
 
     /**
      * Once connected to socket, attach handlers and send any queued data.
      */
-    private onConnected_ = () => {
+    private attachHandlers_ = (result:number) => {
+      if (0 !== result) {
+        return Promise.reject(new Error('connect error ' + result));
+      }
       this.state = State.CONNECTED;
-      // TODO: Update the onRead to socket-specific when that happens.
-      fSockets.on('onData', this.onRead_);
+      fSockets.on('onData', this.readData_);
+      fSockets.on('onDisconnect', this.close);
       if (0 < this.queue.length) {
         this.send(this.queue.shift());
       }
     }
 
     /**
+     * Read data from the destination.
+     */
+    private readData_ = (readInfo:Sockets.ReadInfo) => {
+      if (readInfo.socketId !== this.socketId) {
+        // TODO: currently our Freedom socket API sends all messages to every
+        // listener. Most crappy. Fix so that we tell it to listen to a
+        // particular socket.
+        return;
+      }
+      this.onResponse(readInfo.data);
+    }
+
+    /**
      * After writing data to socket...
      */
     private onWrite_ = (writeInfo) => {
-      console.log('Bytes written: ' + writeInfo.bytesWritten);
+      // console.log('Bytes written: ' + writeInfo.bytesWritten);
       // TODO: change sockets to having an explicit failure rather than giving -1
       // in the bytesWritten field.
       if (0 >= writeInfo.bytesWritten) {
@@ -107,20 +142,6 @@ module Net {
       // TODO: this callback recursion could cause a stack explosion...
       if (0 < this.queue.length) {
         this.send(this.queue.shift());
-      }
-    }
-
-    /**
-     * After reading, send socket data to external handler.
-     */
-    private onRead_ = (readInfo) => {
-      if (readInfo.socketId !== this.socketId) {
-        // TODO: currently our Freedom socket API sends all messages to every
-        // listener. Most crappy. Fix so that we tell it to listen to a
-        // particular socket.
-        return;
-      } else {
-        this.onResponse(readInfo.data);
       }
     }
 
@@ -138,8 +159,13 @@ module Net {
         fSockets.destroy(this.socketId);
       }
       this.socketId = null;
-      this.onClose();  // Fire external callback;
+      this.fulfillClose();
     }
+
+    /**
+     * Promise the future closing of this client.
+     */
+    public onceClosed = () => { return this.closePromise; }
 
   }  // Net.Client
 
