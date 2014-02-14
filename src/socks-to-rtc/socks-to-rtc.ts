@@ -55,13 +55,11 @@ module SocksToRTC {
       // Create sctp connection to a peer.
       this.sctpPc = this.createSCTPPeerConnection_();
 
-      /*
       // Create a freedom-channel to act as the signaling channel.
       fCore.createChannel().done((chan) => {
         console.log('Preparing SCTP peer connection. peerId: ' + peerId +
             ' chan id: ' + chan.identifier);
         this.sctpPc.setup(chan.identifier, 'SocksToRtc-' + peerId, true);
-        // when the channel is complete, setup handlers.
         this.signallingChannel = chan.channel;
         console.log('Client channel to sctpPc created');
         // Pass messages received via signalling channel to the local
@@ -75,7 +73,6 @@ module SocksToRTC {
         });
         console.log('Client channel to sctpPc ready.');
       });  // fCore.createChannel
-      */
     }
 
     /**
@@ -114,6 +111,7 @@ module SocksToRTC {
       }
       var channelLabel = obtainChannelLabel();
       console.log('socks-to-rtc: NEW DATA CHANNEL ' + channelLabel);
+      this.sctpPc.openDataChannel(channelLabel);
       this.socksSessions[channelLabel] = session;
       // When the TCP-connection receives data, send to sctp peer.
       // When it disconnects, clear the |channelLabel|.
@@ -123,10 +121,14 @@ module SocksToRTC {
             this.closeConnection_(channelLabel);
           });
 
-      this.sctpPc.send({
+      var newRequest = {
           'channelLabel': channelLabel,
-          'text': JSON.stringify({ host: address, port: port })
-      });
+          'text': { host: address, port: port }
+          // 'text': JSON.stringify({ host: address, port: port })
+      };
+      this.sctpPc.send(newRequest);
+      console.log('SocksToRtc: send new request ' +
+                  '-----> ' + channelLabel + ' \n ' + JSON.stringify(newRequest));
 
       // TODO: we are not connected yet... should we have some message passing
       // back from the other end of the data channel to tell us when it has
@@ -145,20 +147,18 @@ module SocksToRTC {
         throw Error('Unexpected missing SOCKs session to close for ' +
                     channelLabel);
       }
+      this.sctpPc.closeDataChannel(channelLabel);
+      console.log('socks-to-rtc: CLOSE DATA CHANNEL ' + channelLabel);
       this.socksServer.endSession(this.socksSessions[channelLabel]);
       delete this.socksSessions[channelLabel];
-      if (this.sctpPc) {
-        // Further closeConnection_ calls may occur after reset (from TCP
-        // disconnections).
-        this.sctpPc.closeDataChannel(channelLabel);
-      }
+      // Further closeConnection_ calls may occur after reset (from TCP
+      // disconnections).
     }
 
     /**
      * Prepare and attach handlers to a PeerConnection.
      */
     private createSCTPPeerConnection_ = ():PeerConnection => {
-      // Create an instance of freedom's data peer.
       var pc:PeerConnection = freedom['core.peerconnection']();
 
       // Handler for receiving data back from the remote RtcToNet.Peer.
@@ -176,13 +176,17 @@ module SocksToRTC {
           // give back the actual address that was connected to as per socks
           // official spec.
           session.sendData(msg.text);
+          // TODO: send socket close when the remote closes.
         } else {
           console.error('Message type isn\'t specified properly. Msg: ' +
               JSON.stringify(msg));
         }
       });
       // When WebRTC data-channel transport is closed, shut everything down.
+      // pc.on('onCloseDataChannel', this.closeConnection_);
       pc.on('onCloseDataChannel', this.closeConnection_);
+      // pc.onCloseDataChannel(this.closeConnection_);
+      console.log('created sctp peer connection.');
       return pc;
     }
 
@@ -197,9 +201,10 @@ module SocksToRTC {
         console.warn('SocksToRtc.Peer: SCTP peer connection not ready!');
         return;
       }
+      var payload = { 'channelLabel': channelLabel, 'buffer': buffer };
       console.log('SocksToRtc: send ' + buffer.byteLength + ' bytes ' +
-                  '-----> ' + channelLabel);
-      this.sctpPc.send({ 'channelLabel': channelLabel, 'buffer': buffer });
+                  '-----> ' + channelLabel + ' \n ' + JSON.stringify(payload));
+      this.sctpPc.send(payload);
     }
 
     /**

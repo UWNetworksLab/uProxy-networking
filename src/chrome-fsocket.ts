@@ -90,13 +90,14 @@ module Sockets {
             })
             .then(loop);
       }
-      var readLoop = loop().catch((e) => {
-        console.warn('ChromeSocket ' + socketId + ': ' + e.message);
-        this.fireEvent('onDisconnect', {
-            socketId: socketId,
-            error: e.message
-        });
-      })
+      var readLoop = loop()
+            .catch((e) => {
+              console.warn('ChromeSocket ' + socketId + ': ' + e.message);
+              this.fireEvent('onDisconnect', {
+                  socketId: socketId,
+                  error: e.message
+              });
+            })
     }
 
     /**
@@ -131,6 +132,7 @@ module Sockets {
      */
     private fireEvent = (event:string, data:any) => {
       this['dispatchEvent'](event, data);
+      console.log('Sockets.Chrome dispatching ' + event + ' with ' + data);
     }
 
   }  // class ChromeSockets

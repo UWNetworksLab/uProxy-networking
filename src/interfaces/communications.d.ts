@@ -3,7 +3,7 @@
 declare module Channel {
 
   export interface Message {
-    channelLabel?:string;
+    channelLabel:string;
     text?:string;
     buffer?:ArrayBuffer;
   }

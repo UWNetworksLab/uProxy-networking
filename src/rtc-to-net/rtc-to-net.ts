@@ -87,6 +87,8 @@ module RtcToNet {
                       JSON.stringify(message));
         return;
       }
+      console.log('RtcToNet: ' + label + '<----- received ' +
+          JSON.stringify(message));
 
       if (message.text) {
         // Text from the peer indicates request for a new destination.
@@ -134,23 +136,23 @@ module RtcToNet {
       var netClient = this.netClients[label] = new Net.Client(
           (data) => { this.serveDataToPeer_(label, data); },  // onResponse
           dest);
+      this.sctpPc.openDataChannel(label);
       netClient.onceClosed()
           .then(() => { this.closeDataChannel_(label) });
+      console.log('RtcToNet: preparing new datachannel ' + label);
     }
 
     /**
      * Close an individual Net.Client when its data channel closes.
-     *
-     * TODO: Figure out type for |arg|.
      */
-    private closeNetClient_ = (arg) => {
-      if (!(arg.channelId in this.netClients)) {
-        console.warn('No Net.Client to close for ' + arg.channelId)
+    private closeNetClient_ = (channelId:string) => {
+      console.log('Net.Client: CLOSING channel ' + channelId);
+      if (!(channelId in this.netClients)) {
+        console.warn('No Net.Client to close for ' + channelId)
         return;
       }
-      console.log('Net.Client: CLOSE! ' + arg.channelId);
-      this.netClients[arg.channelId].close();
-      delete this.netClients[arg.channelId];
+      this.netClients[channelId].close();
+      delete this.netClients[channelId];
     }
 
     /**
