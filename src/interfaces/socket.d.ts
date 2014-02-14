@@ -13,7 +13,7 @@ declare module Sockets {
     data:ArrayBuffer;
   }
 
-  // Platform independent, from Freedom.
+  // Platform independent, extension on Freedom.
   export interface API {
     create:any;
     listen:any;
