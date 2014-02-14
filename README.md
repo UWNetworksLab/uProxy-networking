@@ -1,6 +1,8 @@
 socks-rtc
 =========
 
+[![Build Status](https://travis-ci.org/uProxy/socks-rtc.png?branch=master)](https://travis-ci.org/uProxy/socks-rtc)
+
 Library which allows you to proxy SOCKS5 through WebRTC.
 
 This is built on top of [freedom](https://github.com/UWNetworksLab/freedom).
@@ -34,4 +36,4 @@ For example:
 
 `curl -x socks5h://localhost:9999 www.google.com`
 
-There will be actual tests soon!
+There will be more tests soon!

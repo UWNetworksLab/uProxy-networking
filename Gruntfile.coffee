@@ -60,6 +60,15 @@ module.exports = (grunt) ->
       }
     }
 
+    jasmine: {
+      # Eventually, this should be a wildcard once we've figured out how to run
+      # more dependencies under Jasmine.
+      src: 'chrome/js/socks-to-rtc/socks.js',
+      options : {
+        specs : 'spec/**/*_spec.js'
+      }
+    }
+
     clean: [
       'tmp/**',
       'chrome/js/**'
@@ -68,14 +77,24 @@ module.exports = (grunt) ->
 
   grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-clean'
+  grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-shell'
   grunt.loadNpmTasks 'grunt-ts'
 
-  grunt.registerTask 'default', [
+  grunt.registerTask 'build', [
     'ts:socks2rtc',
     'ts:rtc2net',
     'ts:chromeFSocket',
     'copy:app'
+  ]
+
+  grunt.registerTask 'test', [
+    'build',
+    'jasmine'
+  ]
+
+  grunt.registerTask 'default', [
+    'build'
   ]
 
   # Freedom doesn't build correctly by itself - run this task when in a clean
