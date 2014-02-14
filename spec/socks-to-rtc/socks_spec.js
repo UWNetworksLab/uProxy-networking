@@ -12,13 +12,13 @@ describe("socks", function() {
       1200 >> 8, 1200 & 0xFF]); // port: 1200
   });
 
-  it("reject wrongly sized requests", function() {
+  it('reject wrongly sized requests', function() {
     var result = Socks.interpretSocksRequest(
       new Uint8Array(new ArrayBuffer(8)));
     expect(result.failure).toEqual(Socks.RESPONSE.FAILURE);
   });
 
-  it("parse ipv4 request", function() {
+  it('parse ipv4 request', function() {
     var result = Socks.interpretSocksRequest(ipv4Request);
     expect(result.failure).toBeUndefined();
     expect(result.version).toEqual(Socks.VERSION5);
@@ -28,13 +28,13 @@ describe("socks", function() {
     expect(result.port).toEqual(1200);
   });
 
-  it("wrong socks version", function() {
+  it('wrong socks version', function() {
     ipv4Request[0] = 4;
     var result = Socks.interpretSocksRequest(ipv4Request);
     expect(result.failure).toEqual(Socks.RESPONSE.FAILURE);
   });
 
-  it("unsupported command", function() {
+  it('unsupported command', function() {
     ipv4Request[1] = Socks.REQUEST_CMD.UDP_ASSOCIATE;
     var result = Socks.interpretSocksRequest(ipv4Request);
     expect(result.failure).toEqual(Socks.RESPONSE.UNSUPPORTED_COMMAND);
