@@ -76,7 +76,14 @@ module RtcToNet {
         return;
       }
       if (message.text) {
+        if ('SOCKS-DISCONNECTED' == message.text) {
+          // TODO: this is a temporary 'disconnect' signal.
+          dbg(label + ' <--- received SOCKS-DISCONNECTED');
+          this.closeDataChannel_(label);
+          return;
+        }
         dbg('encountered new datachannel ' + label);
+        var dest:Net.Destination = JSON.parse(message.text);
         // Text from the peer indicates request for a new destination.
         // Assumes |message.text| is a Net.Destination.
         dbg(label + ' <--- new request: ' + message.text);
@@ -85,7 +92,7 @@ module RtcToNet {
           dbgWarn('Net.Client already exists for data channel: ' + label);
           return;
         }
-        this.prepareNetChannelLifecycle_(label, JSON.parse(message.text));
+        this.prepareNetChannelLifecycle_(label, dest);
 
       } else if (message.buffer) {
         dbg(label + ' <--- received ' + JSON.stringify(message));
@@ -136,8 +143,9 @@ module RtcToNet {
     /**
      * Close an individual Net.Client when its data channel closes.
      */
-    private closeNetClient_ = (channelId:string) => {
-      dbg('closing datachannel ' + channelId);
+    private closeNetClient_ = (channelData:Channel.CloseData) => {
+      var channelId = channelData.channelId;
+      dbg('closing Net.Client for closed datachannel ' + channelId);
       if (!(channelId in this.netClients)) {
         dbgWarn('no Net.Client to close for ' + channelId)
         return;

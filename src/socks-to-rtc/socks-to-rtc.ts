@@ -111,7 +111,7 @@ module SocksToRTC {
           .then(() => {
             var newRequest = {
                 channelLabel: channelLabel,
-                'text': JSON.stringify({ host: address, port: port })
+                text: JSON.stringify({ host: address, port: port })
             };
             this.sctpPc.send(newRequest);
             dbg('new request -----> ' + channelLabel +
@@ -145,7 +145,16 @@ module SocksToRTC {
       session.onceDisconnected()
           // TODO: When we start re-using datachannels, stop closing the
           // datachannels but remap them instead.
-          .then(() => { this.sctpPc.closeDataChannel(label); });
+          .then(() => {
+            // TODO: For now, signal the remote that this datachannel is
+            // disconnected.
+            this.sctpPc.send({
+              channelLabel: label,
+              text: 'SOCKS-DISCONNECTED'
+            });
+            dbg('send SOCKS-DISCONNECTED ---> ' + label);
+            this.sctpPc.closeDataChannel(label);
+          });
 
     }
 
