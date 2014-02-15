@@ -145,11 +145,11 @@ module RtcToNet {
      */
     private closeNetClient_ = (channelData:Channel.CloseData) => {
       var channelId = channelData.channelId;
-      dbg('closing Net.Client for closed datachannel ' + channelId);
       if (!(channelId in this.netClients)) {
         dbgWarn('no Net.Client to close for ' + channelId)
         return;
       }
+      dbg('closing Net.Client for closed datachannel ' + channelId);
       this.netClients[channelId].close();
       delete this.netClients[channelId];
     }

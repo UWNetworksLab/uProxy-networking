@@ -69,7 +69,7 @@ module Net {
       }
     }
 
-    public close = () => { this.onClose_ };
+    public close = () => { this.onClose_(); };
 
     /**
      * Wrapper which returns a promise for a created socket.

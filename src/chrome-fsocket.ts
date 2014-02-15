@@ -70,6 +70,7 @@ module Sockets {
 
     public disconnect = (socketId:number, continuation) => {
       chrome.socket.disconnect(socketId);
+      dbg(socketId + ' locally disconnected.');
       continuation();
     }
 
