@@ -1,5 +1,7 @@
 module.exports = (grunt) ->
 
+  path = require('path');
+
   grunt.initConfig {
     pkg: grunt.file.readJSON('package.json'),
 
@@ -69,6 +71,17 @@ module.exports = (grunt) ->
       }
     }
 
+    env: {
+      jasmine_node: {
+        # Will be available to tests as process.env['CHROME_EXTENSION_PATH'].
+        CHROME_EXTENSION_PATH: path.resolve('chrome')
+      }
+    }
+
+    jasmine_node: {
+      projectRoot: 'spec/selenium'
+    }
+
     clean: [
       'tmp/**',
       'chrome/js/**'
@@ -80,6 +93,8 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-shell'
   grunt.loadNpmTasks 'grunt-ts'
+  grunt.loadNpmTasks 'grunt-jasmine-node'
+  grunt.loadNpmTasks 'grunt-env'
 
   grunt.registerTask 'build', [
     'ts:socks2rtc',
@@ -88,9 +103,25 @@ module.exports = (grunt) ->
     'copy:app'
   ]
 
+  # This is the target run by Travis. Targets in here should run locally
+  # and on Travis.
   grunt.registerTask 'test', [
     'build',
     'jasmine'
+  ]
+
+  # Right now, the Selenium tests only run locally and require that
+  # selenium-server be running on localhost:4444. You can do that by:
+  #  - downloading the "Standalone Server" from
+  #    http://docs.seleniumhq.org/download/
+  #  - running java -jar selenium-server-standalone-*.jar
+  # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs,
+  #                add them to the test target, and remove this target.
+  # TODO(yangoon): Have this task spin up a selenium server.
+  grunt.registerTask 'endtoend', [
+    'build',
+    'env',
+    'jasmine_node'
   ]
 
   grunt.registerTask 'default', [
