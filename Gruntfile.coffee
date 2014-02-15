@@ -78,6 +78,8 @@ module.exports = (grunt) ->
       }
     }
 
+    # TODO(yangoon): Figure out how to use Node modules with
+    #                grunt-jasmine-contrib and move these to the jasmine target.
     jasmine_node: {
       projectRoot: 'spec/selenium'
     }
@@ -104,20 +106,15 @@ module.exports = (grunt) ->
   ]
 
   # This is the target run by Travis. Targets in here should run locally
-  # and on Travis.
+  # and on Travis/Sauce Labs.
   grunt.registerTask 'test', [
     'build',
     'jasmine'
   ]
 
-  # Right now, the Selenium tests only run locally and require that
-  # selenium-server be running on localhost:4444. You can do that by:
-  #  - downloading the "Standalone Server" from
-  #    http://docs.seleniumhq.org/download/
-  #  - running java -jar selenium-server-standalone-*.jar
-  # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs,
-  #                add them to the test target, and remove this target.
-  # TODO(yangoon): Have this task spin up a selenium server.
+  # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and
+  #                move this to the test target.
+  # TODO(yangoon): Figure out how to spin up Selenium server automatically.
   grunt.registerTask 'endtoend', [
     'build',
     'env',

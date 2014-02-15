@@ -36,7 +36,7 @@ running locally (on localhost:4444). To do this:
 
  - downloading the "Standalone Server" from http://docs.seleniumhq.org/download/
  - running the server, e.g. `java -jar selenium-server-standalone-*.jar`
- - `grunt selenium`
+ - `grunt endtoend`
 
 #### Manual
 At the moment, the way to test that this works is to just curl a webpage
