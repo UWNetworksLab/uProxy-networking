@@ -136,8 +136,15 @@ module RtcToNet {
       var netClient = this.netClients[label] = new Net.Client(
           (data) => { this.serveDataToPeer_(label, data); },  // onResponse
           dest);
-      netClient.onceClosed()
-          .then(() => { this.closeDataChannel_(label) });
+      // Send NetClient remote disconnections back to SOCKS peer, then shut the
+      // data channel locally.
+      netClient.onceDisconnected().then(() => {
+        this.sctpPc.send({
+          channelLabel: label,
+          text: 'NET-DISCONNECTED'
+        });
+        this.closeDataChannel_(label);
+      });
     }
 
     /**

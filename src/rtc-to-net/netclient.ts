@@ -33,8 +33,8 @@ module Net {
     private queue:any[] = [];
     private state:State = State.CLOSED;
 
-    private closePromise:Promise<void>;
-    private fulfillClose:()=>void;
+    private disconnectPromise:Promise<void>;
+    private fulfillDisconnect:()=>void;
 
     /**
      * Constructing a Net.Client immediately begins a socket connection.
@@ -44,8 +44,8 @@ module Net {
         private onResponse:(buffer:ArrayBuffer)=>any,
         private destination:Destination) {
       this.state = State.CREATING_SOCKET;
-      this.closePromise = new Promise<void>((F, R) => {
-        this.fulfillClose = F;  // To be fired on close.
+      this.disconnectPromise = new Promise<void>((F, R) => {
+        this.fulfillDisconnect = F;  // To be fired on close.
       });
       this.createSocket_()  // Initialize client TCP socket.
           .then(this.connect_)
@@ -69,7 +69,13 @@ module Net {
       }
     }
 
-    public close = () => { this.onClose_(); };
+    /**
+     * Close the Net.Client locally.
+     */
+    public close = () => {
+      dbg('closing ' + this.socketId + ' of ' + JSON.stringify(this.destination));
+      this.closeSocket_();
+    };
 
     /**
      * Wrapper which returns a promise for a created socket.
@@ -107,13 +113,7 @@ module Net {
       }
       this.state = State.CONNECTED;
       fSockets.on('onData', this.readData_);
-      fSockets.on('onDisconnect', (socketInfo:Sockets.DisconnectInfo) => {
-        if (socketInfo.socketId != this.socketId) {
-          return;  // duplicity of socket events.
-        }
-        dbg('closed ' + this.socketId + ' - ' + socketInfo.error);
-        this.close();
-      });
+      fSockets.on('onDisconnect', this.onDisconnect_);
       if (0 < this.queue.length) {
         this.send(this.queue.shift());
       }
@@ -140,7 +140,7 @@ module Net {
       // TODO: change sockets to having an explicit failure rather than giving -1
       // in the bytesWritten field.
       if (0 >= writeInfo.bytesWritten) {
-        this.onClose_();
+        this.close();
         return;
       }
       // If there is more to write, send it again.
@@ -151,26 +151,34 @@ module Net {
     }
 
     /**
-     * Close socket and fire external close handlers.
+     * Fired by closes remotely.
      */
-    private onClose_ = () => {
+    private onDisconnect_ = (socketInfo:Sockets.DisconnectInfo) => {
+      if (socketInfo.socketId != this.socketId) {
+        return;  // duplicity of socket events.
+      }
+      dbg(this.socketId + ' - ' + socketInfo.error);
+      this.closeSocket_();
+      this.fulfillDisconnect();
+    }
+
+    private closeSocket_ = () => {
       if (State.CLOSED == this.state) {
         return;
       }
       this.state = State.CLOSED;
-      dbg('closing ' + this.socketId + ' of ' + JSON.stringify(this.destination));
       if (this.socketId) {
         fSockets.disconnect(this.socketId);
         fSockets.destroy(this.socketId);
       }
       this.socketId = null;
-      this.fulfillClose();
     }
 
     /**
-     * Promise the future closing of this client.
+     * Promise the future closing of this client. This only gets fired by remote
+     * disconnections, not from active close() calls locally.
      */
-    public onceClosed = () => { return this.closePromise; }
+    public onceDisconnected = () => { return this.disconnectPromise; }
 
   }  // Net.Client
 

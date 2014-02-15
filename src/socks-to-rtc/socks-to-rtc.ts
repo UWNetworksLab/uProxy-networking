@@ -178,6 +178,12 @@ module SocksToRTC {
         dbg(msg.channelLabel + ' <--- received ' + msg.buffer.byteLength);
         session.sendData(msg.buffer);
       } else if (msg.text) {
+        if ('NET-DISCONNECTED' == msg.text) {
+          // Receiving a disconnect on the remote peer should close SOCKS.
+          dbg(label + ' <--- received NET-DISCONNECTED');
+          this.closeConnection_({channelId:label});
+          return;
+        }
         // TODO: we should use text as a signalling/control channel, e.g. to
         // give back the actual address that was connected to as per socks
         // official spec.
