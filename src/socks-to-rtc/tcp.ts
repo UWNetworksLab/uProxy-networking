@@ -209,11 +209,13 @@ module TCP {
         return;
       }
       dbg('disconnect ' + socketInfo.socketId + ' - ' + msg);
+      this.conns[socketId]
+          .then((conn:Connection) => { conn.fireRemoteDisconnect() });
       this.endConnection(socketId);
     }
 
     /**
-     * Stop a TCP connection and remove from server.
+     * Locally stop a TCP connection and remove from server.
      */
     public endConnection = (socketId) => {
       if (!(socketId in this.conns)) {
@@ -223,7 +225,6 @@ module TCP {
       return this.conns[socketId]
           .then(Connection.disconnect)
           .then(this.removeFromServer_);
-      // TODO: Do we need an external callback here?
     }
 
     private handleError_ = (err:Error) => {
@@ -384,11 +385,16 @@ module TCP {
       // Close the socket.
       fSockets.disconnect(this.socketId);
       fSockets.destroy(this.socketId);
-      this.fulfillDisconnect(0);  // Fire the disconnect Promise.
       return this;
     }
     public static disconnect(conn:Connection) { return conn.disconnect(); }
 
+    // Fire the disconnect Promise.
+    public fireRemoteDisconnect = () => { this.fulfillDisconnect(0); }
+
+    /**
+     * Promise for the (remote) disconnection of this socket.
+     */
     public onceDisconnected = () => { return this.disconnectPromise; }
 
     private addPendingData_ = (buffer:ArrayBuffer) => {
