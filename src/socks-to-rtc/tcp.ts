@@ -73,6 +73,7 @@ module TCP {
     public listen():Promise<any> {
       return this.createSocket_()
           .then(this.startListening_)
+          // Success. Attach connect, disconnect, and data handlers.
           .then(this.attachSocketHandlers_)
           .catch(this.handleError_);
     }
@@ -99,19 +100,19 @@ module TCP {
       return new Promise((F, R) => {
         fSockets.listen(this.serverSocketId, this.addr, this.port)
             .done(F).fail(R);
+      }).then((resultCode:number) => {  // Ensure the listen was successful.
+        if (0 !== resultCode) {
+          return Util.reject('listen failed on ' + this.endpoint_ +
+                               ' \n Result Code: ' + resultCode);
+        }
       });
     }
 
     /**
-     * Promise attachment of connection and data handlers if socket listening
-     * was successful.
+     * Promise attachment of connection and data handlers.
+     * Assumes server socket is successfully listening.
      */
-    private attachSocketHandlers_ = (resultCode:number) => {
-      if (0 !== resultCode) {
-        return Util.reject('listen failed on ' + this.endpoint_ +
-                             ' \n Result Code: ' + resultCode);
-      }
-      // Success. Attach connect, disconnect, and data handlers.
+    private attachSocketHandlers_ = () => {
       fSockets.on('onConnection', this.accept_);
       fSockets.on('onData', this.readConnectionData_);
       fSockets.on('onDisconnect', this.disconnectSocket_);
@@ -184,6 +185,7 @@ module TCP {
 
     private removeFromServer_ = (conn:TCP.Connection) => {
       delete this.conns[conn.socketId];
+      return conn;
     }
 
     /**
@@ -209,11 +211,13 @@ module TCP {
         return;
       }
       dbg('disconnect ' + socketInfo.socketId + ' - ' + msg);
-      this.endConnection(socketId);
+      return this.conns[socketId]
+          .then(Connection.disconnect)
+          .then(this.removeFromServer_);
     }
 
     /**
-     * Stop a TCP connection and remove from server.
+     * Locally stop a TCP connection and remove from server.
      */
     public endConnection = (socketId) => {
       if (!(socketId in this.conns)) {
@@ -221,9 +225,8 @@ module TCP {
                  // tcp connections must be closed, so this is expected.
       }
       return this.conns[socketId]
-          .then(Connection.disconnect)
+          .then(Connection.close)
           .then(this.removeFromServer_);
-      // TODO: Do we need an external callback here?
     }
 
     private handleError_ = (err:Error) => {
@@ -376,19 +379,30 @@ module TCP {
     }
 
     /**
-     * Disconnect underlying socket.
+     * Close underlying socket locally.
      */
-    public disconnect() {
+    public close() {
       if (!this.isConnected) { return; }
       this.isConnected = false;
       // Close the socket.
       fSockets.disconnect(this.socketId);
       fSockets.destroy(this.socketId);
-      this.fulfillDisconnect(0);  // Fire the disconnect Promise.
       return this;
     }
+    /**
+     * Fired when underlying socket disconnected remotely.
+     */
+    public disconnect = () => {
+      this.fulfillDisconnect(0);
+      return this.close();
+    }
+
+    public static close(conn:Connection) { return conn.close(); }
     public static disconnect(conn:Connection) { return conn.disconnect(); }
 
+    /**
+     * Promise for the (remote) disconnection of this socket.
+     */
     public onceDisconnected = () => { return this.disconnectPromise; }
 
     private addPendingData_ = (buffer:ArrayBuffer) => {

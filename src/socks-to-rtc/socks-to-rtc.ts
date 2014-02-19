@@ -111,7 +111,7 @@ module SocksToRTC {
           .then(() => {
             var newRequest = {
                 channelLabel: channelLabel,
-                'text': JSON.stringify({ host: address, port: port })
+                text: JSON.stringify({ host: address, port: port })
             };
             this.sctpPc.send(newRequest);
             dbg('new request -----> ' + channelLabel +
@@ -145,7 +145,16 @@ module SocksToRTC {
       session.onceDisconnected()
           // TODO: When we start re-using datachannels, stop closing the
           // datachannels but remap them instead.
-          .then(() => { this.sctpPc.closeDataChannel(label); });
+          .then(() => {
+            // TODO: For now, signal the remote that this datachannel is
+            // disconnected.
+            this.sctpPc.send({
+              channelLabel: label,
+              text: 'SOCKS-DISCONNECTED'
+            });
+            dbg('send SOCKS-DISCONNECTED ---> ' + label);
+            this.sctpPc.closeDataChannel(label);
+          });
 
     }
 
@@ -169,6 +178,12 @@ module SocksToRTC {
         dbg(msg.channelLabel + ' <--- received ' + msg.buffer.byteLength);
         session.sendData(msg.buffer);
       } else if (msg.text) {
+        if ('NET-DISCONNECTED' == msg.text) {
+          // Receiving a disconnect on the remote peer should close SOCKS.
+          dbg(label + ' <--- received NET-DISCONNECTED');
+          this.closeConnection_({channelId:label});
+          return;
+        }
         // TODO: we should use text as a signalling/control channel, e.g. to
         // give back the actual address that was connected to as per socks
         // official spec.
@@ -189,8 +204,10 @@ module SocksToRTC {
       var label = channel.channelId;
       dbg('datachannel ' + label + ' has closed. ending SOCKS session for channel.');
       if (!(label in this.socksSessions)) {
-        throw Error('Unexpected missing SOCKs session to close for ' +
-                    label);
+        // This can happen if both peers send disconnection signals at the same
+        // time.
+        dbgWarn('No SOCKs session to close for ' + label);
+        return;
       }
       // End SOCKS session.
       this.socksServer.endSession(this.socksSessions[label]);
