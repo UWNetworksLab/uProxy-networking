@@ -143,6 +143,7 @@ module RtcToNet {
           channelLabel: label,
           text: 'NET-DISCONNECTED'
         });
+        dbg('send NET-DISCONNECTED ---> ' + label);
         this.closeDataChannel_(label);
       });
     }

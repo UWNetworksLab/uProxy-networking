@@ -204,8 +204,10 @@ module SocksToRTC {
       var label = channel.channelId;
       dbg('datachannel ' + label + ' has closed. ending SOCKS session for channel.');
       if (!(label in this.socksSessions)) {
-        throw Error('Unexpected missing SOCKs session to close for ' +
-                    label);
+        // This can happen if both peers send disconnection signals at the same
+        // time.
+        dbgWarn('No SOCKs session to close for ' + label);
+        return;
       }
       // End SOCKS session.
       this.socksServer.endSession(this.socksSessions[label]);
