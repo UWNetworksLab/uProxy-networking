@@ -73,8 +73,16 @@ module Net {
      * Close the Net.Client locally.
      */
     public close = () => {
+      if (State.CLOSED == this.state) {
+        return;
+      }
       dbg('closing ' + this.socketId + ' of ' + JSON.stringify(this.destination));
-      this.closeSocket_();
+      this.state = State.CLOSED;
+      if (this.socketId) {
+        fSockets.disconnect(this.socketId);
+        fSockets.destroy(this.socketId);
+      }
+      this.socketId = null;
     };
 
     /**
@@ -151,27 +159,15 @@ module Net {
     }
 
     /**
-     * Fired by closes remotely.
+     * Fired only when underlying socket closes remotely.
      */
     private onDisconnect_ = (socketInfo:Sockets.DisconnectInfo) => {
       if (socketInfo.socketId != this.socketId) {
         return;  // duplicity of socket events.
       }
       dbg(this.socketId + ' - ' + socketInfo.error);
-      this.closeSocket_();
+      this.close();
       this.fulfillDisconnect();
-    }
-
-    private closeSocket_ = () => {
-      if (State.CLOSED == this.state) {
-        return;
-      }
-      this.state = State.CLOSED;
-      if (this.socketId) {
-        fSockets.disconnect(this.socketId);
-        fSockets.destroy(this.socketId);
-      }
-      this.socketId = null;
     }
 
     /**
