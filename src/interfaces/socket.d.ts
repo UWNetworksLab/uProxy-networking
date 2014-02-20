@@ -8,12 +8,17 @@ declare module Sockets {
     socketId:number;
   }
 
+  export interface DisconnectInfo {
+    socketId:number;
+    error:string;
+  }
+
   export interface ReadInfo {
     socketId:number;
     data:ArrayBuffer;
   }
 
-  // Platform independent, from Freedom.
+  // Platform independent, extension on Freedom.
   export interface API {
     create:any;
     listen:any;

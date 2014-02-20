@@ -33,8 +33,8 @@ module Net {
     private queue:any[] = [];
     private state:State = State.CLOSED;
 
-    private closePromise:Promise<void>;
-    private fulfillClose:()=>void;
+    private disconnectPromise:Promise<void>;
+    private fulfillDisconnect:()=>void;
 
     /**
      * Constructing a Net.Client immediately begins a socket connection.
@@ -44,15 +44,14 @@ module Net {
         private onResponse:(buffer:ArrayBuffer)=>any,
         private destination:Destination) {
       this.state = State.CREATING_SOCKET;
-      this.closePromise = new Promise<void>((F, R) => {
-        this.fulfillClose = F;  // To be fired on close.
+      this.disconnectPromise = new Promise<void>((F, R) => {
+        this.fulfillDisconnect = F;  // To be fired on close.
       });
       this.createSocket_()  // Initialize client TCP socket.
           .then(this.connect_)
           .then(this.attachHandlers_)
-          .catch((e) => {
-            console.error('Net.Client: ' + e.message);
-          });
+          .catch((e) => { dbgErr(e.message); });
+      dbg('created connection to ' + JSON.stringify(destination));
     }
 
     /**
@@ -60,7 +59,7 @@ module Net {
      */
     public send = (buffer) => {
       if (State.CLOSED == this.state) {
-        console.warn('Net.Client: attempted to send data to closed socket :(');
+        dbgWarn('attempted to send data to closed socket!');
         return;
       }
       if (State.CONNECTED == this.state) {
@@ -70,7 +69,21 @@ module Net {
       }
     }
 
-    public close = () => { this.onClose_ };
+    /**
+     * Close the Net.Client locally.
+     */
+    public close = () => {
+      if (State.CLOSED == this.state) {
+        return;
+      }
+      dbg('closing ' + this.socketId + ' of ' + JSON.stringify(this.destination));
+      this.state = State.CLOSED;
+      if (this.socketId) {
+        fSockets.disconnect(this.socketId);
+        fSockets.destroy(this.socketId);
+      }
+      this.socketId = null;
+    };
 
     /**
      * Wrapper which returns a promise for a created socket.
@@ -108,7 +121,7 @@ module Net {
       }
       this.state = State.CONNECTED;
       fSockets.on('onData', this.readData_);
-      fSockets.on('onDisconnect', this.close);
+      fSockets.on('onDisconnect', this.onDisconnect_);
       if (0 < this.queue.length) {
         this.send(this.queue.shift());
       }
@@ -135,7 +148,7 @@ module Net {
       // TODO: change sockets to having an explicit failure rather than giving -1
       // in the bytesWritten field.
       if (0 >= writeInfo.bytesWritten) {
-        this.onClose_();
+        this.close();
         return;
       }
       // If there is more to write, send it again.
@@ -146,27 +159,28 @@ module Net {
     }
 
     /**
-     * Close socket and fire external close handlers.
+     * Fired only when underlying socket closes remotely.
      */
-    private onClose_ = () => {
-      if (State.CLOSED == this.state) {
-        return;
+    private onDisconnect_ = (socketInfo:Sockets.DisconnectInfo) => {
+      if (socketInfo.socketId != this.socketId) {
+        return;  // duplicity of socket events.
       }
-      this.state = State.CLOSED;
-      console.log('Net.Client: closing socket ' + this.socketId);
-      if (this.socketId) {
-        fSockets.disconnect(this.socketId);
-        fSockets.destroy(this.socketId);
-      }
-      this.socketId = null;
-      this.fulfillClose();
+      dbg(this.socketId + ' - ' + socketInfo.error);
+      this.close();
+      this.fulfillDisconnect();
     }
 
     /**
-     * Promise the future closing of this client.
+     * Promise the future closing of this client. This only gets fired by remote
+     * disconnections, not from active close() calls locally.
      */
-    public onceClosed = () => { return this.closePromise; }
+    public onceDisconnected = () => { return this.disconnectPromise; }
 
   }  // Net.Client
+
+  var modulePrefix_ = '[Net] ';
+  function dbg(msg:string) { console.log(modulePrefix_ + msg); }
+  function dbgWarn(msg:string) { console.warn(modulePrefix_ + msg); }
+  function dbgErr(msg:string) { console.error(modulePrefix_ + msg); }
 
 }  // module Net

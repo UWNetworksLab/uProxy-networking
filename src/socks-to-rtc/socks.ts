@@ -209,13 +209,20 @@ module Socks {
 
     listen() {
       return this.tcpServer.listen().then(() => {
-        console.log('LISTENING ' + this.tcpServer.addr + ':' + this.tcpServer.port);
+        dbg('LISTENING ' + this.tcpServer.addr + ':' + this.tcpServer.port);
       });
     }
 
     disconnect() { this.tcpServer.disconnect(); }
 
+    /**
+     * Closes the underlying TCP connection for SOCKS |session|.
+     * Assumes |session| is valid.
+     */
     public endSession(session:Session) {
+      if (!session) {
+        throw Error('SOCKS session object undefined!');
+      }
       this.tcpServer.endConnection(session.tcpConnection.socketId);
     }
 
