@@ -36,9 +36,9 @@ We have a Selenium test which starts Chrome with the proxy loaded and its proxy
 settings pointing at the proxy. You will need to have the Selenium server
 running locally (on localhost:4444). To do this:
 
- - downloading the "Standalone Server" from http://docs.seleniumhq.org/download/
- - running the server, e.g. `java -jar selenium-server-standalone-*.jar`
- - `grunt endtoend`
+ - download the "Standalone Server" from http://docs.seleniumhq.org/download/
+ - run the Selenium server, e.g. `java -jar selenium-server-standalone-*.jar`
+ - run the test with `grunt endtoend`
 
 #### Manual
 At the moment, the way to test that this works is to just curl a webpage
