@@ -14,7 +14,10 @@
     "grunt-contrib-copy": "~0.4.1",
     "grunt-shell": "~0.3.1",
     "grunt-ts": "~1.6.4",
-    "freedom": "~0.2.2"
+    "freedom": "~0.2.2",
+    "grunt-jasmine-node": "git://github.com/vojtajina/grunt-jasmine-node.git#fix-grunt-exit-code",
+    "webdriverjs": "~1.3.1",
+    "grunt-env": "~0.4.1"
   },
   "scripts": {
     "test": "grunt --verbose"

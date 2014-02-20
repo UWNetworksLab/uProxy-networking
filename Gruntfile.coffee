@@ -1,5 +1,7 @@
 module.exports = (grunt) ->
 
+  path = require('path');
+
   grunt.initConfig {
     pkg: grunt.file.readJSON('package.json'),
 
@@ -69,6 +71,19 @@ module.exports = (grunt) ->
       }
     }
 
+    env: {
+      jasmine_node: {
+        # Will be available to tests as process.env['CHROME_EXTENSION_PATH'].
+        CHROME_EXTENSION_PATH: path.resolve('chrome')
+      }
+    }
+
+    # TODO(yangoon): Figure out how to use Node modules with
+    #                grunt-jasmine-contrib and move these to the jasmine target.
+    jasmine_node: {
+      projectRoot: 'spec/selenium'
+    }
+
     clean: [
       'tmp/**',
       'chrome/js/**'
@@ -80,6 +95,8 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-shell'
   grunt.loadNpmTasks 'grunt-ts'
+  grunt.loadNpmTasks 'grunt-jasmine-node'
+  grunt.loadNpmTasks 'grunt-env'
 
   grunt.registerTask 'build', [
     'ts:socks2rtc',
@@ -88,9 +105,20 @@ module.exports = (grunt) ->
     'copy:app'
   ]
 
+  # This is the target run by Travis. Targets in here should run locally
+  # and on Travis/Sauce Labs.
   grunt.registerTask 'test', [
     'build',
     'jasmine'
+  ]
+
+  # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and
+  #                move this to the test target.
+  # TODO(yangoon): Figure out how to spin up Selenium server automatically.
+  grunt.registerTask 'endtoend', [
+    'build',
+    'env',
+    'jasmine_node'
   ]
 
   grunt.registerTask 'default', [
