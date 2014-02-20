@@ -125,7 +125,7 @@ module.exports = (grunt) ->
   #                move this to the test target.
   # TODO(yangoon): Figure out how to spin up Selenium server automatically.
   grunt.registerTask 'endtoend', [
-    'build',
+    'chrome',
     'env',
     'jasmine_node'
   ]

@@ -9,25 +9,45 @@ This is built on top of [freedom](https://github.com/UWNetworksLab/freedom).
 
 At the moment this only supports chrome.
 
-### Requirements
+### Overview
+
+There are two modules: _socks-to-rtc_ and _rtc-to-net_.
+
+-_socks-to-rtc_ provides a local proxy (which the user could point their browser
+proxy settings to) which passes requests over a WebRTC peerconnection.
+-_rtc-to-net_ acts as the 'remote' proxy which receives the requests from the
+_socks-to-rtc_ peer over WebRTC, passes the request to the destination
+webserver, and serves the response back to _socks-to-rtc_.
+
+#### Requirements
 
 - node + npm
 - grunt `npm install -g grunt-cli`
 
-### Initial Setup
+#### Initial Setup
 
 - Run `npm install` from the base directory to obtain all prerequisites.
 - Run `grunt setup` to prepare the freedom installation. (This step should
   disappear with future versions of freedom)
-- Run `grunt` which builds everything.
-- Go to `chrome://extensions`, ensure developer mode is enabled, and load
-  unpacked extension the `socks-rtc/chrome/` directory.
-- Open the background page.
 
-### Build
-Assuming you've done initial setup:
-- Run `grunt`.
-- Reload extension.
+#### Build
+- Running `grunt` compiles all the typescript into javascript which goes into
+  the `build` directory.
+- If you want to run the example Chrome App, run `grunt chrome`.
+
+#### Usage
+
+To make use of this library, one needs to include `socks-to-rtc.json` and
+`rtc-to-net.json`, which are manifests describing freedom modules, as
+dependencies in the parent application's freedom manifest. Three things must occur
+for the two components to speak to each other:
+
+- `.emit('start')` to _rtc-to-net_ begins the remote peer server.
+- `.emit('start', { host, port, peerId })` to _socks-to-rtc_ begins listening
+  locally.
+- Establish a signalling channel between _rtc-to-net_ and _socks-to-rtc_ so that
+  they may communicate. See the chrome app for an example.
+
 
 ### End-to-End Test
 
@@ -41,9 +61,15 @@ running locally (on localhost:4444). To do this:
  - run the test with `grunt endtoend`
 
 #### Manual
+
+- Run `grunt chrome` to build the chrome app in the `chrome/` directory.
+- Go to `chrome://extensions`, ensure developer mode is enabled, and load
+  unpacked extension the `socks-rtc/chrome/` directory.
+- Open the background page, which will start a socks-rtc proxy listening on
+  localhost:9999.
+
 At the moment, the way to test that this works is to just curl a webpage
-through the proxy which socks-rtc sets up if you've built it successfully.
-For example:
+through the socks-rtc proxy. For example:
 
 `curl -x socks5h://localhost:9999 www.google.com`
 
