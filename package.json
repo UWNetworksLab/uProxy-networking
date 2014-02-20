@@ -1,9 +1,10 @@
 {
   "name": "socks-rtc",
   "description": "Library for proxying SOCKS5 over WebRTC",
+  "version": "0.1.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/keroserene/socks-rtc"
+    "url": "https://github.com/uProxy/socks-rtc"
   },
   "devDependencies": {
     "grunt": "~0.4.1",
