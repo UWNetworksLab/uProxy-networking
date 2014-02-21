@@ -12,7 +12,7 @@ module.exports = (grunt) ->
             src: ['**']
             dest: 'chrome/js/'
             expand: true,
-            cwd: 'tmp'
+            cwd: 'build'
           }, {
             src: 'node_modules/freedom/freedom.js'
             dest: 'chrome/js/freedom.js'
@@ -23,15 +23,24 @@ module.exports = (grunt) ->
             cwd: 'src'
           },
         ]
+      },
+      json: {
+        files: [{
+            src: ['**/*.json']
+            dest: 'build/'
+            expand: true,
+            cwd: 'src'
+          }
+        ]
       }
     }
 
-    # All typescript compiles to tmp/ initially.
+    # All typescript compiles to build/ initially.
     ts: {
       socks2rtc: {
         src: ['src/interfaces/*.d.ts',
               'src/socks-to-rtc/*.ts'],
-        outDir: 'tmp/socks-to-rtc/',
+        outDir: 'build/socks-to-rtc/',
         options: {
           sourceMap: false
         }
@@ -39,14 +48,14 @@ module.exports = (grunt) ->
       rtc2net: {
         src: ['src/interfaces/*.d.ts',
               'src/rtc-to-net/*.ts'],
-        outDir: 'tmp/rtc-to-net/',
+        outDir: 'build/rtc-to-net/',
         options: {
           sourceMap: false
         }
       }
       chromeFSocket: {
         src: ['src/chrome-fsocket.ts'],
-        outDir: 'tmp/',
+        outDir: 'build/',
         options: { sourceMap: false; }
       }
     }
@@ -85,7 +94,7 @@ module.exports = (grunt) ->
     }
 
     clean: [
-      'tmp/**',
+      'build/**',
       'chrome/js/**'
     ]
   }
@@ -102,7 +111,7 @@ module.exports = (grunt) ->
     'ts:socks2rtc',
     'ts:rtc2net',
     'ts:chromeFSocket',
-    'copy:app'
+    'copy:json'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
@@ -116,13 +125,18 @@ module.exports = (grunt) ->
   #                move this to the test target.
   # TODO(yangoon): Figure out how to spin up Selenium server automatically.
   grunt.registerTask 'endtoend', [
-    'build',
+    'chrome',
     'env',
     'jasmine_node'
   ]
 
   grunt.registerTask 'default', [
     'build'
+  ]
+
+  grunt.registerTask 'chrome', [
+    'build',
+    'copy:app'
   ]
 
   # Freedom doesn't build correctly by itself - run this task when in a clean
