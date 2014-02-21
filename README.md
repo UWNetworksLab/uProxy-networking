@@ -42,11 +42,14 @@ To make use of this library, one needs to include `socks-to-rtc.json` and
 dependencies in the parent application's freedom manifest. Three things must occur
 for the two components to speak to each other:
 
-- `.emit('start')` to _rtc-to-net_ begins the remote peer server.
-- `.emit('start', { host, port, peerId })` to _socks-to-rtc_ begins listening
-  locally.
-- Establish a signalling channel between _rtc-to-net_ and _socks-to-rtc_ so that
-  they may communicate. See the chrome app for an example.
+- In the your 'parent freedom' app, obtain references to the dependencies. (i.e.
+  'var socksToRtc = freedom.SocksToRtc();' and 'var rtcToNet = freedom.RtcToNet();'
+- `rtcToNet.emit('start')` begins the remote peer server.
+- `socksToRtc.emit('start', { host, port, peerId })` begins listening
+  locally, and sends a signal to the remote if _rtc-to-net_'s peerId matches.
+
+This establish a signalling channel between _rtc-to-net_ and _socks-to-rtc_ so that
+they may communicate. See the chrome app for an example.
 
 
 ### End-to-End Test
@@ -72,5 +75,8 @@ At the moment, the way to test that this works is to just curl a webpage
 through the socks-rtc proxy. For example:
 
 `curl -x socks5h://localhost:9999 www.google.com`
+
+(the 'h' indicates that DNS requests are made through the proxy as well,
+and not resolved locally.)
 
 There will be more tests soon!
