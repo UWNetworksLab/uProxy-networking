@@ -22,6 +22,6 @@
     "test": "grunt --verbose"
   },
   "dependencies": {
-    "freedom-runtime-chrome": "0.0.2"
+    "freedom-runtime-chrome": "0.0.3"
   }
 }
