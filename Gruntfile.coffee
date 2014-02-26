@@ -117,7 +117,7 @@ module.exports = (grunt) ->
   # This is the target run by Travis. Targets in here should run locally
   # and on Travis/Sauce Labs.
   grunt.registerTask 'test', [
-    'build',
+    'chrome',
     'jasmine'
   ]
 
