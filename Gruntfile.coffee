@@ -53,8 +53,8 @@ module.exports = (grunt) ->
           sourceMap: false
         }
       }
-      chromeFSocket: {
-        src: ['src/chrome-fsocket.ts'],
+      chromeSockets: {
+        src: ['src/chrome-*socket.ts'],
         outDir: 'build/',
         options: { sourceMap: false; }
       }
@@ -110,7 +110,7 @@ module.exports = (grunt) ->
   grunt.registerTask 'build', [
     'ts:socks2rtc',
     'ts:rtc2net',
-    'ts:chromeFSocket',
+    'ts:chromeSockets',
     'copy:json'
   ]
 
