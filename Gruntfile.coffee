@@ -74,7 +74,10 @@ module.exports = (grunt) ->
     jasmine: {
       # Eventually, this should be a wildcard once we've figured out how to run
       # more dependencies under Jasmine.
-      src: 'chrome/js/socks-to-rtc/socks.js',
+      src: [
+        'chrome/js/socks-to-rtc/socks.js',
+        'chrome/js/chrome-udpsocket.js'
+      ],
       options : {
         specs : 'spec/**/*_spec.js'
       }
