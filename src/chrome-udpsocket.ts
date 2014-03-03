@@ -62,9 +62,8 @@ module UdpSocket {
     public sendTo = (data:ArrayBuffer, address:string, port:number, continuation) => {
       // TODO(yangoon): throw error if socketId unset.
       chrome.socket.sendTo(this.socketId, data, address, port, (writeInfo) => {
-        console.log(writeInfo);
+        continuation(writeInfo.bytesWritten);
       });
-      continuation();
     }
 
     public destroy = (continuation) => {

@@ -65,7 +65,7 @@ describe("chrome-udpsocket", function() {
         'localhost',
         7000,
         jasmine.any(Function));
-    expect(continuation).toHaveBeenCalled();
+    expect(continuation).toHaveBeenCalledWith(sendToResult.bytesWritten);
   });
 
   // TODO(yangoon): test for recvFrom
