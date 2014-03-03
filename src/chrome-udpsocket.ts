@@ -3,20 +3,19 @@
  */
 /// <reference path='interfaces/udpsocket.d.ts' />
 
+// TODO(yangoon): use DefinitelyTyped.
 declare var chrome:any;
 
 module UdpSocket {
 
   // Type for the chrome.socket.create callback:
   //   http://developer.chrome.com/apps/socket#method-create
-  // TODO(yangoon): use DefinitelyTyped.
   interface CreateSocketInfo {
     socketId:number;
   }
 
   // Type for the chrome.socket.recvFrom callback:
   //   http://developer.chrome.com/apps/socket#method-recvFrom
-  // TODO(yangoon): use DefinitelyTyped.
   interface RecvFromInfo {
     resultCode:number;
     address:string;
@@ -26,7 +25,6 @@ module UdpSocket {
 
   // Type for the chrome.socket.sendTo callback:
   //   http://developer.chrome.com/apps/socket#type-WriteInfo
-  // TODO(yangoon): use DefinitelyTyped.
   interface WriteInfo {
     bytesWritten:number;
   }
