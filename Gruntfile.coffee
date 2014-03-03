@@ -53,8 +53,8 @@ module.exports = (grunt) ->
           sourceMap: false
         }
       }
-      chromeFSocket: {
-        src: ['src/chrome-fsocket.ts'],
+      chromeSockets: {
+        src: ['src/chrome-*socket.ts'],
         outDir: 'build/',
         options: { sourceMap: false; }
       }
@@ -74,7 +74,10 @@ module.exports = (grunt) ->
     jasmine: {
       # Eventually, this should be a wildcard once we've figured out how to run
       # more dependencies under Jasmine.
-      src: 'chrome/js/socks-to-rtc/socks.js',
+      src: [
+        'chrome/js/socks-to-rtc/socks.js',
+        'chrome/js/chrome-udpsocket.js'
+      ],
       options : {
         specs : 'spec/**/*_spec.js'
       }
@@ -110,14 +113,14 @@ module.exports = (grunt) ->
   grunt.registerTask 'build', [
     'ts:socks2rtc',
     'ts:rtc2net',
-    'ts:chromeFSocket',
+    'ts:chromeSockets',
     'copy:json'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
   # and on Travis/Sauce Labs.
   grunt.registerTask 'test', [
-    'build',
+    'chrome',
     'jasmine'
   ]
 

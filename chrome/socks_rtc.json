@@ -13,6 +13,7 @@
   },
   "permissions": [
     "core.socket",
+    "core.udpsocket",
     "core.peerconnection"
   ]
 }

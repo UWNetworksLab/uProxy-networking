@@ -12,7 +12,7 @@
     }
   },
   "permissions": [
-    { "socket": ["tcp-connect", "tcp-listen", "udp-send-to"] },
+    { "socket": ["tcp-connect", "tcp-listen", "udp-bind", "udp-send-to"] },
     "https://*.appspot.com/"
   ]
 }
