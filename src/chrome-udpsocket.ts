@@ -7,8 +7,28 @@ declare var chrome:any;
 
 module UdpSocket {
 
+  // Type for the chrome.socket.create callback:
+  //   http://developer.chrome.com/apps/socket#method-create
+  // TODO(yangoon): use DefinitelyTyped.
   interface CreateSocketInfo {
     socketId:number;
+  }
+
+  // Type for the chrome.socket.recvFrom callback:
+  //   http://developer.chrome.com/apps/socket#method-recvFrom
+  // TODO(yangoon): use DefinitelyTyped.
+  interface RecvFromInfo {
+    resultCode:number;
+    address:string;
+    port:number;
+    data:ArrayBuffer
+  }
+
+  // Type for the chrome.socket.sendTo callback:
+  //   http://developer.chrome.com/apps/socket#type-WriteInfo
+  // TODO(yangoon): use DefinitelyTyped.
+  interface WriteInfo {
+    bytesWritten:number;
   }
 
   export class Chrome implements UdpSocket.API {
@@ -19,15 +39,21 @@ module UdpSocket {
         private dispatchEvent:(event:string, data:any) => void) {
     }
 
-    public bind = (address:string, port:number, continuation) => {
+    public bind = (
+        address:string,
+        port:number,
+        continuation: (result:number) => any) => {
       // TODO(yangoon): throw error if socketId already set.
       chrome.socket.create('udp', {}, (createResult:CreateSocketInfo) => {
         // TODO(yangoon): can create() fail?
         this.socketId = createResult.socketId;
-        chrome.socket.bind(this.socketId, address, port, (resultCode:number) => {
+        // Note how chrome.socket.bind's callback is just an integer:
+        //   http://developer.chrome.com/apps/socket#method-bind
+        chrome.socket.bind(this.socketId, address, port, (bindResult:number) => {
           dbg('socket ' + this.socketId + ' listening on ' + address + ':' + port);
-          continuation(resultCode);
-          if (resultCode >= 0) {
+          // TODO(yangoon): "proper" promises-style fail if bindResult < 0.
+          continuation(bindResult);
+          if (bindResult >= 0) {
             this.recvFromLoop();
           }
         });
@@ -41,7 +67,7 @@ module UdpSocket {
     private recvFromLoop = () => {
       // TODO(yangoon): throw error if socketId unset.
       dbg('starting recvFrom loop for socket ' + this.socketId);
-      chrome.socket.recvFrom(this.socketId, null, (recvFromInfo) => {
+      chrome.socket.recvFrom(this.socketId, null, (recvFromInfo:RecvFromInfo) => {
         if (recvFromInfo.resultCode >= 0) {
           dbg('dispatching onData event for socket ' + this.socketId);
           this.dispatchEvent('onData', {
@@ -59,14 +85,18 @@ module UdpSocket {
       });
     }
 
-    public sendTo = (data:ArrayBuffer, address:string, port:number, continuation) => {
+    public sendTo = (
+        data:ArrayBuffer,
+        address:string,
+        port:number,
+        continuation: (bytesWritten:number) => any) => {
       // TODO(yangoon): throw error if socketId unset.
-      chrome.socket.sendTo(this.socketId, data, address, port, (writeInfo) => {
+      chrome.socket.sendTo(this.socketId, data, address, port, (writeInfo:WriteInfo) => {
         continuation(writeInfo.bytesWritten);
       });
     }
 
-    public destroy = (continuation) => {
+    public destroy = (continuation: () => any) => {
       if (this.socketId) {
         chrome.socket.destroy(this.socketId);
       }
