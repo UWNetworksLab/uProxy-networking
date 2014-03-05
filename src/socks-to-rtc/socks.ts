@@ -291,7 +291,8 @@ module Socks {
           .then(Socks.Session.checkRequestFailure)
           // Valid request - fire external callback.
           .then((request) => {
-            return callback(this, request.addressString, request.port)
+            return callback(this, request.addressString, request.port,
+                request.protocol);
           // Invalid request - notify client with |request.failure|.
           }, (e) => {
             replyToTCP(conn, parseInt(e.message));
