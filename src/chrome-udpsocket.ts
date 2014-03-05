@@ -58,6 +58,15 @@ module UdpSocket {
       });
     }
 
+    public getInfo = (continuation: (result:UdpSocket.SocketInfo) => any) => {
+      // TODO(yangoon): throw error if socketId unset.
+      chrome.socket.getInfo(this.socketId, (socketInfo:UdpSocket.SocketInfo) => {
+        // Note that since we're just forwarding the response from the
+        // underlying library this leaks some information, e.g. socketId.
+        continuation(socketInfo);
+      });
+    }
+
     /**
      * Initialises an infinite read loop.
      * The socket must be successfully bound.
