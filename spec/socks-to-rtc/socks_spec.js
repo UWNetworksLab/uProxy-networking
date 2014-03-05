@@ -35,7 +35,7 @@ describe("socks", function() {
   });
 
   it('unsupported command', function() {
-    ipv4Request[1] = Socks.REQUEST_CMD.UDP_ASSOCIATE;
+    ipv4Request[1] = Socks.REQUEST_CMD.BIND;
     var result = Socks.interpretSocksRequest(ipv4Request);
     expect(result.failure).toEqual(Socks.RESPONSE.UNSUPPORTED_COMMAND);
   });
