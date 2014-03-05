@@ -174,11 +174,15 @@ module Socks {
   export class Server {
 
     private tcpServer:TCP.Server;
+    private address;
+    private port;
 
     /**
      * Construct Socks.Server by preparing underlying TCP server.
      */
     constructor(address, port, public destinationCallback) {
+      this.address = address;
+      this.port = port;
       this.tcpServer = new TCP.Server(address || 'localhost', port || 1080);
       this.tcpServer.on('connection', this.establishSession_);
     }
@@ -195,7 +199,7 @@ module Socks {
           // Success - Create new session.
           .then(() => {
             conn.on('recv', null);  // Disable recv until session is ready.
-            return Socks.Session.Create(conn);
+            return new Socks.Session(conn, this.address);
           // AUTH error. (Required method not available).
           }, (e) => {
             replyToTCP(conn, Socks.AUTH.NONE);
@@ -272,11 +276,17 @@ module Socks {
       }
     }
 
-    public static Create(conn:TCP.Connection) { return new Session(conn); }
+    // UDP relay for this session, if the client requested UDP_ASSOCIATE
+    // during the initial handshake.
+    private udpRelay:Socks.UdpRelay;
 
     // TODO: Implement SOCKS authentication in the future.
     //       (Not urgent because this part is local for now.)
-    constructor(public tcpConnection:TCP.Connection) {
+    // TODO(yangoon): address is a hack for UDP...it would be much better
+    //                if we could interrogate the connection for the address
+    constructor(
+        public tcpConnection:TCP.Connection,
+        public address:string) {
       replyToTCP(this.tcpConnection, Socks.AUTH.NOAUTH);  // Skip auth.
     }
 
@@ -290,9 +300,14 @@ module Socks {
           .then(Socks.Session.interpretRequest)
           .then(Socks.Session.checkRequestFailure)
           // Valid request - fire external callback.
-          .then((request) => {
-            return callback(this, request.addressString, request.port,
-                request.protocol);
+          .then(this.maybeUdpStartRelay)
+          .then((request:any) => {
+            // TODO(yangoon): serious refactoring needed here!
+            var connectionDetails = callback(
+                this, request.addressString, request.port, request.protocol);
+            return this.udpRelay ? {
+              ipAddrString: this.udpRelay.getAddress(),
+              port: this.udpRelay.getPort() } : connectionDetails;
           // Invalid request - notify client with |request.failure|.
           }, (e) => {
             replyToTCP(conn, parseInt(e.message));
@@ -377,10 +392,30 @@ module Socks {
     public sendData = (buffer) => { this.tcpConnection.sendRaw(buffer); }
 
     /**
+     * Returns a promise to create a UDP relay server if the requested
+     * protocol is UDP, otherwise just returns the supplied request instance.
+     */
+    private maybeUdpStartRelay = (request:any) => {
+      if (request.protocol != 'udp') {
+        return request;
+      }
+      return new Promise((F, R) => {
+        this.udpRelay = new Socks.UdpRelay();
+        F();
+      })
+      .then(() => {
+        return this.udpRelay.bind(this.address, 0)
+            .then(() => {return request;});
+      });
+    }
+
+    /**
      * Return disconnection promise from underlying TCP connection.
      */
     public onceDisconnected = () => {
       return this.tcpConnection.onceDisconnected();
+      // TODO(yangoon): close udp relay (right now this method does not seem
+      //                to be called when the TCP connection terminates)
     }
 
     public toString() {
