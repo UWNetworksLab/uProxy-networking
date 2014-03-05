@@ -22,13 +22,12 @@ webserver, and serves the response back to _socks-to-rtc_.
 #### Requirements
 
 - node + npm
-- grunt `npm install -g grunt-cli`
+- `npm install -g grunt-cli`
+- `grunt`
 
 #### Initial Setup
 
 - Run `npm install` from the base directory to obtain all prerequisites.
-- Run `grunt setup` to prepare the freedom installation. (This step should
-  disappear with future versions of freedom)
 
 #### Build
 - Running `grunt` compiles all the typescript into javascript which goes into

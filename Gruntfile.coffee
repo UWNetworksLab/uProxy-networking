@@ -14,7 +14,7 @@ module.exports = (grunt) ->
             expand: true,
             cwd: 'build'
           }, {
-            src: 'node_modules/freedom/freedom.js'
+            src: 'node_modules/freedom-runtime-chrome/freedom.js'
             dest: 'chrome/js/freedom.js'
           }, {
             src: ['**/*.json']
@@ -60,17 +60,6 @@ module.exports = (grunt) ->
       }
     }
 
-    shell: {
-      freedom_setup: {
-        command: 'npm install',
-        options: {stdout: true, stderr: true, failOnError: true, execOptions: {cwd: 'node_modules/freedom'}}
-      }
-      freedom_build: {
-        command: 'grunt',
-        options: {stdout: true, stderr: true, failOnError: true, execOptions: {cwd: 'node_modules/freedom'}}
-      }
-    }
-
     jasmine: {
       # Eventually, this should be a wildcard once we've figured out how to run
       # more dependencies under Jasmine.
@@ -105,7 +94,6 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-clean'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
-  grunt.loadNpmTasks 'grunt-shell'
   grunt.loadNpmTasks 'grunt-ts'
   grunt.loadNpmTasks 'grunt-jasmine-node'
   grunt.loadNpmTasks 'grunt-env'
@@ -140,11 +128,4 @@ module.exports = (grunt) ->
   grunt.registerTask 'chrome', [
     'build',
     'copy:app'
-  ]
-
-  # Freedom doesn't build correctly by itself - run this task when in a clean
-  # directory.
-  grunt.registerTask 'setup', [
-    'shell:freedom_setup',
-    'shell:freedom_build'
   ]
