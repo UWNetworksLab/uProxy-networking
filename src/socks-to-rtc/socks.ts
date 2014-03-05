@@ -345,11 +345,11 @@ module Socks {
         response[4] = parseInt(ipv4[1]);
         response[5] = parseInt(ipv4[2]);
         response[6] = parseInt(ipv4[3]);
-        response[7] = parseInt(ipv4[3]);
+        response[7] = parseInt(ipv4[4]);
       }
       // TODO: support IPv6
-      response[8] = connectionDetails.port & 0xF0;
-      response[9] = connectionDetails.port & 0x0F;
+      response[8] = connectionDetails.port >> 8;
+      response[9] = connectionDetails.port & 0xFF;
       // TODO: support DNS
       /* var j = 4;
       if (this.request.atyp == ATYP.DNS) {
