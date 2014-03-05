@@ -14,15 +14,6 @@ module UdpSocket {
     socketId:number;
   }
 
-  // Type for the chrome.socket.recvFrom callback:
-  //   http://developer.chrome.com/apps/socket#method-recvFrom
-  interface RecvFromInfo {
-    resultCode:number;
-    address:string;
-    port:number;
-    data:ArrayBuffer
-  }
-
   // Type for the chrome.socket.sendTo callback:
   //   http://developer.chrome.com/apps/socket#type-WriteInfo
   interface WriteInfo {

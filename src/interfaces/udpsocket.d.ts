@@ -13,6 +13,16 @@ declare module UdpSocket {
     localPort:number;
   }
 
+  // Type for the chrome.socket.recvFrom callback:
+  //   http://developer.chrome.com/apps/socket#method-recvFrom
+  // This is also the type returned to onData callbacks.
+  export interface RecvFromInfo {
+    resultCode:number;
+    address:string;
+    port:number;
+    data:ArrayBuffer
+  }
+
   export interface API {
     bind:any;
     sendTo:any;
