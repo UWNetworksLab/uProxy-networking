@@ -5,7 +5,8 @@
     "script": [
       "tcp.js",
       "socks.js",
-      "socks-to-rtc.js"
+      "socks-to-rtc.js",
+      "udprelay.js"
     ]
   },
   "dependencies": {
