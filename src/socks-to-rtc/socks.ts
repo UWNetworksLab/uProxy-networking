@@ -107,8 +107,9 @@ module Socks {
     }
 
     result.cmd = byteArray[1];
-    // Fail unless we got a CONNECT (to TCP) command.
-    if (result.cmd != REQUEST_CMD.CONNECT) {
+    // Fail unless we got a CONNECT or UDP_ASSOCIATE command.
+    if (result.cmd != REQUEST_CMD.CONNECT &&
+      result.cmd != REQUEST_CMD.UDP_ASSOCIATE) {
       result.failure = RESPONSE.UNSUPPORTED_COMMAND;
       return result;
     }
