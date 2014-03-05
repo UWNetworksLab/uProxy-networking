@@ -14,7 +14,7 @@ module.exports = (grunt) ->
             expand: true,
             cwd: 'build'
           }, {
-            src: 'node_modules/freedom/freedom.js'
+            src: 'node_modules/freedom-runtime-chrome/freedom.js'
             dest: 'chrome/js/freedom.js'
           }, {
             src: ['**/*.json']
