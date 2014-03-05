@@ -82,6 +82,7 @@ module Socks {
     failure:RESPONSE;
     addressString:string;
     port:number;
+    protocol:string;
   }
   */
 
@@ -113,6 +114,10 @@ module Socks {
       result.failure = RESPONSE.UNSUPPORTED_COMMAND;
       return result;
     }
+
+    // TODO(yangoon): not sure how BIND would work but we're not even thinking
+    //                about support for that.
+    result.protocol = result.cmd == REQUEST_CMD.CONNECT ? 'tcp' : 'udp';
 
     // Parse address and port and set the callback to be handled by the
     // destination proxy (the bit that actually sends data to the destination).

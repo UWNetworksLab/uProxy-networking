@@ -26,6 +26,7 @@ describe("socks", function() {
     expect(result.atyp).toEqual(Socks.ATYP.IP_V4);
     expect(result.addressString).toEqual('192.168.1.1');
     expect(result.port).toEqual(1200);
+    expect(result.protocol).toEqual('tcp');
   });
 
   it('wrong socks version', function() {
