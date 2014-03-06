@@ -63,7 +63,7 @@ module Net {
         return;
       }
       if (State.CONNECTED == this.state) {
-        fSockets.write(this.socketId, buffer).done(this.onWrite_);
+        fSockets.write(this.socketId, buffer).then(this.onWrite_);
       } else {
         this.queue.push(buffer);
       }
@@ -89,15 +89,14 @@ module Net {
      * Wrapper which returns a promise for a created socket.
      */
     private createSocket_ = ():Promise<Sockets.CreateInfo> => {
-      return new Promise((F, R) => {
-        fSockets.create('tcp', {}).done(F).fail(R);
-      }).then((createInfo:Sockets.CreateInfo) => {
-        this.socketId = createInfo.socketId;
-        if (!this.socketId) {
-          return Promise.reject(new Error(
-              'Failed to create socket. createInfo: ' + createInfo));
-        }
-      })
+      return fSockets.create('tcp', {}).then(
+          (createInfo:Sockets.CreateInfo) => {
+            this.socketId = createInfo.socketId;
+            if (!this.socketId) {
+              return Promise.reject(new Error(
+                  'Failed to create socket. createInfo: ' + createInfo));
+            }
+          });
     }
 
     /**
@@ -105,11 +104,9 @@ module Net {
      */
     private connect_ = ():Promise<number> => {
       this.state = State.CONNECTING;
-      return new Promise((F, R) => {
-        fSockets.connect(this.socketId,
-                         this.destination.host,
-                         this.destination.port).done(F);
-      });
+      return fSockets.connect(this.socketId,
+                              this.destination.host,
+                              this.destination.port);
     }
 
     /**

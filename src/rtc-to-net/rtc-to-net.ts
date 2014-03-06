@@ -28,7 +28,7 @@ module RtcToNet {
       this.sctpPc.on('onReceived', this.passPeerDataToNet_);
       this.sctpPc.on('onCloseDataChannel', this.closeNetClient_);
       // Create signalling channel for NAT piercing.
-      fCore.createChannel().done((chan) => {
+      fCore.createChannel().then((chan) => {
         var stunServers = [];  // TODO: use real stun servers
         this.sctpPc.setup(chan.identifier, 'RtcToNet-' + this.peerId, []);
         this.signallingChannel = chan.channel;
@@ -110,9 +110,7 @@ module RtcToNet {
     }
 
     private createDataChannel_ = (label:string):Promise<void> => {
-      return new Promise<void>((F, R) => {
-        this.sctpPc.openDataChannel(label).done(F).fail(R);
-      });
+      return this.sctpPc.openDataChannel(label);
     }
 
     /**
