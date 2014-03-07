@@ -88,14 +88,15 @@ module Net {
     /**
      * Wrapper which returns a promise for a created socket.
      */
-    private createSocket_ = ():Promise<Sockets.CreateInfo> => {
-      return fSockets.create('tcp', {}).then(
-          (createInfo:Sockets.CreateInfo) => {
+    private createSocket_ = () : Promise<Sockets.CreateInfo> => {
+      return fSockets.create('tcp', {})
+          .then((createInfo:Sockets.CreateInfo) => {
             this.socketId = createInfo.socketId;
             if (!this.socketId) {
               return Promise.reject(new Error(
                   'Failed to create socket. createInfo: ' + createInfo));
             }
+            return Promise.resolve(createInfo);
           });
     }
 
