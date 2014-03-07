@@ -17,7 +17,8 @@ module Socks {
    *  - call destroy to clean up, typically when the TCP connection on which
    *    the UDP_ASSOCIATE was negotiated is terminated (this is important
    *    because relays are relatively expensive in terms of the number of
-   *    sockets required)
+   *    sockets required: one to communicate with the SOCKS5 client and one
+   *    for each remote host with which it wishes to communicate)
    *
    * One relay should be created in response to each UDP_ASSOCIATE command.
    *
