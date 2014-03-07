@@ -68,9 +68,7 @@ module Socks {
      * port, and start relaying events. Specify port zero to have the system
      * choose a free port.
      */
-    public bind(
-        address:string,
-        port:number):Promise<any> {
+    public bind(address:string, port:number) : Promise<void> {
       return new Promise((F, R) => {
         this.socket.bind(address, port).done(F);
       })
