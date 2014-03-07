@@ -10,10 +10,13 @@ module Socks {
    *  - (the caller can now return the address and port back to the SOCKS
   *     client)
    *  - this class will forward a copy of each datagram received on the socket
-   *    to the relevant remote host (minus the SOCKS5 headers, of course)
+   *    to the relevant remote host; the datagrams are assumed to be prepended
+   *    the SOCKS5 headers (see section 7 of the RFC), which will be stripped
+   *    before forwarding to the remote host (if those headers are not found
+   *    then the datagram will be ignored, as per the RFC)
    *  - this class will relay each datagram reply received from the remote
-   *    server *back* to the SOCKS5 client (prepended with the SOCKS5 headers,
-   *    of course)
+   *    server *back* to the SOCKS5 client; the reply will be prepended with
+   *    the SOCKS5 header receive in the previous step
    *  - call destroy to clean up, typically when the TCP connection on which
    *    the UDP_ASSOCIATE was negotiated is terminated (this is important
    *    because relays are relatively expensive in terms of the number of
