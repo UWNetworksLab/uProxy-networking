@@ -1,6 +1,7 @@
 module Socks {
   /**
-   * A UDP-based "relay" server intended for use as part of a SOCKS5 proxy.
+   * A UDP-based "relay" server intended for use as part of a SOCKS5 proxy:
+   *   http://www.ietf.org/rfc/rfc1928.txt
    *
    * Briefly, here's how to use this:
    *  - create an instance of this class
