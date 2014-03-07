@@ -5,8 +5,8 @@ module Socks {
    *
    * Briefly, here's how to use this:
    *  - create an instance of this class
-   *  - call bind, probably specifying port zero to have the system pick a
-   *    free port
+   *  - call bind (you probably want to specify port zero to have the system
+   *    pick a free port)
    *  - call getInfo, to discover on which port the relay is listening
    *  - (the caller can now return the address and port back to the SOCKS
   *     client)
