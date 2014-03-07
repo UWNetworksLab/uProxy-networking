@@ -189,8 +189,9 @@ module RtcToNet {
    */
   export class Server {
 
-    // Maintain a mapping of peerIds to peers.
-    private peers_:{[peerId:string]:Peer} = {};
+    // Mapping from peerIds to Peer-creation promises.
+    // Store promises because creating Peer objects is an asynchronous process.
+    private peers_:{[peerId:string]:Promise<Peer>} = {};
 
     /**
      * Send PeerSignal over peer's signallin chanel.
@@ -212,13 +213,13 @@ module RtcToNet {
      */
     private fetchOrCreatePeer_(peerId:string) {
       var peer = this.peers_[peerId];
-      if (peer) {
-        return Promise.resolve(peer);
-      }
-      return RtcToNet.Peer.Create(peerId).then((peer) => {
+      if (!peer) {
+        peer = RtcToNet.Peer.Create(peerId).then((peer) => {
+          return peer;
+        });
         this.peers_[peerId] = peer;
-        return peer;
-      });
+      }
+      return peer;
     }
 
     /**
@@ -226,7 +227,9 @@ module RtcToNet {
      */
     public reset = () => {
       for (var contact in this.peers_) {
-        this.peers_[contact].close();
+        this.peers_[contact].then((peer) => {
+          peer.close();
+        });
         delete this.peers_[contact];
       }
       this.peers_ = {};
