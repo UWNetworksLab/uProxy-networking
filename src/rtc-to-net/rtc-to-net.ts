@@ -23,7 +23,7 @@ module RtcToNet {
 
     // Static initialiser which returns a promise to create a new Peer
     // instance complete with a signalling channel.
-    static Create = (peerId:string):Promise<Peer> => {
+    static Create = (peerId:string) : Promise<Peer> => {
       return new Promise((F,R) => {
         var peer = new Peer(peerId);
         // Create signalling channel for NAT piercing.
@@ -119,7 +119,7 @@ module RtcToNet {
       }
     }
 
-    private createDataChannel_ = (label:string):Promise<void> => {
+    private createDataChannel_ = (label:string) : Promise<void> => {
       return this.sctpPc.openDataChannel(label);
     }
 
