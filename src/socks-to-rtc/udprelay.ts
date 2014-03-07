@@ -42,10 +42,11 @@ module Socks {
    *    from an IP other than that which requested the association, this
    *    implementation makes no effort to do so (this isn't urgent because we
    *    typically only listen locally)
-   *  - similarly, we completely ignore the BND.PORT and BND.ADDR fields
-   *    specified by the client, if any, during the handshake (it seems that
-   *    clients typically don't specify this anyway and, again, we're typically
-   *    only listening locally)
+   *  - similarly, we make no effort to respect the DST.PORT and DST.ADDR fields
+   *    specified by the client during the handshake: having run various proxy
+   *    clients it seems that these are rarely specified anyway (which is fine
+   *    according to section 6 of the RFC)
+   *    and, in any case, we are typically only listening locally
    *  - we make no attempt to implement fragmentation (see section 7 of the
    *    RFC)
    */
