@@ -3,61 +3,48 @@ module.exports = (grunt) ->
   path = require('path');
 
   grunt.initConfig {
-    pkg: grunt.file.readJSON('package.json'),
+    pkg: grunt.file.readJSON('package.json')
 
     copy: {
-      app: {
-        files: [
-          {
-            src: ['**']
-            dest: 'chrome/js/'
-            expand: true,
-            cwd: 'build'
-          }, {
-            src: 'node_modules/freedom-runtime-chrome/freedom.js'
-            dest: 'chrome/js/freedom.js'
-          }, {
-            src: ['**/*.json']
-            dest: 'chrome/js/'
-            expand: true,
-            cwd: 'src'
-          },
-        ]
-      },
-      json: {
-        files: [{
-            src: ['**/*.json']
-            dest: 'build/'
-            expand: true,
-            cwd: 'src'
-          }
-        ]
-      }
+      freedom: { files: [ {
+        expand: true, cwd: 'node_modules/freedom-runtime-chrome/'
+        src: ['freedom.js']
+        dest: 'build/chrome-app/' } ] }
+      chromeApp: { files: [ {
+        expand: true, cwd: 'src/chrome-app'
+        src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
+        dest: 'build/chrome-app/' } ] }
+      socks2rtc: { files: [ {
+        expand: true, cwd: 'src/'
+        src: ['socks-to-rtc/**/*.json']
+        dest: 'build/chrome-app/' } ] }
+      rtc2net: { files: [ {
+        expand: true, cwd: 'src/'
+        src: ['rtc-to-net/**/*.json']
+        dest: 'build/chrome-app/' } ] }
     }
 
     #-------------------------------------------------------------------------
     # All typescript compiles to build/ initially.
     typescript: {
-
-    ts: {
       socks2rtc: {
-        src: ['src/socks-to-rtc/*.ts'],
-        dest: 'build/chrome-app/',
+        src: ['src/socks-to-rtc/**/*.ts']
+        dest: 'build/chrome-app/'
         options: { base_path: 'src' }
       }
       rtc2net: {
-        src: ['src/rtc-to-net/*.ts'],
-        dest: 'build/chrome-app/',
+        src: ['src/rtc-to-net/**/*.ts']
+        dest: 'build/chrome-app/'
         options: { base_path: 'src' }
       }
       chromeProviders: {
-        src: ['src/chrome-providers/*.ts'],
-        dest: 'build/chrome-app/',
+        src: ['src/chrome-providers/**/*.ts']
+        dest: 'build/chrome-app/'
         options: { base_path: 'src' }
-      },
-      chromeProviders: {
-        src: ['src/chrome-app/*.ts'],
-        dest: 'build/',
+      }
+      chromeApp: {
+        src: ['src/chrome-app/**/*.ts']
+        dest: 'build/'
         options: { base_path: 'src/' }
       }
     }
@@ -68,7 +55,7 @@ module.exports = (grunt) ->
       src: [
         'build/chrome-app/socks-to-rtc/socks.js',
         'build/chrome-app/chrome-providers/chrome-udpsocket.js'
-      ],
+      ]
       options : {
         specs : 'spec/**/*_spec.js'
       }
@@ -87,10 +74,8 @@ module.exports = (grunt) ->
       projectRoot: 'spec/selenium'
     }
 
-    clean: [
-      'build/**',
-    ]
-  }
+    clean: ['build/**']
+  }  # grunt.initConfig
 
   grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-clean'
@@ -100,16 +85,19 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-env'
 
   grunt.registerTask 'build', [
-    'ts:socks2rtc',
-    'ts:rtc2net',
-    'ts:chromeProviders',
-    'copy:json'
+    'typescript:socks2rtc'
+    'typescript:rtc2net'
+    'typescript:chromeProviders'
+    'copy:freedom'
+    'copy:chromeApp'
+    'copy:socks2rtc'
+    'copy:rtc2net'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
   # and on Travis/Sauce Labs.
   grunt.registerTask 'test', [
-    'chrome',
+    'build'
     'jasmine'
   ]
 
@@ -117,16 +105,11 @@ module.exports = (grunt) ->
   #                move this to the test target.
   # TODO(yangoon): Figure out how to spin up Selenium server automatically.
   grunt.registerTask 'endtoend', [
-    'chrome',
-    'env',
+    'build'
+    'env'
     'jasmine_node'
   ]
 
   grunt.registerTask 'default', [
     'build'
-  ]
-
-  grunt.registerTask 'chrome', [
-    'build',
-    'copy:app'
   ]
