@@ -1,14 +1,14 @@
 /*
   Wrapper which terminates relayed web requests through a native socket object.
 */
-/// <reference path='../interfaces/socket.d.ts' />
-/// <reference path='../interfaces/promise.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/tcp-socket.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
 
 declare var freedom:any;
 
 module Net {
 
-  var fSockets:Sockets.API = freedom['core.socket']();
+  var fSockets:freedom.TcpSocket = freedom['core.socket']();
 
   enum State {
     CREATING_SOCKET,

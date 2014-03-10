@@ -2,7 +2,7 @@
   Server which handles socks connections over WebRTC datachannels.
 */
 /// <reference path='netclient.ts' />
-/// <reference path='../interfaces/peerconnection.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/peer-connection.d.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 
 declare var freedom:any;

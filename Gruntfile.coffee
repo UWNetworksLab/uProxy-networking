@@ -38,7 +38,8 @@ module.exports = (grunt) ->
     # All typescript compiles to build/ initially.
     ts: {
       socks2rtc: {
-        src: ['src/interfaces/*.d.ts',
+        src: ['node_modules/freedom-typescript-pi/interfaces/*.d.ts',
+              'src/interfaces/*.d.ts',
               'src/socks-to-rtc/*.ts'],
         outDir: 'build/socks-to-rtc/',
         options: {
@@ -46,7 +47,8 @@ module.exports = (grunt) ->
         }
       }
       rtc2net: {
-        src: ['src/interfaces/*.d.ts',
+        src: ['node_modules/freedom-typescript-pi/interfaces/*.d.ts',
+              'src/interfaces/*.d.ts',
               'src/rtc-to-net/*.ts'],
         outDir: 'build/rtc-to-net/',
         options: {
