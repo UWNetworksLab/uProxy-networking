@@ -8,6 +8,7 @@
 declare var chrome:any;
 
 module UdpSocket {
+  import UdpSocket = freedom.UdpSocket;
 
   // Type for the chrome.socket.create callback:
   //   http://developer.chrome.com/apps/socket#method-create
@@ -21,7 +22,7 @@ module UdpSocket {
     resultCode:number;
     address:string;
     port:number;
-    data:ArrayBuffer
+    data:ArrayBuffer;
   }
 
   // Type for the chrome.socket.sendTo callback:
@@ -30,7 +31,7 @@ module UdpSocket {
     bytesWritten:number;
   }
 
-  export class Chrome implements freedom.UdpSocket {
+  export class Chrome implements UdpSocket.Implementation {
     private socketId:number;
 
     constructor (
