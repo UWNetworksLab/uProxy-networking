@@ -50,15 +50,15 @@ module.exports = (grunt) ->
     }
 
     jasmine: {
-      # Eventually, this should be a wildcard once we've figured out how to run
-      # more dependencies under Jasmine.
-      src: [
-        'build/chrome-app/socks-to-rtc/socks.js',
-        'build/chrome-app/chrome-providers/chrome-udpsocket.js'
-      ]
-      options : {
-        specs : 'spec/**/*_spec.js'
-      }
+      selenium:
+        src: []
+        options : { specs : 'spec/selenium/**/*_spec.js' }
+      socksToRtc:
+        src: ['build/chrome-app/socks-to-rtc/socks.js']
+        options : { specs : 'spec/socks-to-rtc/**/*_spec.js' }
+      chromeProvider:
+        src: ['build/chrome-app/chrome-providers/chrome-udpsocket.js']
+        options : { specs : 'spec/chrome-provider/**/*_spec.js' }
     }
 
     env: {
@@ -98,7 +98,8 @@ module.exports = (grunt) ->
   # and on Travis/Sauce Labs.
   grunt.registerTask 'test', [
     'build'
-    'jasmine'
+    'jasmine:socksToRtc'
+    'jasmine:chromeProvider'
   ]
 
   # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and
