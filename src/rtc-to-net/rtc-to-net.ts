@@ -22,34 +22,29 @@ module RtcToNet {
     private netClients:{[channelLabel:string]:Net.Client} = {};
 
     // Static initialiser which returns a promise to create a new Peer
-    // instance complete with a signalling channel.
-    static Create = (peerId:string) : Promise<Peer> => {
-      return new Promise((F,R) => {
-        var peer = new Peer(peerId);
-        // Create signalling channel for NAT piercing.
-        fCore.createChannel().then((chan) => {
-          var stunServers = [];  // TODO: use real stun servers
-          peer.sctpPc.setup(chan.identifier, 'RtcToNet-' + peerId, []);
-          peer.signallingChannel = chan.channel;
-          peer.signallingChannel.on('message', (msg) => {
-            freedom.emit('sendSignalToPeer', {
-                peerId: peerId,
-                data: msg
-            });
-          });
-          dbg('signalling channel to SCTP peer connection ready.');
-          F(peer);
-        });
+    // instance complete with a signalling channel for NAT piercing.
+    static CreateWithChannel = (peerId:string) : Promise<Peer> => {
+      return fCore.createChannel().then((channel) => {
+        return new Peer(peerId, channel);
       });
     }
 
-    // Don't use this directly -- use Create().
-    constructor (public peerId:string) {
+    constructor (public peerId:string, channel) {
       dbg('created new peer: ' + peerId);
       // peerconnection's data channels biject ot Net.Clients.
       this.sctpPc = freedom['core.peerconnection']();
       this.sctpPc.on('onReceived', this.passPeerDataToNet_);
       this.sctpPc.on('onCloseDataChannel', this.closeNetClient_);
+      var stunServers = [];  // TODO: use real stun servers
+      this.sctpPc.setup(channel.identifier, 'RtcToNet-' + peerId, []);
+      this.signallingChannel = channel.channel;
+      this.signallingChannel.on('message', (msg) => {
+        freedom.emit('sendSignalToPeer', {
+            peerId: peerId,
+            data: msg
+        });
+      });
+      dbg('signalling channel to SCTP peer connection ready.');
     }
 
     /**
@@ -214,7 +209,7 @@ module RtcToNet {
     private fetchOrCreatePeer_(peerId:string) {
       var peer = this.peers_[peerId];
       if (!peer) {
-        peer = RtcToNet.Peer.Create(peerId).then((peer) => {
+        peer = RtcToNet.Peer.CreateWithChannel(peerId).then((peer) => {
           return peer;
         });
         this.peers_[peerId] = peer;
