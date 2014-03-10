@@ -2,8 +2,8 @@
  * Chrome sockets over freedom sockets.
  * TODO: This should be refactored into freedom someday...
  */
-/// <reference path='interfaces/socket.d.ts' />
-/// <reference path='interfaces/promise.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/tcp-socket.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
 
 declare var chrome:any;
 

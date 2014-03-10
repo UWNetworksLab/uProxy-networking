@@ -2,10 +2,10 @@
   Server which handles socks connections over WebRTC datachannels.
 */
 /// <reference path='netclient.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/peer-connection.d.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 
-declare var freedom:any;
 console.log('WEBWORKER - RtcToNet: ' + self.location.href);
 
 module RtcToNet {
@@ -18,7 +18,7 @@ module RtcToNet {
   export class Peer {
 
     private signallingChannel:any = null;
-    private sctpPc:PeerConnection;
+    private sctpPc:freedom.PeerConnection;
     private netClients:{[channelLabel:string]:Net.Client} = {};
 
     // Static initialiser which returns a promise to create a new Peer
