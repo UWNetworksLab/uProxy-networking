@@ -35,30 +35,30 @@ module.exports = (grunt) ->
       }
     }
 
+    #-------------------------------------------------------------------------
     # All typescript compiles to build/ initially.
+    typescript: {
+
     ts: {
       socks2rtc: {
-        src: ['node_modules/freedom-typescript-pi/interfaces/*.d.ts',
-              'src/interfaces/*.d.ts',
-              'src/socks-to-rtc/*.ts'],
-        outDir: 'build/socks-to-rtc/',
-        options: {
-          sourceMap: false
-        }
+        src: ['src/socks-to-rtc/*.ts'],
+        dest: 'build/chrome-app/',
+        options: { base_path: 'src' }
       }
       rtc2net: {
-        src: ['node_modules/freedom-typescript-pi/interfaces/*.d.ts',
-              'src/interfaces/*.d.ts',
-              'src/rtc-to-net/*.ts'],
-        outDir: 'build/rtc-to-net/',
-        options: {
-          sourceMap: false
-        }
+        src: ['src/rtc-to-net/*.ts'],
+        dest: 'build/chrome-app/',
+        options: { base_path: 'src' }
       }
       chromeProviders: {
         src: ['src/chrome-providers/*.ts'],
-        outDir: 'build/',
-        options: { sourceMap: false; }
+        dest: 'build/chrome-app/',
+        options: { base_path: 'src' }
+      },
+      chromeProviders: {
+        src: ['src/chrome-app/*.ts'],
+        dest: 'build/',
+        options: { base_path: 'src/' }
       }
     }
 
@@ -66,8 +66,8 @@ module.exports = (grunt) ->
       # Eventually, this should be a wildcard once we've figured out how to run
       # more dependencies under Jasmine.
       src: [
-        'chrome/js/socks-to-rtc/socks.js',
-        'chrome/js/chrome-udpsocket.js'
+        'build/chrome-app/socks-to-rtc/socks.js',
+        'build/chrome-app/chrome-providers/chrome-udpsocket.js'
       ],
       options : {
         specs : 'spec/**/*_spec.js'
@@ -89,14 +89,13 @@ module.exports = (grunt) ->
 
     clean: [
       'build/**',
-      'chrome/js/**'
     ]
   }
 
   grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-clean'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
-  grunt.loadNpmTasks 'grunt-ts'
+  grunt.loadNpmTasks 'grunt-typescript'
   grunt.loadNpmTasks 'grunt-jasmine-node'
   grunt.loadNpmTasks 'grunt-env'
 

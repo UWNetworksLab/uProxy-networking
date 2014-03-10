@@ -5,9 +5,6 @@
   "version": "0.0.1",
   "app": {
     "background": {
-      // "scripts": [
-        // "launch.js"
-      // ]
       "page": "socks_rtc.html"
     }
   },
