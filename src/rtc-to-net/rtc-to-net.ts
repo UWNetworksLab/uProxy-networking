@@ -50,6 +50,7 @@ module RtcToNet {
     /**
      * Send data over the peer's signalling channel, or queue if not ready.
      */
+    // TODO(yagoon): rename this handleSignal()
     public sendSignal = (data:string) => {
       if (!this.signallingChannel) {
         dbgErr('signalling channel missing!');
@@ -214,7 +215,7 @@ module RtcToNet {
         });
         this.peers_[peerId] = peer;
       }
-      return peer;
+        return peer;
     }
 
     /**
