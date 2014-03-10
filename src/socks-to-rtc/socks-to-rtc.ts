@@ -47,7 +47,7 @@ module SocksToRTC {
       this.sctpPc.on('onCloseDataChannel', this.closeConnection_);
       // Messages received via signalling channel must reach the remote peer
       // through something other than the peerconnection. (e.g. XMPP)
-      fCore.createChannel().done((chan) => {
+      fCore.createChannel().then((chan) => {
         var stunServers = [];  // TODO: actually pass stun servers.
         this.sctpPc.setup(chan.identifier, 'SocksToRtc-' + peerId, stunServers);
         this.signallingChannel = chan.channel;
@@ -136,9 +136,7 @@ module SocksToRTC {
     }
 
     private createDataChannel_ = (label:string):Promise<void> => {
-      return new Promise<void>((F, R) => {
-        this.sctpPc.openDataChannel(label).done(F).fail(R);
-      });
+      return this.sctpPc.openDataChannel(label);
     }
 
     /**

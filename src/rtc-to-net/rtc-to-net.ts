@@ -21,30 +21,36 @@ module RtcToNet {
     private sctpPc:PeerConnection;
     private netClients:{[channelLabel:string]:Net.Client} = {};
 
-    constructor (public peerId:string) {
+    // Static initialiser which returns a promise to create a new Peer
+    // instance complete with a signalling channel for NAT piercing.
+    static CreateWithChannel = (peerId:string) : Promise<Peer> => {
+      return fCore.createChannel().then((channel) => {
+        return new Peer(peerId, channel);
+      });
+    }
+
+    constructor (public peerId:string, channel) {
       dbg('created new peer: ' + peerId);
       // peerconnection's data channels biject ot Net.Clients.
       this.sctpPc = freedom['core.peerconnection']();
       this.sctpPc.on('onReceived', this.passPeerDataToNet_);
       this.sctpPc.on('onCloseDataChannel', this.closeNetClient_);
-      // Create signalling channel for NAT piercing.
-      fCore.createChannel().done((chan) => {
-        var stunServers = [];  // TODO: use real stun servers
-        this.sctpPc.setup(chan.identifier, 'RtcToNet-' + this.peerId, []);
-        this.signallingChannel = chan.channel;
-        this.signallingChannel.on('message', (msg) => {
-          freedom.emit('sendSignalToPeer', {
-              peerId: this.peerId,
-              data: msg
-          });
+      var stunServers = [];  // TODO: use real stun servers
+      this.sctpPc.setup(channel.identifier, 'RtcToNet-' + peerId, []);
+      this.signallingChannel = channel.channel;
+      this.signallingChannel.on('message', (msg) => {
+        freedom.emit('sendSignalToPeer', {
+            peerId: peerId,
+            data: msg
         });
-        dbg('signalling channel to SCTP peer connection ready.');
       });
+      dbg('signalling channel to SCTP peer connection ready.');
     }
 
     /**
      * Send data over the peer's signalling channel, or queue if not ready.
      */
+    // TODO(yagoon): rename this handleSignal()
     public sendSignal = (data:string) => {
       if (!this.signallingChannel) {
         dbgErr('signalling channel missing!');
@@ -109,10 +115,8 @@ module RtcToNet {
       }
     }
 
-    private createDataChannel_ = (label:string):Promise<void> => {
-      return new Promise<void>((F, R) => {
-        this.sctpPc.openDataChannel(label).done(F).fail(R);
-      });
+    private createDataChannel_ = (label:string) : Promise<void> => {
+      return this.sctpPc.openDataChannel(label);
     }
 
     /**
@@ -181,8 +185,9 @@ module RtcToNet {
    */
   export class Server {
 
-    // Maintain a mapping of peerIds to peers.
-    private peers_:{[peerId:string]:Peer} = {};
+    // Mapping from peerIds to Peer-creation promises.
+    // Store promises because creating Peer objects is an asynchronous process.
+    private peers_:{[peerId:string]:Promise<Peer>} = {};
 
     /**
      * Send PeerSignal over peer's signallin chanel.
@@ -194,19 +199,20 @@ module RtcToNet {
       }
       // TODO: Check for access control?
       // dbg('sending signal to transport: ' + JSON.stringify(signal.data));
-      var peer = this.fetchOrCreatePeer_(signal.peerId);
-      peer.sendSignal(signal.data);
+      this.fetchOrCreatePeer_(signal.peerId).then((peer) => {
+        peer.sendSignal(signal.data);
+      });
     }
 
     /**
      * Obtain, and possibly create, a RtcToNet.Peer for |peerId|.
      */
-    private fetchOrCreatePeer_(peerId:string) {
-      var peer = this.peers_[peerId];
-      if (peer) {
-        return peer;
+    private fetchOrCreatePeer_(peerId:string) : Promise<Peer>{
+      if (peerId in this.peers_) {
+        return this.peers_[peerId];
       }
-      this.peers_[peerId] = peer = new RtcToNet.Peer(peerId);
+      var peer = RtcToNet.Peer.CreateWithChannel(peerId);
+      this.peers_[peerId] = peer;
       return peer;
     }
 
@@ -215,7 +221,9 @@ module RtcToNet {
      */
     public reset = () => {
       for (var contact in this.peers_) {
-        this.peers_[contact].close();
+        this.peers_[contact].then((peer) => {
+          peer.close();
+        });
         delete this.peers_[contact];
       }
       this.peers_ = {};
