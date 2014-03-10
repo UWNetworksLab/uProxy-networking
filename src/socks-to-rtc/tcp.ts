@@ -101,6 +101,7 @@ module TCP {
               return Util.reject('listen failed on ' + this.endpoint_ +
                   ' \n Result Code: ' + resultCode);
             }
+            return Promise.resolve(resultCode);
           });
     }
 
