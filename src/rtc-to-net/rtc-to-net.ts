@@ -21,25 +21,35 @@ module RtcToNet {
     private sctpPc:PeerConnection;
     private netClients:{[channelLabel:string]:Net.Client} = {};
 
+    // Static initialiser which returns a promise to create a new Peer
+    // instance complete with a signalling channel.
+    static Create = (peerId:string) : Promise<Peer> => {
+      return new Promise((F,R) => {
+        var peer = new Peer(peerId);
+        // Create signalling channel for NAT piercing.
+        fCore.createChannel().then((chan) => {
+          var stunServers = [];  // TODO: use real stun servers
+          peer.sctpPc.setup(chan.identifier, 'RtcToNet-' + peerId, []);
+          peer.signallingChannel = chan.channel;
+          peer.signallingChannel.on('message', (msg) => {
+            freedom.emit('sendSignalToPeer', {
+                peerId: peerId,
+                data: msg
+            });
+          });
+          dbg('signalling channel to SCTP peer connection ready.');
+          F(peer);
+        });
+      });
+    }
+
+    // Don't use this directly -- use Create().
     constructor (public peerId:string) {
       dbg('created new peer: ' + peerId);
       // peerconnection's data channels biject ot Net.Clients.
       this.sctpPc = freedom['core.peerconnection']();
       this.sctpPc.on('onReceived', this.passPeerDataToNet_);
       this.sctpPc.on('onCloseDataChannel', this.closeNetClient_);
-      // Create signalling channel for NAT piercing.
-      fCore.createChannel().done((chan) => {
-        var stunServers = [];  // TODO: use real stun servers
-        this.sctpPc.setup(chan.identifier, 'RtcToNet-' + this.peerId, []);
-        this.signallingChannel = chan.channel;
-        this.signallingChannel.on('message', (msg) => {
-          freedom.emit('sendSignalToPeer', {
-              peerId: this.peerId,
-              data: msg
-          });
-        });
-        dbg('signalling channel to SCTP peer connection ready.');
-      });
     }
 
     /**
@@ -109,10 +119,8 @@ module RtcToNet {
       }
     }
 
-    private createDataChannel_ = (label:string):Promise<void> => {
-      return new Promise<void>((F, R) => {
-        this.sctpPc.openDataChannel(label).done(F).fail(R);
-      });
+    private createDataChannel_ = (label:string) : Promise<void> => {
+      return this.sctpPc.openDataChannel(label);
     }
 
     /**
@@ -181,8 +189,9 @@ module RtcToNet {
    */
   export class Server {
 
-    // Maintain a mapping of peerIds to peers.
-    private peers_:{[peerId:string]:Peer} = {};
+    // Mapping from peerIds to Peer-creation promises.
+    // Store promises because creating Peer objects is an asynchronous process.
+    private peers_:{[peerId:string]:Promise<Peer>} = {};
 
     /**
      * Send PeerSignal over peer's signallin chanel.
@@ -194,8 +203,9 @@ module RtcToNet {
       }
       // TODO: Check for access control?
       // dbg('sending signal to transport: ' + JSON.stringify(signal.data));
-      var peer = this.fetchOrCreatePeer_(signal.peerId);
-      peer.sendSignal(signal.data);
+      this.fetchOrCreatePeer_(signal.peerId).then((peer) => {
+        peer.sendSignal(signal.data);
+      });
     }
 
     /**
@@ -203,10 +213,12 @@ module RtcToNet {
      */
     private fetchOrCreatePeer_(peerId:string) {
       var peer = this.peers_[peerId];
-      if (peer) {
-        return peer;
+      if (!peer) {
+        peer = RtcToNet.Peer.Create(peerId).then((peer) => {
+          return peer;
+        });
+        this.peers_[peerId] = peer;
       }
-      this.peers_[peerId] = peer = new RtcToNet.Peer(peerId);
       return peer;
     }
 
@@ -215,7 +227,9 @@ module RtcToNet {
      */
     public reset = () => {
       for (var contact in this.peers_) {
-        this.peers_[contact].close();
+        this.peers_[contact].then((peer) => {
+          peer.close();
+        });
         delete this.peers_[contact];
       }
       this.peers_ = {};

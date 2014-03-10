@@ -83,9 +83,7 @@ module TCP {
      * Wrapper which returns a promise for a created socket.
      */
     private createSocket_ = ():Promise<TcpSocket.CreateInfo> => {
-      return new Promise((F, R) => {
-        fSockets.create('tcp', {}).done(F).fail(R);
-      });
+      return fSockets.create('tcp', {});
     }
 
     /**
@@ -99,15 +97,13 @@ module TCP {
       }
       dbg('create server socket ' + this.serverSocketId +
           ' listening on ' + this.endpoint_);
-      return new Promise((F, R) => {
-        fSockets.listen(this.serverSocketId, this.addr, this.port)
-            .done(F).fail(R);
-      }).then((resultCode:number) => {  // Ensure the listen was successful.
-        if (0 !== resultCode) {
-          return Util.reject('listen failed on ' + this.endpoint_ +
-                               ' \n Result Code: ' + resultCode);
-        }
-      });
+      return fSockets.listen(this.serverSocketId, this.addr, this.port)
+          .then((resultCode:number) => {  // Ensure the listen was successful.
+            if (0 !== resultCode) {
+              return Util.reject('listen failed on ' + this.endpoint_ +
+                  ' \n Result Code: ' + resultCode);
+            }
+          });
     }
 
     /**
@@ -266,7 +262,7 @@ module TCP {
     static Create = (socketId:number):Promise<Connection> => {
       return new Promise((F,R) => {
         var conn = new Connection(socketId);
-        fSockets.getInfo(socketId).done((socketInfo) => {
+        fSockets.getInfo(socketId).then((socketInfo) => {
           conn.socketInfo = socketInfo;
           conn.initialized_ = true;
           F(conn);
@@ -377,7 +373,7 @@ module TCP {
         return;
       }
       var realCallback = callback || this.callbacks.sent || function() {};
-      fSockets.write(this.socketId, msg).done(realCallback);
+      fSockets.write(this.socketId, msg).then(realCallback);
     }
 
     /**
