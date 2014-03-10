@@ -1,7 +1,8 @@
 /**
  * Freedom UDP sockets over the Chrome APIs.
+ * Implements: freedom-typescript-api/interfaces/udp-socket.d.ts
  */
-/// <reference path='interfaces/udpsocket.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/udp-socket.d.ts' />
 
 // TODO(yangoon): use DefinitelyTyped.
 declare var chrome:any;
@@ -29,7 +30,7 @@ module UdpSocket {
     bytesWritten:number;
   }
 
-  export class Chrome implements UdpSocket.API {
+  export class Chrome implements freedom.UdpSocket {
     private socketId:number;
 
     constructor (

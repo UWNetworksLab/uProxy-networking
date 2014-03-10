@@ -1,5 +1,8 @@
 /**
  * Chrome sockets over freedom sockets.
+ *
+ * Implements: freedom-typescript-api/interfaces/tcp-socket.d.ts
+ *
  * TODO: This should be refactored into freedom someday...
  */
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/tcp-socket.d.ts' />
@@ -8,6 +11,8 @@
 declare var chrome:any;
 
 module Sockets {
+
+  import TcpSocket = freedom.TcpSocket;
 
   // https://developer.chrome.com/apps/socket.html#method-read
   interface ChromeReadInfo {
@@ -20,7 +25,7 @@ module Sockets {
    *   (http://developer.chrome.com/apps/socket.html)
    * for the freedom interface.
    */
-  export class Chrome implements Sockets.API {
+  export class Chrome implements TcpSocket {
 
     constructor (
         private channel,
