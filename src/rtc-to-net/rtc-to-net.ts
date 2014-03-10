@@ -207,15 +207,13 @@ module RtcToNet {
     /**
      * Obtain, and possibly create, a RtcToNet.Peer for |peerId|.
      */
-    private fetchOrCreatePeer_(peerId:string) {
-      var peer = this.peers_[peerId];
-      if (!peer) {
-        peer = RtcToNet.Peer.CreateWithChannel(peerId).then((peer) => {
-          return peer;
-        });
-        this.peers_[peerId] = peer;
+    private fetchOrCreatePeer_(peerId:string) : Promise<Peer>{
+      if (peerId in this.peers_) {
+        return this.peers_[peerId];
       }
-        return peer;
+      var peer = RtcToNet.Peer.CreateWithChannel(peerId);
+      this.peers_[peerId] = peer;
+      return peer;
     }
 
     /**
