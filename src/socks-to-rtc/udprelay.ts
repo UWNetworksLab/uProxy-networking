@@ -1,4 +1,8 @@
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/udp-socket.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
 module Socks {
+  import UdpSocket = freedom.UdpSocket;
+
   /**
    * A UDP-based "relay" server intended for use as part of a SOCKS5 proxy:
    *   http://www.ietf.org/rfc/rfc1928.txt
@@ -54,7 +58,7 @@ module Socks {
 
     // The Socks client sends datagrams to this socket.
     // Eventually, it will also receive replies on this socket.
-    private socket:UdpSocket.API;
+    private socket:UdpSocket;
 
     // Address and port to which the "client-side" socket is bound.
     private address:string;
