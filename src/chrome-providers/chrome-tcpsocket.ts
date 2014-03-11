@@ -8,9 +8,10 @@
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/tcp-socket.d.ts' />
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
 
+// TODO: use DefinitelyTyed.
 declare var chrome:any;
 
-module Sockets {
+module TcpSocket {
 
   import TcpSocket = freedom.TcpSocket;
 
