@@ -397,15 +397,11 @@ module Socks {
      */
     private maybeUdpStartRelay = (request:any) => {
       if (request.protocol != 'udp') {
-        return request;
+        return Promise.resolve(request);
       }
-      return new Promise((F, R) => {
-        this.udpRelay = new Socks.UdpRelay();
-        F();
-      })
-      .then(() => {
-        return this.udpRelay.bind(this.address, 0)
-            .then(() => {return request;});
+      this.udpRelay = new Socks.UdpRelay();
+      return this.udpRelay.bind(this.address, 0).then(() => {
+        return request;
       });
     }
 
