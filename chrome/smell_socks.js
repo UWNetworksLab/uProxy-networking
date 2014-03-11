@@ -1,22 +1,33 @@
 /*
-  Runs the socksToRtc and rtcToNet peers (in separate webworkers) and tests that
-  they can signal and set up a proxy connection.
+  Runs the socksToRtc and rtcToNet peers in separate webworkers.
+
+  - Checks that the peers can signal and set up a proxy connection.
+  - Run automatic start-stop and end-to-end tests.
+  - Leave the peers up and listening so the user can manually curl or point a
+    web browser at it.
 */
 var LOCALHOST = '127.0.0.1';
 var DEFAULT_PORT = 9999;
-var SERVER_PEER_ID = 'ATotallyFakePeerID';  // Can be any string.
+var REMOTE_PEER_ID = 'remotePeer1337';  // Can be any string.
 
 var socksToRtc = freedom.SocksToRtc();
 var rtcToNet = freedom.RtcToNet();
 
-rtcToNet.emit('start');
+// Wrapper which curls a request through the proxy.
+function curl(url) {
+  console.log(' * curl ' + url);
+  var request = new XMLHttpRequest();
+  request.open('GET', url, false);  // Synchronous.
+  request.send();
+  return request.responseText;
+}
 
 // Once the socksToRtc peer successfully starts, it fires 'sendSignalToPeer'.
-function proxyClientThroughServer() {
+function signalSocksToRtcToNet() {
   socksToRtc.emit('start', {
     'host':   LOCALHOST,
     'port':   DEFAULT_PORT,
-    'peerId': SERVER_PEER_ID
+    'peerId': REMOTE_PEER_ID
   });
 }
 
@@ -35,5 +46,15 @@ rtcToNet.on('sendSignalToPeer', function(signal) {
   console.log(' * RTC-NET signaling SOCKS-RTC.');  // + JSON.stringify(signal));
   socksToRtc.emit('handleSignalFromPeer', signal);
 });
+
+console.log('testing end-to-end...');
+
+// Start both peers and run a curl.
+rtcToNet.emit('start');
+signalSocksToRtcToNet();
+var txt = curl('google.com');
+console.log(txt);
+
+console.log(' ------------------- tests complete ---------------------');
 
 proxyClientThroughServer();
