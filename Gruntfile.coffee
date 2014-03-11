@@ -85,6 +85,7 @@ module.exports = (grunt) ->
     'typescript:socks2rtc'
     'typescript:rtc2net'
     'typescript:chromeProviders'
+    'typescript:chromeApp'
     'copy:freedom'
     'copy:chromeApp'
     'copy:socks2rtc'
