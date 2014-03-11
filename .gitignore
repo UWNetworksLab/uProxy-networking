@@ -6,4 +6,3 @@ node_modules/*
 *.bak
 tmp/*
 build/*
-chrome/js
