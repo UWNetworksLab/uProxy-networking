@@ -3,13 +3,12 @@
   "description": "socks-rtc Freedom manifest",
   "app": {
     "script": [
-      "js/socks-to-rtc/tcp.js",
-      "smell_socks.js"
+      "socks_to_rtc_to_net.js"
     ]
   },
   "dependencies": {
-    "SocksToRtc": { "url": "js/socks-to-rtc/socks-to-rtc.json" },
-    "RtcToNet": { "url": "js/rtc-to-net/rtc-to-net.json" }
+    "SocksToRtc": { "url": "socks-to-rtc/socks-to-rtc.json" },
+    "RtcToNet": { "url": "rtc-to-net/rtc-to-net.json" }
   },
   "permissions": [
     "core.socket",
