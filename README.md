@@ -42,6 +42,11 @@ This establish a signalling channel between _rtc-to-net_ and _socks-to-rtc_ so t
 
 ### End-to-End Test
 
+#### Requirements
+
+ - `chromedriver` must be in your path. You can download it from https://sites.google.com/a/chromium.org/chromedriver/downloads
+ - `chrome` must be in a standard path location (see https://code.google.com/p/selenium/wiki/ChromeDriver#Requirements)
+
 #### Automated
 
 We have a Selenium test which starts Chrome with the proxy loaded and its proxy

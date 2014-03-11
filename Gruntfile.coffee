@@ -50,9 +50,6 @@ module.exports = (grunt) ->
     }
 
     jasmine: {
-      selenium:
-        src: []
-        options : { specs : 'spec/selenium/**/*_spec.js' }
       socksToRtc:
         src: ['build/chrome-app/socks-to-rtc/socks.js']
         options : { specs : 'spec/socks-to-rtc/**/*_spec.js' }
@@ -64,7 +61,7 @@ module.exports = (grunt) ->
     env: {
       jasmine_node: {
         # Will be available to tests as process.env['CHROME_EXTENSION_PATH'].
-        CHROME_EXTENSION_PATH: path.resolve('chrome')
+        CHROME_EXTENSION_PATH: path.resolve('build/chrome-app')
       }
     }
 
