@@ -26,6 +26,7 @@ describe("socks", function() {
     expect(result.atyp).toEqual(Socks.ATYP.IP_V4);
     expect(result.addressString).toEqual('192.168.1.1');
     expect(result.port).toEqual(1200);
+    expect(result.protocol).toEqual('tcp');
   });
 
   it('wrong socks version', function() {
@@ -35,7 +36,7 @@ describe("socks", function() {
   });
 
   it('unsupported command', function() {
-    ipv4Request[1] = Socks.REQUEST_CMD.UDP_ASSOCIATE;
+    ipv4Request[1] = Socks.REQUEST_CMD.BIND;
     var result = Socks.interpretSocksRequest(ipv4Request);
     expect(result.failure).toEqual(Socks.RESPONSE.UNSUPPORTED_COMMAND);
   });

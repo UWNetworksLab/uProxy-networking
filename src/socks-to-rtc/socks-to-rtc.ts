@@ -94,8 +94,16 @@ module SocksToRTC {
      * Setup new data channel and tie to corresponding SOCKS5 session.
      * Returns: IP and port of destination.
      */
-    private onConnection_ = (session:Socks.Session, address, port)
+    private onConnection_ = (session:Socks.Session, address, port, protocol)
         :Promise<Channel.EndpointInfo> => {
+      // We don't have a way to pipe UDP traffic through the datachannel
+      // just yet so, for now, just exit early in the UDP case.
+      // TODO(yangoon): pipe UDP traffic through the datachannel
+      // TODO(yangoon): serious refactoring needed here!
+      if (protocol == 'udp') {
+        return Promise.resolve({ ipAddrString: '127.0.0.1', port: 0 });
+      }
+
       if (!this.sctpPc) {
         dbgErr('onConnection called without SCTP peer connection.');
         return;
