@@ -2,11 +2,11 @@
   SocksToRTC.Peer passes socks requests over WebRTC datachannels.
 */
 /// <reference path='socks.ts' />
-/// <reference path='../interfaces/peerconnection.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/peer-connection.d.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 
 // TODO replace with a reference to freedom ts interface once it exists.
-declare var freedom:any;
 console.log('WEBWORKER SocksToRtc: ' + self.location.href);
 
 module SocksToRTC {
@@ -23,7 +23,7 @@ module SocksToRTC {
 
     private socksServer:Socks.Server = null;  // Local SOCKS server.
     private signallingChannel:any = null;     // NAT piercing route.
-    private sctpPc:PeerConnection = null;     // For actual proxying.
+    private sctpPc:freedom.PeerConnection = null;     // For actual proxying.
 
     // Active SOCKS sessions by corresponding SCTP channel id.
     private socksSessions:{[label:number]:Socks.Session} = {};

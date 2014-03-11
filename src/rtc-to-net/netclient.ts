@@ -1,14 +1,14 @@
 /*
   Wrapper which terminates relayed web requests through a native socket object.
 */
-/// <reference path='../interfaces/socket.d.ts' />
-/// <reference path='../interfaces/promise.d.ts' />
-
-declare var freedom:any;
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/tcp-socket.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
 
 module Net {
+  import TcpSocket = freedom.TcpSocket;
 
-  var fSockets:Sockets.API = freedom['core.socket']();
+  var fSockets:TcpSocket = freedom['core.socket']();
 
   enum State {
     CREATING_SOCKET,
@@ -88,9 +88,9 @@ module Net {
     /**
      * Wrapper which returns a promise for a created socket.
      */
-    private createSocket_ = () : Promise<Sockets.CreateInfo> => {
+    private createSocket_ = () : Promise<TcpSocket.CreateInfo> => {
       return fSockets.create('tcp', {})
-          .then((createInfo:Sockets.CreateInfo) => {
+          .then((createInfo:TcpSocket.CreateInfo) => {
             this.socketId = createInfo.socketId;
             if (!this.socketId) {
               return Promise.reject(new Error(
@@ -128,7 +128,7 @@ module Net {
     /**
      * Read data from the destination.
      */
-    private readData_ = (readInfo:Sockets.ReadInfo) => {
+    private readData_ = (readInfo:TcpSocket.ReadInfo) => {
       if (readInfo.socketId !== this.socketId) {
         // TODO: currently our Freedom socket API sends all messages to every
         // listener. Most crappy. Fix so that we tell it to listen to a
@@ -159,7 +159,7 @@ module Net {
     /**
      * Fired only when underlying socket closes remotely.
      */
-    private onDisconnect_ = (socketInfo:Sockets.DisconnectInfo) => {
+    private onDisconnect_ = (socketInfo:TcpSocket.DisconnectInfo) => {
       if (socketInfo.socketId != this.socketId) {
         return;  // duplicity of socket events.
       }

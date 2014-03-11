@@ -1,13 +1,18 @@
 /**
  * Chrome sockets over freedom sockets.
+ *
+ * Implements: freedom-typescript-api/interfaces/tcp-socket.d.ts
+ *
  * TODO: This should be refactored into freedom someday...
  */
-/// <reference path='interfaces/socket.d.ts' />
-/// <reference path='interfaces/promise.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/tcp-socket.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
 
 declare var chrome:any;
 
 module Sockets {
+
+  import TcpSocket = freedom.TcpSocket;
 
   // https://developer.chrome.com/apps/socket.html#method-read
   interface ChromeReadInfo {
@@ -20,28 +25,38 @@ module Sockets {
    *   (http://developer.chrome.com/apps/socket.html)
    * for the freedom interface.
    */
-  export class Chrome implements Sockets.API {
+  export class Chrome implements TcpSocket.Implementation {
 
     constructor (
         private channel,
-        private dispatchEvent:(event:string,data:any)=>void) {
+        private dispatchEvent:(event:string,data:Object)=>void) {
     }
 
-    public create = chrome.socket.create;
-    public write = chrome.socket.write;
-    public getInfo = chrome.socket.getInfo;
+    public create: (type:string, options:TcpSocket.SocketOptions,
+                     continuation:(createInfo:TcpSocket.CreateInfo) => void)
+                    => void
+        = chrome.socket.create;
+    public write: (socketId:number, data:ArrayBuffer,
+                    continuation:(writeInfo:TcpSocket.WriteInfo) => void)
+                  => void
+        = chrome.socket.write;
+    public getInfo: (socketId:number,
+                     continuation:(result:TcpSocket.SocketInfo) => void)
+                    => void
+        = chrome.socket.getInfo;
 
-    public connect = (socketId, hostname, port, callback) => {
+    public connect = (socketId, hostname, port, continuation) => {
       chrome.socket.connect(socketId, hostname, port, (result) => {
         dbg('connecting ' + socketId + ' hostname=' + hostname + ' port=' + port)
-        callback(result);
+        continuation(result);
         this.doReadLoop_(socketId);
       });
     }
 
-    public listen = (socketId, address, port, callback) => {
+    public listen = (socketId, address, port,
+        continuation:(result:number) => void) => {
       chrome.socket.listen(socketId, address, port, null, (result) => {
-        callback(result);
+        continuation(result);
         if (0 !== result) { return; }
         // Begin accept-loop on this socket.
         var acceptCallback = (acceptInfo) => {

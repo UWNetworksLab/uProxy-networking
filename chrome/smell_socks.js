@@ -2,7 +2,7 @@
   Runs the socksToRtc and rtcToNet peers (in separate webworkers) and tests that
   they can signal and set up a proxy connection.
 */
-var LOCALHOST = '127.0.0.1';
+var LOCALHOST = '172.26.79.223';
 var DEFAULT_PORT = 9999;
 var SERVER_PEER_ID = 'ATotallyFakePeerID';  // Can be any string.
 
