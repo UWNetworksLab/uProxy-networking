@@ -11,16 +11,17 @@
  *
  * @param {ArrayBuffer} buf The buffer to convert.
  */
-/// <reference path='../interfaces/socket.d.ts' />
-/// <reference path='../interfaces/promise.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/tcp-socket.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
 
 
 module TCP {
+  import TcpSocket = freedom.TcpSocket;
 
   var DEFAULT_MAX_CONNECTIONS = 1048576;
 
   // Freedom Sockets API.
-  var fSockets:Sockets.API = freedom['core.socket']();
+  var fSockets:TcpSocket = freedom['core.socket']();
 
   interface IConnectionCallbacks {
     recv:any;
@@ -81,14 +82,15 @@ module TCP {
     /**
      * Wrapper which returns a promise for a created socket.
      */
-    private createSocket_ = ():Promise<Sockets.CreateInfo> => {
+    private createSocket_ = ():Promise<TcpSocket.CreateInfo> => {
       return fSockets.create('tcp', {});
     }
 
     /**
      * Promise that socket begins listening.
      */
-    private startListening_ = (createInfo:Sockets.CreateInfo):Promise<number>  => {
+    private startListening_ = (createInfo:TcpSocket.CreateInfo)
+        : Promise<number> => {
       this.serverSocketId = createInfo.socketId;
       if (this.serverSocketId <= 0) {
         return Util.reject('failed to create socket on ' + this.endpoint_);
@@ -167,7 +169,7 @@ module TCP {
      * Read data from one of the connection.
      * Assumes that the connection exists.
      */
-    private readConnectionData_ = (readInfo:Sockets.ReadInfo) => {
+    private readConnectionData_ = (readInfo:TcpSocket.ReadInfo) => {
       if (!(readInfo.socketId in this.conns)) {
         console.error('connectionRead: received data for non-existing socket ' +
                      readInfo.socketId);
@@ -200,7 +202,7 @@ module TCP {
     /**
      * Fired when remote socket disconnected.
      */
-    private disconnectSocket_ = (socketInfo:Sockets.DisconnectInfo) => {
+    private disconnectSocket_ = (socketInfo:TcpSocket.DisconnectInfo) => {
       var socketId = socketInfo.socketId;
       var msg = socketInfo.error;
       if (!(socketId in this.conns)) {
