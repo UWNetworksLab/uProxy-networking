@@ -70,29 +70,24 @@ module Socks {
      * choose a free port.
      */
     public bind(address:string, port:number) : Promise<void> {
-      return new Promise((F, R) => {
-        this.socket.bind(address, port).done(F);
-      })
-      .then((resultCode:number) => {
-        // Ensure the listen was successful.
-        if (resultCode != 0) {
-          return Promise.reject(new Error('listen failed on ' +
-              this.address + ':' + this.port +
-              ' with result code ' + resultCode));
-        }
-      })
-      .then(() => {
-        return new Promise((F, R) => {
-          this.socket.getInfo().done((socketInfo:UdpSocket.SocketInfo) => {
+      return this.socket.bind(address, port)
+          .then((resultCode:number) => {
+            // Ensure the listen was successful.
+            if (resultCode != 0) {
+              return Promise.reject(new Error('listen failed on ' +
+                  this.address + ':' + this.port +
+                  ' with result code ' + resultCode));
+            }
+            return Promise.resolve(resultCode);
+          })
+          .then(this.socket.getInfo)
+          .then((socketInfo:UdpSocket.SocketInfo) => {
             // Record the address and port on which our socket is listening.
             this.address = socketInfo.localAddress;
             this.port = socketInfo.localPort;
             dbg('listening on ' + this.address + ':' + this.port);
-            F();
-          });
-        })
-      })
-      .then(this.attachSocketHandler);
+          })
+          .then(this.attachSocketHandler);
     }
 
     /**
