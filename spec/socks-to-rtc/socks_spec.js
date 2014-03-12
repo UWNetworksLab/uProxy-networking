@@ -13,13 +13,15 @@ describe("socks", function() {
   });
 
   it('reject wrongly sized requests', function() {
-    var result = Socks.interpretSocksRequest(
-      new Uint8Array(new ArrayBuffer(8)));
-    expect(result.failure).toEqual(Socks.RESPONSE.FAILURE);
+    expect(function() {
+      Socks.interpretSocksRequest(
+        new Uint8Array(new ArrayBuffer(8)), {});
+    }).toThrow();
   });
 
   it('parse ipv4 request', function() {
-    var result = Socks.interpretSocksRequest(ipv4Request);
+    var result = new Object();
+    Socks.interpretSocksRequest(ipv4Request, result);
     expect(result.failure).toBeUndefined();
     expect(result.version).toEqual(Socks.VERSION5);
     expect(result.cmd).toEqual(Socks.REQUEST_CMD.CONNECT);
@@ -31,14 +33,15 @@ describe("socks", function() {
 
   it('wrong socks version', function() {
     ipv4Request[0] = 4;
-    var result = Socks.interpretSocksRequest(ipv4Request);
-    expect(result.failure).toEqual(Socks.RESPONSE.FAILURE);
+    expect(function() {
+      Socks.interpretSocksRequest(ipv4Request, {});
+    }).toThrow();
   });
 
   it('unsupported command', function() {
     ipv4Request[1] = Socks.REQUEST_CMD.BIND;
-    var result = Socks.interpretSocksRequest(ipv4Request);
-    expect(result.failure).toEqual(Socks.RESPONSE.UNSUPPORTED_COMMAND);
+    expect(function() {
+      Socks.interpretSocksRequest(ipv4Request, {});
+    }).toThrow();
   });
 });
-

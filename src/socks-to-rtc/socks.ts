@@ -51,110 +51,97 @@ module Socks {
     RESERVED            = 0x09   // 0x09 - 0xFF unassigned
   }
 
-  /*
-   The SOCKS request is formed as follows:
-        +----+-----+-------+------+----------+----------+
-        |VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
-        +----+-----+-------+------+----------+----------+
-        | 1  |  1  | X'00' |  1   | Variable |    2     |
-        +----+-----+-------+------+----------+----------+
-
-     Where:
-          o  VER    protocol version: X'05'
-          o  CMD
-             o  CONNECT X'01'
-             o  BIND X'02'
-             o  UDP ASSOCIATE X'03'
-          o  RSV    RESERVED
-          o  ATYP   address type of following address
-             o  IP V4 address: X'01'
-             o  DOMAINNAME: X'03'
-             o  IP V6 address: X'04'
-          o  DST.ADDR       desired destination address
-          o  DST.PORT desired destination port in network octet
-             order
-  // TODO: typescript the SOCKS Request interface
-  // TODO: document all fields populated by interpretSocksRequest
-  interface Request {
-    version:number;
-    cmd:REQUEST_CMD;
-    atyp:ATYP;
-    failure:RESPONSE;
-    addressString:string;
-    port:number;
-    protocol:string;
+  export interface SocksRequest {
+    version?:number;
+    cmd?:REQUEST_CMD;
+    atyp?:ATYP;
+    addressString?:string;
+    port?:number;
+    // TODO(yangoon): remove this field
+    protocol?:string;
   }
-  */
 
-
-  /**
-   * Parse byte array into a SOCKS request object.
+  /*
+   * Interprets a SOCKS 5 request, which looks like this:
+   *
+   *   +----+-----+-------+------+----------+----------+
+   *   |VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
+   *   +----+-----+-------+------+----------+----------+
+   *   | 1  |  1  | X'00' |  1   | Variable |    2     |
+   *   +----+-----+-------+------+----------+----------+
    */
-  export function interpretSocksRequest(byteArray:Uint8Array) {
-    var result:any = {};
-
+  export function interpretSocksRequest(byteArray:Uint8Array, result:SocksRequest) : void {
     // Fail if the request is too short to be valid.
     if(byteArray.length < 9) {
-      result.failure = RESPONSE.FAILURE;
-      return result;
+      throw new Error('SOCKS request too short');
     }
 
     // Fail if client is not talking Socks version 5.
     result.version = byteArray[0];
     if (result.version !== VERSION5) {
-      console.error('Invalid Socks5 request: ' + Util.getStringOfArrayBuffer(byteArray))
-      result.failure = RESPONSE.FAILURE;
-      return result;
+      throw new Error('must be SOCKS5');
     }
 
     result.cmd = byteArray[1];
     // Fail unless we got a CONNECT or UDP_ASSOCIATE command.
     if (result.cmd != REQUEST_CMD.CONNECT &&
       result.cmd != REQUEST_CMD.UDP_ASSOCIATE) {
-      result.failure = RESPONSE.UNSUPPORTED_COMMAND;
-      return result;
+      throw new Error('unsupported SOCKS command (CMD): ' + result.cmd);
     }
 
-    // TODO(yangoon): not sure how BIND would work but we're not even thinking
-    //                about support for that.
     result.protocol = result.cmd == REQUEST_CMD.CONNECT ? 'tcp' : 'udp';
 
+    interpretSocksAddress(byteArray.subarray(3), result);
+  }
+
+  export interface SocksDestination {
+    atyp?:ATYP;
+    addressString?:string;
+    port?:number;
+  }
+
+  /*
+   * Interprets this sub-structure, found within both "regular" SOCKS requests
+   * and UDP requests:
+   *
+   *   +------+----------+----------+
+   *   | ATYP | DST.ADDR | DST.PORT |
+   *   +------+----------+----------+
+   *   |  1   | Variable |    2     |
+   *   +------+----------+----------+
+   */
+  export function interpretSocksAddress(byteArray:Uint8Array, result:SocksDestination) : void {
     // Parse address and port and set the callback to be handled by the
     // destination proxy (the bit that actually sends data to the destination).
-    result.atyp = byteArray[3];
+    var portOffset:number;
+    result.atyp = byteArray[0];
     if (ATYP.IP_V4 == result.atyp) {
-      result.addressSize = 4;
-      result.address = byteArray.subarray(4, 4 + result.addressSize);
-      result.addressString = Array.prototype.join.call(result.address, '.');
-      result.portOffset = result.addressSize + 4;
+      var addressSize = 4;
+      var address = byteArray.subarray(1, 1 + addressSize);
+      result.addressString = Array.prototype.join.call(address, '.');
+      portOffset = addressSize + 1;
     } else if (ATYP.DNS == result.atyp) {
-      result.addressSize = byteArray[4];
-      result.address = byteArray.subarray(5, 5 + result.addressSize);
+      var addressSize = byteArray[1];
       result.addressString = '';
-      for (var i = 0; i < result.addressSize; ++i) {
-        result.addressString += String.fromCharCode(byteArray[5 + i]);
+      for (var i = 0; i < addressSize; ++i) {
+        result.addressString += String.fromCharCode(byteArray[2 + i]);
       }
-      result.portOffset = result.addressSize + 5;
+      portOffset = addressSize + 2;
     } else if (ATYP.IP_V6 == result.atyp) {
-      result.addressSize = 16;
-      result.address = byteArray.subarray(4, 4 + result.addressSize);
-      var uint16View = new Uint16Array(byteArray.buffer, 4, 8);
+      var addressSize = 16;
+      var uint16View = new Uint16Array(byteArray.buffer, 1, 5);
       result.addressString = Array.prototype.map.call(uint16View, function(i){
         return (((i & 0xFF) << 8) | ((i >> 8) & 0xFF)).toString(16);
       }).join(':');
-      result.portOffset = result.addressSize + 4;
+      portOffset = addressSize + 1;
     } else {
-      return null;
+      throw new Error('unsupported SOCKS address type (ATYP): ' + result.atyp);
     }
-    result.portByte1 = byteArray[result.portOffset];
-    result.portByte2 = byteArray[result.portOffset + 1];
-    result.port = byteArray[result.portOffset] << 8 |
-                  byteArray[result.portOffset + 1];
-    result.dataOffset = result.portOffset + 2;
-    result.raw = byteArray.subarray(0, result.dataOffset);
-    result.data = byteArray.subarray(result.dataOffset,
-                                     byteArray.length - result.dataOffset);
-    return result;
+
+    // Parse the port.
+    var portByte1 = byteArray[portOffset];
+    var portByte2 = byteArray[portOffset + 1];
+    result.port = byteArray[portOffset] << 8 | byteArray[portOffset + 1];
   }
 
   /**
@@ -298,7 +285,6 @@ module Socks {
       var conn = this.tcpConnection;
       return conn.receive()
           .then(Socks.Session.interpretRequest)
-          .then(Socks.Session.checkRequestFailure)
           // Valid request - fire external callback.
           .then(this.maybeUdpStartRelay)
           .then((request:any) => {
@@ -325,17 +311,8 @@ module Socks {
     // Given a data |buffer|, interpret the SOCKS request.
     public static interpretRequest = (buffer:ArrayBuffer) => {
       var byteArray = new Uint8Array(buffer);
-      var request = Socks.interpretSocksRequest(byteArray);
-      if (null == request) {
-        return Util.reject('bad request length: ' + byteArray.length);
-      }
-      return request;
-    }
-
-    public static checkRequestFailure(request) {
-      if ('failure' in request) {
-        return Util.reject(request.failure);
-      }
+      var request:SocksRequest = {};
+      Socks.interpretSocksRequest(byteArray, request);
       return request;
     }
 
