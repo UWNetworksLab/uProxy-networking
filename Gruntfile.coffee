@@ -51,7 +51,7 @@ module.exports = (grunt) ->
 
     jasmine: {
       socksToRtc:
-        src: ['build/chrome-app/socks-to-rtc/socks.js']
+        src: ['build/chrome-app/socks-to-rtc/socks-headers.js']
         options : { specs : 'spec/socks-to-rtc/**/*_spec.js' }
       chromeProvider:
         src: ['build/chrome-app/chrome-providers/chrome-udpsocket.js']
