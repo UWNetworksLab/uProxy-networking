@@ -79,4 +79,18 @@ describe("socks", function() {
     expect(message[0]).toEqual(11);
     expect(message[1]).toEqual(12);
   });
+
+  it('reject wrongly sized udp requests', function() {
+    expect(function() {
+      Socks.interpretUdpRequest(
+        new Uint8Array(new ArrayBuffer(9)), {});
+    }).toThrow();
+  });
+
+  it('reject fragmentation requests', function() {
+    udpRequest[2] = 7;
+    expect(function() {
+      Socks.interpretUdpRequest(udpRequest, {});
+    }).toThrow();
+  });
 });
