@@ -44,4 +44,13 @@ describe("socks", function() {
       Socks.interpretSocksRequest(ipv4Request, {});
     }).toThrow();
   });
+
+  it('parse destination', function() {
+    var result = new Object();
+    var length = Socks.interpretSocksAddress(ipv4Request.subarray(3), result);
+    expect(length).toEqual(7);
+    expect(result.atyp).toEqual(Socks.ATYP.IP_V4);
+    expect(result.addressString).toEqual('192.168.1.1');
+    expect(result.port).toEqual(1200);
+  });
 });
