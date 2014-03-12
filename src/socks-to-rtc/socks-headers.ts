@@ -94,6 +94,44 @@ module Socks {
   }
 
   /**
+   * Represents a UDP request.
+   * @see interpretSocksRequest
+   */
+  export interface UdpRequest {
+    frag?:number;
+    atyp?:ATYP;
+    addressString?:string;
+    port?:number;
+    data?:Uint8Array;
+  }
+
+  /*
+   * Interprets a SOCKS5 UDP request, which looks like this:
+   *
+   *   +----+------+------+----------+----------+----------+
+   *   |RSV | FRAG | ATYP | DST.ADDR | DST.PORT |   DATA   |
+   *   +----+------+------+----------+----------+----------+
+   *   | 2  |  1   |  1   | Variable |    2     | Variable |
+   8   +----+------+------+----------+----------+----------+
+   */
+  export function interpretUdpRequest(byteArray:Uint8Array, result:UdpRequest) : void {
+    // Fail if the request is too short to be valid.
+    if(byteArray.length < 10) {
+      throw new Error('UDP request too short');
+    }
+
+    // Fail if client is requesting fragmentation.
+    result.frag = byteArray[2];
+    if (result.frag !== 0) {
+      throw new Error('fragmentation not supported');
+    }
+
+    var addressLength = interpretSocksAddress(byteArray.subarray(3), result);
+
+    result.data = byteArray.subarray(3 + addressLength);
+  }
+
+  /**
    * Represents the destination portion of a SOCKS request.
    * @see interpretSocksAddress
    */
@@ -112,8 +150,11 @@ module Socks {
    *   +------+----------+----------+
    *   |  1   | Variable |    2     |
    *   +------+----------+----------+
+   *
+   * Returns a number indicating the length, in bytes, of this structure. The
+   * length varies according to the type found (IPv4, IPv6, host name, etc).
    */
-  export function interpretSocksAddress(byteArray:Uint8Array, result:SocksDestination) : void {
+  export function interpretSocksAddress(byteArray:Uint8Array, result:SocksDestination) : number {
     // Parse address and port and set the callback to be handled by the
     // destination proxy (the bit that actually sends data to the destination).
     var portOffset:number;
@@ -145,5 +186,7 @@ module Socks {
     var portByte1 = byteArray[portOffset];
     var portByte2 = byteArray[portOffset + 1];
     result.port = byteArray[portOffset] << 8 | byteArray[portOffset + 1];
+
+    return portOffset + 2;
   }
 }

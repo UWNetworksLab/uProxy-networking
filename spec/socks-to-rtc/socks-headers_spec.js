@@ -2,6 +2,9 @@ describe("socks", function() {
   // A valid SOCKS5/IPV4 request.
   var ipv4Request;
 
+  // A valid SOCKS5/UDP request.
+  var udpRequest;
+
   beforeEach(function() {
     ipv4Request = new Uint8Array([
       Socks.VERSION5,
@@ -10,6 +13,16 @@ describe("socks", function() {
       Socks.ATYP.IP_V4,
       192, 168, 1, 1, // IP: 192.168.1.1
       1200 >> 8, 1200 & 0xFF]); // port: 1200
+
+    udpRequest = new Uint8Array([
+      0, // reserved
+      0, // reserved
+      0, // frag
+      Socks.ATYP.IP_V4,
+      192, 168, 1, 1, // IP: 192.168.1.1
+      1200 >> 8, 1200 & 0xFF, // port: 1200
+      11, // message (byte 1/2)
+      12]); // datagram (byte 2/2)
   });
 
   it('reject wrongly sized requests', function() {
@@ -52,5 +65,18 @@ describe("socks", function() {
     expect(result.atyp).toEqual(Socks.ATYP.IP_V4);
     expect(result.addressString).toEqual('192.168.1.1');
     expect(result.port).toEqual(1200);
+  });
+
+  it('parse udp request', function() {
+    var result = new Object();
+    Socks.interpretUdpRequest(udpRequest, result);
+    expect(result.frag).toEqual(0);
+    expect(result.atyp).toEqual(Socks.ATYP.IP_V4);
+    expect(result.addressString).toEqual('192.168.1.1');
+    expect(result.port).toEqual(1200);
+    var message = result.data;
+    expect(message.byteLength).toEqual(2);
+    expect(message[0]).toEqual(11);
+    expect(message[1]).toEqual(12);
   });
 });
