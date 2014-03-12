@@ -5,6 +5,7 @@
     "script": [
       "tcp.js",
       "socks.js",
+      "socks-headers.js",
       "socks-to-rtc.js",
       "udprelay.js"
     ]
