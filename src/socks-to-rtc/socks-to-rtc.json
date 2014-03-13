@@ -6,7 +6,8 @@
       "tcp.js",
       "socks.js",
       "socks-to-rtc.js",
-      "udprelay.js"
+      "udprelay.js",
+      "tcp_echo_server.js"
     ]
   },
   "dependencies": {

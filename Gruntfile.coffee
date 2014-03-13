@@ -22,6 +22,10 @@ module.exports = (grunt) ->
         expand: true, cwd: 'src/'
         src: ['rtc-to-net/**/*.json']
         dest: 'build/chrome-app/' } ] }
+      echo: { files: [ {
+        expand: true, cwd: 'test/'
+        src: ['*.js']
+        dest: 'build/chrome-app/socks-to-rtc/' } ] }
     }
 
     #-------------------------------------------------------------------------
@@ -90,6 +94,7 @@ module.exports = (grunt) ->
     'copy:chromeApp'
     'copy:socks2rtc'
     'copy:rtc2net'
+    'copy:echo'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
