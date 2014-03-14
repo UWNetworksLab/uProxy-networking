@@ -10,18 +10,32 @@ module.exports = (grunt) ->
         expand: true, cwd: 'node_modules/freedom-runtime-chrome/'
         src: ['freedom.js']
         dest: 'build/chrome-app/' } ] }
-      chromeApp: { files: [ {
-        expand: true, cwd: 'src/chrome-app'
-        src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
-        dest: 'build/chrome-app/' } ] }
+
+      # User should include the compiled source directly from:
+      #   - build/socks-to-rtc
+      #   - build/rtc-to-net
       socks2rtc: { files: [ {
         expand: true, cwd: 'src/'
         src: ['socks-to-rtc/**/*.json']
-        dest: 'build/chrome-app/' } ] }
+        dest: 'build/' } ] }
       rtc2net: { files: [ {
         expand: true, cwd: 'src/'
         src: ['rtc-to-net/**/*.json']
-        dest: 'build/chrome-app/' } ] }
+        dest: 'build/' } ] }
+
+      chromeApp: { files: [ {
+          expand: true, cwd: 'src/chrome-app'
+          src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
+          dest: 'build/chrome-app/'
+        }, {
+          expand: true, cwd: 'build/socks-to-rtc',
+          src: ['**/*.js', '**/*.json'],
+          dest: 'build/chrome-app/socks-to-rtc'
+        }, {
+          expand: true, cwd: 'build/rtc-to-net',
+          src: ['**/*.js', '**/*.json'],
+          dest: 'build/chrome-app/rtc-to-net'
+        } ] }
     }
 
     #-------------------------------------------------------------------------
@@ -29,12 +43,12 @@ module.exports = (grunt) ->
     typescript: {
       socks2rtc: {
         src: ['src/socks-to-rtc/**/*.ts']
-        dest: 'build/chrome-app/'
+        dest: 'build/'
         options: { base_path: 'src' }
       }
       rtc2net: {
         src: ['src/rtc-to-net/**/*.ts']
-        dest: 'build/chrome-app/'
+        dest: 'build/'
         options: { base_path: 'src' }
       }
       chromeProviders: {
@@ -87,9 +101,9 @@ module.exports = (grunt) ->
     'typescript:chromeProviders'
     'typescript:chromeApp'
     'copy:freedom'
-    'copy:chromeApp'
     'copy:socks2rtc'
     'copy:rtc2net'
+    'copy:chromeApp'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
