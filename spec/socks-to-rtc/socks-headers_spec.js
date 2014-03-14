@@ -1,3 +1,4 @@
+// TODO: add tests for IPv6 address parsing
 describe("socks", function() {
   // A valid SOCKS5/IPV4 request.
   var ipv4Request;
