@@ -146,7 +146,11 @@ module Socks {
     public handleRequest = (callback) => {
       var conn = this.tcpConnection;
       return conn.receive()
-          .then(Socks.Session.interpretRequest)
+          .then((buffer:ArrayBuffer) => {
+            var request:SocksRequest = {};
+            Socks.interpretSocksRequest(new Uint8Array(buffer), request);
+            return request;
+          })
           // Valid request - fire external callback.
           .then(this.maybeUdpStartRelay)
           .then((request:any) => {
@@ -168,14 +172,6 @@ module Socks {
             dbgErr(this + ': ' + e.message);
             return Util.reject('response error.');
           });
-    }
-
-    // Given a data |buffer|, interpret the SOCKS request.
-    public static interpretRequest = (buffer:ArrayBuffer) => {
-      var byteArray = new Uint8Array(buffer);
-      var request:SocksRequest = {};
-      Socks.interpretSocksRequest(byteArray, request);
-      return request;
     }
 
     /**
