@@ -23,8 +23,7 @@ module.exports = (grunt) ->
         src: ['rtc-to-net/**/*.json']
         dest: 'build/' } ] }
 
-      chromeApp: { files: [
-        {
+      chromeApp: { files: [ {
           expand: true, cwd: 'src/chrome-app'
           src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
           dest: 'build/chrome-app/'
