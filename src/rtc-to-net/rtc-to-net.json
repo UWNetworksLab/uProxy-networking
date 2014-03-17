@@ -8,9 +8,12 @@
     ]
   },
   "dependencies": {
+    "transport": {
+      "url": "../freedom-providers/transport.webrtc.json",
+      "api": "transport"
+    }
   },
   "permissions": [
-    "core.socket",
-    "core.peerconnection"
+    "core.socket"
   ]
 }
