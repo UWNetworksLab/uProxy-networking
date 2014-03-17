@@ -4,6 +4,7 @@
 /// <reference path='socks.ts' />
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/peer-connection.d.ts' />
+/// <reference path='../common/arraybuffers.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 
 // TODO replace with a reference to freedom ts interface once it exists.

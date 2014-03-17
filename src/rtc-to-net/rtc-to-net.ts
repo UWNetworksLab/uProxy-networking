@@ -4,6 +4,7 @@
 /// <reference path='netclient.ts' />
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/peer-connection.d.ts' />
+/// <reference path='../common/arraybuffers.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 
 console.log('WEBWORKER - RtcToNet: ' + self.location.href);

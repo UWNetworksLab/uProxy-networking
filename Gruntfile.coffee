@@ -39,6 +39,10 @@ module.exports = (grunt) ->
           expand: true, cwd: 'build/rtc-to-net',
           src: ['**/*.js', '**/*.json'],
           dest: 'build/chrome-app/rtc-to-net'
+        }, {
+          expand: true, cwd: 'build/common',
+          src: ['**/*.js'],
+          dest: 'build/chrome-app/common'
         } ] }
     }
 
@@ -52,6 +56,11 @@ module.exports = (grunt) ->
       }
       rtc2net: {
         src: ['src/rtc-to-net/**/*.ts']
+        dest: 'build/'
+        options: { base_path: 'src' }
+      }
+      common: {
+        src: ['src/common/**/*.ts']
         dest: 'build/'
         options: { base_path: 'src' }
       }
@@ -102,6 +111,7 @@ module.exports = (grunt) ->
   grunt.registerTask 'build', [
     'typescript:socks2rtc'
     'typescript:rtc2net'
+    'typescript:common'
     'typescript:chromeProviders'
     'typescript:chromeApp'
     'copy:freedom'

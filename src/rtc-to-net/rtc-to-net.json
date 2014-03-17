@@ -4,7 +4,8 @@
   "app": {
     "script": [
       "netclient.js",
-      "rtc-to-net.js"
+      "rtc-to-net.js",
+      "../common/arraybuffers.js"
     ]
   },
   "dependencies": {
