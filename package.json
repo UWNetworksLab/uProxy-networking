@@ -22,5 +22,8 @@
   },
   "scripts": {
     "test": "grunt --verbose"
+  },
+  "dependencies": {
+    "freedom": "~0.4.3"
   }
 }
