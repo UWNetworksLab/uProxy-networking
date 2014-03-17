@@ -3,7 +3,7 @@
 */
 /// <reference path='netclient.ts' />
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/peer-connection.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/transport.d.ts' />
 /// <reference path='../common/arraybuffers.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 
@@ -19,8 +19,8 @@ module RtcToNet {
   export class Peer {
 
     private signallingChannel:any = null;
-    private sctpPc:freedom.PeerConnection;
-    private netClients:{[channelLabel:string]:Net.Client} = {};
+    private transport:freedom.Transport = null;
+    private netClients:{[tag:string]:Net.Client} = {};
 
     // Static initialiser which returns a promise to create a new Peer
     // instance complete with a signalling channel for NAT piercing.
@@ -33,11 +33,10 @@ module RtcToNet {
     constructor (public peerId:string, channel) {
       dbg('created new peer: ' + peerId);
       // peerconnection's data channels biject ot Net.Clients.
-      this.sctpPc = freedom['core.peerconnection']();
-      this.sctpPc.on('onReceived', this.passPeerDataToNet_);
-      this.sctpPc.on('onCloseDataChannel', this.closeNetClient_);
-      var stunServers = [];  // TODO: use real stun servers
-      this.sctpPc.setup(channel.identifier, 'RtcToNet-' + peerId, []);
+      this.transport = freedom['transport']();
+      this.transport.on('onData', this.passPeerDataToNet_);
+      this.transport.on('onClose', this.closeNetClient_);
+      this.transport.setup('RtcToNet-' + peerId, channel.identifier);
       this.signallingChannel = channel.channel;
       this.signallingChannel.on('message', (msg) => {
         freedom.emit('sendSignalToPeer', {
@@ -67,89 +66,72 @@ module RtcToNet {
       for (var i in this.netClients) {
         this.netClients[i].close();  // Will close its data channel.
       }
-        this.sctpPc.close();
+      this.transport.close();
     }
 
     /**
      * Pass messages from peer connection to net.
      */
-    private passPeerDataToNet_ = (message:Channel.Message) => {
+    private passPeerDataToNet_ = (message:freedom.Transport.IncomingMessage) => {
       // TODO: This handler is also O(n) for ALL the data channels. Super
       // terrible. Maybe it's fixed after freedom 0.2?
-      var label = message.channelLabel;
-      if (!label) {
-        dbgErr('Message received but missing channelLabel. Msg: ' +
-                      JSON.stringify(message));
+      if (!message.tag) {
+        dbgErr('received message without datachannel tag!: ' + JSON.stringify(message));
         return;
       }
-      if (message.text) {
-        if ('SOCKS-DISCONNECTED' == message.text) {
-          // TODO: this is a temporary 'disconnect' signal.
-          dbg(label + ' <--- received SOCKS-DISCONNECTED');
-          this.closeDataChannel_(label);
-          return;
-        }
-        dbg('encountered new datachannel ' + label);
-        var dest:Net.Destination = JSON.parse(message.text);
-        // Text from the peer indicates request for a new destination.
-        // Assumes |message.text| is a Net.Destination.
-        dbg(label + ' <--- new request: ' + message.text);
-        if (label in this.netClients) {
-          // TODO: This shouldn't be fired! This is bad!
-          dbgWarn('Net.Client already exists for data channel: ' + label);
-          return;
-        }
-        this.prepareNetChannelLifecycle_(label, dest);
 
-      } else if (message.buffer) {
-        dbg(label + ' <--- received ' + JSON.stringify(message));
-        if(!(label in this.netClients)) {
-          dbgErr('[RtcToNet] non-existent channel! Msg: ' +
-              JSON.stringify(message));
+      if (message.tag == 'control') {
+        var commandText = ArrayBuffers.arrayBufferToString(message.data);
+        var command:any = JSON.parse(commandText);
+        if (command.command == 'SOCKS-CONNECT') {
+          // Text from the peer indicates request for a new destination.
+          // Assumes |message.text| is a Net.Destination.
+          if (command.tag in this.netClients) {
+            // TODO: This shouldn't be fired! This is bad!
+            dbgWarn('Net.Client already exists for datachannel: ' + command.tag);
+            return;
+          }
+          var dest:Net.Destination = JSON.parse(commandText);
+          this.prepareNetChannelLifecycle_(command.tag, dest);
+        }
+      } else {
+        dbg(message.tag + ' <--- received ' + JSON.stringify(message));
+        if(!(message.tag in this.netClients)) {
+          dbgErr('[RtcToNet] non-existent channel! Msg: ' + JSON.stringify(message));
           return;
         }
         // Buffer from the peer is data for the destination.
-        this.netClients[label].send(message.buffer);
-      } else {
-        dbgErr('Message received but missing valid data field. Msg: ' +
-            JSON.stringify(message));
+        dbg('forwarding ' + message.data.byteLength + ' bytes from datachannel ' + message.tag);
+        this.netClients[message.tag].send(message.data);
       }
-    }
-
-    private createDataChannel_ = (label:string) : Promise<void> => {
-      return this.sctpPc.openDataChannel(label);
     }
 
     /**
      * Return data from Net to Peer.
      */
-    private serveDataToPeer_ = (channelLabel:string, data:ArrayBuffer) => {
-      // TODO: peer connection is firing a response for *every* channelLabel.
-      // This needs to be fixed.
-      dbg('reply ' + data.byteLength + ' bytes ---> ' + channelLabel);
-      this.sctpPc.send({
-          'channelLabel': channelLabel,
-          'buffer': data
-      });
+    private serveDataToPeer_ = (tag:string, data:ArrayBuffer) => {
+      dbg('reply ' + data.byteLength + ' bytes ---> ' + tag);
+      this.transport.send(tag, data);
     }
 
     /**
-     * Tie a Net.Client for Destination |dest| to data-channel |label|.
+     * Tie a Net.Client for Destination |dest| to data-channel |tag|.
      */
     private prepareNetChannelLifecycle_ =
-        (label:string, dest:Net.Destination) => {
-      var netClient = this.netClients[label] = new Net.Client(
-          (data) => { this.serveDataToPeer_(label, data); },  // onResponse
+        (tag:string, dest:Net.Destination) => {
+      var netClient = this.netClients[tag] = new Net.Client(
+          (data) => { this.serveDataToPeer_(tag, data); },  // onResponse
           dest);
       // Send NetClient remote disconnections back to SOCKS peer, then shut the
       // data channel locally.
       netClient.onceDisconnected().then(() => {
-        this.sctpPc.send({
-          channelLabel: label,
-          text: 'NET-DISCONNECTED'
+        var commandText = JSON.stringify({
+          command: 'NET-DISCONNECTED',
+          tag: tag
         });
-        dbg('send NET-DISCONNECTED ---> ' + label);
-        this.closeDataChannel_(label);
+        var buffer = ArrayBuffers.stringToArrayBuffer(commandText);
+        this.transport.send('control', buffer);
+        dbg('send NET-DISCONNECTED ---> ' + tag);
       });
     }
 
@@ -166,18 +148,6 @@ module RtcToNet {
       this.netClients[channelId].close();
       delete this.netClients[channelId];
     }
-
-    /**
-     * Close an individual data channel when its Net.Client closes.
-     *
-     * Data channels are created automatically in Peer Connection when a new
-     * label is encountered, but must be explicitly closed here.
-     * TODO: Re-use data channels from a pool.
-     */
-    private closeDataChannel_ = (channelLabel:string) => {
-      this.sctpPc.closeDataChannel(channelLabel);
-    }
-
   }  // class RtcToNet.Peer
 
 
