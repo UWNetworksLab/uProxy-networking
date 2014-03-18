@@ -84,10 +84,7 @@ module RtcToNet {
         var commandText = ArrayBuffers.arrayBufferToString(message.data);
         var command:any = JSON.parse(commandText);
         if (command.command == 'SOCKS-CONNECT') {
-          // Text from the peer indicates request for a new destination.
-          // Assumes |message.text| is a Net.Destination.
           if (command.tag in this.netClients) {
-            // TODO: This shouldn't be fired! This is bad!
             dbgWarn('Net.Client already exists for datachannel: ' + command.tag);
             return;
           }
