@@ -94,13 +94,14 @@ module SocksToRTC {
      * Setup new data channel and tie to corresponding SOCKS5 session.
      * Returns: IP and port of destination.
      */
-    private onConnection_ = (session:Socks.Session, address, port, protocol)
+    private onConnection_ = (session:Socks.Session)
         :Promise<Channel.EndpointInfo> => {
       // We don't have a way to pipe UDP traffic through the datachannel
       // just yet so, for now, just exit early in the UDP case.
       // TODO(yangoon): pipe UDP traffic through the datachannel
       // TODO(yangoon): serious refactoring needed here!
-      if (protocol == 'udp') {
+      var socksRequest:Socks.SocksRequest = session.getSocksRequest();
+      if (socksRequest.protocol == 'udp') {
         return Promise.resolve({ ipAddrString: '127.0.0.1', port: 0 });
       }
 
@@ -117,18 +118,19 @@ module SocksToRTC {
       var commandText = JSON.stringify({
         command: 'SOCKS-CONNECT',
         tag: tag,
-        host: address,
-        port: port });
+        host: socksRequest.addressString,
+        port: socksRequest.port });
       var buffer = ArrayBuffers.stringToArrayBuffer(commandText);
       return this.transport.send('control', buffer).then(() => {
-      // TODO: we are not connected yet... should we have some message passing
-      // back from the other end of the data channel to tell us when it has
-      // happened, instead of just pretended?
-      // TODO: Allow SOCKs headers
-        dbg('created datachannel ' + tag + ' for ' + address + ':' + port);
-            // TODO: determine if these need to be accurate.
-            return { ipAddrString: '127.0.0.1', port: 0 };
-          });
+        // TODO: we are not connected yet... should we have some message passing
+        // back from the other end of the data channel to tell us when it has
+        // happened, instead of just pretended?
+        // TODO: Allow SOCKs headers
+        dbg('created datachannel ' + tag + ' for ' +
+            socksRequest.addressString + ':' + socksRequest.port);
+        // TODO: determine if these need to be accurate.
+        return { ipAddrString: '127.0.0.1', port: 0 };
+      });
     }
 
     /**
