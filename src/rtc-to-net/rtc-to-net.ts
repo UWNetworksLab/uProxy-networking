@@ -104,20 +104,12 @@ module RtcToNet {
     }
 
     /**
-     * Return data from Net to Peer.
-     */
-    private serveDataToPeer_ = (tag:string, data:ArrayBuffer) => {
-      dbg('reply ' + data.byteLength + ' bytes ---> ' + tag);
-      this.transport.send(tag, data);
-    }
-
-    /**
      * Tie a Net.Client for Destination |dest| to data-channel |tag|.
      */
     private prepareNetChannelLifecycle_ =
         (tag:string, dest:Net.Destination) => {
       var netClient = this.netClients[tag] = new Net.Client(
-          (data) => { this.serveDataToPeer_(tag, data); },  // onResponse
+          (data) => { this.transport.send(tag, data); },  // onResponse
           dest);
       // Send NetClient remote disconnections back to SOCKS peer, then shut the
       // data channel locally.
