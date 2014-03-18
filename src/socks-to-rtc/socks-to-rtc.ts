@@ -44,7 +44,7 @@ module SocksToRTC {
       }
       // SOCKS sessions biject to peerconnection datachannels.
       this.transport = freedom['transport']();
-      this.transport.on('onData', this.replyToSOCKS_);
+      this.transport.on('onData', this.onDataFromPeer);
       this.transport.on('onClose', this.closeConnection_);
       // Messages received via signalling channel must reach the remote peer
       // through something other than the peerconnection. (e.g. XMPP)
@@ -153,7 +153,7 @@ module SocksToRTC {
      * Receive replies proxied back from the remote RtcToNet.Peer and pass them
      * back across underlying SOCKS session / TCP socket.
      */
-    private replyToSOCKS_ = (msg:freedom.Transport.IncomingMessage) => {
+    private onDataFromPeer = (msg:freedom.Transport.IncomingMessage) => {
       dbg(msg.tag + ' <--- received ' + msg.data.byteLength);
       if (!msg.tag) {
         dbgErr('received message without datachannel tag!: ' + JSON.stringify(msg));
