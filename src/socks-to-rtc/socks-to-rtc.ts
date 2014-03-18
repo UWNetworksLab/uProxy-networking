@@ -45,7 +45,7 @@ module SocksToRTC {
       // SOCKS sessions biject to peerconnection datachannels.
       this.transport = freedom['transport']();
       this.transport.on('onData', this.onDataFromPeer);
-      this.transport.on('onClose', this.closeConnection_);
+      this.transport.on('onClose', this.closeConnectionToPeer);
       // Messages received via signalling channel must reach the remote peer
       // through something other than the peerconnection. (e.g. XMPP)
       fCore.createChannel().then((chan) => {
@@ -76,7 +76,7 @@ module SocksToRTC {
         this.socksServer = null;
       }
       for (var tag in this.socksSessions) {
-        this.closeConnection_(tag);
+        this.closeConnectionToPeer(tag);
       }
       this.socksSessions = {};
       if(this.transport) {
@@ -166,7 +166,7 @@ module SocksToRTC {
         if (command.command == 'NET-DISCONNECTED') {
           // Receiving a disconnect on the remote peer should close SOCKS.
           dbg(command.tag + ' <--- received NET-DISCONNECTED');
-          this.closeConnection_(command.tag);
+          this.closeConnectionToPeer(command.tag);
           return;
         }
       } else {
@@ -182,7 +182,7 @@ module SocksToRTC {
     /**
      * Close a particular SOCKS session.
      */
-    private closeConnection_ = (tag:string) => {
+    private closeConnectionToPeer = (tag:string) => {
       dbg('datachannel ' + tag + ' has closed. ending SOCKS session for channel.');
       this.socksServer.endSession(this.socksSessions[tag]);
       delete this.socksSessions[tag];
