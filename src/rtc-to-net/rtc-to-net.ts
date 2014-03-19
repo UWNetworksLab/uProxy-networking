@@ -81,15 +81,39 @@ module RtcToNet {
       }
 
       if (message.tag == 'control') {
-        var commandText = ArrayBuffers.arrayBufferToString(message.data);
-        var command:any = JSON.parse(commandText);
-        if (command.command == 'SOCKS-TCPCONNECT') {
+        var command:Channel.Command = JSON.parse(
+            ArrayBuffers.arrayBufferToString(message.data));
+        if (command.type == 'NetConnectRequest') {
+          var request:Channel.NetConnectRequest = JSON.parse(command.data);
           if (command.tag in this.netClients) {
             dbgWarn('Net.Client already exists for datachannel: ' + command.tag);
             return;
           }
-          var dest:Net.Destination = JSON.parse(commandText);
-          this.prepareNetChannelLifecycle_(command.tag, dest);
+          var dest:Net.Destination = {
+            host: request.address,
+            port: request.port
+          };
+          // This is what we'll send to the client.
+          // If we successfully connect to the remote host then we'll
+          // populate the address and port fields.
+          var response:Channel.NetConnectResponse = {};
+          this.prepareNetChannelLifecycle_(command.tag, dest)
+              .then((endpointInfo:Channel.EndpointInfo) => {
+                response.address = endpointInfo.ipAddrString;
+                response.port = endpointInfo.port;
+              })
+              .then(() => {
+                var out:Channel.Command = {
+                    type: 'NetConnectResponse',
+                    tag: command.tag,
+                    data: JSON.stringify(response)
+                }
+                this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
+                    JSON.stringify(out)));
+              });
+        } else {
+          // TODO: support SocksDisconnected command
+          dbgWarn('unsupported control command: ' + command.type);
         }
       } else {
         dbg(message.tag + ' <--- received ' + JSON.stringify(message));
@@ -104,38 +128,34 @@ module RtcToNet {
     }
 
     /**
-     * Tie a Net.Client for Destination |dest| to data-channel |tag|.
+     * Returns a promise to tie a Net.Client for Destination |dest| to
+     * data-channel |tag|.
      */
     private prepareNetChannelLifecycle_ =
-        (tag:string, dest:Net.Destination) => {
-      var netClient = this.netClients[tag] = new Net.Client(
+        (tag:string, dest:Net.Destination) : Promise<Channel.EndpointInfo> => {
+      var netClient = new Net.Client(
           (data) => { this.transport.send(tag, data); },  // onResponse
           dest);
-      // Send NetClient remote disconnections back to SOCKS peer, then shut the
-      // data channel locally.
-      netClient.onceDisconnected().then(() => {
-        var commandText = JSON.stringify({
-          command: 'NET-DISCONNECTED',
-          tag: tag
+      return netClient.create().then((endpointInfo:Channel.EndpointInfo) => {
+        this.netClients[tag] = netClient;
+        // Send NetClient remote disconnections back to SOCKS peer, then shut the
+        // data channel locally.
+        netClient.onceDisconnected().then(() => {
+          var command:Channel.Command = {
+              type: 'NetDisconnected',
+              tag: tag
+          };
+          this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
+              JSON.stringify(command)));
+          dbg('send NET-DISCONNECTED ---> ' + tag);
         });
-        var buffer = ArrayBuffers.stringToArrayBuffer(commandText);
-        this.transport.send('control', buffer);
-        dbg('send NET-DISCONNECTED ---> ' + tag);
+        return endpointInfo;
       });
     }
 
-    /**
-     * Close an individual Net.Client when its data channel closes.
-     */
-    private closeNetClient_ = (channelData:Channel.CloseData) => {
-      var channelId = channelData.channelId;
-      if (!(channelId in this.netClients)) {
-        dbgWarn('no Net.Client to close for ' + channelId)
-        return;
-      }
-      dbg('closing Net.Client for closed datachannel ' + channelId);
-      this.netClients[channelId].close();
-      delete this.netClients[channelId];
+    // TODO: it's not clear what to do here
+    private closeNetClient_ = () => {
+      dbg('transport closed');
     }
   }  // class RtcToNet.Peer
 

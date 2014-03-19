@@ -30,6 +30,10 @@ module SocksToRTC {
     private socksSessions:{[tag:string]:Socks.Session} = {};
     private peerId:string = null;         // Of the remote rtc-to-net peer.
 
+    // Connection callbacks, by datachannel tag name.
+    // TODO: figure out a more elegant way to store these callbacks
+    private static connectCallbacks:{[tag:string]:(response:Channel.NetConnectResponse) => void} = {};
+
     /**
      * Start the Peer, based on the remote peer's info.
      */
@@ -107,24 +111,33 @@ module SocksToRTC {
       var tag = obtainTag();
       this.tieSessionToChannel_(session, tag);
 
-      // Send initial request header to remote peer over the data channel.
-      var commandText = JSON.stringify({
-        command: socksRequest.protocol == 'tcp' ?
-            'SOCKS-TCPCONNECT' : 'SOCKS-UDPCONNECT',
-        tag: tag,
-        host: socksRequest.addressString,
-        port: socksRequest.port });
-      var buffer = ArrayBuffers.stringToArrayBuffer(commandText);
-      return this.transport.send('control', buffer).then(() => {
-        // TODO: we may not actually be connected and have no mechanism to
-        //       report errors
-        // TODO: we have no way to report to the client the host:port on which
-        //       the proxy is connected to the remote host, as required by a
-        //       strict interpretation of the SOCKS protocol (doesn't matter
-        //       in practice)
-        dbg('created datachannel ' + tag + ' for ' +
-            socksRequest.addressString + ':' + socksRequest.port);
-        return { ipAddrString: '127.0.0.1', port: 0 };
+      // This gets a little funky: ask the peer to establish a connection to
+      // the remote host and register a callback for when it gets back to us
+      // on the control channel.
+      // TODO: how to add a timeout, in case the remote end never replies?
+      return new Promise((F,R) => {
+        Peer.connectCallbacks[tag] = (response:Channel.NetConnectResponse) => {
+          if (response.address) {
+            F({
+              ipAddrString: response.address,
+              port: response.port
+            });
+          } else {
+            R(new Error('could not create datachannel'));
+          }
+        }
+        var request:Channel.NetConnectRequest = {
+          protocol: socksRequest.protocol,
+          address: socksRequest.addressString,
+          port: socksRequest.port
+        };
+        var command:Channel.Command = {
+            type: 'NetConnectRequest',
+            tag: tag,
+            data: JSON.stringify(request)
+        };
+        this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
+            JSON.stringify(command)));
       });
     }
 
@@ -136,12 +149,12 @@ module SocksToRTC {
       this.socksSessions[tag] = session;
       session.onRecv((buf) => { this.sendToPeer_(tag, buf); });
       session.onceDisconnected().then(() => {
-        var commandText = JSON.stringify({
-          command: 'SOCKS-DISCONNECTED',
-          tag: tag
-        });
-        var buffer = ArrayBuffers.stringToArrayBuffer(commandText);
-        this.transport.send('control', buffer);
+        var command:Channel.Command = {
+            type: 'SocksDisconnected',
+            tag: tag
+        };
+        this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
+            JSON.stringify(command)));
       });
     }
 
@@ -157,13 +170,28 @@ module SocksToRTC {
       }
 
       if (msg.tag == 'control') {
-        var command:any = JSON.parse(
+        var command:Channel.Command = JSON.parse(
             ArrayBuffers.arrayBufferToString(msg.data));
-        if (command.command == 'NET-DISCONNECTED') {
+
+        if (command.type == 'NetConnectResponse') {
+          // Call the associated callback and forget about it.
+          // The callback should fulfill or reject the promise on
+          // which the client is waiting, completing the connection flow.
+          var response:Channel.NetConnectResponse = JSON.parse(command.data);
+          if (command.tag in Peer.connectCallbacks) {
+            var callback = Peer.connectCallbacks[command.tag];
+            callback(response);
+            Peer.connectCallbacks[command.tag] = undefined;
+          } else {
+            dbgWarn('received connect callback for unknown datachannel: ' +
+                command.tag);
+          }
+        } else if (command.type == 'NetDisconnected') {
           // Receiving a disconnect on the remote peer should close SOCKS.
           dbg(command.tag + ' <--- received NET-DISCONNECTED');
           this.closeConnectionToPeer(command.tag);
-          return;
+        } else {
+          dbgWarn('unsupported control command: ' + command.type);
         }
       } else {
         if (!(msg.tag in this.socksSessions)) {
