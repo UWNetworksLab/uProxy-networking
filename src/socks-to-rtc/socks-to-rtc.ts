@@ -96,20 +96,12 @@ module SocksToRTC {
      */
     private onConnection_ = (session:Socks.Session)
         :Promise<Channel.EndpointInfo> => {
-      var socksRequest:Socks.SocksRequest = session.getSocksRequest();
-
-      // We don't have a way to pipe UDP traffic through the datachannel
-      // just yet so, for now, just exit early in the UDP case.
-      // TODO(yangoon): pipe UDP traffic through the datachannel
-      // TODO(yangoon): serious refactoring needed here!
-      if (socksRequest.protocol == 'udp') {
-        return Promise.resolve({ ipAddrString: '127.0.0.1', port: 0 });
-      }
-
       if (!this.transport) {
         dbgWarn('transport not ready');
         return;
       }
+
+      var socksRequest:Socks.SocksRequest = session.getSocksRequest();
 
       // Generate a name for this connection and associate it with the SOCKS session.
       var tag = obtainTag();
@@ -117,7 +109,8 @@ module SocksToRTC {
 
       // Send initial request header to remote peer over the data channel.
       var commandText = JSON.stringify({
-        command: 'SOCKS-TCPCONNECT',
+        command: socksRequest.protocol == 'tcp' ?
+            'SOCKS-TCPCONNECT' : 'SOCKS-UDPCONNECT',
         tag: tag,
         host: socksRequest.addressString,
         port: socksRequest.port });
@@ -135,12 +128,11 @@ module SocksToRTC {
     }
 
     /**
-     * Create one-to-one relationship between a SOCKS session and a datachannel.
+     * Records the (1:1) relationship between a SOCKS session and a datachannel
+     * and configures forwarding and termination handlers.
      */
     private tieSessionToChannel_ = (session:Socks.Session, tag:string) => {
       this.socksSessions[tag] = session;
-      // When the TCP-connection receives data, send to sctp peer.
-      // When it disconnects, clear the |tag|.
       session.onRecv((buf) => { this.sendToPeer_(tag, buf); });
       session.onceDisconnected().then(() => {
         var commandText = JSON.stringify({
