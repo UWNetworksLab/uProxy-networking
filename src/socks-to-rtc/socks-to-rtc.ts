@@ -181,8 +181,18 @@ module SocksToRTC {
             ArrayBuffers.arrayBufferToString(msg.data));
 
         if (command.type == 'NetConnectResponse') {
+          // Call the associated callback and forget about it.
+          // The callback should fulfill or reject the promise on
+          // which the client is waiting, completing the connection flow.
           var response:Channel.NetConnectResponse = JSON.parse(command.data);
-          Peer.connectCallbacks[command.tag](response);
+          if (command.tag in Peer.connectCallbacks) {
+            var callback = Peer.connectCallbacks[command.tag];
+            callback(response);
+            Peer.connectCallbacks[command.tag] = undefined;
+          } else {
+            dbgWarn('received connect callback for unknown datachannel: ' +
+                command.tag);
+          }
         } else if (command.type == 'NetDisconnected') {
           // Receiving a disconnect on the remote peer should close SOCKS.
           dbg(command.tag + ' <--- received NET-DISCONNECTED');
