@@ -116,19 +116,20 @@ module SocksToRTC {
         port: socksRequest.port });
       var buffer = ArrayBuffers.stringToArrayBuffer(commandText);
       return this.transport.send('control', buffer).then(() => {
-        // TODO: we are not connected yet... should we have some message passing
-        // back from the other end of the data channel to tell us when it has
-        // happened, instead of just pretended?
-        // TODO: Allow SOCKs headers
+        // TODO: we may not actually be connected and have no mechanism to
+        //       report errors
+        // TODO: we have no way to report to the client the host:port on which
+        //       the proxy is connected to the remote host, as required by a
+        //       strict interpretation of the SOCKS protocol (doesn't matter
+        //       in practice)
         dbg('created datachannel ' + tag + ' for ' +
             socksRequest.addressString + ':' + socksRequest.port);
-        // TODO: determine if these need to be accurate.
         return { ipAddrString: '127.0.0.1', port: 0 };
       });
     }
 
     /**
-     * Records the (1:1) relationship between a SOCKS session and a datachannel
+     * Establishes a 1:1 relationship between a SOCKS session and a datachannel
      * and configures forwarding and termination handlers.
      */
     private tieSessionToChannel_ = (session:Socks.Session, tag:string) => {
