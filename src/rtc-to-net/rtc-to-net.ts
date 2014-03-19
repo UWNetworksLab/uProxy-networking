@@ -83,7 +83,7 @@ module RtcToNet {
       if (message.tag == 'control') {
         var commandText = ArrayBuffers.arrayBufferToString(message.data);
         var command:any = JSON.parse(commandText);
-        if (command.command == 'SOCKS-CONNECT') {
+        if (command.command == 'SOCKS-TCPCONNECT') {
           if (command.tag in this.netClients) {
             dbgWarn('Net.Client already exists for datachannel: ' + command.tag);
             return;

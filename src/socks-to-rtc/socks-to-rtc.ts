@@ -96,11 +96,12 @@ module SocksToRTC {
      */
     private onConnection_ = (session:Socks.Session)
         :Promise<Channel.EndpointInfo> => {
+      var socksRequest:Socks.SocksRequest = session.getSocksRequest();
+
       // We don't have a way to pipe UDP traffic through the datachannel
       // just yet so, for now, just exit early in the UDP case.
       // TODO(yangoon): pipe UDP traffic through the datachannel
       // TODO(yangoon): serious refactoring needed here!
-      var socksRequest:Socks.SocksRequest = session.getSocksRequest();
       if (socksRequest.protocol == 'udp') {
         return Promise.resolve({ ipAddrString: '127.0.0.1', port: 0 });
       }
@@ -116,7 +117,7 @@ module SocksToRTC {
 
       // Send initial request header to remote peer over the data channel.
       var commandText = JSON.stringify({
-        command: 'SOCKS-CONNECT',
+        command: 'SOCKS-TCPCONNECT',
         tag: tag,
         host: socksRequest.addressString,
         port: socksRequest.port });
