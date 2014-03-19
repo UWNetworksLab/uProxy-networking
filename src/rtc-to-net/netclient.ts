@@ -56,8 +56,9 @@ module Net {
           .then(this.attachHandlers_)
           .then(() => {
             return {
-              ipAddrString: '192.168.1.1',
-              port: 1000
+              // TODO: return the real address from which we are connected
+              ipAddrString: '127.0.0.1',
+              port: 0
             };
           });
     }
