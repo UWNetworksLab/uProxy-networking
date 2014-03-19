@@ -254,19 +254,25 @@ module Socks {
       return this.tcpConnection;
     }
 
-    // Install recv handler for underlying TCP connection
+    // Install recv handler for underlying connection.
     public onRecv = (callback:(buf)=>void) => {
-      this.tcpConnection.on('recv', callback);
+      if (this.udpRelay) {
+        this.udpRelay.setDataReceivedHandler(callback);
+      } else {
+        this.tcpConnection.on('recv', callback);
+      }
     }
 
-    // TODO: onRecv for udp
-
     /**
-     * Send |buffer| to session's TCP client.
+     * Send |buffer| to the SOCKS client.
      */
-    public sendData = (buffer) => { this.tcpConnection.sendRaw(buffer); }
-
-    // TODO: sendData for udp
+    public sendData = (buffer:ArrayBuffer) : void => {
+      if (this.udpRelay) {
+        this.udpRelay.sendRemoteReply(buffer);
+      } else {
+        this.tcpConnection.sendRaw(buffer);
+      }
+    }
 
     /**
      * Return disconnection promise from underlying TCP connection.
