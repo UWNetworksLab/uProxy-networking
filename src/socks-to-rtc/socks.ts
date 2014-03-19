@@ -57,7 +57,7 @@ module Socks {
           })
           // Handle a remote request over SOCKS.
           .then((session:Socks.Session) => {
-            session.handleRequest(this.destinationCallback);
+            return session.handleRequest(this.destinationCallback);
           })
           // Always disconnect underlying TCP when problems occur.
           .catch((e) => {
@@ -160,17 +160,16 @@ module Socks {
             return this.udpRelay ? {
               ipAddrString: this.udpRelay.getAddress(),
               port: this.udpRelay.getPort() } : connectionDetails;
-          // Invalid request - notify client with |request.failure|.
-          }, (e) => {
-            replyToTCP(conn, parseInt(e.message));
-            return Util.reject('invalid request.');
           })
-          // Pass endpoint from external callback to client.
-          .then(Socks.Session.composeEndpointResponse)
-          .then((response) => { conn.sendRaw(response.buffer); })
+          .then((endPointInfo:Channel.EndpointInfo) => {
+            // Pass endpoint from external callback to client.
+            var socksResponse = Socks.Session.composeEndpointResponse(endPointInfo);
+            conn.sendRaw(socksResponse.buffer);
+          })
           .catch((e) => {
-            dbgErr(this + ': ' + e.message);
-            return Util.reject('response error.');
+            // Invalid request - notify client with |request.failure|.
+            replyToTCP(conn, Socks.AUTH.NONE);
+            throw new Error('failed to connect to remote host');
           });
     }
 
