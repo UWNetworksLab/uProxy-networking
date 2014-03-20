@@ -47,11 +47,20 @@ module Net {
       this.disconnectPromise = new Promise<void>((F, R) => {
         this.fulfillDisconnect = F;  // To be fired on close.
       });
-      this.createSocket_()  // Initialize client TCP socket.
+    }
+
+    // TODO: this should probably just be a static creation function
+    public create = () : Promise<Channel.EndpointInfo> => {
+      return this.createSocket_()  // Initialize client TCP socket.
           .then(this.connect_)
           .then(this.attachHandlers_)
-          .catch((e) => { dbgErr(e.message); });
-      dbg('created connection to ' + JSON.stringify(destination));
+          .then(() => {
+            return {
+              // TODO: return the real address from which we are connected
+              ipAddrString: '127.0.0.1',
+              port: 0
+            };
+          });
     }
 
     /**

@@ -57,7 +57,7 @@ module Socks {
           })
           // Handle a remote request over SOCKS.
           .then((session:Socks.Session) => {
-            session.handleRequest(this.destinationCallback);
+            return session.handleRequest(this.destinationCallback);
           })
           // Always disconnect underlying TCP when problems occur.
           .catch((e) => {
@@ -160,17 +160,16 @@ module Socks {
             return this.udpRelay ? {
               ipAddrString: this.udpRelay.getAddress(),
               port: this.udpRelay.getPort() } : connectionDetails;
-          // Invalid request - notify client with |request.failure|.
-          }, (e) => {
-            replyToTCP(conn, parseInt(e.message));
-            return Util.reject('invalid request.');
           })
-          // Pass endpoint from external callback to client.
-          .then(Socks.Session.composeEndpointResponse)
-          .then((response) => { conn.sendRaw(response.buffer); })
+          .then((endPointInfo:Channel.EndpointInfo) => {
+            // Pass endpoint from external callback to client.
+            var socksResponse = Socks.Session.composeEndpointResponse(endPointInfo);
+            conn.sendRaw(socksResponse.buffer);
+          })
           .catch((e) => {
-            dbgErr(this + ': ' + e.message);
-            return Util.reject('response error.');
+            // Invalid request - notify client with |request.failure|.
+            replyToTCP(conn, Socks.AUTH.NONE);
+            throw new Error('failed to connect to remote host');
           });
     }
 
@@ -263,36 +262,3 @@ module Socks {
   function dbgErr(msg:string) { console.error(modulePrefix_ + msg); }
 
 }  // module Socks
-
-
-module Util {
-
-  /**
-   * Converts an array buffer to a string of hex codes and interpretations as
-   * a char code.
-   *
-   * @param {ArrayBuffer} buf The buffer to convert.
-   */
-  export function getHexStringOfArrayBuffer(buf) {
-    var uInt8Buf = new Uint8Array(buf);
-    var a = [];
-    for (var i = 0; i < buf.byteLength; ++i) {
-      a.push(uInt8Buf[i].toString(16));
-    }
-    return a.join('.');
-  }
-
-  /**
-   * Converts an array buffer to a string.
-   *
-   * @param {ArrayBuffer} buf The buffer to convert.
-   */
-  export function getStringOfArrayBuffer(buf) {
-    var uInt8Buf = new Uint8Array(buf);
-    var a = [];
-    for (var i = 0; i < buf.byteLength; ++i) {
-      a.push(String.fromCharCode(buf[i]));
-    }
-    return a.join('');
-  }
-}

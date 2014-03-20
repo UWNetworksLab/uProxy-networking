@@ -7,14 +7,18 @@
       "socks.js",
       "socks-headers.js",
       "socks-to-rtc.js",
-      "udprelay.js"
+      "udprelay.js",
+      "../common/arraybuffers.js"
     ]
   },
   "dependencies": {
+    "transport": {
+      "url": "../freedom-providers/transport.webrtc.json",
+      "api": "transport"
+    }
   },
   "permissions": [
     "core.socket",
-    "core.udpsocket",
-    "core.peerconnection"
+    "core.udpsocket"
   ]
 }

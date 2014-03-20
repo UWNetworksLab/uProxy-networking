@@ -3,7 +3,8 @@
 */
 /// <reference path='socks.ts' />
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/peer-connection.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/transport.d.ts' />
+/// <reference path='../common/arraybuffers.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 
 // TODO replace with a reference to freedom ts interface once it exists.
@@ -21,13 +22,17 @@ module SocksToRTC {
    */
   export class Peer {
 
-    private socksServer:Socks.Server = null;  // Local SOCKS server.
-    private signallingChannel:any = null;     // NAT piercing route.
-    private sctpPc:freedom.PeerConnection = null;     // For actual proxying.
+    private socksServer_:Socks.Server = null;  // Local SOCKS server.
+    private signallingChannel_:any = null;     // NAT piercing route.
+    private transport_:freedom.Transport = null;     // For actual proxying.
 
-    // Active SOCKS sessions by corresponding SCTP channel id.
-    private socksSessions:{[label:number]:Socks.Session} = {};
-    private peerId:string = null;         // Of the remote rtc-to-net peer.
+    // Active SOCKS sessions, by datachannel tag name.
+    private socksSessions_:{[tag:string]:Socks.Session} = {};
+    private peerId_:string = null;         // Of the remote rtc-to-net peer.
+
+    // Connection callbacks, by datachannel tag name.
+    // TODO: figure out a more elegant way to store these callbacks
+    private static connectCallbacks:{[tag:string]:(response:Channel.NetConnectResponse) => void} = {};
 
     /**
      * Start the Peer, based on the remote peer's info.
@@ -36,22 +41,21 @@ module SocksToRTC {
       this.reset();  // Begin with fresh components.
       dbg('starting - target peer: ' + JSON.stringify(remotePeer));
       // Bind peerID to scope so promise can work.
-      var peerId = this.peerId = remotePeer.peerId;
+      var peerId = this.peerId_ = remotePeer.peerId;
       if (!peerId) {
         dbgErr('no Peer ID provided! cannot connect.');
         return false;
       }
       // SOCKS sessions biject to peerconnection datachannels.
-      this.sctpPc = freedom['core.peerconnection']();
-      this.sctpPc.on('onReceived', this.replyToSOCKS_);
-      this.sctpPc.on('onCloseDataChannel', this.closeConnection_);
+      this.transport_ = freedom['transport']();
+      this.transport_.on('onData', this.onDataFromPeer_);
+      this.transport_.on('onClose', this.closeConnectionToPeer);
       // Messages received via signalling channel must reach the remote peer
       // through something other than the peerconnection. (e.g. XMPP)
       fCore.createChannel().then((chan) => {
-        var stunServers = [];  // TODO: actually pass stun servers.
-        this.sctpPc.setup(chan.identifier, 'SocksToRtc-' + peerId, stunServers);
-        this.signallingChannel = chan.channel;
-        this.signallingChannel.on('message', function(msg) {
+        this.transport_.setup('SocksToRtc-' + peerId, chan.identifier);
+        this.signallingChannel_ = chan.channel;
+        this.signallingChannel_.on('message', function(msg) {
           freedom.emit('sendSignalToPeer', {
               peerId: peerId,
               data: msg
@@ -61,9 +65,9 @@ module SocksToRTC {
       });  // fCore.createChannel
 
       // Create SOCKS server and start listening.
-      this.socksServer = new Socks.Server(remotePeer.host, remotePeer.port,
+      this.socksServer_ = new Socks.Server(remotePeer.host, remotePeer.port,
                                           this.onConnection_);
-      this.socksServer.listen();
+      this.socksServer_.listen();
     }
 
     /**
@@ -71,23 +75,23 @@ module SocksToRTC {
      */
     public reset = () => {
       dbg('resetting peer...');
-      if (this.socksServer) {
-        this.socksServer.disconnect();  // Disconnects internal TCP server.
-        this.socksServer = null;
+      if (this.socksServer_) {
+        this.socksServer_.disconnect();  // Disconnects internal TCP server.
+        this.socksServer_ = null;
       }
-      for (var channelLabel in this.socksSessions) {
-        this.closeConnection_(channelLabel);
+      for (var tag in this.socksSessions_) {
+        this.closeConnectionToPeer(tag);
       }
-      this.socksSessions = {};
-      if(this.sctpPc) {
-        this.sctpPc.close();
-        this.sctpPc = null;
+      this.socksSessions_ = {};
+      if(this.transport_) {
+        this.transport_.close();
+        this.transport_ = null;
       }
-      if (this.signallingChannel) {  // TODO: is this actually right?
-        this.signallingChannel.emit('close');
+      if (this.signallingChannel_) {  // TODO: is this actually right?
+        this.signallingChannel_.emit('close');
       }
-      this.signallingChannel = null;
-      this.peerId = null;
+      this.signallingChannel_ = null;
+      this.peerId_ = null;
     }
 
     /**
@@ -104,137 +108,130 @@ module SocksToRTC {
         return Promise.resolve({ ipAddrString: '127.0.0.1', port: 0 });
       }
 
-      if (!this.sctpPc) {
-        dbgErr('onConnection called without SCTP peer connection.');
+      if (!this.transport_) {
+        dbgWarn('transport_ not ready');
         return;
       }
 
-      var channelLabel = obtainChannelLabel();
-      return this.createDataChannel_(channelLabel)
-          .then(() => {
-            dbg('created datachannel ' + channelLabel);
-            this.tieSessionToChannel_(session, channelLabel);
-          })
-          // Send initial request header to remote peer over the data channel.
-          .then(() => {
-            var newRequest = {
-                channelLabel: channelLabel,
-                text: JSON.stringify({ host: address, port: port })
-            };
-            this.sctpPc.send(newRequest);
-            dbg('new request -----> ' + channelLabel +
-                ' \n' + JSON.stringify(newRequest));
-      // TODO: we are not connected yet... should we have some message passing
-      // back from the other end of the data channel to tell us when it has
-      // happened, instead of just pretended?
-      // TODO: Allow SOCKs headers
-          })
-          .then(() => {
-            // TODO: determine if these need to be accurate.
-            return { ipAddrString: '127.0.0.1', port: 0 };
-          });
-    }
+      // Generate a name for this connection and associate it with the SOCKS session.
+      var tag = obtainTag();
+      this.tieSessionToChannel_(session, tag);
 
-    private createDataChannel_ = (label:string):Promise<void> => {
-      return this.sctpPc.openDataChannel(label);
+      // This gets a little funky: ask the peer to establish a connection to
+      // the remote host and register a callback for when it gets back to us
+      // on the control channel.
+      // TODO: how to add a timeout, in case the remote end never replies?
+      return new Promise((F,R) => {
+        Peer.connectCallbacks[tag] = (response:Channel.NetConnectResponse) => {
+          if (response.address) {
+            F({
+              ipAddrString: response.address,
+              port: response.port
+            });
+          } else {
+            R(new Error('could not create datachannel'));
+          }
+        }
+        var request:Channel.NetConnectRequest = {
+          protocol: 'tcp',
+          address: address,
+          port: port
+        };
+        var command:Channel.Command = {
+            type: Channel.COMMANDS.NET_CONNECT_REQUEST,
+            tag: tag,
+            data: JSON.stringify(request)
+        };
+        this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
+            JSON.stringify(command)));
+      });
     }
 
     /**
-     * Create one-to-one relationship between a SOCKS session and
-     * peer-connection data channel.
+     * Create one-to-one relationship between a SOCKS session and a datachannel.
      */
-    private tieSessionToChannel_ = (session:Socks.Session, label:string) => {
-      this.socksSessions[label] = session;
+    private tieSessionToChannel_ = (session:Socks.Session, tag:string) => {
+      this.socksSessions_[tag] = session;
       // When the TCP-connection receives data, send to sctp peer.
-      // When it disconnects, clear the |channelLabel|.
-      session.onRecv((buf) => { this.sendToPeer_(label, buf); });
-      session.onceDisconnected()
-          // TODO: When we start re-using datachannels, stop closing the
-          // datachannels but remap them instead.
-          .then(() => {
-            // TODO: For now, signal the remote that this datachannel is
-            // disconnected.
-            this.sctpPc.send({
-              channelLabel: label,
-              text: 'SOCKS-DISCONNECTED'
-            });
-            dbg('send SOCKS-DISCONNECTED ---> ' + label);
-            this.sctpPc.closeDataChannel(label);
-          });
-
+      // When it disconnects, clear the |tag|.
+      session.onRecv((buf) => { this.sendToPeer_(tag, buf); });
+      session.onceDisconnected().then(() => {
+        var command:Channel.Command = {
+            type: Channel.COMMANDS.SOCKS_DISCONNECTED,
+            tag: tag
+        };
+        this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
+            JSON.stringify(command)));
+      });
     }
 
     /**
      * Receive replies proxied back from the remote RtcToNet.Peer and pass them
      * back across underlying SOCKS session / TCP socket.
      */
-    private replyToSOCKS_ = (msg:Channel.Message) => {
-      var label = msg.channelLabel;
-      if (!label) {
-        dbgErr('received message without channelLabel! msg: ' +
-            JSON.stringify(msg));
+    private onDataFromPeer_ = (msg:freedom.Transport.IncomingMessage) => {
+      dbg(msg.tag + ' <--- received ' + msg.data.byteLength);
+      if (!msg.tag) {
+        dbgErr('received message without datachannel tag!: ' + JSON.stringify(msg));
         return;
       }
-      if (!(label in this.socksSessions)) {
-        dbgErr(label + ' not associated with SOCKS session!');
-        return;
-      }
-      var session = this.socksSessions[label];
-      if (msg.buffer) {
-        dbg(msg.channelLabel + ' <--- received ' + msg.buffer.byteLength);
-        session.sendData(msg.buffer);
-      } else if (msg.text) {
-        if ('NET-DISCONNECTED' == msg.text) {
+
+      if (msg.tag == 'control') {
+        var command:Channel.Command = JSON.parse(
+            ArrayBuffers.arrayBufferToString(msg.data));
+
+        if (command.type === Channel.COMMANDS.NET_CONNECT_RESPONSE) {
+          // Call the associated callback and forget about it.
+          // The callback should fulfill or reject the promise on
+          // which the client is waiting, completing the connection flow.
+          var response:Channel.NetConnectResponse = JSON.parse(command.data);
+          if (command.tag in Peer.connectCallbacks) {
+            var callback = Peer.connectCallbacks[command.tag];
+            callback(response);
+            Peer.connectCallbacks[command.tag] = undefined;
+          } else {
+            dbgWarn('received connect callback for unknown datachannel: ' +
+                command.tag);
+          }
+        } else if (command.type === Channel.COMMANDS.NET_DISCONNECTED) {
           // Receiving a disconnect on the remote peer should close SOCKS.
-          dbg(label + ' <--- received NET-DISCONNECTED');
-          this.closeConnection_({channelId:label});
+          dbg(command.tag + ' <--- received NET-DISCONNECTED');
+          this.closeConnectionToPeer(command.tag);
+        } else {
+          dbgWarn('unsupported control command: ' + command.type);
+        }
+      } else {
+        if (!(msg.tag in this.socksSessions_)) {
+          dbgErr('unknown datachannel ' + msg.tag);
           return;
         }
-        // TODO: we should use text as a signalling/control channel, e.g. to
-        // give back the actual address that was connected to as per socks
-        // official spec.
-        dbg(msg.channelLabel + ' <--- received TEXT: ' + msg.text);
-        session.sendData(msg.text);
-        // TODO: send socket close when the remote closes. Right now *something*
-        // isn't being closed/cleaned up properly.
-      } else {
-        dbgErr('message type isn\'t specified properly. Msg: ' +
-            JSON.stringify(msg));
+        var session = this.socksSessions_[msg.tag];
+        session.sendData(msg.data);
       }
     }
 
     /**
-     * Close a particular SOCKS session - data channel pair.
+     * Close a particular SOCKS session.
      */
-    private closeConnection_ = (channel:Channel.CloseData) => {
-      var label = channel.channelId;
-      dbg('datachannel ' + label + ' has closed. ending SOCKS session for channel.');
-      if (!(label in this.socksSessions)) {
-        // This can happen if both peers send disconnection signals at the same
-        // time.
-        dbgWarn('No SOCKs session to close for ' + label);
-        return;
-      }
-      // End SOCKS session.
-      this.socksServer.endSession(this.socksSessions[label]);
-      delete this.socksSessions[label];
+    private closeConnectionToPeer = (tag:string) => {
+      dbg('datachannel ' + tag + ' has closed. ending SOCKS session for channel.');
+      this.socksServer_.endSession(this.socksSessions_[tag]);
+      delete this.socksSessions_[tag];
     }
 
     /**
-     * Send data over SCTP to peer, via data channel |channelLabel|.
+     * Send data over SCTP to peer, via data channel |tag|.
      *
-     * Side note: When PeerConnection encounters a 'new' |channelLabel|, it
+     * Side note: When transport_ encounters a 'new' |tag|, it
      * implicitly creates a new data channel.
      */
-    private sendToPeer_ = (channelLabel:string, buffer:ArrayBuffer) => {
-      if (!this.sctpPc) {
-        dbgWarn('SCTP peer connection not ready.');
+    private sendToPeer_ = (tag:string, buffer:ArrayBuffer) => {
+      if (!this.transport_) {
+        dbgWarn('transport_ not ready');
         return;
       }
-      var payload = { channelLabel: channelLabel, 'buffer': buffer };
-      dbg('send ' + buffer.byteLength + ' bytes ' +
-          '-----> ' + channelLabel + ' \n ' + JSON.stringify(payload));
-      this.sctpPc.send(payload);
+      dbg('send ' + buffer.byteLength + ' bytes on datachannel ' + tag);
+      this.transport_.send(tag, buffer);
     }
 
     /**
@@ -245,30 +242,29 @@ module SocksToRTC {
     public handlePeerSignal = (msg:PeerSignal) => {
       // dbg('client handleSignalFromPeer: ' + JSON.stringify(msg) +
                   // ' with state ' + this.toString());
-      if (!this.signallingChannel) {
+      if (!this.signallingChannel_) {
         dbgErr('signalling channel missing!');
         return;
       }
-      this.signallingChannel.emit('message', msg.data);
+      this.signallingChannel_.emit('message', msg.data);
     }
 
     public toString = () => {
       var ret ='<SocksToRTC.Peer: failed toString()>';
       try {
-        ret = JSON.stringify({ socksServer: this.socksServer,
-                               sctpPc: this.sctpPc,
-                               peerId: this.peerId,
-                               signallingChannel: this.signallingChannel,
-                               socksSessions: this.socksSessions });
+        ret = JSON.stringify({ socksServer: this.socksServer_,
+                               transport: this.transport_,
+                               peerId: this.peerId_,
+                               signallingChannel: this.signallingChannel_,
+                               socksSessions: this.socksSessions_ });
       } catch (e) {}
       return ret;
     }
 
   }  // SocksToRTC.Peer
 
-
-  // TODO: reuse channelLabels from a pool.
-  function obtainChannelLabel() {
+  // TODO: reuse tag names from a pool.
+  function obtainTag() {
     return 'c' + Math.random();
   }
 

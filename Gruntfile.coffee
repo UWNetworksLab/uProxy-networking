@@ -10,6 +10,10 @@ module.exports = (grunt) ->
         expand: true, cwd: 'node_modules/freedom-runtime-chrome/'
         src: ['freedom.js']
         dest: 'build/chrome-app/' } ] }
+      freedomProviders: { files: [ {
+        expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
+        src: ['*']
+        dest: 'build/chrome-app/freedom-providers' } ] }
 
       # User should include the compiled source directly from:
       #   - build/socks-to-rtc
@@ -35,6 +39,10 @@ module.exports = (grunt) ->
           expand: true, cwd: 'build/rtc-to-net',
           src: ['**/*.js', '**/*.json'],
           dest: 'build/chrome-app/rtc-to-net'
+        }, {
+          expand: true, cwd: 'build/common',
+          src: ['**/*.js'],
+          dest: 'build/chrome-app/common'
         } ] }
     }
 
@@ -48,6 +56,11 @@ module.exports = (grunt) ->
       }
       rtc2net: {
         src: ['src/rtc-to-net/**/*.ts']
+        dest: 'build/'
+        options: { base_path: 'src' }
+      }
+      common: {
+        src: ['src/common/**/*.ts']
         dest: 'build/'
         options: { base_path: 'src' }
       }
@@ -98,9 +111,11 @@ module.exports = (grunt) ->
   grunt.registerTask 'build', [
     'typescript:socks2rtc'
     'typescript:rtc2net'
+    'typescript:common'
     'typescript:chromeProviders'
     'typescript:chromeApp'
     'copy:freedom'
+    'copy:freedomProviders'
     'copy:socks2rtc'
     'copy:rtc2net'
     'copy:chromeApp'
