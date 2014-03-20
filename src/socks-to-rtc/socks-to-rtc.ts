@@ -138,7 +138,7 @@ module SocksToRTC {
           port: port
         };
         var command:Channel.Command = {
-            type: 'NetConnectRequest',
+            type: Channel.COMMANDS.NET_CONNECT_REQUEST,
             tag: tag,
             data: JSON.stringify(request)
         };
@@ -157,7 +157,7 @@ module SocksToRTC {
       session.onRecv((buf) => { this.sendToPeer_(tag, buf); });
       session.onceDisconnected().then(() => {
         var command:Channel.Command = {
-            type: 'SocksDisconnected',
+            type: Channel.COMMANDS.SOCKS_DISCONNECTED,
             tag: tag
         };
         this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
@@ -180,7 +180,7 @@ module SocksToRTC {
         var command:Channel.Command = JSON.parse(
             ArrayBuffers.arrayBufferToString(msg.data));
 
-        if (command.type == 'NetConnectResponse') {
+        if (command.type === Channel.COMMANDS.NET_CONNECT_RESPONSE) {
           // Call the associated callback and forget about it.
           // The callback should fulfill or reject the promise on
           // which the client is waiting, completing the connection flow.
@@ -193,7 +193,7 @@ module SocksToRTC {
             dbgWarn('received connect callback for unknown datachannel: ' +
                 command.tag);
           }
-        } else if (command.type == 'NetDisconnected') {
+        } else if (command.type === Channel.COMMANDS.NET_DISCONNECTED) {
           // Receiving a disconnect on the remote peer should close SOCKS.
           dbg(command.tag + ' <--- received NET-DISCONNECTED');
           this.closeConnectionToPeer(command.tag);

@@ -83,7 +83,7 @@ module RtcToNet {
       if (message.tag == 'control') {
         var command:Channel.Command = JSON.parse(
             ArrayBuffers.arrayBufferToString(message.data));
-        if (command.type == 'NetConnectRequest') {
+        if (command.type === Channel.COMMANDS.NET_CONNECT_REQUEST) {
           var request:Channel.NetConnectRequest = JSON.parse(command.data);
           if (command.tag in this.netClients) {
             dbgWarn('Net.Client already exists for datachannel: ' + command.tag);
@@ -107,7 +107,7 @@ module RtcToNet {
                   response.port = endpointInfo.port;
                 }
                 var out:Channel.Command = {
-                    type: 'NetConnectResponse',
+                    type: Channel.COMMANDS.NET_CONNECT_RESPONSE,
                     tag: command.tag,
                     data: JSON.stringify(response)
                 }
@@ -145,7 +145,7 @@ module RtcToNet {
         // data channel locally.
         netClient.onceDisconnected().then(() => {
           var command:Channel.Command = {
-              type: 'NetDisconnected',
+              type: Channel.COMMANDS.NET_DISCONNECTED,
               tag: tag
           };
           this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
