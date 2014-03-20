@@ -94,13 +94,14 @@ module RtcToNet {
             port: request.port
           };
           // This is what we'll send to the client.
-          // If we successfully connect to the remote host then we'll
-          // populate the address and port fields.
           var response:Channel.NetConnectResponse = {};
           this.prepareNetChannelLifecycle_(command.tag, dest)
               .then((endpointInfo:Channel.EndpointInfo) => {
                 response.address = endpointInfo.ipAddrString;
                 response.port = endpointInfo.port;
+              }, (e) => {
+                // Just want to catch any errors -- think of the next thennable
+                // as a poor man's finally block.
               })
               .then(() => {
                 var out:Channel.Command = {
