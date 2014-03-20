@@ -93,23 +93,26 @@ module RtcToNet {
             host: request.address,
             port: request.port
           };
-          // This is what we'll send to the client.
-          // If we successfully connect to the remote host then we'll
-          // populate the address and port fields.
-          var response:Channel.NetConnectResponse = {};
           this.prepareNetChannelLifecycle_(command.tag, dest)
               .then((endpointInfo:Channel.EndpointInfo) => {
-                response.address = endpointInfo.ipAddrString;
-                response.port = endpointInfo.port;
+                return endpointInfo;
+              }, (e) => {
+                dbgWarn('could not create netclient: ' + e.message);
+                return undefined;
               })
-              .then(() => {
+              .then((endpointInfo?:Channel.EndpointInfo) => {
+                var response:Channel.NetConnectResponse = {};
+                if (endpointInfo) {
+                  response.address = endpointInfo.ipAddrString;
+                  response.port = endpointInfo.port;
+                }
                 var out:Channel.Command = {
                     type: 'NetConnectResponse',
                     tag: command.tag,
                     data: JSON.stringify(response)
                 }
-                this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
-                    JSON.stringify(out)));
+                this.transport.send('control',
+                    ArrayBuffers.stringToArrayBuffer(JSON.stringify(out)));
               });
         } else {
           // TODO: support SocksDisconnected command
