@@ -100,21 +100,8 @@ module SocksToRTC {
      */
     private onConnection_ = (session:Socks.Session)
         :Promise<Channel.EndpointInfo> => {
-<<<<<<< HEAD
-      if (!this.transport) {
-        dbgWarn('transport not ready');
-=======
-      // We don't have a way to pipe UDP traffic through the datachannel
-      // just yet so, for now, just exit early in the UDP case.
-      // TODO(yangoon): pipe UDP traffic through the datachannel
-      // TODO(yangoon): serious refactoring needed here!
-      if (protocol == 'udp') {
-        return Promise.resolve({ ipAddrString: '127.0.0.1', port: 0 });
-      }
-
       if (!this.transport_) {
-        dbgWarn('transport_ not ready');
->>>>>>> master
+        dbgWarn('transport not ready');
         return;
       }
 
@@ -159,7 +146,7 @@ module SocksToRTC {
      * and configures forwarding and termination handlers.
      */
     private tieSessionToChannel_ = (session:Socks.Session, tag:string) => {
-      this.socksSessions[tag] = session;
+      this.socksSessions_[tag] = session;
       session.onRecv((buf) => { this.sendToPeer_(tag, buf); });
       session.onceDisconnected().then(() => {
         var command:Channel.Command = {
