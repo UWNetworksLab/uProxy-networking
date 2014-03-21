@@ -1,10 +1,18 @@
 // Types for communications between socks-to-rtc and rtc-to-net.
 
 declare module Channel {
+
+  export enum COMMANDS {
+    NET_CONNECT_REQUEST = 1,
+    NET_CONNECT_RESPONSE = 2,
+    NET_DISCONNECTED = 3,
+    SOCKS_DISCONNECTED = 4
+  }
+
   // "Top-level" message for the control channel.
   export interface Command {
     // Name of message, e.g. NetConnectRequest.
-    type:string;
+    type:COMMANDS;
     // Datachannel with which this message is associated.
     tag?:string;
     // JSON-encoded message, e.g. NetConnectRequest.

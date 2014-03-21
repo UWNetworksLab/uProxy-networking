@@ -83,7 +83,7 @@ module RtcToNet {
       if (message.tag == 'control') {
         var command:Channel.Command = JSON.parse(
             ArrayBuffers.arrayBufferToString(message.data));
-        if (command.type == 'NetConnectRequest') {
+        if (command.type === Channel.COMMANDS.NET_CONNECT_REQUEST) {
           var request:Channel.NetConnectRequest = JSON.parse(command.data);
           if (command.tag in this.netClients) {
             dbgWarn('Net.Client already exists for datachannel: ' + command.tag);
@@ -93,24 +93,26 @@ module RtcToNet {
             host: request.address,
             port: request.port
           };
-          // This is what we'll send to the client.
-          var response:Channel.NetConnectResponse = {};
           this.prepareNetChannelLifecycle_(command.tag, dest)
               .then((endpointInfo:Channel.EndpointInfo) => {
-                response.address = endpointInfo.ipAddrString;
-                response.port = endpointInfo.port;
+                return endpointInfo;
               }, (e) => {
-                // Just want to catch any errors -- think of the next thennable
-                // as a poor man's finally block.
+                dbgWarn('could not create netclient: ' + e.message);
+                return undefined;
               })
-              .then(() => {
+              .then((endpointInfo?:Channel.EndpointInfo) => {
+                var response:Channel.NetConnectResponse = {};
+                if (endpointInfo) {
+                  response.address = endpointInfo.ipAddrString;
+                  response.port = endpointInfo.port;
+                }
                 var out:Channel.Command = {
-                    type: 'NetConnectResponse',
+                    type: Channel.COMMANDS.NET_CONNECT_RESPONSE,
                     tag: command.tag,
                     data: JSON.stringify(response)
                 }
-                this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
-                    JSON.stringify(out)));
+                this.transport.send('control',
+                    ArrayBuffers.stringToArrayBuffer(JSON.stringify(out)));
               });
         } else {
           // TODO: support SocksDisconnected command
@@ -143,7 +145,7 @@ module RtcToNet {
         // data channel locally.
         netClient.onceDisconnected().then(() => {
           var command:Channel.Command = {
-              type: 'NetDisconnected',
+              type: Channel.COMMANDS.NET_DISCONNECTED,
               tag: tag
           };
           this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
