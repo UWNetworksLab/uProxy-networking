@@ -49,36 +49,30 @@ module.exports = (grunt) ->
     #-------------------------------------------------------------------------
     # All typescript compiles to build/ initially.
     typescript: {
-      socks2rtc: {
-        src: ['src/socks-to-rtc/**/*.ts']
+      socks2rtc:
+        src: ['src/socks-to-rtc/**/!(\.d).ts']
         dest: 'build/'
         options: { base_path: 'src' }
-      }
-      rtc2net: {
-        src: ['src/rtc-to-net/**/*.ts']
+      rtc2net:
+        src: ['src/rtc-to-net/**/*!(\.d).ts']
         dest: 'build/'
         options: { base_path: 'src' }
-      }
-      common: {
-        src: ['src/common/**/*.ts']
+      common:
+        src: ['src/common/**/*!(\.d).ts']
         dest: 'build/'
         options: { base_path: 'src' }
-      }
-      commonSpec: {
-        src: ['spec/common/**/*.ts']
+      commonSpec:
+        src: ['spec/common/**/*.spec.ts']
         dest: 'build/spec/'
         options: { base_path: 'spec' }
-      }
-      chromeProviders: {
-        src: ['src/chrome-providers/**/*.ts']
+      chromeProviders:
+        src: ['src/chrome-providers/**/*!(\.d).ts']
         dest: 'build/chrome-app/'
         options: { base_path: 'src' }
-      }
-      chromeApp: {
-        src: ['src/chrome-app/**/*.ts']
+      chromeApp:
+        src: ['src/chrome-app/**/*!(\.d).ts']
         dest: 'build/'
         options: { base_path: 'src/' }
-      }
     }
 
     jasmine: {
@@ -104,9 +98,8 @@ module.exports = (grunt) ->
 
     # TODO(yangoon): Figure out how to use Node modules with
     #                grunt-jasmine-contrib and move these to the jasmine target.
-    jasmine_node: {
+    jasmine_node:
       projectRoot: 'spec/selenium'
-    }
 
     clean: ['build/**']
   }  # grunt.initConfig
