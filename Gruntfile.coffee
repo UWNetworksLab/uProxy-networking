@@ -1,3 +1,5 @@
+TaskManager = require './node_modules/uproxy-build-tools/build/taskmanager/taskmanager'
+
 module.exports = (grunt) ->
 
   path = require('path');
@@ -100,6 +102,7 @@ module.exports = (grunt) ->
     clean: ['build/**']
   }  # grunt.initConfig
 
+  #-------------------------------------------------------------------------
   grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-clean'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
@@ -107,7 +110,11 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-jasmine-node'
   grunt.loadNpmTasks 'grunt-env'
 
-  grunt.registerTask 'build', [
+  #-------------------------------------------------------------------------
+  # Define the tasks
+  taskManager = new TaskManager.Manager();
+
+  taskManager.add 'build', [
     'typescript:socks2rtc'
     'typescript:rtc2net'
     'typescript:common'
@@ -122,7 +129,7 @@ module.exports = (grunt) ->
 
   # This is the target run by Travis. Targets in here should run locally
   # and on Travis/Sauce Labs.
-  grunt.registerTask 'test', [
+  taskManager.add 'test', [
     'build'
     'jasmine:common'
     'jasmine:socksToRtc'
@@ -132,12 +139,18 @@ module.exports = (grunt) ->
   # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and
   #                move this to the test target.
   # TODO(yangoon): Figure out how to spin up Selenium server automatically.
-  grunt.registerTask 'endtoend', [
+  taskManager.add 'endtoend', [
     'build'
     'env'
     'jasmine_node'
   ]
 
-  grunt.registerTask 'default', [
+  taskManager.add 'default', [
     'build'
   ]
+
+  #-------------------------------------------------------------------------
+  # Register the tasks
+  taskManager.list().forEach((taskName) =>
+    grunt.registerTask taskName, (taskManager.get taskName)
+  );
