@@ -50,27 +50,23 @@ module.exports = (grunt) ->
     # All typescript compiles to build/ initially.
     typescript: {
       socks2rtc:
-        src: ['src/socks-to-rtc/**/!(\.d).ts']
+        src: ['src/socks-to-rtc/**/!.ts']
         dest: 'build/'
         options: { base_path: 'src' }
       rtc2net:
-        src: ['src/rtc-to-net/**/*!(\.d).ts']
+        src: ['src/rtc-to-net/**/*.ts']
         dest: 'build/'
         options: { base_path: 'src' }
       common:
-        src: ['src/common/**/*!(\.d).ts']
+        src: ['src/common/**/*.ts']
         dest: 'build/'
         options: { base_path: 'src' }
-      commonSpec:
-        src: ['spec/common/**/*.spec.ts']
-        dest: 'build/spec/'
-        options: { base_path: 'spec' }
       chromeProviders:
-        src: ['src/chrome-providers/**/*!(\.d).ts']
+        src: ['src/chrome-providers/**/*.ts']
         dest: 'build/chrome-app/'
         options: { base_path: 'src' }
       chromeApp:
-        src: ['src/chrome-app/**/*!(\.d).ts']
+        src: ['src/chrome-app/**/*.ts']
         dest: 'build/'
         options: { base_path: 'src/' }
     }
@@ -78,15 +74,15 @@ module.exports = (grunt) ->
     jasmine: {
       common:
         src: ['build/common/**.js']
-        options : { specs : 'build/spec/common/**/*_spec.js' }
+        options : { specs : 'build/common/**/*.spec.js' }
       # TODO translate tests to TS.
       socksToRtc:
         src: ['build/chrome-app/socks-to-rtc/socks-headers.js']
-        options : { specs : 'spec/socks-to-rtc/**/*_spec.js' }
+        options : { specs : 'build/socks-to-rtc/**/*.spec.js' }
       # TODO translate tests to TS.
       chromeProvider:
         src: ['build/chrome-app/chrome-providers/chrome-udpsocket.js']
-        options : { specs : 'spec/chrome-provider/**/*_spec.js' }
+        options : { specs : 'build/chrome-provider/**/*.spec.js' }
     }
 
     env: {
@@ -115,7 +111,6 @@ module.exports = (grunt) ->
     'typescript:socks2rtc'
     'typescript:rtc2net'
     'typescript:common'
-    'typescript:commonSpec'
     'typescript:chromeProviders'
     'typescript:chromeApp'
     'copy:freedom'
