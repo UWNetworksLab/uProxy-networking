@@ -98,14 +98,14 @@ module UdpSocket {
         data:ArrayBuffer,
         address:string,
         port:number,
-        continuation: (bytesWritten:number) => any) => {
+        continuation: (bytesWritten:number) => void) => {
       // TODO(yangoon): throw error if socketId unset.
       chrome.socket.sendTo(this.socketId, data, address, port, (writeInfo:WriteInfo) => {
         continuation(writeInfo.bytesWritten);
       });
     }
 
-    public destroy = (continuation: () => any) => {
+    public destroy = (continuation: () => void) => {
       if (this.socketId) {
         chrome.socket.destroy(this.socketId);
       }
