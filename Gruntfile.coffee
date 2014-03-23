@@ -50,7 +50,7 @@ module.exports = (grunt) ->
     # All typescript compiles to build/ initially.
     typescript: {
       socks2rtc:
-        src: ['src/socks-to-rtc/**/!.ts']
+        src: ['src/socks-to-rtc/**/*.ts']
         dest: 'build/'
         options: { base_path: 'src' }
       rtc2net:
@@ -82,7 +82,7 @@ module.exports = (grunt) ->
       # TODO translate tests to TS.
       chromeProvider:
         src: ['build/chrome-app/chrome-providers/chrome-udpsocket.js']
-        options : { specs : 'build/chrome-provider/**/*.spec.js' }
+        options : { specs : 'build/chrome-app/chrome-providers/**/*.spec.js' }
     }
 
     env: {
@@ -95,7 +95,7 @@ module.exports = (grunt) ->
     # TODO(yangoon): Figure out how to use Node modules with
     #                grunt-jasmine-contrib and move these to the jasmine target.
     jasmine_node:
-      projectRoot: 'spec/selenium'
+      projectRoot: 'build/chrome-app'
 
     clean: ['build/**']
   }  # grunt.initConfig

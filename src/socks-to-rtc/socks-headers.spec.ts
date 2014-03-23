@@ -1,3 +1,5 @@
+/// <reference path='../../node_modules/uproxy-build-tools/third_party/DefinitelyTyped/jasmine/jasmine.d.ts' />
+
 // TODO: add tests for IPv6 address parsing
 describe("socks", function() {
   // A valid SOCKS5/IPV4 request.
@@ -34,9 +36,9 @@ describe("socks", function() {
   });
 
   it('parse ipv4 request', function() {
-    var result = new Object();
+    //TODO: fix typing.
+    var result :Socks.SocksRequest = new Object();
     Socks.interpretSocksRequest(ipv4Request, result);
-    expect(result.failure).toBeUndefined();
     expect(result.version).toEqual(Socks.VERSION5);
     expect(result.cmd).toEqual(Socks.REQUEST_CMD.CONNECT);
     expect(result.atyp).toEqual(Socks.ATYP.IP_V4);
@@ -60,7 +62,8 @@ describe("socks", function() {
   });
 
   it('parse destination', function() {
-    var result = new Object();
+    //TODO: fix type.
+    var result :Socks.SocksRequest = new Object();
     var length = Socks.interpretSocksAddress(ipv4Request.subarray(3), result);
     expect(length).toEqual(7);
     expect(result.atyp).toEqual(Socks.ATYP.IP_V4);
@@ -69,7 +72,7 @@ describe("socks", function() {
   });
 
   it('parse udp request', function() {
-    var result = new Object();
+    var result :Socks.UdpRequest = new Object();
     Socks.interpretUdpRequest(udpRequest, result);
     expect(result.frag).toEqual(0);
     expect(result.atyp).toEqual(Socks.ATYP.IP_V4);

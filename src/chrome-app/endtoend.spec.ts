@@ -1,7 +1,14 @@
+/// <reference path='../../node_modules/uproxy-build-tools/third_party/DefinitelyTyped/jasmine/jasmine.d.ts' />
+
+// TODO: use real types.
+declare var require :any;
+declare var process :any;
+
 var webdriverjs = require('webdriverjs');
 
 describe('end-to-end smoke test', function() {
-  var client = {};
+  // TODO: add ral type.
+  var client :any = {};
   jasmine.getEnv().defaultTimeoutInterval = 30000;
 
   // Setup the client variable to control chrome via webdriver.
@@ -49,4 +56,3 @@ describe('end-to-end smoke test', function() {
     client.end(done);
   });
 });
-
