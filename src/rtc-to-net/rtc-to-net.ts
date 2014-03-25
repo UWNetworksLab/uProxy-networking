@@ -89,12 +89,12 @@ module RtcToNet {
             dbgWarn('Net.Client already exists for datachannel: ' + command.tag);
             return;
           }
-          var dest:Net.Destination = {
-            host: request.address,
+          var dest:Net.Endpoint = {
+            address: request.address,
             port: request.port
           };
           this.prepareNetChannelLifecycle_(command.tag, dest)
-              .then((endpointInfo:Channel.EndpointInfo) => {
+              .then((endpointInfo:Net.Endpoint) => {
                 return endpointInfo;
               }, (e) => {
                 dbgWarn('could not create netclient: ' + e.message);
@@ -103,7 +103,7 @@ module RtcToNet {
               .then((endpointInfo?:Channel.EndpointInfo) => {
                 var response:Channel.NetConnectResponse = {};
                 if (endpointInfo) {
-                  response.address = endpointInfo.ipAddrString;
+                  response.address = endpointInfo.address;
                   response.port = endpointInfo.port;
                 }
                 var out:Channel.Command = {
@@ -135,11 +135,11 @@ module RtcToNet {
      * data-channel |tag|.
      */
     private prepareNetChannelLifecycle_ =
-        (tag:string, dest:Net.Destination) : Promise<Channel.EndpointInfo> => {
+        (tag:string, dest:Net.Endpoint) : Promise<Channel.EndpointInfo> => {
       var netClient = new Net.Client(
           (data) => { this.transport.send(tag, data); },  // onResponse
           dest);
-      return netClient.create().then((endpointInfo:Channel.EndpointInfo) => {
+      return netClient.create().then((endpointInfo:Net.Endpoint) => {
         this.netClients[tag] = netClient;
         // Send NetClient remote disconnections back to SOCKS peer, then shut the
         // data channel locally.
