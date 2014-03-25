@@ -105,7 +105,6 @@ module Socks {
       // TODO: check if these change over the liftime of the relay
       this.clientAddress = recvFromInfo.address;
       this.clientPort = recvFromInfo.port;
-      dbg('received ' + recvFromInfo.data.byteLength + ' bytes datagram from ' + this.clientAddress + ':' + this.clientPort);
       if (this.dataReceivedHandler) {
         this.dataReceivedHandler(recvFromInfo.data);
       }
@@ -130,7 +129,6 @@ module Socks {
       if (!this.clientAddress) {
         throw new Error('cannot send data to client before it sends data');
       }
-      dbg('sending ' + buffer.byteLength + ' bytes datagram to ' + this.clientAddress + ':' + this.clientPort);
       return this.socket.sendTo(buffer, this.clientAddress, this.clientPort);
     }
 
