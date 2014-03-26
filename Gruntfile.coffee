@@ -64,6 +64,11 @@ module.exports = (grunt) ->
         dest: 'build/'
         options: { base_path: 'src' }
       }
+      commonSpec: {
+        src: ['spec/common/**/*.ts']
+        dest: 'build/spec/'
+        options: { base_path: 'spec' }
+      }
       chromeProviders: {
         src: ['src/chrome-providers/**/*.ts']
         dest: 'build/chrome-app/'
@@ -77,9 +82,14 @@ module.exports = (grunt) ->
     }
 
     jasmine: {
+      common:
+        src: ['build/common/**.js']
+        options : { specs : 'build/spec/common/**/*_spec.js' }
+      # TODO translate tests to TS.
       socksToRtc:
         src: ['build/chrome-app/socks-to-rtc/socks-headers.js']
         options : { specs : 'spec/socks-to-rtc/**/*_spec.js' }
+      # TODO translate tests to TS.
       chromeProvider:
         src: ['build/chrome-app/chrome-providers/chrome-udpsocket.js']
         options : { specs : 'spec/chrome-provider/**/*_spec.js' }
@@ -112,6 +122,7 @@ module.exports = (grunt) ->
     'typescript:socks2rtc'
     'typescript:rtc2net'
     'typescript:common'
+    'typescript:commonSpec'
     'typescript:chromeProviders'
     'typescript:chromeApp'
     'copy:freedom'
@@ -125,6 +136,7 @@ module.exports = (grunt) ->
   # and on Travis/Sauce Labs.
   grunt.registerTask 'test', [
     'build'
+    'jasmine:common'
     'jasmine:socksToRtc'
     'jasmine:chromeProvider'
   ]
