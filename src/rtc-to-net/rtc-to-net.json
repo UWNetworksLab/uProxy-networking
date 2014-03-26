@@ -4,6 +4,7 @@
   "app": {
     "script": [
       "netclient.js",
+      "udpclient.js",
       "rtc-to-net.js",
       "../common/arraybuffers.js"
     ]
@@ -15,6 +16,7 @@
     }
   },
   "permissions": [
-    "core.socket"
+    "core.socket",
+    "core.udpsocket"
   ]
 }

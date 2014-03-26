@@ -39,6 +39,9 @@ module Socks {
    *    and, in any case, we are typically only listening locally
    *  - we make no attempt to implement fragmentation (see section 7 of the
    *    RFC)
+   *
+   * TODO: this is so similar to udprelay.ts that they can almost certainly
+   *       be merged into one
    */
   export class UdpRelay {
 
