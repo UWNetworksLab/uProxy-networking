@@ -285,7 +285,7 @@ module Socks {
             for (var i = 0; i < reply.byteLength; i++) {
               outBytes[headerLength + i] = replyBytes[i];
             }
-            this.udpRelay_.sendRemoteReply(outBytes);
+            this.udpRelay_.sendRemoteReply(out);
           },
           terminate: () => { this.terminate_(); }
         };
@@ -294,7 +294,7 @@ module Socks {
       // Send the payload on the datachannel.
       this.channels_[dest]
           .then((endpointInfo:Channel.EndpointInfo) => {
-            endpointInfo.send(payloadBytes);
+            endpointInfo.send(payload);
           });
     }
 
@@ -307,11 +307,7 @@ module Socks {
       dbg('TODO: close all udp datachannels');
     }
 
-    public toString() {
-      return 'Socks.Session[' + this.tcpConnection.socketId + ']';
-  }
-
-  }  // Socks.Session
+  }  // Socks.UdpSession
 
 
   // Debug helpers.
