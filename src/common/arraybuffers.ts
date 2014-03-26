@@ -41,4 +41,21 @@ module ArrayBuffers {
     }
     return a.join('.');
   }
+
+  /**
+   * Converts a HexString of the regexp form /(hh\.)*hh/ where `h` is a
+   * hex-character to an ArrayBuffer.
+   *
+   * @param {string} hexString The hexString to convert.
+   */
+  export function hexStringToArrayBuffer(hexString:string) : ArrayBuffer {
+    if(hexString === '') { return new ArrayBuffer(0); }
+    var hexChars = hexString.split('.');
+    var buffer = new ArrayBuffer(hexChars.length);
+    var bytes = new Uint8Array(buffer);
+    for (var i = 0; i < hexChars.length; ++i) {
+        bytes[i] = parseInt('0x' + hexChars[i]);
+    }
+    return buffer;
+  }
 }
