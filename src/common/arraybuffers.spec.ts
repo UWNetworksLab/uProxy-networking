@@ -25,7 +25,7 @@ module ArrayBuffers {
     return true;
   }
 
-  describe("ArraBuffers <-> Hex Strings", function() {
+  describe("ArrayBuffers <-> Hex Strings", function() {
     it("arrayBufferEquality: emptyArray == emptyArray", function() {
       expect(arrayBufferEquality(emptyArray, emptyArray)).toBe(true);
     });
@@ -68,7 +68,7 @@ module ArrayBuffers {
   });
 
 
-  describe("ArraBuffers <-> strings", function() {
+  describe("ArrayBuffers <-> strings", function() {
     it("Empty Buffer -> Empty Hex", function() {
       expect(arrayBufferToHexString(emptyArray)).toEqual(emptyString);
     });
