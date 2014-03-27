@@ -7,7 +7,7 @@ module.exports = (grunt) ->
 
     copy: {
       freedom: { files: [ {
-        expand: true, cwd: 'node_modules/freedom-runtime-chrome/'
+        expand: true, cwd: 'node_modules/freedom-for-chrome/'
         src: ['freedom.js']
         dest: 'build/chrome-app/' } ] }
       chromeApp: { files: [ {

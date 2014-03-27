@@ -10,7 +10,7 @@
   "dependencies": {
   },
   "permissions": [
-    "core.socket",
+    "core.tcpsocket",
     "core.peerconnection"
   ]
 }

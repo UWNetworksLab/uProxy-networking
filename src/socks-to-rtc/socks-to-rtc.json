@@ -13,7 +13,7 @@
   "dependencies": {
   },
   "permissions": [
-    "core.socket",
+    "core.tcpsocket",
     "core.udpsocket",
     "core.peerconnection"
   ]
