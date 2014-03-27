@@ -16,7 +16,8 @@
     }
   },
   "permissions": [
-    "core.socket",
+    "core.tcpsocket",
+    "core.peerconnection",
     "core.udpsocket"
   ]
 }

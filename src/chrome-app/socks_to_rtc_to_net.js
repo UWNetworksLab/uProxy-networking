@@ -18,6 +18,7 @@ function proxyClientThroughServer() {
     'port':   DEFAULT_PORT,
     'peerId': SERVER_PEER_ID
   });
+  socksToRtc.emit('test', {});
 }
 
 // Attach freedom handlers to peers.
