@@ -103,8 +103,11 @@ module Socks {
     }
 
     private onSocksClientData = (recvFromInfo:UdpSocket.RecvFromInfo) => {
+      var request:Socks.UdpRequest = {};
+      Socks.interpretUdpRequest(new Uint8Array(recvFromInfo.data), request);
+      dbg('received ' + request.data.byteLength + ' bytes datagram for ' +
+          request.addressString + ':' + request.port);
       // TODO(yangoon): actually forward the datagram!
-      dbg('received ' + recvFromInfo.data.byteLength + ' bytes datagram');
     }
 
     // TODO(yangoon): add destroy() method

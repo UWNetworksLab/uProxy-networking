@@ -1,4 +1,4 @@
 spec/*
 test/*
 tmp/*
-build/*
+build/chrome-app/*

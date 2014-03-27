@@ -5,12 +5,18 @@
     "script": [
       "tcp.js",
       "socks.js",
+      "socks-headers.js",
       "socks-to-rtc.js",
       "udprelay.js",
-      "tcp_echo_server.js"
+      "tcp_echo_server.js",
+      "../common/arraybuffers.js"
     ]
   },
   "dependencies": {
+    "transport": {
+      "url": "../freedom-providers/transport.webrtc.json",
+      "api": "transport"
+    }
   },
   "permissions": [
     "core.tcpsocket",

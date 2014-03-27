@@ -2,21 +2,45 @@
 
 declare module Channel {
 
-  export interface Message {
-    channelLabel:string;
-    text?:string;
-    buffer?:ArrayBuffer;
+  export enum COMMANDS {
+    NET_CONNECT_REQUEST = 1,
+    NET_CONNECT_RESPONSE = 2,
+    NET_DISCONNECTED = 3,
+    SOCKS_DISCONNECTED = 4
+  }
+
+  // "Top-level" message for the control channel.
+  export interface Command {
+    // Name of message, e.g. NetConnectRequest.
+    type:COMMANDS;
+    // Datachannel with which this message is associated.
+    tag?:string;
+    // JSON-encoded message, e.g. NetConnectRequest.
+    data?:string;
+  }
+
+  // Sent to request a connection be established with a remote server.
+  export interface NetConnectRequest {
+    // 'tcp' or 'udp'.
+    protocol:string;
+    // Destination address and port.
+    address:string;
+    port:number;
+  }
+
+  export interface NetConnectResponse {
+    // Address and port on which we have made the connection to the
+    // remote server, or both undefined if the connection could not be
+    // made.
+    address?:string;
+    port?:number;
   }
 
   // Should be returned after tieing a data-channel with SOCKS, back to form an
   // endpoint response to the local TCP server.
-  interface EndpointInfo {
+  export interface EndpointInfo {
     ipAddrString:string;
     port:number;
-  }
-
-  interface CloseData {
-    channelId:string;
   }
 
 }  // module Channel

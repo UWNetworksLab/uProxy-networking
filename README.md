@@ -28,7 +28,11 @@ There are two modules: _socks-to-rtc_ and _rtc-to-net_.
 
 #### Usage
 
-To make use of this library, one needs to include `socks-to-rtc.json` and `rtc-to-net.json` (the freedom manifests for these) as dependencies in the parent application's freedom manifest. Three things must occur for the two components to speak to each other:
+To make use of this library, one needs to include `socks-to-rtc.json`
+and `rtc-to-net.json` (the freedom manifests for the two freedom modules)
+as dependencies in the parent application's freedom manifest. There will be
+the compiled javascript in `build/socks-to-rtc/` and `/build/rtc-to-net/`.
+Three things must occur for the two components to speak to each other:
 
 - In the your 'parent freedom' create instances of the modules. (i.e. `var socksToRtc = freedom.SocksToRtc();` and `var rtcToNet = freedom.RtcToNet();`
 - `rtcToNet.emit('start')` begins the remote peer server.
