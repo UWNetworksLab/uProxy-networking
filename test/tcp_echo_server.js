@@ -19,3 +19,5 @@ TcpEchoServer = function(address, port) {
     });
   }, {minByteLength: 1});
 }
+
+console.log('TcpEchoServer installed');
