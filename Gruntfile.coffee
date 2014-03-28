@@ -57,23 +57,23 @@ module.exports = (grunt) ->
       socks2rtc:
         src: ['src/socks-to-rtc/**/*.ts']
         dest: 'build/'
-        options: { basePath: 'src' }
+        options: { basePath: 'src', ignoreError: false }
       rtc2net:
         src: ['src/rtc-to-net/**/*.ts']
         dest: 'build/'
-        options: { basePath: 'src' }
+        options: { basePath: 'src', ignoreError: false }
       common:
         src: ['src/common/**/*.ts']
         dest: 'build/'
-        options: { basePath: 'src' }
+        options: { basePath: 'src', ignoreError: false }
       chromeProviders:
         src: ['src/chrome-providers/**/*.ts']
         dest: 'build/chrome-app/'
-        options: { basePath: 'src' }
+        options: { basePath: 'src', ignoreError: false }
       chromeApp:
         src: ['src/chrome-app/**/*.ts']
         dest: 'build/'
-        options: { basePath: 'src/' }
+        options: { basePath: 'src/', ignoreError: false }
     }
 
     jasmine: {
