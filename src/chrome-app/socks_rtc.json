@@ -11,7 +11,7 @@
     "RtcToNet": { "url": "rtc-to-net/rtc-to-net.json" }
   },
   "permissions": [
-    "core.socket",
+    "core.tcpsocket",
     "core.udpsocket"
   ]
 }
