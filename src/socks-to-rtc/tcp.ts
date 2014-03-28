@@ -198,6 +198,7 @@ module TCP {
    */
   export class Connection {
 
+    public socketId : number;
     private connectionSocket_ :TcpSocket;
     private recvOptions :any;
     private pendingReadBuffer_ :any;
