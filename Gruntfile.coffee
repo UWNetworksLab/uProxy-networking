@@ -1,3 +1,5 @@
+TaskManager = require './node_modules/uproxy-build-tools/build/taskmanager/taskmanager'
+
 module.exports = (grunt) ->
 
   path = require('path');
@@ -52,50 +54,40 @@ module.exports = (grunt) ->
     #-------------------------------------------------------------------------
     # All typescript compiles to build/ initially.
     typescript: {
-      socks2rtc: {
+      socks2rtc:
         src: ['src/socks-to-rtc/**/*.ts']
         dest: 'build/'
-        options: { base_path: 'src' }
-      }
-      rtc2net: {
+        options: { basePath: 'src' }
+      rtc2net:
         src: ['src/rtc-to-net/**/*.ts']
         dest: 'build/'
-        options: { base_path: 'src' }
-      }
-      common: {
+        options: { basePath: 'src' }
+      common:
         src: ['src/common/**/*.ts']
         dest: 'build/'
-        options: { base_path: 'src' }
-      }
-      commonSpec: {
-        src: ['spec/common/**/*.ts']
-        dest: 'build/spec/'
-        options: { base_path: 'spec' }
-      }
-      chromeProviders: {
+        options: { basePath: 'src' }
+      chromeProviders:
         src: ['src/chrome-providers/**/*.ts']
         dest: 'build/chrome-app/'
-        options: { base_path: 'src' }
-      }
-      chromeApp: {
+        options: { basePath: 'src' }
+      chromeApp:
         src: ['src/chrome-app/**/*.ts']
         dest: 'build/'
-        options: { base_path: 'src/' }
-      }
+        options: { basePath: 'src/' }
     }
 
     jasmine: {
       common:
         src: ['build/common/**.js']
-        options : { specs : 'build/spec/common/**/*_spec.js' }
+        options : { specs : 'build/common/**/*.spec.js' }
       # TODO translate tests to TS.
       socksToRtc:
         src: ['build/chrome-app/socks-to-rtc/socks-headers.js']
-        options : { specs : 'spec/socks-to-rtc/**/*_spec.js' }
+        options : { specs : 'build/socks-to-rtc/**/*.spec.js' }
       # TODO translate tests to TS.
       chromeProvider:
         src: ['build/chrome-app/chrome-providers/chrome-udpsocket.js']
-        options : { specs : 'spec/chrome-provider/**/*_spec.js' }
+        options : { specs : 'build/chrome-app/chrome-providers/**/*.spec.js' }
     }
 
     env: {
@@ -107,13 +99,13 @@ module.exports = (grunt) ->
 
     # TODO(yangoon): Figure out how to use Node modules with
     #                grunt-jasmine-contrib and move these to the jasmine target.
-    jasmine_node: {
-      projectRoot: 'spec/selenium'
-    }
+    jasmine_node:
+      projectRoot: 'build/chrome-app'
 
     clean: ['build/**']
   }  # grunt.initConfig
 
+  #-------------------------------------------------------------------------
   grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-clean'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
@@ -121,11 +113,14 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-jasmine-node'
   grunt.loadNpmTasks 'grunt-env'
 
-  grunt.registerTask 'build', [
+  #-------------------------------------------------------------------------
+  # Define the tasks
+  taskManager = new TaskManager.Manager();
+
+  taskManager.add 'build', [
     'typescript:socks2rtc'
     'typescript:rtc2net'
     'typescript:common'
-    'typescript:commonSpec'
     'typescript:chromeProviders'
     'typescript:chromeApp'
     'copy:freedom'
@@ -138,7 +133,7 @@ module.exports = (grunt) ->
 
   # This is the target run by Travis. Targets in here should run locally
   # and on Travis/Sauce Labs.
-  grunt.registerTask 'test', [
+  taskManager.add 'test', [
     'build'
     'jasmine:common'
     'jasmine:socksToRtc'
@@ -148,12 +143,18 @@ module.exports = (grunt) ->
   # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and
   #                move this to the test target.
   # TODO(yangoon): Figure out how to spin up Selenium server automatically.
-  grunt.registerTask 'endtoend', [
+  taskManager.add 'endtoend', [
     'build'
     'env'
     'jasmine_node'
   ]
 
-  grunt.registerTask 'default', [
+  taskManager.add 'default', [
     'build'
   ]
+
+  #-------------------------------------------------------------------------
+  # Register the tasks
+  taskManager.list().forEach((taskName) =>
+    grunt.registerTask taskName, (taskManager.get taskName)
+  );

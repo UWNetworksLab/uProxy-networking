@@ -17,7 +17,8 @@
     "grunt-jasmine-node": "git://github.com/vojtajina/grunt-jasmine-node.git#fix-grunt-exit-code",
     "webdriverjs": "~1.3.1",
     "grunt-env": "~0.4.1",
-    "freedom-for-chrome": "~0.1.2",
+    "uproxy-build-tools": "~0.0.4",
+    "freedom-for-chrome": "~0.1.3",
     "freedom-typescript-api": "~0.1.4"
   },
   "scripts": {

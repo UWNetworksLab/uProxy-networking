@@ -1,5 +1,4 @@
-/// <reference path='../../third_party/DefinitelyTyped/jasmine/jasmine.d.ts' />
-/// <reference path='../../src/interfaces/arraybuffers.d.ts' />
+/// <reference path='../../node_modules/uproxy-build-tools/third_party/DefinitelyTyped/jasmine/jasmine.d.ts' />
 
 module ArrayBuffers {
 

@@ -244,7 +244,7 @@ module TCP {
       }
     }
 
-    private onDisconnectHandler_ = (data) => {
+    private onDisconnectHandler_ = (data :TcpSocket.DisconnectInfo) => {
       if (data.errcode) {
         dbgWarn('Socket ' + this.socketId + ' disconnected with errcode ' +
           data.errcode + ': ' + data.message);
@@ -325,7 +325,7 @@ module TCP {
     /**
      * Close underlying socket locally.
      */
-    public close = () : Promse<Connection> => {
+    public close = () : Promise<Connection> => {
       return new Promise((F, R) => {
         this.connectionSocket_.close().then(() => {
           F(this);
