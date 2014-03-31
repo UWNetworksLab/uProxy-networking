@@ -106,7 +106,7 @@ module Net {
      */
     private connect_ = () : Promise<any> => {
       this.state = State.CONNECTING;
-      return this.socket_.connect(this.destination.host,
+      return this.socket_.connect(this.destination.address,
                                   this.destination.port);
     }
 
