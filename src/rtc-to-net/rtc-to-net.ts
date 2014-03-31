@@ -96,17 +96,17 @@ module RtcToNet {
             return;
           }
           this.prepareNetChannelLifecycle_(command.tag, request)
-              .then((endpointInfo:Net.Endpoint) => {
-                return endpointInfo;
+              .then((endpoint:Net.Endpoint) => {
+                return endpoint;
               }, (e) => {
                 dbgWarn('could not create netclient: ' + e.message);
                 return undefined;
               })
-              .then((endpointInfo?:Channel.EndpointInfo) => {
+              .then((endpoint?:Net.Endpoint) => {
                 var response:Channel.NetConnectResponse = {};
-                if (endpointInfo) {
-                  response.address = endpointInfo.address;
-                  response.port = endpointInfo.port;
+                if (endpoint) {
+                  response.address = endpoint.address;
+                  response.port = endpoint.port;
                 }
                 var out:Channel.Command = {
                     type: Channel.COMMANDS.NET_CONNECT_RESPONSE,
