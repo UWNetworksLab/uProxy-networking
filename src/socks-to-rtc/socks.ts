@@ -13,6 +13,7 @@ module Socks {
    * Send reply back over a TCP connection.
    * Assumes |conn| is a valid TCP.Connection.
    */
+  // TODO: rename this! it should only be used during the handshake phase
   function replyToTCP(conn:TCP.Connection, authType:Socks.AUTH) {
     var response:Uint8Array = new Uint8Array(2);
     response[0] = Socks.VERSION5;
@@ -23,95 +24,154 @@ module Socks {
   export class Server {
 
     private tcpServer:TCP.Server;
-    private address;
-    private port;
 
     /**
-     * Construct Socks.Server by preparing underlying TCP server.
+     * @param address local interface on which to bind the server
+     * @param port port on which to bind the server
+     * @param createChannel_ function to create a new datachannel
      */
-    constructor(address, port, public destinationCallback) {
-      this.address = address;
-      this.port = port;
-      this.tcpServer = new TCP.Server(address || 'localhost', port || 1080);
+    constructor(
+        address:string,
+        port:number,
+        private createChannel_:(params:Channel.EndpointInfo) => Promise<Channel.EndpointInfo>) {
+      this.tcpServer = new TCP.Server(address, port);
       this.tcpServer.on('connection', this.establishSession_);
     }
 
     /**
-     * Promise a handshake-validated SOCKS session over TCP connection.
+     * Returns a promise to start listening for connections.
      */
-    private establishSession_ = (conn:TCP.Connection) => {
-      // One-time initial recv creates the session.
-      return conn.receive(3)  // minimum byte length for handshake.
-          .then(Socks.Session.getHandshake)
-          .then(Socks.Session.checkVersion)
-          .then(Socks.Session.checkAuth)
-          // Success - Create new session.
-          .then(() => {
-            conn.on('recv', null);  // Disable recv until session is ready.
-            return new Socks.Session(conn, this.address);
-          // AUTH error. (Required method not available).
-          }, (e) => {
-            replyToTCP(conn, Socks.AUTH.NONE);
-            dbgWarn('handshake problem: ' + e.message);
-            return Util.reject('failed to establish session.');
-          })
-          // Handle a remote request over SOCKS.
-          .then((session:Socks.Session) => {
-            return session.handleRequest(this.destinationCallback);
-          })
-          // Always disconnect underlying TCP when problems occur.
-          .catch((e) => {
-            dbgWarn(e.message);
-            conn.disconnect();
-          });
-    }
-
     listen() {
       return this.tcpServer.listen().then(() => {
         dbg('LISTENING ' + this.tcpServer.addr + ':' + this.tcpServer.port);
       });
     }
 
+    /**
+     * Called when a client attempts to connect to the server.
+     * Roughly, this implements sections 3 and 4 of the RFC.
+     *
+     * First, comes session establishment:
+     *  - wait for the client to send us data (generally just four bytes)
+     *  - reply if successful (generally just two bytes)
+     *
+     * Second, comes the "SOCKS request":
+     *  - wait for the client to send us data
+     *  - parse the request
+     *  - if the client requested UDP_ASSOCIATE, fire up a UDP relay
+     *  - create a new Socks.Session
+     *  - inform the callback of the new Socks.Session and wait for *it* to
+     *    do its thing (which should be establishing a secure datachannel)
+     *  - send a SOCKS reply to the client
+     *
+     * (if any of those steps fail then we return an error to the client
+     * and close the connection)
+     *
+     * After this point, we basically forget about the Socks.Session (and its
+     * associated connections) and rely on the callback to configure the
+     * relevant handlers in such a way that data is passed back and forth to
+     * SOCKS client along the datachannel.
+     */
+    private establishSession_ = (conn:TCP.Connection): void => {
+      var socksRequest:SocksRequest = {};
+      var udpRelay:Socks.UdpRelay;
+      conn.receive()
+          .then((buffer:ArrayBuffer) => {
+            Server.validateHandshake(buffer);
+          })
+          .catch((e) => {
+            replyToTCP(conn, Socks.AUTH.NONE);
+            return Promise.reject(e);
+          })
+          .then(() => {
+            replyToTCP(conn, Socks.AUTH.NOAUTH);
+            return conn.receive();
+          })
+          .then((buffer:ArrayBuffer) => {
+            Socks.interpretSocksRequest(new Uint8Array(buffer), socksRequest);
+          })
+          .catch((e) => {
+            // TODO: this should be a SOCKS response
+            replyToTCP(conn, Socks.AUTH.NONE);
+            return Promise.reject(e);
+          })
+          .then(() => {
+            return (socksRequest.protocol == 'tcp') ?
+                this.doTcp(conn, socksRequest) :
+                this.doUdp(conn);
+          })
+          .catch((e) => {
+            dbgWarn('failed to establish SOCKS session: ' + e.message);
+            conn.disconnect();
+          });
+    }
+
+    /**
+     * Returns a promise to negotiate a TCP connection with the SOCKS client.
+     */
+    private doTcp(conn:TCP.Connection, socksRequest:Socks.SocksRequest) {
+      var params:Channel.EndpointInfo = {
+        protocol: 'tcp',
+        address: socksRequest.addressString,
+        port: socksRequest.port,
+        send: (buffer:ArrayBuffer) => { conn.sendRaw(buffer); },
+        terminate: () => { this.tcpServer.endConnection(conn.socketId); }
+      };
+      return this.createChannel_(params)
+        .then((endpointInfo:Channel.EndpointInfo) => {
+          // Clean up when the TCP connection terminates.
+          conn.onceDisconnected().then(() => {
+            endpointInfo.terminate();
+          });
+          conn.on('recv', endpointInfo.send);
+          var socksResponse = Server.composeSocksResponse(
+              endpointInfo.address, endpointInfo.port);
+          conn.sendRaw(socksResponse);
+        });
+    }
+
+    /**
+     * Returns a promise to negotiate a UDP session with the SOCKS client.
+     */
+    private doUdp(conn:TCP.Connection) {
+      var udpRelay = new Socks.UdpRelay();
+      return udpRelay.bind(this.tcpServer.addr, 0)
+          .then(() => {
+            return Promise.resolve(udpRelay);
+          }, (e) => {
+            throw new Error('could not create udp relay: ' + e.message);
+          })
+          .then(() => {
+            var udpSession:UdpSession = new UdpSession(
+                udpRelay,
+                this.createChannel_,
+                () => { this.tcpServer.endConnection(conn.socketId); });
+            // Clean up any UDP datachannels when the TCP connection terminates.
+            conn.onceDisconnected().then(() => {
+              udpSession.disconnected();
+            });
+            var socksResponse = Server.composeSocksResponse(
+                udpRelay.getAddress(), udpRelay.getPort());
+            conn.sendRaw(socksResponse);
+          });
+    }
+
     disconnect() { this.tcpServer.disconnect(); }
 
     /**
-     * Closes the underlying TCP connection for SOCKS |session|.
-     * Assumes |session| is valid.
+     * Examines the supplied session establishment bytes, throwing an
+     * error if the requested SOCKS version or METHOD is unsupported.
      */
-    public endSession(session:Session) {
-      if (!session) {
-        throw Error('SOCKS session object undefined!');
-      }
-      this.tcpServer.endConnection(session.tcpConnection.socketId);
-    }
+    static validateHandshake(buffer:ArrayBuffer) {
+      var handshakeBytes = new Uint8Array(buffer);
 
-  }  // Socks.Server
-
-
-  /**
-   * Socks.Session - layer dealing with handshakes and requests over TCP.
-   */
-  export class Session {
-
-    public static getHandshake(handshake:ArrayBuffer) {
-      return new Uint8Array(handshake);
-    }
-
-    /**
-     * Only SOCKS Version 5 is supported.
-     */
-    public static checkVersion(handshakeBytes:Uint8Array) {
+      // Only SOCKS Version 5 is supported.
       var socksVersion = handshakeBytes[0];
-      if (Socks.VERSION5 != socksVersion) {
-        return Util.reject('unsupported version: ' + socksVersion);
+      if (socksVersion != Socks.VERSION5) {
+        throw new Error('unsupported SOCKS version: ' + socksVersion);
       }
-      return Promise.resolve(handshakeBytes);
-    }
 
-    /**
-     * Check AUTH methods on SOCKS handshake.
-     */
-    public static checkAuth(handshakeBytes:Uint8Array) {
+      // Check AUTH methods on SOCKS handshake.
       // Get supported auth methods. Starts from 1, since 0 is already read.
       var authMethods:Socks.AUTH[] = [];
       var numAuthMethods:number = handshakeBytes[1];
@@ -120,85 +180,37 @@ module Socks {
       }
       // Make sure the client supports 'no authentication'.
       if (authMethods.indexOf(Socks.AUTH.NOAUTH) <= -1) {
-        dbgErr('Socks.Session: no auth methods ' + Socks.AUTH.NOAUTH);
-        return Util.reject('no auth methods: ' + Socks.AUTH.NOAUTH);
+        throw new Error('client requires authentication');
       }
-    }
-
-    // UDP relay for this session, if the client requested UDP_ASSOCIATE
-    // during the initial handshake.
-    private udpRelay:Socks.UdpRelay;
-
-    // TODO: Implement SOCKS authentication in the future.
-    //       (Not urgent because this part is local for now.)
-    // TODO(yangoon): address is a hack for UDP...it would be much better
-    //                if we could interrogate the connection for the address
-    constructor(
-        public tcpConnection:TCP.Connection,
-        public address:string) {
-      replyToTCP(this.tcpConnection, Socks.AUTH.NOAUTH);  // Skip auth.
-    }
-
-    /**
-     * Handle request over SOCKS session.
-     * |callback| is external.
-     */
-    public handleRequest = (callback) => {
-      var conn = this.tcpConnection;
-      return conn.receive()
-          .then((buffer:ArrayBuffer) => {
-            var request:SocksRequest = {};
-            Socks.interpretSocksRequest(new Uint8Array(buffer), request);
-            return request;
-          })
-          // Valid request - fire external callback.
-          .then(this.maybeUdpStartRelay)
-          .then((request:any) => {
-            // TODO(yangoon): serious refactoring needed here!
-            var connectionDetails = callback(
-                this, request.addressString, request.port, request.protocol);
-            return this.udpRelay ? {
-              ipAddrString: this.udpRelay.getAddress(),
-              port: this.udpRelay.getPort() } : connectionDetails;
-          })
-          .then((endPointInfo:Channel.EndpointInfo) => {
-            // Pass endpoint from external callback to client.
-            var socksResponse = Socks.Session.composeEndpointResponse(endPointInfo);
-            conn.sendRaw(socksResponse.buffer);
-          })
-          .catch((e) => {
-            // Invalid request - notify client with |request.failure|.
-            replyToTCP(conn, Socks.AUTH.NONE);
-            throw new Error('failed to connect to remote host');
-          });
     }
 
     /**
      * Given an endpoint, compose a response.
      */
-    public static composeEndpointResponse(
-        connectionDetails:Channel.EndpointInfo) {
-      var response:number[] = [];
-      response[0] = Socks.VERSION5;
-      response[1] = Socks.RESPONSE.SUCCEEDED;
-      response[2] = 0x00;
-      response[3] = Socks.ATYP.IP_V4;
+    // TODO: this should probably move to socks-headers.ts
+    static composeSocksResponse(address:string, port:number) : ArrayBuffer {
+      var buffer:ArrayBuffer = new ArrayBuffer(10);
+      var bytes:Uint8Array = new Uint8Array(buffer);
+      bytes[0] = Socks.VERSION5;
+      bytes[1] = Socks.RESPONSE.SUCCEEDED;
+      bytes[2] = 0x00;
+      bytes[3] = Socks.ATYP.IP_V4;
 
       // Parse IPv4 values.
       var v4 = '([\\d]{1,3})';
       var v4d = '\\.';
       var v4complete = v4+v4d+v4+v4d+v4+v4d+v4
       var v4regex = new RegExp(v4complete);
-      var ipv4 = connectionDetails.ipAddrString.match(v4regex);
+      var ipv4 = address.match(v4regex);
       if (ipv4) {
-        response[4] = parseInt(ipv4[1]);
-        response[5] = parseInt(ipv4[2]);
-        response[6] = parseInt(ipv4[3]);
-        response[7] = parseInt(ipv4[4]);
+        bytes[4] = parseInt(ipv4[1]);
+        bytes[5] = parseInt(ipv4[2]);
+        bytes[6] = parseInt(ipv4[3]);
+        bytes[7] = parseInt(ipv4[4]);
       }
       // TODO: support IPv6
-      response[8] = connectionDetails.port >> 8;
-      response[9] = connectionDetails.port & 0xFF;
+      bytes[8] = port >> 8;
+      bytes[9] = port & 0xFF;
       // TODO: support DNS
       /* var j = 4;
       if (this.request.atyp == ATYP.DNS) {
@@ -211,48 +223,91 @@ module Socks {
       response[this.request.addressSize + j] = this.request.portByte1;
       response[this.request.addressSize + j + 1] = this.request.portByte2;
       */
-      var responseArray = new Uint8Array(response);
-      return responseArray;
+      return buffer;
+    }
+  }
+
+  /**
+   * Handles a UDP session with a SOCKS client.
+   * One data channel is created for each host:pair with which the SOCKS
+   * client wishes to communicate.
+   */
+  class UdpSession {
+
+    // Active data channels, keyed by destination host:port.
+    private channels_:{[dest:string]:Promise<Channel.EndpointInfo>} = {};
+
+    constructor(
+        private udpRelay_:Socks.UdpRelay,
+        private createChannel_:(params:Channel.EndpointInfo) => Promise<Channel.EndpointInfo>,
+        private terminate_:() => any) {
+      this.udpRelay_.setDataReceivedHandler(this.onData_);
     }
 
-    // Install recv handler for underlying TCP connection
-    public onRecv = (callback:(buf)=>void) => {
-      this.tcpConnection.on('recv', callback);
-    }
-
-    /**
-     * Send |buffer| to session's TCP client.
-     */
-    public sendData = (buffer) => { this.tcpConnection.sendRaw(buffer); }
-
-    /**
-     * Returns a promise to create a UDP relay server if the requested
-     * protocol is UDP, otherwise just returns the supplied request instance.
-     */
-    private maybeUdpStartRelay = (request:any) => {
-      if (request.protocol != 'udp') {
-        return Promise.resolve(request);
+    // TODO: slice would be beneficial! figure out how to use it in TypeScript
+    private onData_ = (data:ArrayBuffer) => {
+      // Split the datagram into two parts: the UDP header and the payload.
+      // TODO: have interpretUdpRequest return an integer which we can use here
+      var headerLength = 10;
+      var bytes = new Uint8Array(data);
+      var header = new ArrayBuffer(headerLength);
+      var headerBytes = new Uint8Array(header);
+      for (var i = 0; i < header.byteLength; i++) {
+        headerBytes[i] = bytes[i];
       }
-      this.udpRelay = new Socks.UdpRelay();
-      return this.udpRelay.bind(this.address, 0).then(() => {
-        return request;
-      });
+      var payload = new ArrayBuffer(bytes.byteLength - headerLength);
+      var payloadBytes = new Uint8Array(payload);
+      for (var i = 0; i < payload.byteLength; i++) {
+        payloadBytes[i] = bytes[headerLength + i];
+      }
+
+      // Decode the header. We need to know where to send it.
+      var request:Socks.UdpRequest = {};
+      Socks.interpretUdpRequest(headerBytes, request);
+      var dest = request.addressString + ':' + request.port;
+
+      // Get or create data channel for this host:port.
+      var channel:Channel.EndpointInfo;
+      if (!(dest in this.channels_)) {
+        var params:Channel.EndpointInfo = {
+          protocol: 'udp',
+          address: request.addressString,
+          port: request.port,
+          send: (reply:ArrayBuffer) => {
+            // Relay the reply back to the SOCKS client, first prepending the
+            // header we received in the first request from the SOCKS client.
+            var out = new ArrayBuffer(headerLength + reply.byteLength);
+            var outBytes = new Uint8Array(out);
+            for (var i = 0; i < header.byteLength; i++) {
+              outBytes[i] = headerBytes[i];
+            }
+            var replyBytes = new Uint8Array(reply);
+            for (var i = 0; i < reply.byteLength; i++) {
+              outBytes[headerLength + i] = replyBytes[i];
+            }
+            this.udpRelay_.sendRemoteReply(out);
+          },
+          terminate: () => { this.terminate_(); }
+        };
+        this.channels_[dest] = this.createChannel_(params);
+      }
+      // Send the payload on the datachannel.
+      this.channels_[dest]
+          .then((endpointInfo:Channel.EndpointInfo) => {
+            endpointInfo.send(payload);
+          });
     }
 
     /**
-     * Return disconnection promise from underlying TCP connection.
+     * Closes all datachannels created by this UDP session.
+     * Intended to be called when the outer-lying TCP connection is terminated.
      */
-    public onceDisconnected = () => {
-      return this.tcpConnection.onceDisconnected();
-      // TODO(yangoon): close udp relay (right now this method does not seem
-      //                to be called when the TCP connection terminates)
+    public disconnected() : void {
+      // TODO!
+      dbg('TODO: close all udp datachannels');
     }
 
-    public toString() {
-      return 'Socks.Session[' + this.tcpConnection.socketId + ']';
-    }
-
-  }  // Socks.Session
+  }  // Socks.UdpSession
 
 
   // Debug helpers.

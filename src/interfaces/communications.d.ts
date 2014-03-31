@@ -36,11 +36,22 @@ declare module Channel {
     port?:number;
   }
 
-  // Should be returned after tieing a data-channel with SOCKS, back to form an
-  // endpoint response to the local TCP server.
+  // Used for communication between the TCP-facing SOCKS server and the
+  // WebRTC-facing SocksToRTC module. At some point these might diverge
+  // but right now they both need to send data to the other side and
+  // be notified of terminations from the other side so this common
+  // interface works for us.
   export interface EndpointInfo {
-    ipAddrString:string;
+    // 'tcp' or 'udp'.
+    protocol:string;
+    // Address on which we connected to the remote server.
+    address:string;
+    // Port on which we connected to the remote server.
     port:number;
+    // Function which sends data to the other side.
+    send:(bytes:ArrayBuffer) => any;
+    // Function which tells the other side to terminate.
+    terminate:() => any;
   }
 
 }  // module Channel

@@ -26,8 +26,10 @@ module SocksToRTC {
     private signallingChannel_:any = null;     // NAT piercing route.
     private transport_:freedom.Transport = null;     // For actual proxying.
 
-    // Active SOCKS sessions, by datachannel tag name.
-    private socksSessions_:{[tag:string]:Socks.Session} = {};
+    /**
+     * Currently open data channels, indexed by data channel tag name.
+     */
+    private channels_:{[tag:string]:Channel.EndpointInfo} = {};
     private peerId_:string = null;         // Of the remote rtc-to-net peer.
 
     // Connection callbacks, by datachannel tag name.
@@ -66,7 +68,7 @@ module SocksToRTC {
 
       // Create SOCKS server and start listening.
       this.socksServer_ = new Socks.Server(remotePeer.host, remotePeer.port,
-                                          this.onConnection_);
+                                          this.createChannel_);
       this.socksServer_.listen();
     }
 
@@ -79,10 +81,10 @@ module SocksToRTC {
         this.socksServer_.disconnect();  // Disconnects internal TCP server.
         this.socksServer_ = null;
       }
-      for (var tag in this.socksSessions_) {
+      for (var tag in this.channels_) {
         this.closeConnectionToPeer(tag);
       }
-      this.socksSessions_ = {};
+      this.channels_ = {};
       if(this.transport_) {
         this.transport_.close();
         this.transport_ = null;
@@ -95,27 +97,17 @@ module SocksToRTC {
     }
 
     /**
-     * Setup new data channel and tie to corresponding SOCKS5 session.
-     * Returns: IP and port of destination.
+     * Setup a new data channel.
      */
-    private onConnection_ = (session:Socks.Session, address, port, protocol)
-        :Promise<Channel.EndpointInfo> => {
-      // We don't have a way to pipe UDP traffic through the datachannel
-      // just yet so, for now, just exit early in the UDP case.
-      // TODO(yangoon): pipe UDP traffic through the datachannel
-      // TODO(yangoon): serious refactoring needed here!
-      if (protocol == 'udp') {
-        return Promise.resolve({ ipAddrString: '127.0.0.1', port: 0 });
-      }
-
+    private createChannel_ = (params:Channel.EndpointInfo) : Promise<Channel.EndpointInfo> => {
       if (!this.transport_) {
-        dbgWarn('transport_ not ready');
+        dbgWarn('transport not ready');
         return;
       }
 
       // Generate a name for this connection and associate it with the SOCKS session.
       var tag = obtainTag();
-      this.tieSessionToChannel_(session, tag);
+      this.channels_[tag] = params;
 
       // This gets a little funky: ask the peer to establish a connection to
       // the remote host and register a callback for when it gets back to us
@@ -124,23 +116,27 @@ module SocksToRTC {
       return new Promise((F,R) => {
         Peer.connectCallbacks[tag] = (response:Channel.NetConnectResponse) => {
           if (response.address) {
-            F({
-              ipAddrString: response.address,
-              port: response.port
-            });
+            var endpointInfo:Channel.EndpointInfo = {
+              protocol: params.protocol,
+              address: response.address,
+              port: response.port,
+              send: (buf:ArrayBuffer) => { this.sendToPeer_(tag, buf); },
+              terminate: () => { this.terminate_(tag); }
+            };
+            F(endpointInfo);
           } else {
             R(new Error('could not create datachannel'));
           }
-        }
+        };
         var request:Channel.NetConnectRequest = {
-          protocol: 'tcp',
-          address: address,
-          port: port
+          protocol: params.protocol,
+          address: params.address,
+          port: params.port
         };
         var command:Channel.Command = {
-            type: Channel.COMMANDS.NET_CONNECT_REQUEST,
-            tag: tag,
-            data: JSON.stringify(request)
+          type: Channel.COMMANDS.NET_CONNECT_REQUEST,
+          tag: tag,
+          data: JSON.stringify(request)
         };
         this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
             JSON.stringify(command)));
@@ -148,21 +144,16 @@ module SocksToRTC {
     }
 
     /**
-     * Create one-to-one relationship between a SOCKS session and a datachannel.
+     * Terminates a data channel.
      */
-    private tieSessionToChannel_ = (session:Socks.Session, tag:string) => {
-      this.socksSessions_[tag] = session;
-      // When the TCP-connection receives data, send to sctp peer.
-      // When it disconnects, clear the |tag|.
-      session.onRecv((buf) => { this.sendToPeer_(tag, buf); });
-      session.onceDisconnected().then(() => {
-        var command:Channel.Command = {
-            type: Channel.COMMANDS.SOCKS_DISCONNECTED,
-            tag: tag
-        };
-        this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
-            JSON.stringify(command)));
-      });
+    private terminate_ = (tag:string) => {
+      dbg('terminating datachannel ' + tag);
+      var command:Channel.Command = {
+          type: Channel.COMMANDS.SOCKS_DISCONNECTED,
+          tag: tag
+      };
+      this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
+          JSON.stringify(command)));
     }
 
     /**
@@ -201,12 +192,12 @@ module SocksToRTC {
           dbgWarn('unsupported control command: ' + command.type);
         }
       } else {
-        if (!(msg.tag in this.socksSessions_)) {
+        if (!(msg.tag in this.channels_)) {
           dbgErr('unknown datachannel ' + msg.tag);
           return;
         }
-        var session = this.socksSessions_[msg.tag];
-        session.sendData(msg.data);
+        var session = this.channels_[msg.tag];
+        session.send(msg.data);
       }
     }
 
@@ -215,8 +206,8 @@ module SocksToRTC {
      */
     private closeConnectionToPeer = (tag:string) => {
       dbg('datachannel ' + tag + ' has closed. ending SOCKS session for channel.');
-      this.socksServer_.endSession(this.socksSessions_[tag]);
-      delete this.socksSessions_[tag];
+      this.channels_[tag].terminate();
+      delete this.channels_[tag];
     }
 
     /**
@@ -256,7 +247,7 @@ module SocksToRTC {
                                transport: this.transport_,
                                peerId: this.peerId_,
                                signallingChannel: this.signallingChannel_,
-                               socksSessions: this.socksSessions_ });
+                               channels: this.channels_ });
       } catch (e) {}
       return ret;
     }
