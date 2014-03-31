@@ -8,6 +8,7 @@
       "socks-headers.js",
       "socks-to-rtc.js",
       "udprelay.js",
+      "tcp_echo_server.js",
       "../common/arraybuffers.js"
     ]
   },
@@ -18,7 +19,7 @@
     }
   },
   "permissions": [
-    "core.socket",
+    "core.tcpsocket",
     "core.udpsocket"
   ]
 }

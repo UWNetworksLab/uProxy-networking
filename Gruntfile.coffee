@@ -9,7 +9,7 @@ module.exports = (grunt) ->
 
     copy: {
       freedom: { files: [ {
-        expand: true, cwd: 'node_modules/freedom-runtime-chrome/'
+        expand: true, cwd: 'node_modules/freedom-for-chrome/'
         src: ['freedom.js']
         dest: 'build/chrome-app/' } ] }
       freedomProviders: { files: [ {
@@ -27,8 +27,11 @@ module.exports = (grunt) ->
       rtc2net: { files: [ {
         expand: true, cwd: 'src/'
         src: ['rtc-to-net/**/*.json']
-        dest: 'build/' } ] }
-
+        dest: 'build/chrome-app/' } ] }
+      echo: { files: [ {
+        expand: true, cwd: 'test/'
+        src: ['*.js']
+        dest: 'build/chrome-app/socks-to-rtc/' } ] }
       chromeApp: { files: [ {
           expand: true, cwd: 'src/chrome-app'
           src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
@@ -124,6 +127,7 @@ module.exports = (grunt) ->
     'copy:freedomProviders'
     'copy:socks2rtc'
     'copy:rtc2net'
+    'copy:echo'
     'copy:chromeApp'
   ]
 

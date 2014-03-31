@@ -11,6 +11,7 @@
  *
  * @param {ArrayBuffer} buf The buffer to convert.
  */
+
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/tcp-socket.d.ts' />
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
 
@@ -20,12 +21,9 @@ module TCP {
 
   var DEFAULT_MAX_CONNECTIONS = 1048576;
 
-  // Freedom Sockets API.
-  var fSockets:TcpSocket = freedom['core.socket']();
-
   interface IConnectionCallbacks {
-    recv:any;
-    sent:any;
+    recv :any;
+    sent :any;
   }
 
   /**
@@ -42,20 +40,16 @@ module TCP {
    * Aside: see http://developer.chrome.com/trunk/apps/socket.html#method-getNetworkList
    */
   export class Server {
-
-    // Server accepts & opens one socket per client.
-    private serverSocketId:number = null;
-    private maxConnections:number;
-    private conns:{[socketId:number]:Promise<TCP.Connection>} = {};
-    private endpoint_:string = null;
-
-    // TODO: replace with promises.
-    private callbacks:any;
+    private serverSocket_ :TcpSocket;
+    private maxConnections :number;
+    private conns:{[socketId:number] : TCP.Connection} = {};
+    private endpoint_ :string = null;
+    private callbacks :any;  // TODO: replace with promises.
 
     /**
      * Create TCP server.
      */
-    constructor(public addr, public port, options?:ServerOptions) {
+    constructor(public addr, public port, options ?:ServerOptions) {
       this.maxConnections = (options && options.maxConnections) ||
                             DEFAULT_MAX_CONNECTIONS;
       this.endpoint_ = addr + ':' + port;
@@ -64,6 +58,7 @@ module TCP {
         connection: null,  // Called when a new socket connection happens.
         disconnect: null,  // Called when server stops listening for connections.
       };
+      this.serverSocket_ = freedom['core.tcpsocket']();
     }
 
     /**
@@ -71,39 +66,27 @@ module TCP {
      *
      * Returns: Promise that this server is now listening.
      */
-    public listen():Promise<any> {
-      return this.createSocket_()
-          .then(this.startListening_)
+    public listen() : Promise<any> {
+      return this.startListening_()
           // Success. Attach connect, disconnect, and data handlers.
           .then(this.attachSocketHandlers_)
           .catch(this.handleError_);
     }
 
     /**
-     * Wrapper which returns a promise for a created socket.
-     */
-    private createSocket_ = ():Promise<TcpSocket.CreateInfo> => {
-      return fSockets.create('tcp', {});
-    }
-
-    /**
      * Promise that socket begins listening.
      */
-    private startListening_ = (createInfo:TcpSocket.CreateInfo)
-        : Promise<number> => {
-      this.serverSocketId = createInfo.socketId;
-      if (this.serverSocketId <= 0) {
+    private startListening_ = () : Promise<any> => {
+      if (!this.serverSocket_) {
         return Util.reject('failed to create socket on ' + this.endpoint_);
       }
-      dbg('create server socket ' + this.serverSocketId +
-          ' listening on ' + this.endpoint_);
-      return fSockets.listen(this.serverSocketId, this.addr, this.port)
-          .then((resultCode:number) => {  // Ensure the listen was successful.
-            if (0 !== resultCode) {
-              return Util.reject('listen failed on ' + this.endpoint_ +
-                  ' \n Result Code: ' + resultCode);
-            }
-            return Promise.resolve(resultCode);
+      dbg('created server socket, listening on ' + this.endpoint_);
+      return this.serverSocket_.listen(this.addr, this.port)
+          .then(() => {  // Ensure the listen was successful.
+            // Success.
+            return Promise.resolve();
+          }, (err) => {
+            dbgErr('error! ' + err.errcode + ', ' + err.message);
           });
     }
 
@@ -112,107 +95,81 @@ module TCP {
      * Assumes server socket is successfully listening.
      */
     private attachSocketHandlers_ = () => {
-      fSockets.on('onConnection', this.accept_);
-      fSockets.on('onData', this.readConnectionData_);
-      fSockets.on('onDisconnect', this.disconnectSocket_);
+      this.serverSocket_.on('onConnection', this.onConnectionHandler_);
     }
 
     /**
      * Accept and promise creation of new TCP connection.
      */
-    private accept_ = (acceptValue) => {
-      if (this.serverSocketId !== acceptValue.serverSocketId) {
-        return Util.reject('cannot accept unexpected socket ID: ' +
-            this.serverSocketId + ' vs ' + acceptValue.serverSocketId);
-      }
-      var socketId = acceptValue.clientSocketId;
+    private onConnectionHandler_ = (acceptValue) => {
+      var socketId = acceptValue.socket;
+
+      // Check that we haven't reach the maximum number of connections
       var connectionsCount = Object.keys(this.conns).length;
       if (connectionsCount >= this.maxConnections) {
-        // Stop too many connections.
-        fSockets.disconnect(socketId);
-        fSockets.destroy(socketId);
+        // Stop too many connections.  We create a new socket here from the
+        // incoming Id and immediately close it, because we don't yet have a
+        // reference to the incomming socket.
+        var tempSocket = freedom['core.tcpsocket'](socketId);
+        tempSocket.close();
         return Util.reject('too many connections: ' + connectionsCount);
       }
-      console.log('TCP.Server accepted connection ' + socketId);
-      var connectionReady = this.conns[socketId] = Connection.Create(socketId);
-      // External connect handler.
-      connectionReady.then(this.callbacks.connection);
+
+      // Create new connection.
+      dbg('TCP.Server accepted connection on socket id ' + socketId);
+      this.conns[socketId] = new Connection(socketId, this);
+
+      // Fire any callback remove of this class may have added for connection.
+      if (this.callbacks.connection) {
+        this.callbacks.connection(this.conns[socketId]);
+      }
     }
 
     /**
      * Disconnect all sockets and stops listening.
      */
-    public disconnect = ():Promise<any> => {
-      return new Promise((F,R) => {
-        var serverSocketId = this.serverSocketId;
-        if (serverSocketId) {
-          dbg('disconnecting server socket ' + serverSocketId);
-          // Block on disconnection and destruction.
-          fSockets.disconnect(serverSocketId).fail(R);
-          fSockets.destroy(serverSocketId).fail(R);
+    public disconnect = () : Promise<any> => {
+      return new Promise((F, R) => {
+        var allPromises = [];
+
+        // Disconnect server socket.
+        if (this.serverSocket_) {
+          allPromises.push(this.serverSocket_.close());
         }
-        this.serverSocketId = 0;
+
+        // Disconnect all connections.
         for (var i in this.conns) {
           try {
-            this.conns[i]
-                .then(Connection.disconnect)
-                .then(this.removeFromServer_);
+            allPromises.push(this.conns[i].disconnect().then(this.removeFromServer));
           } catch (ex) {
             console.warn(ex);
           }
         }
-        F();  // Fulfill.
+
+        // Wait for all promises to complete.
+        Promise.all(allPromises).then(
+          () => { dbg('successfully disconnected'); F(); },
+          (ex) => { console.warn(ex); });  // 1 or more promises rejected
       });
     }
 
-    /**
-     * Read data from one of the connection.
-     * Assumes that the connection exists.
-     */
-    private readConnectionData_ = (readInfo:TcpSocket.ReadInfo) => {
-      if (!(readInfo.socketId in this.conns)) {
-        console.error('connectionRead: received data for non-existing socket ' +
-                     readInfo.socketId);
-        return;
-      }
-      this.conns[readInfo.socketId].then((conn) => {
-        dbg('reading ' + readInfo.data.byteLength +
-            ' bytes from socket ' + readInfo.socketId);
-        conn.read(readInfo.data);
+    public removeFromServer = (conn:TCP.Connection) => {
+      return new Promise((F,R) => {
+        delete this.conns[conn.socketId];
+        F();
       });
-    }
-
-    private removeFromServer_ = (conn:TCP.Connection) => {
-      delete this.conns[conn.socketId];
-      return conn;
     }
 
     /**
      * Set an event handler. See http://developer.chrome.com/trunk/apps/socket.
      * html for more about the events than can happen.
      */
-    public on(eventName:string, callback) {
+    public on = (eventName :string, callback) => {
       if (!(eventName in this.callbacks)) {
         console.error('TCP.Server: on() failure for ' + eventName);
         return;
       }
       this.callbacks[eventName] = callback;
-    }
-
-    /**
-     * Fired when remote socket disconnected.
-     */
-    private disconnectSocket_ = (socketInfo:TcpSocket.DisconnectInfo) => {
-      var socketId = socketInfo.socketId;
-      var msg = socketInfo.error;
-      if (!(socketId in this.conns)) {
-        dbgWarn('socket ' + socketId + ' D.N.E. for disconnect.');
-        return;
-      }
-      dbg('disconnect ' + socketInfo.socketId + ' - ' + msg);
-      return this.conns[socketId]
-          .then(Connection.disconnect)
-          .then(this.removeFromServer_);
     }
 
     /**
@@ -223,12 +180,10 @@ module TCP {
         return;  // Do nothing, silently. There are multiple directions in which
                  // tcp connections must be closed, so this is expected.
       }
-      return this.conns[socketId]
-          .then(Connection.close)
-          .then(this.removeFromServer_);
+      this.conns[socketId].close().then(this.removeFromServer);
     }
 
-    private handleError_ = (err:Error) => {
+    private handleError_ = (err :Error) => {
       console.error('TCP.Server: ' + err.message);
       console.error(err.stack);
     }
@@ -243,48 +198,59 @@ module TCP {
    */
   export class Connection {
 
-    public isConnected:boolean = false;
-    private socketInfo:any = null;
-    private recvOptions:any;
-
-    private pendingReadBuffer_:any;
-    private pendingRead_:boolean;
-    // Right now this is only false until the socket has all the information a
-    // user might need (ie socketInfo). The socket shouldn't be doing work for
-    // the user until the internals are ready.
-    private initialized_:boolean = false;
-    private callbacks:IConnectionCallbacks;
-
+    public socketId : number;
+    private connectionSocket_ :TcpSocket;
+    private recvOptions :any;
+    private pendingReadBuffer_ :any;
+    private pendingRead_ :boolean;
+    private callbacks :IConnectionCallbacks;
     // Promise for the disconnection of this connection.
-    private disconnectPromise:Promise<number>;
-    private fulfillDisconnect:(number)=>void;
-
-    // Static connection creation function which returns a promise.
-    static Create = (socketId:number):Promise<Connection> => {
-      return new Promise((F,R) => {
-        var conn = new Connection(socketId);
-        fSockets.getInfo(socketId).then((socketInfo) => {
-          conn.socketInfo = socketInfo;
-          conn.initialized_ = true;
-          F(conn);
-        });
-      });
-    }
+    private disconnectPromise_ :Promise<number>;
+    // Private function called to invoke disconnectPromise_. 
+    private fulfillDisconnect_ :(number)=>void;
+    private server_ :Server;
 
     /**
      * This constructor should not be called directly.
      */
-    constructor(public socketId) {
+    constructor(public socketId :number, server :Server) {
       this.callbacks = {
-        recv: () => {},
-        sent: () => {}
+        recv: null,
+        sent: null
       };
-      this.isConnected = true;
       this.pendingReadBuffer_ = null;
       this.recvOptions = null;
       this.pendingRead_ = false;
-      this.disconnectPromise = new Promise<number>((F, R) => {
-        this.fulfillDisconnect = F;  // To be fired on disconnect.
+      this.disconnectPromise_ = new Promise<number>((F, R) => {
+        this.fulfillDisconnect_ = F;  // To be fired on disconnect.
+      });
+      this.connectionSocket_ = freedom['core.tcpsocket'](socketId);
+      this.connectionSocket_.on('onData', this.onDataHandler_);
+      this.connectionSocket_.on('onDisconnect', this.onDisconnectHandler_);
+      this.server_ = server;
+    }
+
+    private onDataHandler_ = (data) => {
+      data = data.data;
+      if (this.callbacks.recv) {
+        this.addPendingData_(data);
+        this.bufferedCallRecv_();
+      } else {
+        // If not receiving data at the moment, store the received data in a
+        // pendingReadBuffer_ for the next time this.callbacks.recv is
+        // turned on.
+        this.addPendingData_(data);
+        this.pendingRead_ = false;
+      }
+    }
+
+    private onDisconnectHandler_ = (data :TcpSocket.DisconnectInfo) => {
+      if (data.errcode) {
+        dbgWarn('Socket ' + this.socketId + ' disconnected with errcode ' +
+          data.errcode + ': ' + data.message);
+      }
+      this.close().then(() => {
+        this.server_.removeFromServer(this);
       });
     }
 
@@ -298,9 +264,9 @@ module TCP {
      * @param {string} eventName Enumerated instance of valid callback.
      * @param {function} callback Callback function.
      */
-    public on(eventName, callback, options?) {
+    public on = (eventName, callback, options?) => {
       if (!(eventName in this.callbacks)) {
-        console.error('TCP.Connection [' + this.socketId + ']:' +
+        dbgErr('TCP.Connection [' + this.socketId + ']:' +
             'no such event for on: ' + eventName + ".  Available keys are " +
             JSON.stringify({available_keys: Object.keys(this.callbacks)}));
         return
@@ -321,7 +287,7 @@ module TCP {
     /**
      * Obtain a promise for a buffer as the result of a recv.
      */
-    public receive = (minByteLength?:number):Promise<ArrayBuffer> => {
+    public receive = (minByteLength ?:number) : Promise<ArrayBuffer> => {
       return new Promise((F, R) => {
         if (minByteLength) {
           this.recvOptions = {
@@ -339,7 +305,6 @@ module TCP {
      * Buffer the calls to |recv| if there is a minByeLength.
      */
     private bufferedCallRecv_ = () => {
-      // console.log('buffered call rcv' + this.pendingReadBuffer_ + this);
       if (this.recvOptions && this.recvOptions.minByteLength &&
           this.recvOptions.minByteLength > this.pendingReadBuffer_.byteLength) {
         return;
@@ -350,61 +315,40 @@ module TCP {
     }
 
     /**
-     * Sends a message down the wire to the remote side
-     *
-     * @see http://developer.chrome.com/trunk/apps/socket.html#method-write
-     * @param {Function} callback The function to call when the message has sent.
-     */
-    public send = (msg:string, callback?) => {
-      // Register sent callback.
-      if ('string' !== (typeof msg)) {
-        console.warn('Connection.send: got non-string object.');
-      }
-      Util.stringToArrayBuffer(msg + '\n', (msg) => {
-        this.sendRaw(msg, callback);
-      });
-    }
-
-    /**
      * Sends a message pre-formatted into an arrayBuffer.
      */
     public sendRaw = (msg, callback?) => {
-      if(!this.isConnected) {
-        dbgWarn(this.socketId + ' - sendRaw() whilst disconnected.');
-        return;
-      }
       var realCallback = callback || this.callbacks.sent || function() {};
-      fSockets.write(this.socketId, msg).then(realCallback);
+      this.connectionSocket_.write(msg).then(realCallback);
     }
 
     /**
      * Close underlying socket locally.
      */
-    public close() {
-      if (!this.isConnected) { return; }
-      this.isConnected = false;
-      // Close the socket.
-      fSockets.disconnect(this.socketId);
-      fSockets.destroy(this.socketId);
-      return this;
+    public close = () : Promise<Connection> => {
+      return new Promise((F, R) => {
+        this.connectionSocket_.close().then(() => {
+          F(this);
+        });
+      });
     }
+
     /**
      * Fired when underlying socket disconnected remotely.
      */
-    public disconnect = () => {
-      this.fulfillDisconnect(0);
+    public disconnect = () : Promise<Connection> => {
+      this.fulfillDisconnect_(0);
       return this.close();
     }
 
-    public static close(conn:Connection) { return conn.close(); }
-    public static disconnect(conn:Connection) { return conn.disconnect(); }
-
     /**
-     * Promise for the (remote) disconnection of this socket.
+     * Return promise for the (remote) disconnection of this socket.
      */
-    public onceDisconnected = () => { return this.disconnectPromise; }
+    public onceDisconnected = () :Promise<number> => {
+      return this.disconnectPromise_;
+    }
 
-    private addPendingData_ = (buffer:ArrayBuffer) => {
+    private addPendingData_ = (buffer :ArrayBuffer) => {
       if (!this.pendingReadBuffer_) {
         this.pendingReadBuffer_ = buffer;
       } else {
@@ -416,32 +360,8 @@ module TCP {
       }
     }
 
-    /**
-     * Reads data from the socket.
-     */
-    public read = (data:ArrayBuffer) => {
-      if (this.callbacks.recv && this.initialized_) {
-        this.addPendingData_(data);
-        this.bufferedCallRecv_();
-      } else {
-        // If not receiving data at the moment, store the received data in a
-        // pendingReadBuffer_ for the next time this.callbacks.recv is
-        // turned on.
-        this.addPendingData_(data);
-        this.pendingRead_ = false;
-      }
-    }
-
-    /** Callback for when data has been successfully written to socket. */
-    private onWriteComplete_ = (writeInfo) => {
-      if (this.callbacks.sent) {
-        this.callbacks.sent(writeInfo);
-      }
-    }
-
     public toString = () => {
-      return '<TCP.Connection[' + this.socketId +
-          '] (' + (this.isConnected? 'connected' : 'disconnected') + ')>';
+      return '<TCP.Connection[' + this.socketId + ']>';
     }
 
   }  // class TCP.Connection
@@ -455,46 +375,10 @@ module TCP {
 
 
 module Util {
-
-  /**
-   * Converts an array buffer to a string
-   *
-   * @private
-   * @param {ArrayBuffer} buf The buffer to convert.
-   * @param {Function} callback The function to call when conversion is
-   * complete.
-   */
-  export function arrayBufferToString(buf, callback) {
-    var bb = new Blob([new Uint8Array(buf)]);
-    var f = new FileReader();
-    f.onload = function(e) {
-      callback(e.target.result);
-    };
-    f.readAsText(bb);
-  }
-
-  /**
-   * Converts a string to an array buffer
-   *
-   * @private
-   * @param {String} str The string to convert.
-   * @param {Function} callback The function to call when conversion is
-   * complete.
-   */
-  export function stringToArrayBuffer(str, callback) {
-    var bb = new Blob([str]);
-    var f = new FileReader();
-    f.onload = function(e) {
-      callback(e.target.result);
-    };
-    f.readAsArrayBuffer(bb);
-  }
-
   /**
    * Wrapper around creating a Promise rejection with Error.
    */
   export function reject(msg:string) {
     return Promise.reject(new Error(msg));
   }
-
 }  // module Util

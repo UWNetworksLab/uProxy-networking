@@ -8,8 +8,6 @@
 module Net {
   import TcpSocket = freedom.TcpSocket;
 
-  var fSockets:TcpSocket = freedom['core.socket']();
-
   enum State {
     CREATING_SOCKET,
     CONNECTING,
@@ -29,7 +27,7 @@ module Net {
    */
   export class Client {
 
-    private socketId:number = null;
+    private socket_:TcpSocket = null;
     private queue:any[] = [];
     private state:State = State.CLOSED;
 
@@ -41,7 +39,7 @@ module Net {
      */
     constructor (
         // External callback for data coming back over this socket.
-        private onResponse:(buffer:ArrayBuffer)=>any,
+        private onResponse_:(buffer:ArrayBuffer)=>any,
         private destination:Destination) {
       this.state = State.CREATING_SOCKET;
       this.disconnectPromise = new Promise<void>((F, R) => {
@@ -72,7 +70,7 @@ module Net {
         return;
       }
       if (State.CONNECTED == this.state) {
-        fSockets.write(this.socketId, buffer).then(this.onWrite_);
+        this.socket_.write(buffer).then(this.onWrite_);
       } else {
         this.queue.push(buffer);
       }
@@ -85,50 +83,40 @@ module Net {
       if (State.CLOSED == this.state) {
         return;
       }
-      dbg('closing ' + this.socketId + ' of ' + JSON.stringify(this.destination));
+      dbg('closing socket of ' + JSON.stringify(this.destination));
       this.state = State.CLOSED;
-      if (this.socketId) {
-        fSockets.disconnect(this.socketId);
-        fSockets.destroy(this.socketId);
+      if (this.socket_) {
+        this.socket_.close();
       }
-      this.socketId = null;
+      this.socket_ = null;
     };
 
     /**
      * Wrapper which returns a promise for a created socket.
      */
-    private createSocket_ = () : Promise<TcpSocket.CreateInfo> => {
-      return fSockets.create('tcp', {})
-          .then((createInfo:TcpSocket.CreateInfo) => {
-            this.socketId = createInfo.socketId;
-            if (!this.socketId) {
-              return Promise.reject(new Error(
-                  'Failed to create socket. createInfo: ' + createInfo));
-            }
-            return Promise.resolve(createInfo);
-          });
+    private createSocket_ = () : Promise<any> => {
+      return new Promise((F, R) => {
+        this.socket_ = freedom['core.tcpsocket']();
+        F();
+      });
     }
 
     /**
      * Connect the socket. Assumes it was successfully created.
      */
-    private connect_ = ():Promise<number> => {
+    private connect_ = () : Promise<any> => {
       this.state = State.CONNECTING;
-      return fSockets.connect(this.socketId,
-                              this.destination.host,
-                              this.destination.port);
+      return this.socket_.connect(this.destination.host,
+                                  this.destination.port);
     }
 
     /**
      * Once connected to socket, attach handlers and send any queued data.
      */
-    private attachHandlers_ = (result:number) => {
-      if (0 !== result) {
-        return Promise.reject(new Error('connect error ' + result));
-      }
+    private attachHandlers_ = () => {
       this.state = State.CONNECTED;
-      fSockets.on('onData', this.readData_);
-      fSockets.on('onDisconnect', this.onDisconnect_);
+      this.socket_.on('onData', this.readData_);
+      this.socket_.on('onDisconnect', this.onDisconnect_);
       if (0 < this.queue.length) {
         this.send(this.queue.shift());
       }
@@ -138,13 +126,7 @@ module Net {
      * Read data from the destination.
      */
     private readData_ = (readInfo:TcpSocket.ReadInfo) => {
-      if (readInfo.socketId !== this.socketId) {
-        // TODO: currently our Freedom socket API sends all messages to every
-        // listener. Most crappy. Fix so that we tell it to listen to a
-        // particular socket.
-        return;
-      }
-      this.onResponse(readInfo.data);
+      this.onResponse_(readInfo.data);
     }
 
     /**
@@ -169,10 +151,6 @@ module Net {
      * Fired only when underlying socket closes remotely.
      */
     private onDisconnect_ = (socketInfo:TcpSocket.DisconnectInfo) => {
-      if (socketInfo.socketId != this.socketId) {
-        return;  // duplicity of socket events.
-      }
-      dbg(this.socketId + ' - ' + socketInfo.error);
       this.close();
       this.fulfillDisconnect();
     }
