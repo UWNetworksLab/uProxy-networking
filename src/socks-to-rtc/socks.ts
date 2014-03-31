@@ -153,7 +153,7 @@ module Socks {
           })
           // Valid request - fire external callback.
           .then(this.maybeUdpStartRelay)
-          .then((request:any) => {
+          .then((request:any) : Promise<Channel.EndpointInfo> => {
             // TODO(yangoon): serious refactoring needed here!
             var connectionDetails = callback(
                 this, request.addressString, request.port, request.protocol);

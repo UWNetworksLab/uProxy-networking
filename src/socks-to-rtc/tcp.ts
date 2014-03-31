@@ -81,13 +81,7 @@ module TCP {
         return Util.reject('failed to create socket on ' + this.endpoint_);
       }
       dbg('created server socket, listening on ' + this.endpoint_);
-      return this.serverSocket_.listen(this.addr, this.port)
-          .then(() => {  // Ensure the listen was successful.
-            // Success.
-            return Promise.resolve();
-          }, (err) => {
-            dbgErr('error! ' + err.errcode + ', ' + err.message);
-          });
+      return this.serverSocket_.listen(this.addr, this.port);
     }
 
     /**
@@ -198,7 +192,6 @@ module TCP {
    */
   export class Connection {
 
-    public socketId : number;
     private connectionSocket_ :TcpSocket;
     private recvOptions :any;
     private pendingReadBuffer_ :any;
