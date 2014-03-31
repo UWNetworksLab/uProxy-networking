@@ -1,3 +1,5 @@
+/// <reference path='../../node_modules/uproxy-build-tools/third_party/DefinitelyTyped/jasmine/jasmine.d.ts' />
+
 // White-box test for the Chrome APIs implementation of
 // Freedom's UDP socket provider.
 // Modeled on Freedom's social.loopback.unit.spec.js.
@@ -79,7 +81,7 @@ describe("chrome-udpsocket", function() {
       bytesWritten: 4
     };
     provider.bind('localhost', 5000, continuation);
-    provider.sendTo(new ArrayBuffer(), 'localhost', 7000, continuation);
+    provider.sendTo(new ArrayBuffer(10), 'localhost', 7000, continuation);
     expect(chrome.socket.sendTo).toHaveBeenCalledWith(
         createResult.socketId,
         jasmine.any(ArrayBuffer),
