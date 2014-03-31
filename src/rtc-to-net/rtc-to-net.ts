@@ -123,10 +123,12 @@ module RtcToNet {
       } else {
         dbg(message.tag + ' <--- received ' + JSON.stringify(message));
         if(message.tag in this.netClients) {
-          dbg('forwarding ' + message.data.byteLength + ' bytes from datachannel ' + message.tag);
+          dbg('forwarding ' + message.data.byteLength +
+              ' tcp bytes from datachannel ' + message.tag);
           this.netClients[message.tag].send(message.data);
         } else if (message.tag in this.udpClients) {
-          dbg('forwarding ' + message.data.byteLength + ' bytes from datachannel ' + message.tag);
+          dbg('forwarding ' + message.data.byteLength +
+              ' udp bytes from datachannel ' + message.tag);
           this.udpClients[message.tag].send(message.data);
         } else {
           dbgErr('[RtcToNet] non-existent channel! Msg: ' + JSON.stringify(message));
