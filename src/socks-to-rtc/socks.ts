@@ -76,9 +76,7 @@ module Socks {
       var socksRequest:SocksRequest = {};
       var udpRelay:Socks.UdpRelay;
       conn.receive()
-          .then((buffer:ArrayBuffer) => {
-            Server.validateHandshake(buffer);
-          })
+          .then(Server.validateHandshake)
           .catch((e) => {
             replyToTCP(conn, Socks.AUTH.NONE);
             return Promise.reject(e);
