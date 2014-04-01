@@ -15,8 +15,8 @@ module Net {
     CLOSED
   }
 
-  export interface Destination {
-    host:string;
+  export interface Endpoint {
+    address:string;
     port:number;
   }
 
@@ -40,7 +40,7 @@ module Net {
     constructor (
         // External callback for data coming back over this socket.
         private onResponse_:(buffer:ArrayBuffer)=>any,
-        private destination:Destination) {
+        private destination:Endpoint) {
       this.state = State.CREATING_SOCKET;
       this.disconnectPromise = new Promise<void>((F, R) => {
         this.fulfillDisconnect = F;  // To be fired on close.
@@ -48,14 +48,14 @@ module Net {
     }
 
     // TODO: this should probably just be a static creation function
-    public create = () : Promise<Channel.EndpointInfo> => {
+    public create = () : Promise<Endpoint> => {
       return this.createSocket_()  // Initialize client TCP socket.
           .then(this.connect_)
           .then(this.attachHandlers_)
           .then(() => {
             return {
               // TODO: return the real address from which we are connected
-              ipAddrString: '127.0.0.1',
+              address: '127.0.0.1',
               port: 0
             };
           });
@@ -106,7 +106,7 @@ module Net {
      */
     private connect_ = () : Promise<any> => {
       this.state = State.CONNECTING;
-      return this.socket_.connect(this.destination.host,
+      return this.socket_.connect(this.destination.address,
                                   this.destination.port);
     }
 

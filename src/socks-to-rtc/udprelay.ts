@@ -13,33 +13,19 @@ module Socks {
    *    pick a free port)
    *  - call getInfo, to discover on which port the relay is listening
    *  - (the caller can now return the address and port back to the SOCKS
-  *     client)
-   *  - this class will forward a copy of each datagram received on the socket
-   *    to the relevant remote host; the datagrams are assumed to be prepended
-   *    the SOCKS5 headers (see section 7 of the RFC), which will be stripped
-   *    before forwarding to the remote host (if those headers are not found
-   *    then the datagram will be ignored, as per the RFC)
-   *  - this class will relay each datagram reply received from the remote
-   *    server *back* to the SOCKS5 client; the reply will be prepended with
-   *    the SOCKS5 header receive in the previous step
+   *    client)
+   *  - call setDataReceivedHandler
+   *  - this class will invoke the setDataReceivedHandler each time a datagram
+   *    is received on the socket; the full message is sent, including SOCKS
+   *    UDP headers
+   *  - (the caller can relay the message across the datachannel)
+   *  - call sendRemoteReply for each datagram received from remote hosts; this
+   *    will be sent to the client, and should include the same SOCKS UDP
+   *    header received in the original request
    *  - call destroy to clean up, typically when the TCP connection on which
-   *    the UDP_ASSOCIATE was negotiated is terminated (this is important
-   *    because relays are relatively expensive in terms of the number of
-   *    sockets required: one to communicate with the SOCKS5 client and one
-   *    for each remote host with which it wishes to communicate)
+   *    the UDP_ASSOCIATE was negotiated is terminated
    *
    * One relay should be created in response to each UDP_ASSOCIATE command.
-   *
-   * ===
-   * This is a work in progress so please beware that right now this
-   * relay...isn't. That is, it doesn't actually forward packets: there's
-   * a bunch of utility methods in Socks which, appropriarely refactored, will
-   * greatly help with that, e.g. interpretSocksRequest could also decode the
-   * datagram headers. What this *is* useful for right now is verifying that
-   * the server correctly informs the SOCKS5 client *where* to send UDP packets
-   * and then it's fun to watch the client futilely sending its UDP packets into
-   * the ether...never to return.
-   * ===
    * 
    * Other notes:
    *  - while the RFC states that the relay MUST drop any message originating
@@ -53,19 +39,33 @@ module Socks {
    *    and, in any case, we are typically only listening locally
    *  - we make no attempt to implement fragmentation (see section 7 of the
    *    RFC)
+   *
+   * TODO: this is so similar to udprelay.ts that they can almost certainly
+   *       be merged into one
    */
   export class UdpRelay {
 
     // The Socks client sends datagrams to this socket.
     // Eventually, it will also receive replies on this socket.
-    private socket:UdpSocket;
+    private socket_:UdpSocket;
 
     // Address and port to which the "client-side" socket is bound.
-    private address:string;
-    private port:number;
+    private address_:string;
+    private port_:number;
+
+    // Address and port from which the client is sending us packets.
+    // We store this so that we can relay responses from the server
+    // back to the client.
+    private clientAddress_:string;
+    private clientPort_:number;
+
+    /**
+     * Function to be called when data is received.
+     */
+    private dataReceivedHandler:(data:ArrayBuffer) => void;
 
     constructor () {
-      this.socket = freedom['core.udpsocket']();
+      this.socket_ = freedom['core.udpsocket']();
     }
 
     /**
@@ -73,41 +73,66 @@ module Socks {
      * port, and start relaying events. Specify port zero to have the system
      * choose a free port.
      */
-    public bind(address:string, port:number) : Promise<void> {
-      return this.socket.bind(address, port)
+    public bind(address:string, port:number) {
+      return this.socket_.bind(address, port)
           .then((resultCode:number) => {
             // Ensure the listen was successful.
             if (resultCode != 0) {
               return Promise.reject(new Error('listen failed on ' +
-                  this.address + ':' + this.port +
+                  this.address_ + ':' + this.port_ +
                   ' with result code ' + resultCode));
             }
             return Promise.resolve(resultCode);
           })
-          .then(this.socket.getInfo)
+          .then(this.socket_.getInfo)
           .then((socketInfo:UdpSocket.SocketInfo) => {
             // Record the address and port on which our socket is listening.
-            this.address = socketInfo.localAddress;
-            this.port = socketInfo.localPort;
-            dbg('listening on ' + this.address + ':' + this.port);
+            this.address_ = socketInfo.localAddress;
+            this.port_ = socketInfo.localPort;
+            dbg('listening on ' + this.address_ + ':' + this.port_);
           })
-          .then(this.attachSocketHandler);
+          .then(this.attachSocketHandler_);
     }
 
     /**
      * Listens for onData events.
      * The socket must be bound.
      */
-    private attachSocketHandler = () => {
-      this.socket.on('onData', this.onSocksClientData);
+    private attachSocketHandler_ = () => {
+      this.socket_.on('onData', this.onSocksClientData_);
     }
 
-    private onSocksClientData = (recvFromInfo:UdpSocket.RecvFromInfo) => {
-      var request:Socks.UdpRequest = {};
-      Socks.interpretUdpRequest(new Uint8Array(recvFromInfo.data), request);
-      dbg('received ' + request.data.byteLength + ' bytes datagram for ' +
-          request.addressString + ':' + request.port);
-      // TODO(yangoon): actually forward the datagram!
+    private onSocksClientData_ = (recvFromInfo:UdpSocket.RecvFromInfo) => {
+      // Record the host:port from which the client is sending us datagrams.
+      // This is where we'll relay any replies from remote servers.
+      // TODO: check if these change over the liftime of the relay
+      this.clientAddress_ = recvFromInfo.address;
+      this.clientPort_ = recvFromInfo.port;
+      if (this.dataReceivedHandler) {
+        this.dataReceivedHandler(recvFromInfo.data);
+      }
+    }
+
+    /**
+     * Sets the function to be called when data is received from the client.
+     * This is intended for relaying datagrams from the client across the
+     * datachannel from a remote server. The full datagram as received from the
+     * client is sent, complete with SOCKS headers.
+     */
+    public setDataReceivedHandler(callback:(buffer:ArrayBuffer) => void) {
+      this.dataReceivedHandler = callback;
+    }
+
+    /**
+     * Returns a promise to send data to the client.
+     * This is intended for relaying responses from remote servers back to
+     * the client.
+     */
+    public sendRemoteReply(buffer:ArrayBuffer) : Promise<number> {
+      if (!this.clientAddress_) {
+        throw new Error('cannot send data to client before it sends data');
+      }
+      return this.socket_.sendTo(buffer, this.clientAddress_, this.clientPort_);
     }
 
     // TODO(yangoon): add destroy() method
@@ -117,7 +142,7 @@ module Socks {
      * relay is listening.
      */
     public getAddress = () => {
-      return this.address;
+      return this.address_;
     }
 
     /**
@@ -125,7 +150,7 @@ module Socks {
      * relay is listening.
      */
     public getPort = () => {
-      return this.port;
+      return this.port_;
     }
   }
 
