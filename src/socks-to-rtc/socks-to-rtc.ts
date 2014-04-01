@@ -144,9 +144,15 @@ module SocksToRTC {
     }
 
     /**
-     * Terminates a data channel.
+     * Signals to the remote side that it should forget about this datachannel
+     * and discards our referece to the datachannel. Intended for use by the
+     * SOCKS server when the SOCKS client disconnects.
      */
     private terminate_ = (tag:string) => {
+      if (!(tag in this.channels_)) {
+        dbgWarn('tried to terminate unknown datachannel ' + tag);
+        return;
+      }
       dbg('terminating datachannel ' + tag);
       var command:Channel.Command = {
           type: Channel.COMMANDS.SOCKS_DISCONNECTED,
@@ -154,6 +160,7 @@ module SocksToRTC {
       };
       this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
           JSON.stringify(command)));
+      delete this.channels_[tag];
     }
 
     /**
@@ -202,9 +209,15 @@ module SocksToRTC {
     }
 
     /**
-     * Close a particular SOCKS session.
+     * Calls the endpoint's terminate() method and discards our reference
+     * to the channel. Intended for use when the remote side has been
+     * disconnected.
      */
     private closeConnectionToPeer = (tag:string) => {
+      if (!(tag in this.channels_)) {
+        dbgWarn('unknown datachannel ' + tag + ' has closed');
+        return;
+      }
       dbg('datachannel ' + tag + ' has closed. ending SOCKS session for channel.');
       this.channels_[tag].terminate();
       delete this.channels_[tag];
