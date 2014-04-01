@@ -137,7 +137,7 @@ module Socks {
           .then(() => {
             return Promise.resolve(udpRelay);
           }, (e) => {
-            throw new Error('could not create udp relay: ' + e.message);
+            return Promise.reject(new Error('could not create udp relay: ' + e.message));
           })
           .then(() => {
             var udpSession:UdpSession = new UdpSession(
