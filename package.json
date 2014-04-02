@@ -22,7 +22,7 @@
     "freedom-typescript-api": "~0.1.5"
   },
   "scripts": {
-    "test": "grunt --verbose"
+    "test": "grunt test"
   },
   "dependencies": {
     "freedom": "~0.4.3"
