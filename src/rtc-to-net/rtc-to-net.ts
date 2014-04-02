@@ -96,17 +96,17 @@ module RtcToNet {
             return;
           }
           this.prepareNetChannelLifecycle_(command.tag, request)
-              .then((endpointInfo:Net.Endpoint) => {
-                return endpointInfo;
+              .then((endpoint:Net.Endpoint) => {
+                return endpoint;
               }, (e) => {
                 dbgWarn('could not create netclient: ' + e.message);
                 return undefined;
               })
-              .then((endpointInfo?:Channel.EndpointInfo) => {
+              .then((endpoint?:Net.Endpoint) => {
                 var response:Channel.NetConnectResponse = {};
-                if (endpointInfo) {
-                  response.address = endpointInfo.address;
-                  response.port = endpointInfo.port;
+                if (endpoint) {
+                  response.address = endpoint.address;
+                  response.port = endpoint.port;
                 }
                 var out:Channel.Command = {
                     type: Channel.COMMANDS.NET_CONNECT_RESPONSE,
@@ -123,10 +123,12 @@ module RtcToNet {
       } else {
         dbg(message.tag + ' <--- received ' + JSON.stringify(message));
         if(message.tag in this.netClients) {
-          dbg('forwarding ' + message.data.byteLength + ' bytes from datachannel ' + message.tag);
+          dbg('forwarding ' + message.data.byteLength +
+              ' tcp bytes from datachannel ' + message.tag);
           this.netClients[message.tag].send(message.data);
         } else if (message.tag in this.udpClients) {
-          dbg('forwarding ' + message.data.byteLength + ' bytes from datachannel ' + message.tag);
+          dbg('forwarding ' + message.data.byteLength +
+              ' udp bytes from datachannel ' + message.tag);
           this.udpClients[message.tag].send(message.data);
         } else {
           dbgErr('[RtcToNet] non-existent channel! Msg: ' + JSON.stringify(message));

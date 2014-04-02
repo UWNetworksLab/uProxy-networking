@@ -47,17 +47,17 @@ module Socks {
 
     // The Socks client sends datagrams to this socket.
     // Eventually, it will also receive replies on this socket.
-    private socket:UdpSocket;
+    private socket_:UdpSocket;
 
     // Address and port to which the "client-side" socket is bound.
-    private address:string;
-    private port:number;
+    private address_:string;
+    private port_:number;
 
     // Address and port from which the client is sending us packets.
     // We store this so that we can relay responses from the server
     // back to the client.
-    private clientAddress:string;
-    private clientPort:number;
+    private clientAddress_:string;
+    private clientPort_:number;
 
     /**
      * Function to be called when data is received.
@@ -65,7 +65,7 @@ module Socks {
     private dataReceivedHandler:(data:ArrayBuffer) => void;
 
     constructor () {
-      this.socket = freedom['core.udpsocket']();
+      this.socket_ = freedom['core.udpsocket']();
     }
 
     /**
@@ -74,40 +74,40 @@ module Socks {
      * choose a free port.
      */
     public bind(address:string, port:number) {
-      return this.socket.bind(address, port)
+      return this.socket_.bind(address, port)
           .then((resultCode:number) => {
             // Ensure the listen was successful.
             if (resultCode != 0) {
               return Promise.reject(new Error('listen failed on ' +
-                  this.address + ':' + this.port +
+                  this.address_ + ':' + this.port_ +
                   ' with result code ' + resultCode));
             }
             return Promise.resolve(resultCode);
           })
-          .then(this.socket.getInfo)
+          .then(this.socket_.getInfo)
           .then((socketInfo:UdpSocket.SocketInfo) => {
             // Record the address and port on which our socket is listening.
-            this.address = socketInfo.localAddress;
-            this.port = socketInfo.localPort;
-            dbg('listening on ' + this.address + ':' + this.port);
+            this.address_ = socketInfo.localAddress;
+            this.port_ = socketInfo.localPort;
+            dbg('listening on ' + this.address_ + ':' + this.port_);
           })
-          .then(this.attachSocketHandler);
+          .then(this.attachSocketHandler_);
     }
 
     /**
      * Listens for onData events.
      * The socket must be bound.
      */
-    private attachSocketHandler = () => {
-      this.socket.on('onData', this.onSocksClientData);
+    private attachSocketHandler_ = () => {
+      this.socket_.on('onData', this.onSocksClientData_);
     }
 
-    private onSocksClientData = (recvFromInfo:UdpSocket.RecvFromInfo) => {
+    private onSocksClientData_ = (recvFromInfo:UdpSocket.RecvFromInfo) => {
       // Record the host:port from which the client is sending us datagrams.
       // This is where we'll relay any replies from remote servers.
       // TODO: check if these change over the liftime of the relay
-      this.clientAddress = recvFromInfo.address;
-      this.clientPort = recvFromInfo.port;
+      this.clientAddress_ = recvFromInfo.address;
+      this.clientPort_ = recvFromInfo.port;
       if (this.dataReceivedHandler) {
         this.dataReceivedHandler(recvFromInfo.data);
       }
@@ -129,10 +129,10 @@ module Socks {
      * the client.
      */
     public sendRemoteReply(buffer:ArrayBuffer) : Promise<number> {
-      if (!this.clientAddress) {
+      if (!this.clientAddress_) {
         throw new Error('cannot send data to client before it sends data');
       }
-      return this.socket.sendTo(buffer, this.clientAddress, this.clientPort);
+      return this.socket_.sendTo(buffer, this.clientAddress_, this.clientPort_);
     }
 
     // TODO(yangoon): add destroy() method
@@ -142,7 +142,7 @@ module Socks {
      * relay is listening.
      */
     public getAddress = () => {
-      return this.address;
+      return this.address_;
     }
 
     /**
@@ -150,7 +150,7 @@ module Socks {
      * relay is listening.
      */
     public getPort = () => {
-      return this.port;
+      return this.port_;
     }
   }
 

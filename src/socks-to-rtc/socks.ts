@@ -6,6 +6,7 @@
     http://tools.ietf.org/html/rfc1928
 */
 /// <reference path='tcp.ts' />
+/// <reference path='../interfaces/arraybuffer.d.ts' />
 
 module Socks {
 
@@ -76,9 +77,7 @@ module Socks {
       var socksRequest:SocksRequest = {};
       var udpRelay:Socks.UdpRelay;
       conn.receive()
-          .then((buffer:ArrayBuffer) => {
-            Server.validateHandshake(buffer);
-          })
+          .then(Server.validateHandshake)
           .catch((e) => {
             replyToTCP(conn, Socks.AUTH.NONE);
             return Promise.reject(e);
@@ -139,7 +138,7 @@ module Socks {
           .then(() => {
             return Promise.resolve(udpRelay);
           }, (e) => {
-            throw new Error('could not create udp relay: ' + e.message);
+            return Promise.reject(new Error('could not create udp relay: ' + e.message));
           })
           .then(() => {
             var udpSession:UdpSession = new UdpSession(
@@ -244,22 +243,13 @@ module Socks {
       this.udpRelay_.setDataReceivedHandler(this.onData_);
     }
 
-    // TODO: slice would be beneficial! figure out how to use it in TypeScript
     private onData_ = (data:ArrayBuffer) => {
       // Split the datagram into two parts: the UDP header and the payload.
       // TODO: have interpretUdpRequest return an integer which we can use here
       var headerLength = 10;
-      var bytes = new Uint8Array(data);
-      var header = new ArrayBuffer(headerLength);
+      var header = data.slice(0, headerLength);
       var headerBytes = new Uint8Array(header);
-      for (var i = 0; i < header.byteLength; i++) {
-        headerBytes[i] = bytes[i];
-      }
-      var payload = new ArrayBuffer(bytes.byteLength - headerLength);
-      var payloadBytes = new Uint8Array(payload);
-      for (var i = 0; i < payload.byteLength; i++) {
-        payloadBytes[i] = bytes[headerLength + i];
-      }
+      var payload = data.slice(headerLength);
 
       // Decode the header. We need to know where to send it.
       var request:Socks.UdpRequest = {};
