@@ -10,7 +10,7 @@ module.exports = (grunt) ->
     copy: {
       freedom: { files: [ {
         expand: true, cwd: 'node_modules/freedom-for-chrome/'
-        src: ['freedom.js']
+        src: ['freedom-for-chrome.js']
         dest: 'build/chrome-app/' } ] }
       freedomProviders: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
