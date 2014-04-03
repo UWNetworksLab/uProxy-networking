@@ -10,7 +10,7 @@ module.exports = (grunt) ->
     copy: {
       freedom: { files: [ {
         expand: true, cwd: 'node_modules/freedom-for-chrome/'
-        src: ['freedom.js']
+        src: ['freedom-for-chrome.js']
         dest: 'build/chrome-app/' } ] }
       freedomProviders: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
@@ -66,10 +66,6 @@ module.exports = (grunt) ->
         src: ['src/common/**/*.ts']
         dest: 'build/'
         options: { basePath: 'src', ignoreError: false }
-      chromeProviders:
-        src: ['src/chrome-providers/**/*.ts']
-        dest: 'build/chrome-app/'
-        options: { basePath: 'src', ignoreError: false }
       chromeApp:
         src: ['src/chrome-app/**/*.ts']
         dest: 'build/'
@@ -80,14 +76,9 @@ module.exports = (grunt) ->
       common:
         src: ['build/common/**.js']
         options : { specs : 'build/common/**/*.spec.js' }
-      # TODO translate tests to TS.
       socksToRtc:
         src: ['build/chrome-app/socks-to-rtc/socks-headers.js']
         options : { specs : 'build/socks-to-rtc/**/*.spec.js' }
-      # TODO translate tests to TS.
-      chromeProvider:
-        src: ['build/chrome-app/chrome-providers/chrome-udpsocket.js']
-        options : { specs : 'build/chrome-app/chrome-providers/**/*.spec.js' }
     }
 
     env: {
@@ -121,7 +112,6 @@ module.exports = (grunt) ->
     'typescript:socks2rtc'
     'typescript:rtc2net'
     'typescript:common'
-    'typescript:chromeProviders'
     'typescript:chromeApp'
     'copy:freedom'
     'copy:freedomProviders'
@@ -137,7 +127,6 @@ module.exports = (grunt) ->
     'build'
     'jasmine:common'
     'jasmine:socksToRtc'
-    'jasmine:chromeProvider'
   ]
 
   # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and
