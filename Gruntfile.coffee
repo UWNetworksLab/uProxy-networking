@@ -12,10 +12,14 @@ module.exports = (grunt) ->
         expand: true, cwd: 'node_modules/freedom-for-chrome/'
         src: ['freedom-for-chrome.js']
         dest: 'build/chrome-app/' } ] }
-      freedomProviders: { files: [ {
+      freedomProvidersChrome: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
         src: ['*']
         dest: 'build/chrome-app/freedom-providers' } ] }
+      freedomProvidersFirefox: { files: [ {
+        expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
+        src: ['*']
+        dest: 'build/firefox-app/data/freedom-providers' } ] }
 
       # User should include the compiled source directly from:
       #   - build/socks-to-rtc
@@ -131,7 +135,8 @@ module.exports = (grunt) ->
     'typescript:common'
     'typescript:chromeApp'
     'copy:freedom'
-    'copy:freedomProviders'
+    'copy:freedomProvidersChrome'
+    'copy:freedomProvidersFirefox'
     'copy:socks2rtc'
     'copy:rtc2net'
     'copy:echo'
