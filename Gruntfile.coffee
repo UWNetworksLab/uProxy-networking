@@ -32,6 +32,23 @@ module.exports = (grunt) ->
         expand: true, cwd: 'test/'
         src: ['*.js']
         dest: 'build/chrome-app/socks-to-rtc/' } ] }
+      firefoxApp: { files: [ {
+          expand: true, cwd: 'src/firefox-app'
+          src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
+          dest: 'build/firefox-app/'
+        }, {
+          expand: true, cwd: 'build/socks-to-rtc',
+          src: ['**/*.js', '**/*.json'],
+          dest: 'build/firefox-app/data/socks-to-rtc'
+        }, {
+          expand: true, cwd: 'build/rtc-to-net',
+          src: ['**/*.js', '**/*.json'],
+          dest: 'build/firefox-app/data/rtc-to-net'
+        }, {
+          expand: true, cwd: 'build/common',
+          src: ['**/*.js'],
+          dest: 'build/firefox-app/data/common'
+        } ] }
       chromeApp: { files: [ {
           expand: true, cwd: 'src/chrome-app'
           src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
@@ -119,6 +136,7 @@ module.exports = (grunt) ->
     'copy:rtc2net'
     'copy:echo'
     'copy:chromeApp'
+    'copy:firefoxApp'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
