@@ -31,11 +31,15 @@ module.exports = (grunt) ->
       rtc2net: { files: [ {
         expand: true, cwd: 'src/'
         src: ['rtc-to-net/**/*.json']
-        dest: 'build/chrome-app/' } ] }
-      echo: { files: [ {
+        dest: 'build/' } ] }
+      echoChrome: { files: [ {
         expand: true, cwd: 'test/'
         src: ['*.js']
         dest: 'build/chrome-app/socks-to-rtc/' } ] }
+      echoFirefox: { files: [ {
+        expand: true, cwd: 'test/'
+        src: ['*.js']
+        dest: 'build/firefox-app/data/socks-to-rtc/' } ] }
       firefoxApp: { files: [ {
           expand: true, cwd: 'src/firefox-app'
           src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
@@ -139,7 +143,8 @@ module.exports = (grunt) ->
     'copy:freedomProvidersFirefox'
     'copy:socks2rtc'
     'copy:rtc2net'
-    'copy:echo'
+    'copy:echoChrome'
+    'copy:echoFirefox'
     'copy:chromeApp'
     'copy:firefoxApp'
   ]
