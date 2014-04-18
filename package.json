@@ -19,12 +19,10 @@
     "grunt-env": "^0.4.1",
     "uproxy-build-tools": "~0.0.4",
     "freedom-for-chrome": "^0.1.4",
-    "freedom-typescript-api": "~0.1.5"
+    "freedom-typescript-api": "~0.1.5",
+    "freedom": "^0.4.4"
   },
   "scripts": {
     "test": "grunt test"
-  },
-  "dependencies": {
-    "freedom": "~0.4.3"
   }
 }
