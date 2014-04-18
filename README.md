@@ -1,7 +1,7 @@
 socks-rtc
 =========
 
-[![Build Status](https://travis-ci.org/uProxy/socks-rtc.png?branch=master)](https://travis-ci.org/uProxy/socks-rtc)
+[![Build Status](https://travis-ci.org/uProxy/socks-rtc.svg?branch=master)](https://travis-ci.org/uProxy/socks-rtc) [![devDependency Status](https://david-dm.org/uProxy/socks-rtc/dev-status.svg)](https://david-dm.org/uProxy/socks-rtc#info=devDependencies)
 
 Library which allows you to proxy SOCKS5 through WebRTC.
 
