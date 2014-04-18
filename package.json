@@ -14,7 +14,7 @@
     "grunt-contrib-coffee": "^0.10.1",
     "grunt-contrib-copy": "^0.5.0",
     "grunt-typescript": "^0.3.0",
-    "grunt-jasmine-node": "git://github.com/vojtajina/grunt-jasmine-node.git#fix-grunt-exit-code",
+    "grunt-jasmine-node": "^0.2.1",
     "webdriverjs": "^1.6.1",
     "grunt-env": "^0.4.1",
     "uproxy-build-tools": "~0.0.4",
