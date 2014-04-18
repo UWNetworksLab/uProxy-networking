@@ -8,10 +8,14 @@ module.exports = (grunt) ->
     pkg: grunt.file.readJSON('package.json')
 
     copy: {
-      freedom: { files: [ {
+      freedomChrome: { files: [ {
         expand: true, cwd: 'node_modules/freedom-for-chrome/'
         src: ['freedom-for-chrome.js']
         dest: 'build/chrome-app/' } ] }
+      freedomFirefox: { files: [ {
+        expand: true, cwd: 'node_modules/freedom-for-firefox/'
+        src: ['freedom-for-firefox.jsm']
+        dest: 'build/firefox-app/data' } ] }
       freedomProvidersChrome: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
         src: ['*']
@@ -138,7 +142,8 @@ module.exports = (grunt) ->
     'typescript:rtc2net'
     'typescript:common'
     'typescript:chromeApp'
-    'copy:freedom'
+    'copy:freedomChrome'
+    'copy:freedomFirefox'
     'copy:freedomProvidersChrome'
     'copy:freedomProvidersFirefox'
     'copy:socks2rtc'

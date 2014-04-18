@@ -19,6 +19,7 @@
     "grunt-env": "~0.4.1",
     "uproxy-build-tools": "~0.0.4",
     "freedom-for-chrome": "^0.1.4",
+    "freedom-for-firefox": "~0.0.1",
     "freedom-typescript-api": "~0.1.5"
   },
   "scripts": {
