@@ -8,14 +8,22 @@ module.exports = (grunt) ->
     pkg: grunt.file.readJSON('package.json')
 
     copy: {
-      freedom: { files: [ {
+      freedomChrome: { files: [ {
         expand: true, cwd: 'node_modules/freedom-for-chrome/'
         src: ['freedom-for-chrome.js']
         dest: 'build/chrome-app/' } ] }
-      freedomProviders: { files: [ {
+      freedomFirefox: { files: [ {
+        expand: true, cwd: 'node_modules/freedom-for-firefox/'
+        src: ['freedom-for-firefox.jsm']
+        dest: 'build/firefox-app/data' } ] }
+      freedomProvidersChrome: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
         src: ['*']
         dest: 'build/chrome-app/freedom-providers' } ] }
+      freedomProvidersFirefox: { files: [ {
+        expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
+        src: ['*']
+        dest: 'build/firefox-app/data/freedom-providers' } ] }
 
       # User should include the compiled source directly from:
       #   - build/socks-to-rtc
@@ -27,11 +35,36 @@ module.exports = (grunt) ->
       rtc2net: { files: [ {
         expand: true, cwd: 'src/'
         src: ['rtc-to-net/**/*.json']
-        dest: 'build/chrome-app/' } ] }
-      echo: { files: [ {
+        dest: 'build/' } ] }
+      echoChrome: { files: [ {
         expand: true, cwd: 'test/'
         src: ['*.js']
         dest: 'build/chrome-app/socks-to-rtc/' } ] }
+      echoFirefox: { files: [ {
+        expand: true, cwd: 'test/'
+        src: ['*.js']
+        dest: 'build/firefox-app/data/socks-to-rtc/' } ] }
+      firefoxApp: { files: [ {
+          expand: true, cwd: 'src/firefox-app'
+          src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
+          dest: 'build/firefox-app/'
+        }, {
+          expand: true, cwd: 'src/chrome-app'
+          src: ['socks_rtc.json', 'socks_to_rtc_to_net.js']
+          dest: 'build/firefox-app/data' 
+        }, {
+          expand: true, cwd: 'build/socks-to-rtc',
+          src: ['**/*.js', '**/*.json'],
+          dest: 'build/firefox-app/data/socks-to-rtc'
+        }, {
+          expand: true, cwd: 'build/rtc-to-net',
+          src: ['**/*.js', '**/*.json'],
+          dest: 'build/firefox-app/data/rtc-to-net'
+        }, {
+          expand: true, cwd: 'build/common',
+          src: ['**/*.js'],
+          dest: 'build/firefox-app/data/common'
+        } ] }
       chromeApp: { files: [ {
           expand: true, cwd: 'src/chrome-app'
           src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
@@ -115,12 +148,16 @@ module.exports = (grunt) ->
     'typescript:rtc2net'
     'typescript:common'
     'typescript:chromeApp'
-    'copy:freedom'
-    'copy:freedomProviders'
+    'copy:freedomChrome'
+    'copy:freedomFirefox'
+    'copy:freedomProvidersChrome'
+    'copy:freedomProvidersFirefox'
     'copy:socks2rtc'
     'copy:rtc2net'
-    'copy:echo'
+    'copy:echoChrome'
+    'copy:echoFirefox'
     'copy:chromeApp'
+    'copy:firefoxApp'
   ]
 
   # This is the target run by Travis. Targets in here should run locally

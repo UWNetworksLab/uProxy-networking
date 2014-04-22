@@ -50,6 +50,7 @@ This establish a signalling channel between _rtc-to-net_ and _socks-to-rtc_ so t
 
  - `chromedriver` must be in your path. You can download it from https://sites.google.com/a/chromium.org/chromedriver/downloads
  - `chrome` must be in a standard path location (see https://code.google.com/p/selenium/wiki/ChromeDriver#Requirements)
+ - `addon-sdk` is required for firefox. You can find it at https://developer.mozilla.org/en-US/Add-ons/SDK/Tutorials/Installation
 
 #### Automated
 
@@ -64,8 +65,9 @@ running locally (on localhost:4444). To do this:
 #### Manual
 
 - Run `grunt build` to build the chrome app in the `build/chrome-app/` directory.
-- Go to `chrome://extensions`, ensure developer mode is enabled, and load unpacked extension the `build/chrome-app` directory.
+- For Chrome, go to `chrome://extensions`, ensure developer mode is enabled, and load unpacked extension the `build/chrome-app` directory.
 - Open the background page, which will start a socks-rtc proxy listening on `localhost:9999`.
+- For Firefox, activate cfx, and run the command `cfx run` from the `build/firefox-app` directory.
 
 At the moment, the way to test that this works is to just curl a webpage through the socks-rtc proxy. For example:
 

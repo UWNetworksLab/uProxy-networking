@@ -1,0 +1,9 @@
+{
+  "name": "firefox-app",
+  "title": "firefox-app",
+  "id": "jid1-jBoSL7j4ljmKZw",
+  "description": "Experiments in proxying SOCKS5 over WebRTC",
+  "author": "",
+  "license": "",
+  "version": "0.1"
+}
