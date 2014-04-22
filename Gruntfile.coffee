@@ -121,9 +121,11 @@ module.exports = (grunt) ->
       }
     }
 
-    # TODO(yangoon): Figure out how to use Node modules with
-    #                grunt-jasmine-contrib and move these to the jasmine target.
     jasmine_node:
+      # Match only specs whose filenames begin with endtoend.
+      options: {
+        match: 'endtoend.*'
+      }
       projectRoot: 'build/chrome-app'
 
     clean: ['build/**']

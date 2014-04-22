@@ -9,7 +9,7 @@ var webdriverjs = require('webdriverjs');
 describe('end-to-end smoke test', function() {
   // TODO: add ral type.
   var client :any = {};
-  jasmine.getEnv().defaultTimeoutInterval = 30000;
+  jasmine['DEFAULT_TIMEOUT_INTERVAL'] = 30000;
 
   // Setup the client variable to control chrome via webdriver.
   beforeEach(function() {
