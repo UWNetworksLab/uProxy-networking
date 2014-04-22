@@ -49,6 +49,10 @@ module.exports = (grunt) ->
           src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
           dest: 'build/firefox-app/'
         }, {
+          expand: true, cwd: 'src/chrome-app'
+          src: ['socks_rtc.json', 'socks_to_rtc_to_net.js']
+          dest: 'build/firefox-app/data' 
+        }, {
           expand: true, cwd: 'build/socks-to-rtc',
           src: ['**/*.js', '**/*.json'],
           dest: 'build/firefox-app/data/socks-to-rtc'
