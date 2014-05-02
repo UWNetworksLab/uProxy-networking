@@ -61,9 +61,9 @@ module.exports = (grunt) ->
           src: ['**/*.js', '**/*.json'],
           dest: 'build/firefox-app/data/rtc-to-net'
         }, {
-          expand: true, cwd: 'build/common',
+          expand: true, cwd: 'node_modules/uproxy-build-tools/build/util',
           src: ['**/*.js'],
-          dest: 'build/firefox-app/data/common'
+          dest: 'build/firefox-app/data/util'
         } ] }
       chromeApp: { files: [ {
           expand: true, cwd: 'src/chrome-app'
@@ -78,9 +78,9 @@ module.exports = (grunt) ->
           src: ['**/*.js', '**/*.json'],
           dest: 'build/chrome-app/rtc-to-net'
         }, {
-          expand: true, cwd: 'build/common',
+          expand: true, cwd: 'node_modules/uproxy-build-tools/build/util',
           src: ['**/*.js'],
-          dest: 'build/chrome-app/common'
+          dest: 'build/chrome-app/util'
         } ] }
     }
 
@@ -95,10 +95,6 @@ module.exports = (grunt) ->
         src: ['src/rtc-to-net/**/*.ts']
         dest: 'build/'
         options: { basePath: 'src', ignoreError: false }
-      common:
-        src: ['src/common/**/*.ts']
-        dest: 'build/'
-        options: { basePath: 'src', ignoreError: false }
       chromeApp:
         src: ['src/chrome-app/**/*.ts']
         dest: 'build/'
@@ -106,9 +102,6 @@ module.exports = (grunt) ->
     }
 
     jasmine: {
-      common:
-        src: ['build/common/**.js']
-        options : { specs : 'build/common/**/*.spec.js' }
       socksToRtc:
         src: ['build/chrome-app/socks-to-rtc/socks-headers.js']
         options : { specs : 'build/socks-to-rtc/**/*.spec.js' }
@@ -146,7 +139,6 @@ module.exports = (grunt) ->
   taskManager.add 'build', [
     'typescript:socks2rtc'
     'typescript:rtc2net'
-    'typescript:common'
     'typescript:chromeApp'
     'copy:freedomChrome'
     'copy:freedomFirefox'
@@ -164,7 +156,6 @@ module.exports = (grunt) ->
   # and on Travis/Sauce Labs.
   taskManager.add 'test', [
     'build'
-    'jasmine:common'
     'jasmine:socksToRtc'
   ]
 
