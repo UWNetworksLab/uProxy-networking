@@ -17,7 +17,7 @@
     "grunt-jasmine-node": "^0.2.1",
     "webdriverjs": "^1.6.1",
     "grunt-env": "^0.4.1",
-    "uproxy-build-tools": "~0.0.4",
+    "uproxy-build-tools": "~0.0.5",
     "freedom-for-chrome": "^0.1.4",
     "freedom-for-firefox": "~0.0.1",
     "freedom-typescript-api": "~0.1.5",

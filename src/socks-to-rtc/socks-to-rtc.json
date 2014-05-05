@@ -9,7 +9,7 @@
       "socks-to-rtc.js",
       "udprelay.js",
       "tcp_echo_server.js",
-      "../common/arraybuffers.js"
+      "../util/arraybuffers.js"
     ]
   },
   "dependencies": {
