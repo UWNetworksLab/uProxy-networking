@@ -17,8 +17,8 @@ There are two modules: _socks-to-rtc_ and _rtc-to-net_.
 
 ## Requirements
 
- - node + npm
- - grunt `npm install -g grunt-cli`
+ - [node](http://nodejs.org/) (and [npm](https://www.npmjs.org/), which is installed when you install node)
+ - [Grunt](http://gruntjs.com/), which you can install with: `npm install -g grunt-cli`
 
 ## Build
 
