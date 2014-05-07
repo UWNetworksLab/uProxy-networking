@@ -14,7 +14,7 @@ module.exports = (grunt) ->
         dest: 'build/chrome-app/' } ] }
       freedomFirefox: { files: [ {
         expand: true, cwd: 'node_modules/freedom-for-firefox/'
-        src: ['freedom-for-firefox.jsm']
+        src: ['freedom-for-firefox.jsm', 'freedom.map']
         dest: 'build/firefox-app/data' } ] }
       freedomProvidersChrome: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
