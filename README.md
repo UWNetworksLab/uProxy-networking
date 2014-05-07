@@ -12,8 +12,8 @@ At the moment this only supports chrome; Firefox is in progress and you can test
 
 There are two modules: _socks-to-rtc_ and _rtc-to-net_.
 
- -_socks-to-rtc_ provides a local proxy (which the user could point their browser proxy settings to) which passes requests over a WebRTC peerconnection.
- -_rtc-to-net_ acts as the 'remote' proxy which receives the requests from the _socks-to-rtc_ peer over WebRTC, passes the request to the destination webserver, and serves the response back to _socks-to-rtc_.
+ - _socks-to-rtc_ provides a local proxy (which the user could point their browser proxy settings to) which passes requests over a WebRTC peerconnection.
+ - _rtc-to-net_ acts as the 'remote' proxy which receives the requests from the _socks-to-rtc_ peer over WebRTC, passes the request to the destination webserver, and serves the response back to _socks-to-rtc_.
 
 ## Requirements
 
