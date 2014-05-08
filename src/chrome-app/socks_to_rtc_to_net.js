@@ -8,8 +8,10 @@ var SERVER_PEER_ID = 'ATotallyFakePeerID';  // Can be any string.
 
 var socksToRtc = freedom.SocksToRtc();
 var rtcToNet = freedom.RtcToNet();
+var tcpEchoServer = freedom.TcpEchoServer();
 
 rtcToNet.emit('start');
+tcpEchoServer.emit('start');
 
 // Once the socksToRtc peer successfully starts, it fires 'sendSignalToPeer'.
 function proxyClientThroughServer() {
@@ -18,7 +20,6 @@ function proxyClientThroughServer() {
     'port':   DEFAULT_PORT,
     'peerId': SERVER_PEER_ID
   });
-  socksToRtc.emit('test', {});
 }
 
 // Attach freedom handlers to peers.

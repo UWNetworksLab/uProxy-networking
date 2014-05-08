@@ -279,8 +279,6 @@ module SocksToRTC {
 
 }  // module SocksToRTC
 
-declare var TcpEchoServer:any;
-
 function initClient() {
 
   // Create local peer and attach freedom message handlers, then emit |ready|.
@@ -288,9 +286,6 @@ function initClient() {
   freedom.on('handleSignalFromPeer', peer.handlePeerSignal);
   freedom.on('start', peer.start);
   freedom.on('stop', peer.reset);
-  freedom.on('test', function() {
-    new TcpEchoServer('127.0.0.1', 9998);
-  });
   freedom.emit('ready', {});
 }
 

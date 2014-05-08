@@ -16,6 +16,10 @@ module.exports = (grunt) ->
         expand: true, cwd: 'node_modules/freedom-for-firefox/'
         src: ['freedom-for-firefox.jsm', 'freedom.map']
         dest: 'build/firefox-app/data' } ] }
+      freedomProvidersBuild: { files: [ {
+        expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
+        src: ['*']
+        dest: 'build/freedom-providers' } ] }
       freedomProvidersChrome: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
         src: ['*']
@@ -24,6 +28,11 @@ module.exports = (grunt) ->
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
         src: ['*']
         dest: 'build/firefox-app/data/freedom-providers' } ] }
+      buildUtil: { files: [ {
+          expand: true, cwd: 'node_modules/uproxy-build-tools/build/util',
+          src: ['**/*.js'],
+          dest: 'build/util'
+        } ] }
 
       # User should include the compiled source directly from:
       #   - build/socks-to-rtc
@@ -38,12 +47,12 @@ module.exports = (grunt) ->
         dest: 'build/' } ] }
       echoChrome: { files: [ {
         expand: true, cwd: 'test/'
-        src: ['*.js']
-        dest: 'build/chrome-app/socks-to-rtc/' } ] }
+        src: ['**']
+        dest: 'build/chrome-app/test/' } ] }
       echoFirefox: { files: [ {
         expand: true, cwd: 'test/'
-        src: ['*.js']
-        dest: 'build/firefox-app/data/socks-to-rtc/' } ] }
+        src: ['**']
+        dest: 'build/firefox-app/data/test/' } ] }
       firefoxApp: { files: [ {
           expand: true, cwd: 'src/firefox-app'
           src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
@@ -137,19 +146,8 @@ module.exports = (grunt) ->
   taskManager = new TaskManager.Manager();
 
   taskManager.add 'build', [
-    'typescript:socks2rtc'
-    'typescript:rtc2net'
-    'typescript:chromeApp'
-    'copy:freedomChrome'
-    'copy:freedomFirefox'
-    'copy:freedomProvidersChrome'
-    'copy:freedomProvidersFirefox'
-    'copy:socks2rtc'
-    'copy:rtc2net'
-    'copy:echoChrome'
-    'copy:echoFirefox'
-    'copy:chromeApp'
-    'copy:firefoxApp'
+    'typescript'
+    'copy'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
