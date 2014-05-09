@@ -145,6 +145,8 @@ module.exports = (grunt) ->
   # Define the tasks
   taskManager = new TaskManager.Manager();
 
+  # TODO: create separate build commands for just the socks-to-rtc and rtc-to-net
+  # libaries, chrome app, and firefox app.
   taskManager.add 'build', [
     'typescript'
     'copy'
