@@ -8,7 +8,6 @@
       "socks-headers.js",
       "socks-to-rtc.js",
       "udprelay.js",
-      "tcp_echo_server.js",
       "../util/arraybuffers.js"
     ]
   },

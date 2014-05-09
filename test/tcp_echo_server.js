@@ -3,7 +3,7 @@
 */
 
 TcpEchoServer = function(address, port) {
-  console.log('TcpEchoServer(' + address + ', ' + port + ')');
+  console.log('Starting TcpEchoServer(' + address + ', ' + port + ')');
   this.server = new TCP.Server(address, port);
   this.address = address;
   this.port = port;
@@ -19,5 +19,8 @@ TcpEchoServer = function(address, port) {
     });
   }, {minByteLength: 1});
 }
-
 console.log('TcpEchoServer installed');
+
+freedom.on('start', function() {
+  new TcpEchoServer('127.0.0.1', 9998);
+});
