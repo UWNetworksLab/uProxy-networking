@@ -4,7 +4,7 @@
 
 A library to proxy SOCKS5 via WebRTC.
 
-This is built on top of [freedom](https://github.com/UWNetworksLab/freedom).
+This is built on top of [freedom](https://github.com/freedomjs/freedom).
 
 At the moment this only supports chrome; Firefox is in progress and you can test/run the echo-server with it right now.
 

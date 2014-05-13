@@ -91,6 +91,39 @@ module.exports = (grunt) ->
           src: ['**/*.js'],
           dest: 'build/chrome-app/util'
         } ] }
+      cordovaApp: { files: [ {
+          expand: true, cwd: 'src/cordova-app',
+          src: ['**/*'],
+          dest: 'build/cordova-app/'
+        }, {
+          expand: true, cwd: 'node_modules/freedom-for-chrome/'
+          src: ['freedom-for-chrome.js']
+          dest: 'build/cordova-app/www/' 
+        }, {
+          expand: true, cwd: 'src/chrome-app'
+          src: ['socks_rtc.json', 'socks_to_rtc_to_net.js']
+          dest: 'build/cordova-app/www/' 
+        }, {
+          expand: true, cwd: 'build/socks-to-rtc',
+          src: ['**/*.js', '**/*.json'],
+          dest: 'build/cordova-app/www/socks-to-rtc'
+        }, {
+          expand: true, cwd: 'build/rtc-to-net',
+          src: ['**/*.js', '**/*.json'],
+          dest: 'build/cordova-app/www/rtc-to-net'
+        }, {
+          expand: true, cwd: 'node_modules/uproxy-build-tools/build/util',
+          src: ['**/*.js'],
+          dest: 'build/cordova-app/www/util'
+        }, {
+          expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
+          src: ['*']
+          dest: 'build/cordova-app/www/freedom-providers'
+        }, {
+          expand: true, cwd: 'test/'
+          src: ['**']
+          dest: 'build/cordova-app/www/test/'
+      } ] }
     }
 
     #-------------------------------------------------------------------------
@@ -131,6 +164,35 @@ module.exports = (grunt) ->
       projectRoot: 'build/chrome-app'
 
     clean: ['build/**']
+    
+    cordovaPath: '../../node_modules/cordova/bin/cordova'
+    cordovaCwd: 'build/cordova-app'
+    exec: {
+      cordovaAddPlatforms: {
+        command: '<%= cordovaPath %> platform add android'
+        cwd: '<%= cordovaCwd %>'
+        exitCode: [0,1]
+      }
+      cordovaAddPlugins: {
+        command: '<%= cordovaPath %> plugin add org.chromium.common org.chromium.socket org.chromium.storage org.chromium.polyfill.xhr_features org.apache.cordova.console'
+        cwd: '<%= cordovaCwd %>'
+      }
+      cordovaBuild: {
+        command: '<%= cordovaPath %> build android'
+        cwd: '<%= cordovaCwd %>'
+      }
+      cordovaRun: {
+        command: '<%= cordovaPath %> emulate android'
+        cwd: '<%= cordovaCwd %>'
+      }
+      cordovaLog: {
+        command: 'adb logcat *:I | grep CONSOLE'
+      }
+      cordovaPortForward: {
+        command: 'adb forward tcp:10000 tcp:9998'
+        exitCode: [0,1]
+      }
+    }
   }  # grunt.initConfig
 
   #-------------------------------------------------------------------------
@@ -140,6 +202,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-typescript'
   grunt.loadNpmTasks 'grunt-jasmine-node'
   grunt.loadNpmTasks 'grunt-env'
+  grunt.loadNpmTasks 'grunt-exec'
 
   #-------------------------------------------------------------------------
   # Define the tasks
@@ -170,6 +233,14 @@ module.exports = (grunt) ->
 
   taskManager.add 'default', [
     'build'
+  ]
+
+  taskManager.add 'ray', [
+    'build'
+    'exec:cordovaAddPlatforms'
+    'exec:cordovaAddPlugins'
+    'exec:cordovaRun'
+    'exec:cordovaPortForward'
   ]
 
   #-------------------------------------------------------------------------
