@@ -1,6 +1,7 @@
 /*
   For testing just the TCP server portion (see src/client/tcp.ts)
 */
+var window = {};
 
 TcpEchoServer = function(address, port) {
   console.log('Starting TcpEchoServer(' + address + ', ' + port + ')');
@@ -15,6 +16,7 @@ TcpEchoServer = function(address, port) {
   this.server.on('connection', function(tcp_conn) {
     console.log('Connected on socket ' + tcp_conn.socketId);
     tcp_conn.on('recv', function(buffer) {
+      console.log('Received buffer, echoing');
       tcp_conn.sendRaw(buffer, null);
     });
   }, {minByteLength: 1});
