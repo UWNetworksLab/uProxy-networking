@@ -34,6 +34,11 @@ var app = {
     // function, we must explicity call 'app.receivedEvent(...);'
     onDeviceReady: function() {
         app.receivedEvent('deviceready');
+        var freedomScript = document.createElement('script');
+        freedomScript.src = 'freedom-for-chrome.js';
+        freedomScript.setAttribute('data-manifest', 'socks_rtc.json'); 
+        freedomScript.appendChild(document.createTextNode('{ "debug": true }'));
+        document.getElementsByTagName('body')[0].appendChild(freedomScript);
     },
     // Update DOM on a Received Event
     receivedEvent: function(id) {

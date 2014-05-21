@@ -235,10 +235,11 @@ module.exports = (grunt) ->
     'build'
   ]
 
-  taskManager.add 'ray', [
+  taskManager.add 'cordova', [
     'build'
     'exec:cordovaAddPlatforms'
     'exec:cordovaAddPlugins'
+    'exec:cordovaBuild'
     'exec:cordovaRun'
     'exec:cordovaPortForward'
   ]
