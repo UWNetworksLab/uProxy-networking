@@ -24,6 +24,5 @@ TcpEchoServer = function(address, port) {
 console.log('TcpEchoServer installed');
 
 freedom.on('start', function() {
-  console.log("!!! GOT START MESSAGE"); //DEBUG
   window.tcpEchoServer = new TcpEchoServer('127.0.0.1', 9998);
 });

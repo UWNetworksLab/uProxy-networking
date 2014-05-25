@@ -15,15 +15,14 @@
     "grunt-contrib-copy": "^0.5.0",
     "grunt-typescript": "^0.3.0",
     "grunt-jasmine-node": "^0.2.1",
+    "grunt-exec": "^0.4.5",
     "webdriverjs": "^1.6.1",
     "grunt-env": "^0.4.1",
     "uproxy-build-tools": "~0.0.5",
-    "freedom-for-chrome": "^0.1.4",
+    "freedom": "^0.4.4",
     "freedom-for-firefox": "^0.1.1",
     "freedom-typescript-api": "~0.1.5",
-    "freedom": "^0.4.4",
-    "grunt-exec": "^0.4.5",
-    "cordova": "^3.4.1-0.1.0"
+    "cca": "0.0.11"
   },
   "scripts": {
     "test": "grunt test"

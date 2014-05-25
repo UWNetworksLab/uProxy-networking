@@ -91,39 +91,6 @@ module.exports = (grunt) ->
           src: ['**/*.js'],
           dest: 'build/chrome-app/util'
         } ] }
-      cordovaApp: { files: [ {
-          expand: true, cwd: 'src/cordova-app',
-          src: ['**/*'],
-          dest: 'build/cordova-app/'
-        }, {
-          expand: true, cwd: 'node_modules/freedom-for-chrome/'
-          src: ['freedom-for-chrome.js']
-          dest: 'build/cordova-app/www/' 
-        }, {
-          expand: true, cwd: 'src/chrome-app'
-          src: ['socks_rtc.json', 'socks_to_rtc_to_net.js']
-          dest: 'build/cordova-app/www/' 
-        }, {
-          expand: true, cwd: 'build/socks-to-rtc',
-          src: ['**/*.js', '**/*.json'],
-          dest: 'build/cordova-app/www/socks-to-rtc'
-        }, {
-          expand: true, cwd: 'build/rtc-to-net',
-          src: ['**/*.js', '**/*.json'],
-          dest: 'build/cordova-app/www/rtc-to-net'
-        }, {
-          expand: true, cwd: 'node_modules/uproxy-build-tools/build/util',
-          src: ['**/*.js'],
-          dest: 'build/cordova-app/www/util'
-        }, {
-          expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
-          src: ['*']
-          dest: 'build/cordova-app/www/freedom-providers'
-        }, {
-          expand: true, cwd: 'test/'
-          src: ['**']
-          dest: 'build/cordova-app/www/test/'
-      } ] }
     }
 
     #-------------------------------------------------------------------------
@@ -165,40 +132,22 @@ module.exports = (grunt) ->
 
     clean: ['build/**']
     
-    cordovaPath: '../../node_modules/cordova/bin/cordova'
-    cordovaCwd: 'build/cordova-app'
+    ccaPath: 'node_modules/cca/src/cca.js'
     ccaCwd: 'build/cca-app'
     exec: {
-      cordovaAddPlatforms: {
-        command: '<%= cordovaPath %> platform add android'
-        cwd: '<%= cordovaCwd %>'
-        exitCode: [0,1]
-      }
-      cordovaAddPlugins: {
-        command: '<%= cordovaPath %> plugin add org.chromium.common org.chromium.socket org.chromium.storage org.chromium.polyfill.xhr_features org.apache.cordova.console'
-        cwd: '<%= cordovaCwd %>'
-      }
-      cordovaBuild: {
-        command: '<%= cordovaPath %> build android'
-        cwd: '<%= cordovaCwd %>'
-      }
-      cordovaRun: {
-        command: '<%= cordovaPath %> emulate android'
-        cwd: '<%= cordovaCwd %>'
-      }
-      cordovaLog: {
+      adbLog: {
         command: 'adb logcat *:I | grep CONSOLE'
       }
-      cordovaPortForward: {
+      adbPortForward: {
         command: 'adb forward tcp:10000 tcp:9998'
         exitCode: [0,1]
       }
       ccaCreate: {
-        command: 'cca create build/cca-app --link-to=build/chrome-app/manifest.json'
+        command: '<%= ccaPath %> create build/cca-app --link-to=build/chrome-app/manifest.json'
         exitCode: [0,1]
       }
       ccaEmulate: {
-        command: 'cca emulate android'
+        command: '../../<%= ccaPath %> emulate android'
         cwd: '<%= ccaCwd %>'
       }
     }
@@ -242,15 +191,6 @@ module.exports = (grunt) ->
 
   taskManager.add 'default', [
     'build'
-  ]
-
-  taskManager.add 'cordova', [
-    'build'
-    'exec:cordovaAddPlatforms'
-    'exec:cordovaAddPlugins'
-    'exec:cordovaBuild'
-    'exec:cordovaRun'
-    'exec:cordovaPortForward'
   ]
 
   taskManager.add 'cca', [
