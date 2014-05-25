@@ -35,7 +35,8 @@ var app = {
     onDeviceReady: function() {
         app.receivedEvent('deviceready');
         var freedomScript = document.createElement('script');
-        freedomScript.setAttribute('data-manifest', 'socks_rtc.json'); 
+        //freedomScript.setAttribute('data-manifest', 'socks_rtc.json'); 
+        freedomScript.setAttribute('data-manifest', 'test/tcp_echo_server.json');
         freedomScript.appendChild(document.createTextNode('{ "debug": true }'));
         freedomScript.src = 'freedom-for-chrome.js';
         document.getElementsByTagName('body')[0].appendChild(freedomScript);

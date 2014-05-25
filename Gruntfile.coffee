@@ -244,6 +244,9 @@ module.exports = (grunt) ->
     'exec:cordovaPortForward'
   ]
 
+  taskManager.add 'cca', [
+  ]
+
   #-------------------------------------------------------------------------
   # Register the tasks
   taskManager.list().forEach((taskName) =>
