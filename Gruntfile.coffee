@@ -167,6 +167,7 @@ module.exports = (grunt) ->
     
     cordovaPath: '../../node_modules/cordova/bin/cordova'
     cordovaCwd: 'build/cordova-app'
+    ccaCwd: 'build/cca-app'
     exec: {
       cordovaAddPlatforms: {
         command: '<%= cordovaPath %> platform add android'
@@ -191,6 +192,14 @@ module.exports = (grunt) ->
       cordovaPortForward: {
         command: 'adb forward tcp:10000 tcp:9998'
         exitCode: [0,1]
+      }
+      ccaCreate: {
+        command: 'cca create build/cca-app --link-to=build/chrome-app/manifest.json'
+        exitCode: [0,1]
+      }
+      ccaEmulate: {
+        command: 'cca emulate android'
+        cwd: '<%= ccaCwd %>'
       }
     }
   }  # grunt.initConfig
@@ -245,6 +254,9 @@ module.exports = (grunt) ->
   ]
 
   taskManager.add 'cca', [
+    'build'
+    'exec:ccaCreate'
+    'exec:ccaEmulate'
   ]
 
   #-------------------------------------------------------------------------
