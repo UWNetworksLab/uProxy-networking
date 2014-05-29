@@ -38,6 +38,8 @@ module SocksToRTC {
 
     /**
      * Start the Peer, based on the remote peer's info.
+     * This will emit a socksToRtcSuccess signal when the peer connection is esablished,
+     * or a socksToRtcFailure signal if there is an error openeing the peer connection.
      */
     public start = (remotePeer:PeerInfo) => {
       this.reset();  // Begin with fresh components.
@@ -55,7 +57,17 @@ module SocksToRTC {
       // Messages received via signalling channel must reach the remote peer
       // through something other than the peerconnection. (e.g. XMPP)
       fCore.createChannel().then((chan) => {
-        this.transport_.setup('SocksToRtc-' + peerId, chan.identifier);
+        this.transport_.setup('SocksToRtc-' + peerId, chan.identifier).then(
+          () => {
+            console.log('SocksToRtc transport_.setup succeeded');
+            freedom.emit('socksToRtcSuccess', remotePeer);
+          }
+        ).catch(
+          (e) => {
+            console.error('SocksToRtc transport_.setup failed', e);
+            freedom.emit('socksToRtcFailure', remotePeer);
+          }
+        );
         this.signallingChannel_ = chan.channel;
         this.signallingChannel_.on('message', function(msg) {
           freedom.emit('sendSignalToPeer', {
@@ -64,6 +76,11 @@ module SocksToRTC {
           });
         });
         dbg('signalling channel to SCTP peer connection ready.');
+        // Send hello command to initiate communication.
+        dbg('sending hello command.');
+        var command :Channel.Command = {type: Channel.COMMANDS.HELLO};
+        this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
+            JSON.stringify(command)));
       });  // fCore.createChannel
 
       // Create SOCKS server and start listening.
