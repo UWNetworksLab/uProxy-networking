@@ -61,12 +61,12 @@ module SocksToRTC {
       fCore.createChannel().then((chan) => {
         this.transport_.setup('SocksToRtc-' + peerId, chan.identifier).then(
           () => {
-            console.log('SocksToRtc transport_.setup succeeded');
+            dbg('SocksToRtc transport_.setup succeeded');
             freedom.emit('socksToRtcSuccess', remotePeer);
           }
         ).catch(
           (e) => {
-            console.error('SocksToRtc transport_.setup failed', e);
+            dbgErr('SocksToRtc transport_.setup failed ' + e);
             freedom.emit('socksToRtcFailure', remotePeer);
           }
         );
@@ -78,7 +78,10 @@ module SocksToRTC {
           });
         });
         dbg('signalling channel to SCTP peer connection ready.');
-        // Send hello command to initiate communication.
+        // Send hello command to initiate communication, which will cause
+        // the promise returned this.transport_.setup to fulfill.
+        // TODO: remove hello command once freedom.transport.setup
+        // is changed to automatically negotiate the connection.
         dbg('sending hello command.');
         var command :Channel.Command = {type: Channel.COMMANDS.HELLO};
         this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(

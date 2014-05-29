@@ -40,8 +40,8 @@ module RtcToNet {
       this.transport.on('onClose', this.closeNetClient_);
       this.transport.setup('RtcToNet-' + peerId, channel.identifier).then(
         // TODO: emit signals when peer-to-peer connections are setup or fail.
-        () => { console.log('RtcToNet transport.setup succeeded'); },
-        () => { console.error('RtcToNet transport.setup failed'); }
+        () => { dbg('RtcToNet transport.setup succeeded'); },
+        (e) => { dbgErr('RtcToNet transport.setup failed ' + e); }
       );
       this.signallingChannel = channel.channel;
       this.signallingChannel.on('message', (msg) => {
