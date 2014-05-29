@@ -40,6 +40,8 @@ module SocksToRTC {
      * Start the Peer, based on the remote peer's info.
      * This will emit a socksToRtcSuccess signal when the peer connection is esablished,
      * or a socksToRtcFailure signal if there is an error openeing the peer connection.
+     * TODO: update this to return a promise that fulfills/rejects, after freedom v0.5
+     * is ready.
      */
     public start = (remotePeer:PeerInfo) => {
       this.reset();  // Begin with fresh components.
