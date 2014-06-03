@@ -38,7 +38,11 @@ module RtcToNet {
       this.transport = freedom['transport']();
       this.transport.on('onData', this.passPeerDataToNet_);
       this.transport.on('onClose', this.closeNetClient_);
-      this.transport.setup('RtcToNet-' + peerId, channel.identifier);
+      this.transport.setup('RtcToNet-' + peerId, channel.identifier).then(
+        // TODO: emit signals when peer-to-peer connections are setup or fail.
+        () => { dbg('RtcToNet transport.setup succeeded'); },
+        (e) => { dbgErr('RtcToNet transport.setup failed ' + e); }
+      );
       this.signallingChannel = channel.channel;
       this.signallingChannel.on('message', (msg) => {
         freedom.emit('sendSignalToPeer', {
@@ -116,9 +120,13 @@ module RtcToNet {
                 this.transport.send('control',
                     ArrayBuffers.stringToArrayBuffer(JSON.stringify(out)));
               });
+        } else if (command.type === Channel.COMMANDS.HELLO) {
+          // Hello command is used to establish communication from socks-to-rtc,
+          // just ignore it.
+          dbg('received hello.');
         } else {
           // TODO: support SocksDisconnected command
-          dbgWarn('unsupported control command: ' + command.type);
+          dbgWarn('unsupported control command: ' + JSON.stringify(command));
         }
       } else {
         dbg(message.tag + ' <--- received ' + JSON.stringify(message));

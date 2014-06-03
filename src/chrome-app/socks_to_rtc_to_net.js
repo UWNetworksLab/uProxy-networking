@@ -33,6 +33,15 @@ socksToRtc.on('sendSignalToPeer', function(signal) {
   // If all goes correctly, the rtcToNet will fire a 'sendSignalToPeer'.
 });
 
+// Listen for socksToRtc success or failure signals, and just print them for now.
+socksToRtc.on('socksToRtcSuccess', function(peerId) {
+  console.log('Received socksToRtcSuccess for peerId ' + JSON.stringify(peerId));
+});
+
+socksToRtc.on('socksToRtcFailure', function(peerId) {
+  console.error('Received socksToRtcFailure for peerId ' + JSON.stringify(peerId));
+});
+
 // Server tells socksToRtc about itself.
 rtcToNet.on('sendSignalToPeer', function(signal) {
   console.log(' * RTC-NET signaling SOCKS-RTC.');  // + JSON.stringify(signal));
