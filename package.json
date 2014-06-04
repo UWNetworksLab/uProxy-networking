@@ -19,10 +19,11 @@
     "webdriverjs": "^1.6.1",
     "grunt-env": "^0.4.1",
     "uproxy-build-tools": "~0.0.5",
-    "freedom": "^0.4.4",
-    "freedom-for-firefox": "^0.1.1",
+    "freedom": "^0.4.12",
+    "freedom-for-chrome": "^0.1.7",
+    "freedom-for-firefox": "^0.1.2",
     "freedom-typescript-api": "~0.1.5",
-    "cca": "0.0.11"
+    "cca": "^0.1.0"
   },
   "scripts": {
     "test": "grunt test"
