@@ -123,7 +123,8 @@ module RtcToNet {
         } else if (command.type === Channel.COMMANDS.HELLO) {
           // Hello command is used to establish communication from socks-to-rtc,
           // just ignore it.
-          dbg('received hello.');
+          dbg('received hello from peerId ' + this.peerId);
+          freedom.emit('rtcToNetConnectionEstablished', this.peerId);
         } else {
           // TODO: support SocksDisconnected command
           dbgWarn('unsupported control command: ' + JSON.stringify(command));
@@ -190,7 +191,8 @@ module RtcToNet {
 
     // TODO: it's not clear what to do here
     private closeNetClient_ = () => {
-      dbg('transport closed');
+      dbg('transport closed from peerId ' + this.peerId);
+      freedom.emit('rtcToNetConnectionClosed', this.peerId);
     }
   }  // class RtcToNet.Peer
 
