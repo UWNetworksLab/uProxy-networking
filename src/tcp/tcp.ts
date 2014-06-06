@@ -5,7 +5,6 @@
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/tcp-socket.d.ts' />
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
 /// <reference path='../../node_modules/uproxy-build-tools/src/arraybuffers/arraybuffers.ts' />
-/// <reference path='../../node_modules/uproxy-build-tools/src/arraybuffers/accumulator.ts' />
 /// <reference path='../../node_modules/uproxy-build-tools/src/handler/handler-queue.ts' />
 
 module TCP {
