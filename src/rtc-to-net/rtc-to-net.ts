@@ -24,6 +24,10 @@ module RtcToNet {
     private netClients:{[tag:string]:Net.Client} = {};
     private udpClients:{[tag:string]:Net.UdpClient} = {};
 
+    // Private state kept for ping-pong (heartbeat and ack).
+    private pingPongCheckIntervalId_ :number = null;
+    private lastPingPongReceiveDate_ :Date = null;
+
     // Static initialiser which returns a promise to create a new Peer
     // instance complete with a signalling channel for NAT piercing.
     static CreateWithChannel = (peerId:string) : Promise<Peer> => {
@@ -37,10 +41,13 @@ module RtcToNet {
       // peerconnection's data channels biject ot Net.Clients.
       this.transport = freedom['transport']();
       this.transport.on('onData', this.passPeerDataToNet_);
-      this.transport.on('onClose', this.closeNetClient_);
+      this.transport.on('onClose', this.onCloseHandler_);
       this.transport.setup('RtcToNet-' + peerId, channel.identifier).then(
         // TODO: emit signals when peer-to-peer connections are setup or fail.
-        () => { dbg('RtcToNet transport.setup succeeded'); },
+        () => {
+          dbg('RtcToNet transport.setup succeeded');
+          this.startPingPong_();
+        },
         (e) => { dbgErr('RtcToNet transport.setup failed ' + e); }
       );
       this.signallingChannel = channel.channel;
@@ -68,14 +75,16 @@ module RtcToNet {
     /**
      * Close PeerConnection and all TCP sockets.
      */
-    public close = () => {
+    private onCloseHandler_ = () => {
+      dbg('transport closed with peerId ' + this.peerId);
+      this.stopPingPong_();
       for (var i in this.netClients) {
         this.netClients[i].close();
       }
       for (var i in this.udpClients) {
         this.udpClients[i].close();
       }
-      this.transport.close();
+      freedom.emit('rtcToNetConnectionClosed', this.peerId);
     }
 
     /**
@@ -125,6 +134,11 @@ module RtcToNet {
           // just ignore it.
           dbg('received hello from peerId ' + this.peerId);
           freedom.emit('rtcToNetConnectionEstablished', this.peerId);
+        }  else if (command.type === Channel.COMMANDS.PING) {
+          this.lastPingPongReceiveDate_ = new Date();
+          var command :Channel.Command = {type: Channel.COMMANDS.PONG};
+          this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
+              JSON.stringify(command)));
         } else {
           // TODO: support SocksDisconnected command
           dbgWarn('unsupported control command: ' + JSON.stringify(command));
@@ -189,10 +203,41 @@ module RtcToNet {
       }
     }
 
-    // TODO: it's not clear what to do here
-    private closeNetClient_ = () => {
-      dbg('transport closed from peerId ' + this.peerId);
-      freedom.emit('rtcToNetConnectionClosed', this.peerId);
+    public close = () => {
+      // Just call this.transport.close, then let onCloseHandler_ do
+      // the rest of the cleanup.
+      this.transport.close();
+    }
+
+    /**
+     * Sets up ping-pong (heartbearts and acks) with socks-to-rtc client.
+     * This is necessary to detect disconnects from the other peer, since
+     * WebRtc does not yet notify us if the peer disconnects (to be fixed
+     * Chrome version 37), at which point we should be able to remove this code.
+     */
+    private startPingPong_ = () => {
+      // PONGs from rtc-to-net will be returned to socks-to-rtc immediately
+      // after PINGs are received, so we only need to set an interval to
+      // check for PINGs received.
+      var PING_PONG_CHECK_INTERVAL_MS :number = 10000;
+      this.pingPongCheckIntervalId_ = setInterval(() => {
+        var nowDate = new Date();
+        if (!this.lastPingPongReceiveDate_ ||
+            (nowDate.getTime() - this.lastPingPongReceiveDate_.getTime()) >
+             PING_PONG_CHECK_INTERVAL_MS) {
+          dbgWarn('no ping-pong detected, closing peer');
+          this.transport.close();
+        }
+      }, PING_PONG_CHECK_INTERVAL_MS);
+    }
+
+    private stopPingPong_ = () => {
+      // Stop setInterval functions.
+      if (this.pingPongCheckIntervalId_ !== null) {
+        clearInterval(this.pingPongCheckIntervalId_);
+        this.pingPongCheckIntervalId_ = null;
+      }
+      this.lastPingPongReceiveDate_ = null;
     }
   }  // class RtcToNet.Peer
 
