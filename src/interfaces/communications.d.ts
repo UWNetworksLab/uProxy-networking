@@ -1,12 +1,30 @@
 // Types for communications between socks-to-rtc and rtc-to-net.
 
+
+// Useful abbreviation for this common interface.
+interface AddressAndPort {
+  address :string;
+  port :number;
+}
+
+// Signals to peers from RtcToNet include a peerId which is used to identify
+// which peer to send signaling messages to, or to indicate which peer sent
+// RtcToNet a signalling message. Signalling messages pass the SDP headers that
+// contain the public facing IP/PORT for establishing P2P connections.
+interface PeerSignal {
+  peerId :string;
+  data :string;
+}
+
+// Interfaces and enums for P2P DataChannels used for socks-rtc proxying.
 declare module Channel {
 
+  // Commands send over a special command data channel.
   export enum COMMANDS {
-    NET_CONNECT_REQUEST = 1,
-    NET_CONNECT_RESPONSE = 2,
-    NET_DISCONNECTED = 3,
-    SOCKS_DISCONNECTED = 4,
+    NET_CONNECT_REQUEST = 1,   // implies `data :NetConnectRequest`
+    NET_CONNECT_RESPONSE = 2,  // implies `data :NetConnectResponse`
+    NET_DISCONNECTED = 3,      // implies there is no data
+    SOCKS_DISCONNECTED = 4,    // implies there is no data
     HELLO = 5,
     PING = 6,
     PONG = 7
@@ -18,7 +36,7 @@ declare module Channel {
     type:COMMANDS;
     // Datachannel with which this message is associated.
     tag?:string;
-    // JSON-encoded message, e.g. NetConnectRequest.
+    // JSON-encoded message, e.g. NetConnectRequest, depends on `type`.
     data?:string;
   }
 
@@ -39,11 +57,12 @@ declare module Channel {
     port?:number;
   }
 
-  // Used for communication between the TCP-facing SOCKS server and the
-  // WebRTC-facing SocksToRTC module. At some point these might diverge
-  // but right now they both need to send data to the other side and
-  // be notified of terminations from the other side so this common
-  // interface works for us.
+  // Used for communication between the TCP-facing SOCKS server and the WebRTC-
+  // facing SocksToRtc module when creating a new data channel for  proxying.
+  //
+  // At some point these might diverge but right now they both need to send data
+  // to the other side and be notified of terminations from the other side so
+  // this common interface works for us.
   export interface EndpointInfo {
     // 'tcp' or 'udp'.
     protocol:string;
@@ -65,16 +84,3 @@ declare module Channel {
   }
 
 }  // module Channel
-
-
-// Target peer's information, to be sent over a signalling channel.
-interface PeerInfo {
-  host:string;
-  port:number;
-  peerId:string;
-}
-
-interface PeerSignal {
-  peerId:string;
-  data:string;  // Expected in JSON-format.
-}

@@ -47,11 +47,11 @@ module.exports = (grunt) ->
         dest: 'build/' } ] }
       echoChrome: { files: [ {
         expand: true, cwd: 'test/'
-        src: ['**']
+        src: ['**/*.json']
         dest: 'build/chrome-app/test/' } ] }
       echoFirefox: { files: [ {
-        expand: true, cwd: 'test/'
-        src: ['**']
+        expand: true, cwd: 'build/test/'
+        src: ['**/*.json']
         dest: 'build/firefox-app/data/test/' } ] }
       firefoxApp: { files: [ {
           expand: true, cwd: 'src/firefox-app'
@@ -59,8 +59,8 @@ module.exports = (grunt) ->
           dest: 'build/firefox-app/'
         }, {
           expand: true, cwd: 'src/chrome-app'
-          src: ['socks_rtc.json', 'socks_to_rtc_to_net.js']
-          dest: 'build/firefox-app/data' 
+          src: ['socks_rtc.json']
+          dest: 'build/firefox-app/data'
         }, {
           expand: true, cwd: 'build/socks-to-rtc',
           src: ['**/*.js', '**/*.json'],
@@ -96,6 +96,10 @@ module.exports = (grunt) ->
     #-------------------------------------------------------------------------
     # All typescript compiles to build/ initially.
     typescript: {
+      test:  # for the echo server
+        src: ['test/**/*.ts']
+        dest: 'build/'
+        options: { basePath: '', ignoreError: false }
       socks2rtc:
         src: ['src/socks-to-rtc/**/*.ts']
         dest: 'build/'

@@ -367,8 +367,8 @@ module RtcToNet {
 function initServer() {
   var server = new RtcToNet.Server();
   freedom.on('start', () => {
-    console.log('Starting server.');
     server.reset();  // Fresh start!
+    console.log('(re)started RtcToNet.');
   });
   freedom.on('handleSignalFromPeer', server.handleSignal);
   freedom.on('stop', server.reset);
