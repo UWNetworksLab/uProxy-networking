@@ -46,7 +46,7 @@ module RtcToNet {
         // TODO: emit signals when peer-to-peer connections are setup or fail.
         () => {
           dbg('RtcToNet transport.setup succeeded');
-          this.startPingPong_();;
+          this.startPingPong_();
         },
         (e) => { dbgErr('RtcToNet transport.setup failed ' + e); }
       );
@@ -76,7 +76,7 @@ module RtcToNet {
      * Close PeerConnection and all TCP sockets.
      */
     private onCloseHandler_ = () => {
-      dbg('transport closed from peerId ' + this.peerId);
+      dbg('transport closed with peerId ' + this.peerId);
       this.stopPingPong_();
       for (var i in this.netClients) {
         this.netClients[i].close();
@@ -209,6 +209,12 @@ module RtcToNet {
       this.transport.close();
     }
 
+    /**
+     * Sets up ping-pong (heartbearts and acks) with socks-to-rtc client.
+     * This is necessary to detect disconnects from the other peer, since
+     * WebRtc does not yet notify us if the peer disconnects (to be fixed
+     * Chrome version 37), at which point we should be able to remove this code.
+     */
     private startPingPong_ = () => {
       // PONGs from rtc-to-net will be returned to socks-to-rtc immediately
       // after PINGs are received, so we only need to set an interval to

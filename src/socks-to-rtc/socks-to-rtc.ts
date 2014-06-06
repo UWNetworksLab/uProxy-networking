@@ -243,8 +243,6 @@ module SocksToRTC {
           dbg(command.tag + ' <--- received NET-DISCONNECTED');
           this.closeConnectionToPeer(command.tag);
         } else if (command.type === Channel.COMMANDS.PONG) {
-          // Receiving a disconnect on the remote peer should close SOCKS.
-          dbg('received PONG');
           this.lastPingPongReceiveDate_ = new Date(); 
         } else {
           dbgWarn('unsupported control command: ' + command.type);
@@ -316,6 +314,12 @@ module SocksToRTC {
       return ret;
     }
 
+    /**
+     * Sets up ping-pong (heartbearts and acks) with socks-to-rtc client.
+     * This is necessary to detect disconnects from the other peer, since
+     * WebRtc does not yet notify us if the peer disconnects (to be fixed
+     * Chrome version 37), at which point we should be able to remove this code.
+     */
     private startPingPong_ = () => {
       this.pingPongSendIntervalId_ = setInterval(() => {
         var command :Channel.Command = {type: Channel.COMMANDS.PING};
