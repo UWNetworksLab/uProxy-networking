@@ -1,9 +1,9 @@
 /*
   For testing just the TCP server portion (see src/client/tcp.ts)
 */
-/// <reference path='../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../src/interfaces/communications.d.ts' />
-/// <reference path='../src/socks-to-rtc/tcp.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
+/// <reference path='../interfaces/communications.d.ts' />
+/// <reference path='../tcp/tcp.ts' />
 
 class TcpEchoServer {
   public server :TCP.Server;
@@ -19,9 +19,17 @@ class TcpEchoServer {
 
   private onConnection_ = (conn:TCP.Connection) : void => {
     console.log('New TCP Connection: ' + conn.toString());
-    conn.dataHandlerQueue.setHandler((buffer) => {
-      conn.sendRaw(buffer);
+    conn.receive().then((data :ArrayBuffer) => {
+      console.log('The first data array was ' + data.byteLength + " bytes.");
+      console.log('Now echoing it back...');
+      conn.sendRaw(data);
+
+      // From now on just send the data back.
+      conn.dataHandlerQueue.setHandler((moreData :ArrayBuffer) => {
+        conn.sendRaw(moreData);
+      });
     });
+
   }
 }
 

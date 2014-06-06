@@ -5,7 +5,8 @@
   For the RFC for socks, see:
     http://tools.ietf.org/html/rfc1928
 */
-/// <reference path='tcp.ts' />
+/// <reference path='../tcp/tcp.ts' />
+/// <reference path='../udp/udprelay.ts' />
 /// <reference path='../interfaces/arraybuffer.d.ts' />
 
 module Socks {
@@ -81,7 +82,7 @@ module Socks {
     private establishSession_ = (conn:TCP.Connection): void => {
       var socksRequest:SocksRequest = {};
       var udpRelay:Socks.UdpRelay;
-      conn.receive()
+      conn.recieve()
           .then(Server.validateHandshake)
           .catch((e) => {
             replyToTCP(conn, Socks.AUTH.NONE);
@@ -166,7 +167,7 @@ module Socks {
      * Examines the supplied session establishment bytes, throwing an
      * error if the requested SOCKS version or METHOD is unsupported.
      */
-    static validateHandshake(buffer:ArrayBuffer) {
+    static validateHandshake(buffer:ArrayBuffer) : void {
       var handshakeBytes = new Uint8Array(buffer);
 
       // Only SOCKS Version 5 is supported.
