@@ -7,7 +7,9 @@ declare module Channel {
     NET_CONNECT_RESPONSE = 2,
     NET_DISCONNECTED = 3,
     SOCKS_DISCONNECTED = 4,
-    HELLO = 5
+    HELLO = 5,
+    PING = 6,
+    PONG = 7
   }
 
   // "Top-level" message for the control channel.

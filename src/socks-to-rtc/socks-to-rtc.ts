@@ -32,6 +32,11 @@ module SocksToRTC {
     private channels_:{[tag:string]:Channel.EndpointInfo} = {};
     private peerId_:string = null;         // Of the remote rtc-to-net peer.
 
+    // Private state kept for ping-pong (heartbeat and ack).
+    private pingPongSendIntervalId_ :number = null;
+    private pingPongCheckIntervalId_ :number = null;
+    private lastPingPongReceiveDate_ :Date = null;
+
     // Connection callbacks, by datachannel tag name.
     // TODO: figure out a more elegant way to store these callbacks
     private static connectCallbacks:{[tag:string]:(response:Channel.NetConnectResponse) => void} = {};
@@ -44,7 +49,7 @@ module SocksToRTC {
      * is ready.
      */
     public start = (remotePeer:PeerInfo) => {
-      this.reset();  // Begin with fresh components.
+      this.reset_();  // Begin with fresh components.
       dbg('starting - target peer: ' + JSON.stringify(remotePeer));
       // Bind peerID to scope so promise can work.
       var peerId = this.peerId_ = remotePeer.peerId;
@@ -55,7 +60,7 @@ module SocksToRTC {
       // SOCKS sessions biject to peerconnection datachannels.
       this.transport_ = freedom['transport']();
       this.transport_.on('onData', this.onDataFromPeer_);
-      this.transport_.on('onClose', this.closeConnectionToPeer);
+      this.transport_.on('onClose', this.onCloseHandler_);
       // Messages received via signalling channel must reach the remote peer
       // through something other than the peerconnection. (e.g. XMPP)
       fCore.createChannel().then((chan) => {
@@ -63,6 +68,7 @@ module SocksToRTC {
           () => {
             dbg('SocksToRtc transport_.setup succeeded');
             freedom.emit('socksToRtcSuccess', remotePeer);
+            this.startPingPong_();
           }
         ).catch(
           (e) => {
@@ -94,11 +100,30 @@ module SocksToRTC {
       this.socksServer_.listen();
     }
 
+    public close = () => {
+      if (this.transport_) {
+        // Close transport, then onCloseHandler_ will take care of resetting
+        // state.
+        this.transport_.close();
+      } else {
+        // Transport already closed, just call reset.
+        this.reset_();
+      }
+    }
+
+    private onCloseHandler_ = () => {
+      dbg('onCloseHandler_ invoked for transport.')
+      // Set this.transport to null so reset_ doesn't attempt to close it again.
+      this.transport_ = null;
+      this.reset_();
+    }
+
     /**
      * Stop SOCKS server and close data channels and peer connections.
      */
-    public reset = () => {
+    private reset_ = () => {
       dbg('resetting peer...');
+      this.stopPingPong_();
       if (this.socksServer_) {
         this.socksServer_.disconnect();  // Disconnects internal TCP server.
         this.socksServer_ = null;
@@ -107,7 +132,7 @@ module SocksToRTC {
         this.closeConnectionToPeer(tag);
       }
       this.channels_ = {};
-      if(this.transport_) {
+      if (this.transport_) {
         this.transport_.close();
         this.transport_ = null;
       }
@@ -217,6 +242,10 @@ module SocksToRTC {
           // Receiving a disconnect on the remote peer should close SOCKS.
           dbg(command.tag + ' <--- received NET-DISCONNECTED');
           this.closeConnectionToPeer(command.tag);
+        } else if (command.type === Channel.COMMANDS.PONG) {
+          // Receiving a disconnect on the remote peer should close SOCKS.
+          dbg('received PONG');
+          this.lastPingPongReceiveDate_ = new Date(); 
         } else {
           dbgWarn('unsupported control command: ' + command.type);
         }
@@ -287,6 +316,38 @@ module SocksToRTC {
       return ret;
     }
 
+    private startPingPong_ = () => {
+      this.pingPongSendIntervalId_ = setInterval(() => {
+        var command :Channel.Command = {type: Channel.COMMANDS.PING};
+        this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
+            JSON.stringify(command)));
+      }, 1000);
+
+      var PING_PONG_CHECK_INTERVAL_MS :number = 10000;
+      this.pingPongCheckIntervalId_ = setInterval(() => {
+        var nowDate = new Date();
+        if (!this.lastPingPongReceiveDate_ ||
+            (nowDate.getTime() - this.lastPingPongReceiveDate_.getTime()) >
+             PING_PONG_CHECK_INTERVAL_MS) {
+          dbgWarn('no ping-pong detected, closing peer');
+          this.close();
+        }
+      }, PING_PONG_CHECK_INTERVAL_MS);
+    }
+
+    private stopPingPong_ = () => {
+      // Stop setInterval functions.
+      if (this.pingPongSendIntervalId_ !== null) {
+        clearInterval(this.pingPongSendIntervalId_);
+        this.pingPongSendIntervalId_ = null;
+      }
+      if (this.pingPongCheckIntervalId_ !== null) {
+        clearInterval(this.pingPongCheckIntervalId_);
+        this.pingPongCheckIntervalId_ = null;
+      }
+      this.lastPingPongReceiveDate_ = null;
+    }
+
   }  // SocksToRTC.Peer
 
   // TODO: reuse tag names from a pool.
@@ -307,7 +368,7 @@ function initClient() {
   var peer = new SocksToRTC.Peer();
   freedom.on('handleSignalFromPeer', peer.handlePeerSignal);
   freedom.on('start', peer.start);
-  freedom.on('stop', peer.reset);
+  freedom.on('stop', peer.close);
   freedom.emit('ready', {});
 }
 
