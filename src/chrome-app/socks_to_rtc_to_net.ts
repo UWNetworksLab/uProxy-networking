@@ -2,25 +2,21 @@
   Runs the socksToRtc and rtcToNet peers (in separate webworkers) and tests that
   they can signal and set up a proxy connection.
 */
+/// <reference path='socks.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
+/// <reference path='../../node_modules/freedom-typescript-api/interfaces/transport.d.ts' />
+/// <reference path='../../node_modules/uproxy-build-tools/src/util/arraybuffers.d.ts' />
+/// <reference path='../interfaces/communications.d.ts' />
+
+
+
 var LOCALHOST = '127.0.0.1';
-var DEFAULT_PORT = 9999;
-var SERVER_PEER_ID = 'ATotallyFakePeerID';  // Can be any string.
+var DEFAULT_ECHO_PORT = 9998;
+var DEFAULT_SOCKS_PORT = 9999;
 
 var socksToRtc = freedom.SocksToRtc();
 var rtcToNet = freedom.RtcToNet();
 var tcpEchoServer = freedom.TcpEchoServer();
-
-rtcToNet.emit('start');
-tcpEchoServer.emit('start');
-
-// Once the socksToRtc peer successfully starts, it fires 'sendSignalToPeer'.
-function proxyClientThroughServer() {
-  socksToRtc.emit('start', {
-    'host':   LOCALHOST,
-    'port':   DEFAULT_PORT,
-    'peerId': SERVER_PEER_ID
-  });
-}
 
 // Attach freedom handlers to peers.
 socksToRtc.on('sendSignalToPeer', function(signal) {
@@ -33,12 +29,14 @@ socksToRtc.on('sendSignalToPeer', function(signal) {
 });
 
 // Listen for socksToRtc success or failure signals, and just print them for now.
-socksToRtc.on('socksToRtcSuccess', function(peerId) {
-  console.log('Received socksToRtcSuccess for peerId ' + JSON.stringify(peerId));
+socksToRtc.on('socksToRtcSuccess', function(addressAndPort) {
+  console.log('Received socksToRtcSuccess for: '
+      + JSON.stringify(addressAndPort));
 });
 
-socksToRtc.on('socksToRtcFailure', function(peerId) {
-  console.error('Received socksToRtcFailure for peerId ' + JSON.stringify(peerId));
+socksToRtc.on('socksToRtcFailure', function(addressAndPort) {
+  console.error('Received socksToRtcFailure for: '
+      + JSON.stringify(addressAndPort));
 });
 
 // Server tells socksToRtc about itself.
@@ -47,4 +45,11 @@ rtcToNet.on('sendSignalToPeer', function(signal) {
   socksToRtc.emit('handleSignalFromPeer', signal);
 });
 
-proxyClientThroughServer();
+// Actually startup the servers.
+rtcToNet.emit('start');
+tcpEchoServer.emit('start', {address: LOCALHOST, port: DEFAULT_ECHO_PORT});
+// Once the socksToRtc peer successfully starts, it fires 'sendSignalToPeer'.
+socksToRtc.emit('start', {
+  'address':   LOCALHOST,
+  'port':   DEFAULT_PORT,
+});

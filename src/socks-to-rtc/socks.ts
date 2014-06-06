@@ -34,9 +34,13 @@ module Socks {
     constructor(
         address:string,
         port:number,
-        private createChannel_:(params:Channel.EndpointInfo) => Promise<Channel.EndpointInfo>) {
-      this.tcpServer = new TCP.Server(address, port);
-      this.tcpServer.on('connection', this.establishSession_);
+        private createChannel_:(params:Channel.EndpointInfo)
+                               => Promise<Channel.EndpointInfo>) {
+      this.tcpServer = new TCP.Server(address, port, this.establishSession_);
+    }
+
+    getAddressAndPort() : AddressAndPort {
+      return { address: this.tcpServer.address, port: this.tcpServer.port };
     }
 
     /**
@@ -44,7 +48,8 @@ module Socks {
      */
     listen() {
       return this.tcpServer.listen().then(() => {
-        dbg('LISTENING ' + this.tcpServer.addr + ':' + this.tcpServer.port);
+        dbg('SOCKS5 LISTENING ' + this.tcpServer.address + ':'
+          + this.tcpServer.port);
       });
     }
 
