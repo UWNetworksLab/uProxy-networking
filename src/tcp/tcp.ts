@@ -10,16 +10,13 @@
 module TCP {
   import TcpSocket = freedom.TcpSocket;
 
+  // A limit on the max number of TCP connections before we start rejecting
+  // new ones.
   var DEFAULT_MAX_CONNECTIONS = 1048576;
 
-  /**
-   * TCP.ServerOptions
-   */
-  export interface ServerOptions {
-    maxConnections?:number;
-  }
-
-  // TCP.Server: a TCP Server.
+  // TCP.Server: a TCP Server. This listens for connections when listen is
+  // called, and handles the new connection as specified by the onConnection
+  // argument to the constructor.
   export class Server {
     private serverSocket_ :TcpSocket;
     private conns:{[socketId:number] : TCP.Connection} = {};
