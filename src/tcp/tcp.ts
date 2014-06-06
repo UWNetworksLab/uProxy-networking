@@ -4,7 +4,7 @@
 
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/tcp-socket.d.ts' />
 /// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
-/// <reference path='../../node_modules/uproxy-build-tools/src/arraybuffers/arraybuffers.ts' />
+// /// <reference path='../../node_modules/uproxy-build-tools/src/arraybuffers/arraybuffers.ts' />
 /// <reference path='../../node_modules/uproxy-build-tools/src/handler/handler-queue.ts' />
 
 module TCP {
@@ -112,7 +112,7 @@ module TCP {
     public onceDisconnected :Promise<void>;
     // Queue of data to be handled, and the capacity to set a handler and
     // handle the data.
-    public dataHandlerQueue :HandlerQueue<ArrayBuffer>;
+    public dataHandlerQueue :Handler.Queue<ArrayBuffer>;
 
     // isClosed() === isClosed_ === true iff onceDisconnected has been rejected
     // or fulfilled. We use isClosed to ensure that we only fulfill/reject the
@@ -145,6 +145,11 @@ module TCP {
         this.dataHandlerQueue.handle(readInfo.data);
       });
       this.connectionSocket_.on('onDisconnect', this.onDisconnectHandler_);
+    }
+
+    // reveieve returns a promise to get the next chunk of data.
+    public receive = () : Promise<ArrayBuffer> => {
+      return this.dataHandlerQueue.makePromise();
     }
 
     // This happens when the Tcp connection is closed by the other end or

@@ -28,10 +28,10 @@ module.exports = (grunt) ->
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
         src: ['*']
         dest: 'build/firefox-app/data/freedom-providers' } ] }
-      buildUtil: { files: [ {
-          expand: true, cwd: 'node_modules/uproxy-build-tools/build/util',
+      buildTools: { files: [ {
+          expand: true, cwd: 'node_modules/uproxy-build-tools/build/',
           src: ['**/*.js'],
-          dest: 'build/util'
+          dest: 'build/build-tools'
         } ] }
 
       # User should include the compiled source directly from:
@@ -45,14 +45,18 @@ module.exports = (grunt) ->
         expand: true, cwd: 'src/'
         src: ['rtc-to-net/**/*.json']
         dest: 'build/' } ] }
+      echoServer: { files: [ {
+        expand: true, cwd: 'src/echo-server/'
+        src: ['**/*.json']
+        dest: 'build/echo-server/' } ] }
       echoChrome: { files: [ {
-        expand: true, cwd: 'test/'
-        src: ['**/*.json']
-        dest: 'build/chrome-app/test/' } ] }
+        expand: true, cwd: 'build/'
+        src: ['echo-server']
+        dest: 'build/chrome-app/' } ] }
       echoFirefox: { files: [ {
-        expand: true, cwd: 'build/test/'
-        src: ['**/*.json']
-        dest: 'build/firefox-app/data/test/' } ] }
+        expand: true, cwd: 'build/'
+        src: ['echo-server']
+        dest: 'build/firefox-app/data/' } ] }
       firefoxApp: { files: [ {
           expand: true, cwd: 'src/firefox-app'
           src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
@@ -96,8 +100,8 @@ module.exports = (grunt) ->
     #-------------------------------------------------------------------------
     # All typescript compiles to build/ initially.
     typescript: {
-      test:  # for the echo server
-        src: ['test/**/*.ts']
+      echoServer:  # for the echo server
+        src: ['src/echo-server/**/*.ts', ]
         dest: 'build/'
         options: { basePath: '', ignoreError: false }
       socks2rtc:
