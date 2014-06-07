@@ -7,6 +7,7 @@
     "url": "https://github.com/uProxy/socks-rtc"
   },
   "devDependencies": {
+    "es6-promise": "^0.1.1",
     "grunt": "^0.4.4",
     "grunt-contrib-jasmine": "^0.6.3",
     "grunt-contrib-concat": "^0.4.0",
