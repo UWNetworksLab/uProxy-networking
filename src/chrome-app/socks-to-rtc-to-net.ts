@@ -23,7 +23,12 @@ var LOCALHOST = '127.0.0.1';
 var DEFAULT_ECHO_PORT = 9998;
 var DEFAULT_SOCKS_PORT = 9999;
 
+// CONSIDER: When networking code stabalises, we could remove the echo server.
+// For now it's helpful for testing.
 var tcpEchoServer :freedom.TcpEchoServer = freedom.TcpEchoServer();
+tcpEchoServer.emit('start', {address: LOCALHOST, port: DEFAULT_ECHO_PORT});
+
+/*
 var socksToRtc :freedom.SocksToRtc = freedom.SocksToRtc();
 var rtcToNet :freedom.RtcToNet = freedom.RtcToNet();
 
@@ -54,10 +59,6 @@ rtcToNet.on('sendSignalToPeer', function(signal) {
   socksToRtc.emit('handleSignalFromPeer', signal);
 });
 
-// CONSIDER: When networking code stabalises, we could remove the echo server.
-// For now it's helpful for testing.
-tcpEchoServer.emit('start', {address: LOCALHOST, port: DEFAULT_ECHO_PORT});
-
 // Startup the servers.
 rtcToNet.emit('start');
 // Once the socksToRtc peer successfully starts, it fires 'sendSignalToPeer'.
@@ -65,3 +66,4 @@ socksToRtc.emit('start', {
   'address':   LOCALHOST,
   'port':   DEFAULT_SOCKS_PORT,
 });
+*/

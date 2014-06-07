@@ -10,6 +10,9 @@ module.exports = (grunt) ->
   path = require('path');
 
   #-------------------------------------------------------------------------
+  # Rule-making helper function that assume expected directory layout.
+  #
+
   # Function to make a typescript rule based on expected directory layout.
   typeScriptSrcRule = (name) ->
     src: ['build/typescript-src/' + name + '/**/*.ts',
@@ -32,11 +35,11 @@ module.exports = (grunt) ->
   # build directory.
   copySrcModule = (name, dest) ->
     expand: true, cwd: 'src/'
-    src: [name + '**/*.*', '!' + name + '/**/*.ts', '!' + name + '/**/*.sass']
+    src: [name + '/**', '!' + name + '/**/*.ts', '!' + name + '/**/*.sass']
     dest: 'build'
   copyBuiltModule = (name, dest) ->
     expand: true, cwd: 'build/'
-    src: [name + '*']
+    src: [name + '/**']
     dest: 'build/' + dest
 
   #-------------------------------------------------------------------------
@@ -89,6 +92,7 @@ module.exports = (grunt) ->
         dest: 'build/chrome-app/freedom-providers' } ] }
       echoServer_Chrome: copyBuiltModule 'echo-server', 'chrome-app/'
       socksToRtc_Chrome: copyBuiltModule 'socks-to-rtc', 'chrome-app/'
+      arraybuffers_Chrome: copyBuiltModule 'arraybuffers', 'chrome-app/'
       rtcToNet_Chrome: copyBuiltModule 'rtc-to-net', 'chrome-app/'
       handler_Chrome: copyBuiltModule 'handler', 'chrome-app/'
       tcp_Chrome: copyBuiltModule 'tcp', 'chrome-app/'
@@ -212,13 +216,17 @@ module.exports = (grunt) ->
     'echoServer'
     'socksToRtc'
     'rtcToNet'
-    'typescript:chromeApp'
-    'copy:chromeApp'
-    'copy:freedomChrome'
-    'copy:freedomProvidersChrome'
+    'copy:handler_Chrome'
+    'copy:udp_Chrome'
+    'copy:tcp_Chrome'
+    'copy:arraybuffers_Chrome'
     'copy:echoServer_Chrome'
     'copy:socksToRtc_Chrome'
     'copy:rtcToNet_Chrome'
+    'copy:freedomChrome'
+    'copy:freedomProvidersChrome'
+    'typescript:chromeApp'
+    'copy:chromeApp'
   ]
 
   taskManager.add 'firefoxApp', [

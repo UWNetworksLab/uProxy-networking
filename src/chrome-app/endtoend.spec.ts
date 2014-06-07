@@ -1,3 +1,6 @@
+// This is a selenium demo end-to-end spec. But it currently doesn't actually
+// test anything we care about.
+
 /// <reference path='../third_party/DefinitelyTyped/jasmine/jasmine.d.ts' />
 
 // TODO: use real types.

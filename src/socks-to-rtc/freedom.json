@@ -4,11 +4,12 @@
   "app": {
     "script": [
       "../tcp/tcp.js",
-      "../dup/udprelay.js",
-      "../arraybuffers/arraybuffers.js"
+      "../udp/udprelay.js",
+      "../handler/handler-queue.js",
+      "../arraybuffers/arraybuffers.js",
       "socks-headers.js",
       "socks.js",
-      "socks-to-rtc.js",
+      "socks-to-rtc.js"
     ]
   },
   "dependencies": {
