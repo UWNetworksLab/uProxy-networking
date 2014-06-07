@@ -139,13 +139,13 @@ module RtcToNet {
             return;
           }
           this.prepareNetChannelLifecycle_(command.tag, request)
-              .then((endpoint:Net.Endpoint) => {
+              .then((endpoint:Net.AddressAndPort) => {
                 return endpoint;
               }, (e) => {
                 dbgWarn('could not create netclient: ' + e.message);
                 return undefined;
               })
-              .then((endpoint?:Net.Endpoint) => {
+              .then((endpoint?:Net.AddressAndPort) => {
                 var response:Channel.NetConnectResponse = {};
                 if (endpoint) {
                   response.address = endpoint.address;
@@ -194,16 +194,16 @@ module RtcToNet {
      * data-channel |tag|.
      */
     private prepareNetChannelLifecycle_ =
-        (tag:string, request:Channel.NetConnectRequest) : Promise<Net.Endpoint> => {
+        (tag:string, request:Channel.NetConnectRequest) : Promise<Net.AddressAndPort> => {
       if (request.protocol == 'tcp') {
-        var dest:Net.Endpoint = {
+        var dest:Net.AddressAndPort = {
           address: request.address,
           port: request.port
         };
         var netClient = new Net.Client(
             (data) => { this.transport.send(tag, data); },  // onResponse
             dest);
-        return netClient.create().then((endpoint:Net.Endpoint) => {
+        return netClient.create().then((endpoint:Net.AddressAndPort) => {
           this.netClients[tag] = netClient;
           // Send NetClient remote disconnections back to SOCKS peer, then shut the
           // data channel locally.
@@ -225,7 +225,7 @@ module RtcToNet {
             request.port,
             (data:ArrayBuffer) => { this.transport.send(tag, data); });
         return client.bind()
-            .then((endpoint:Net.Endpoint) => {
+            .then((endpoint:Net.AddressAndPort) => {
               dbg('udp socket is bound!');
               this.udpClients[tag] = client;
               return endpoint;

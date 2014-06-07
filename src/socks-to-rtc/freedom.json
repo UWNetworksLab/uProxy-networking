@@ -3,12 +3,12 @@
   "description": "Listen for incoming requests, and relay them through a transport.",
   "app": {
     "script": [
-      "tcp.js",
-      "socks.js",
+      "../tcp/tcp.js",
+      "../dup/udprelay.js",
+      "../arraybuffers/arraybuffers.js"
       "socks-headers.js",
+      "socks.js",
       "socks-to-rtc.js",
-      "udprelay.js",
-      "../util/arraybuffers.js"
     ]
   },
   "dependencies": {

@@ -4,6 +4,8 @@
 /// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
 /// <reference path='../freedom-typescript-api/interfaces/tcp-socket.d.ts' />
 /// <reference path='../third_party/promise/promise.d.ts' />
+/// <reference path='../interfaces/communications.d.ts' />
+
 module Net {
   import TcpSocket = freedom.TcpSocket;
 
@@ -12,11 +14,6 @@ module Net {
     CONNECTING,
     CONNECTED,
     CLOSED
-  }
-
-  export interface Endpoint {
-    address:string;
-    port:number;
   }
 
   /**
@@ -39,7 +36,7 @@ module Net {
     constructor (
         // External callback for data coming back over this socket.
         private onResponse_:(buffer:ArrayBuffer)=>any,
-        private destination:Endpoint) {
+        private destination:Net.AddressAndPort) {
       this.state = State.CREATING_SOCKET;
       this.disconnectPromise = new Promise<void>((F, R) => {
         this.fulfillDisconnect = F;  // To be fired on close.
@@ -47,7 +44,7 @@ module Net {
     }
 
     // TODO: this should probably just be a static creation function
-    public create = () : Promise<Endpoint> => {
+    public create = () : Promise<Net.AddressAndPort> => {
       return this.createSocket_()  // Initialize client TCP socket.
           .then(this.connect_)
           .then(this.attachHandlers_)

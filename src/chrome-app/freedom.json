@@ -7,9 +7,9 @@
     ]
   },
   "dependencies": {
-    "SocksToRtc": { "url": "socks-to-rtc/socks-to-rtc.json" },
-    "RtcToNet": { "url": "rtc-to-net/rtc-to-net.json" },
-    "TcpEchoServer": { "url": "test/tcp_echo_server.json" }
+    "SocksToRtc": { "url": "socks-to-rtc/freedom.json" },
+    "RtcToNet": { "url": "rtc-to-net/freedom.json" },
+    "TcpEchoServer": { "url": "test/freedom.json" }
   },
   "permissions": [
     "core.tcpsocket",

@@ -1,11 +1,5 @@
 // Types for communications between socks-to-rtc and rtc-to-net.
 
-// Useful abbreviation for this common interface.
-interface AddressAndPort {
-  address :string;
-  port :number;
-}
-
 // Signals to peers from RtcToNet include a peerId which is used to identify
 // which peer to send signaling messages to, or to indicate which peer sent
 // RtcToNet a signalling message. Signalling messages pass the SDP headers that
@@ -13,6 +7,14 @@ interface AddressAndPort {
 interface PeerSignal {
   peerId :string;
   data :string;
+}
+
+// Useful abbreviation for this common interface.
+declare module Net {
+  export interface AddressAndPort {
+    address:string;
+    port:number;
+  }
 }
 
 // Interfaces and enums for P2P DataChannels used for socks-rtc proxying.
