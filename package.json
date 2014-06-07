@@ -1,7 +1,7 @@
 {
   "name": "socks-rtc",
   "description": "Library for proxying SOCKS5 over WebRTC",
-  "version": "0.1.12",
+  "version": "1.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/uProxy/socks-rtc"
@@ -17,10 +17,10 @@
     "grunt-jasmine-node": "^0.2.1",
     "webdriverjs": "^1.6.1",
     "grunt-env": "^0.4.1",
-    "uproxy-build-tools": "~0.0.5",
+    "uproxy-build-tools": "^1.0.0",
     "freedom-for-chrome": "^0.1.4",
     "freedom-for-firefox": "^0.1.1",
-    "freedom-typescript-api": "~0.2.0",
+    "freedom-typescript-api": "^0.2.0",
     "freedom": "^0.4.4"
   },
   "scripts": {
