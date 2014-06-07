@@ -119,9 +119,13 @@ module.exports = (grunt) ->
 
     #-------------------------------------------------------------------------
     jasmine: {
-      socksToRtc:
-        src: ['build/chrome-app/socks-to-rtc/socks-headers.js']
-        options : { specs : 'build/socks-to-rtc/**/*.spec.js' }
+      socksToRtc_socksHeader:
+        src: ['build/socks-to-rtc/socks-headers.js',
+              'build/socks-to-rtc/socks.js']
+        options:
+          specs: 'build/socks-to-rtc/socks-headers.spec.js'
+          outfile: 'build/socks-to-rtc/_SpecRunner.html'
+          keepRunner: true
     }
 
     env: {
@@ -219,7 +223,7 @@ module.exports = (grunt) ->
   # and on Travis/Sauce Labs.
   taskManager.add 'test', [
     'build'
-    'jasmine:socksToRtc'
+    'jasmine:socksToRtc_socksHeader'
   ]
 
   # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and
