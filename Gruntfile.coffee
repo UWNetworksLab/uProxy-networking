@@ -5,42 +5,37 @@
 
 TaskManager = require './node_modules/uproxy-build-tools/build/taskmanager/taskmanager'
 
-module.exports = (grunt) ->
-
-  path = require('path');
-
-  #-------------------------------------------------------------------------
-  # Rule-making helper function that assume expected directory layout.
-  #
-
-  # Function to make a typescript rule based on expected directory layout.
-  typeScriptSrcRule = (name) ->
+#-------------------------------------------------------------------------
+# Rule-making helper function that assume expected directory layout.
+#
+# Function to make a copy rule for a module directory, assuming standard
+# layout. Copies all non (ts/sass) compiled files into the corresponding
+# build directory.
+Rule = require('./node_modules/uproxy-build-tools/Gruntfile.coffee').Rule;
+Rule.copySrcModule = (name, dest) ->
+    expand: true, cwd: 'src/'
+    src: [name + '/**', '!' + name + '/**/*.ts', '!' + name + '/**/*.sass']
+    dest: 'build'
+Rule.copyBuiltModule = (name, dest) ->
+    expand: true, cwd: 'build/'
+    src: [name + '/**']
+    dest: 'build/' + dest
+# HACK: override noImplicitAny=false to deal with inability to specity
+# `core.XXX` providers. See: https://github.com/freedomjs/freedom/issues/57
+Rule.typeScriptSrc = (name) ->
     src: ['build/typescript-src/' + name + '/**/*.ts',
           '!build/typescript-src/' + name + '/**/*.d.ts']
     dest: 'build/'
     options:
       basePath: 'build/typescript-src/'
       ignoreError: false
-      noImplicitAny: false  # TODO: make true
+      noImplicitAny: false
       sourceMap: true
-  # Function to make jasmine spec assuming expected dir layout.
-  jasmineSpec = (name) ->
-    src: ['build/' + name + '/**/*.js', '!build/' + name + '/**/*.spec.js']
-    options:
-      specs: 'build/' + name + '/**/*.spec.js'
-      outfile: 'build/' + name + '/_SpecRunner.html'
-      keepRunner: true
-  # Function to make a copy rule for a module directory, assuming standard
-  # layout. Copies all non (ts/sass) compiled files into the corresponding
-  # build directory.
-  copySrcModule = (name, dest) ->
-    expand: true, cwd: 'src/'
-    src: [name + '/**', '!' + name + '/**/*.ts', '!' + name + '/**/*.sass']
-    dest: 'build'
-  copyBuiltModule = (name, dest) ->
-    expand: true, cwd: 'build/'
-    src: [name + '/**']
-    dest: 'build/' + dest
+
+
+#-------------------------------------------------------------------------
+module.exports = (grunt) ->
+  path = require('path');
 
   #-------------------------------------------------------------------------
   grunt.initConfig {
@@ -76,12 +71,12 @@ module.exports = (grunt) ->
         dest: 'build/freedom-providers/' } ] }
 
       # Individual modules.
-      echoServer: copySrcModule 'echo-server'
-      socksToRtc: copySrcModule 'socks-to-rtc'
-      rtcToNet: copySrcModule 'rtc-to-net'
+      echoServer: Rule.copySrcModule 'echo-server'
+      socksToRtc: Rule.copySrcModule 'socks-to-rtc'
+      rtcToNet: Rule.copySrcModule 'rtc-to-net'
 
       # Chrome App
-      chromeApp: copySrcModule 'chrome-app'
+      chromeApp: Rule.copySrcModule 'chrome-app'
       freedomChrome: { files: [ {
         expand: true, cwd: 'node_modules/freedom-for-chrome/'
         src: ['freedom-for-chrome.js']
@@ -90,16 +85,16 @@ module.exports = (grunt) ->
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
         src: ['*']
         dest: 'build/chrome-app/freedom-providers' } ] }
-      echoServer_Chrome: copyBuiltModule 'echo-server', 'chrome-app/'
-      socksToRtc_Chrome: copyBuiltModule 'socks-to-rtc', 'chrome-app/'
-      arraybuffers_Chrome: copyBuiltModule 'arraybuffers', 'chrome-app/'
-      rtcToNet_Chrome: copyBuiltModule 'rtc-to-net', 'chrome-app/'
-      handler_Chrome: copyBuiltModule 'handler', 'chrome-app/'
-      tcp_Chrome: copyBuiltModule 'tcp', 'chrome-app/'
-      udp_Chrome: copyBuiltModule 'udp', 'chrome-app/'
+      echoServer_Chrome: Rule.copyBuiltModule 'echo-server', 'chrome-app/'
+      socksToRtc_Chrome: Rule.copyBuiltModule 'socks-to-rtc', 'chrome-app/'
+      arraybuffers_Chrome: Rule.copyBuiltModule 'arraybuffers', 'chrome-app/'
+      rtcToNet_Chrome: Rule.copyBuiltModule 'rtc-to-net', 'chrome-app/'
+      handler_Chrome: Rule.copyBuiltModule 'handler', 'chrome-app/'
+      tcp_Chrome: Rule.copyBuiltModule 'tcp', 'chrome-app/'
+      udp_Chrome: Rule.copyBuiltModule 'udp', 'chrome-app/'
 
       # Firefox App
-      firefoxApp: copySrcModule 'firefox-app'
+      firefoxApp: Rule.copySrcModule 'firefox-app'
       freedomFirefox: { files: [ {
         expand: true, cwd: 'node_modules/freedom-for-firefox/'
         src: ['freedom-for-firefox.jsm', 'freedom.map']
@@ -108,24 +103,24 @@ module.exports = (grunt) ->
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
         src: ['*']
         dest: 'build/firefox-app/data/freedom-providers' } ] }
-      echoServer_Firefox: copyBuiltModule 'echo-server', 'firefox-app/data/'
-      socksToRtc_Firefox: copyBuiltModule 'socks-to-rtc', 'firefox-app/data/'
-      rtcToNet_Firefox: copyBuiltModule 'rtc-to-net', 'firefox-app/data/'
+      echoServer_Firefox: Rule.copyBuiltModule 'echo-server', 'firefox-app/data/'
+      socksToRtc_Firefox: Rule.copyBuiltModule 'socks-to-rtc', 'firefox-app/data/'
+      rtcToNet_Firefox: Rule.copyBuiltModule 'rtc-to-net', 'firefox-app/data/'
       # ? what more... ?
     }  # copy
 
     #-------------------------------------------------------------------------
     # All typescript compiles to build/ initially.
     typescript: {
-      arraybuffers: typeScriptSrcRule 'arraybuffers'
-      handler: typeScriptSrcRule 'handler'
-      tcp: typeScriptSrcRule 'tcp'
-      udp: typeScriptSrcRule 'udp'
-      echoServer: typeScriptSrcRule 'echo-server'
-      socksToRtc: typeScriptSrcRule 'socks-to-rtc'
-      rtcToNet: typeScriptSrcRule 'rtc-to-net'
-      chromeApp: typeScriptSrcRule 'chrome-app'
-      firefoxApp: typeScriptSrcRule 'firefox-app'
+      arraybuffers: Rule.typeScriptSrc 'arraybuffers'
+      handler: Rule.typeScriptSrc 'handler'
+      tcp: Rule.typeScriptSrc 'tcp'
+      udp: Rule.typeScriptSrc 'udp'
+      echoServer: Rule.typeScriptSrc 'echo-server'
+      socksToRtc: Rule.typeScriptSrc 'socks-to-rtc'
+      rtcToNet: Rule.typeScriptSrc 'rtc-to-net'
+      chromeApp: Rule.typeScriptSrc 'chrome-app'
+      firefoxApp: Rule.typeScriptSrc 'firefox-app'
     }
 
     #-------------------------------------------------------------------------
@@ -277,3 +272,5 @@ module.exports = (grunt) ->
   taskManager.list().forEach((taskName) =>
     grunt.registerTask taskName, (taskManager.get taskName)
   );
+
+module.exports.Rule = Rule;
