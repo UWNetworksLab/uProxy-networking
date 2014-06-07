@@ -2,9 +2,9 @@
   SocksToRtc.Peer passes socks requests over WebRTC datachannels.
 */
 /// <reference path='socks.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/transport.d.ts' />
-/// <reference path='../../node_modules/uproxy-build-tools/src/arraybuffers/arraybuffers.d.ts' />
+/// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
+/// <reference path='../freedom-typescript-api/interfaces/transport.d.ts' />
+/// <reference path='../arraybuffers/arraybuffers.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 
 // TODO replace with a reference to freedom ts interface once it exists.

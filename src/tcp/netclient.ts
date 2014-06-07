@@ -1,10 +1,9 @@
 /*
   Wrapper which terminates relayed web requests through a native socket object.
 */
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/tcp-socket.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
-
+/// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
+/// <reference path='../freedom-typescript-api/interfaces/tcp-socket.d.ts' />
+/// <reference path='../third_party/promise/promise.d.ts' />
 module Net {
   import TcpSocket = freedom.TcpSocket;
 

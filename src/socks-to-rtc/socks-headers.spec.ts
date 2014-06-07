@@ -1,4 +1,4 @@
-/// <reference path='../../node_modules/uproxy-build-tools/third_party/DefinitelyTyped/jasmine/jasmine.d.ts' />
+/// <reference path='../third_party/DefinitelyTyped/jasmine/jasmine.d.ts' />
 
 // TODO: add tests for IPv6 address parsing
 describe("socks", function() {
@@ -15,7 +15,7 @@ describe("socks", function() {
       0, // reserved
       Socks.ATYP.IP_V4,
       192, 168, 1, 1, // IP: 192.168.1.1
-      1200 >> 8, 1200 & 0xFF]); // port: 1200
+      1200 >> 8, 1200 & 0xFF]).buffer; // port: 1200
 
     udpRequest = new Uint8Array([
       0, // reserved
@@ -30,15 +30,14 @@ describe("socks", function() {
 
   it('reject wrongly sized requests', function() {
     expect(function() {
-      Socks.interpretSocksRequest(
-        new Uint8Array(new ArrayBuffer(8)), {});
+      Socks.interpretSocksRequest(new ArrayBuffer(8));
     }).toThrow();
   });
 
   it('parse ipv4 request', function() {
     //TODO: fix typing.
-    var result :Socks.SocksRequest = new Object();
-    Socks.interpretSocksRequest(ipv4Request, result);
+    var result :Socks.SocksRequest =
+        Socks.interpretSocksRequest(ipv4Request);
     expect(result.version).toEqual(Socks.VERSION5);
     expect(result.cmd).toEqual(Socks.REQUEST_CMD.CONNECT);
     expect(result.atyp).toEqual(Socks.ATYP.IP_V4);
@@ -50,14 +49,14 @@ describe("socks", function() {
   it('wrong socks version', function() {
     ipv4Request[0] = 4;
     expect(function() {
-      Socks.interpretSocksRequest(ipv4Request, {});
+      Socks.interpretSocksRequest(ipv4Request);
     }).toThrow();
   });
 
   it('unsupported command', function() {
     ipv4Request[1] = Socks.REQUEST_CMD.BIND;
     expect(function() {
-      Socks.interpretSocksRequest(ipv4Request, {});
+      Socks.interpretSocksRequest(ipv4Request);
     }).toThrow();
   });
 

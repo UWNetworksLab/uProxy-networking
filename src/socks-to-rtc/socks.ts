@@ -80,34 +80,28 @@ module Socks {
      * SOCKS client along the datachannel.
      */
     private establishSession_ = (conn:TCP.Connection): void => {
-      var socksRequest:SocksRequest = {};
       var udpRelay:Socks.UdpRelay;
-      conn.recieve()
+
+      conn.receive()
           .then(Server.validateHandshake)
-          .catch((e) => {
-            replyToTCP(conn, Socks.AUTH.NONE);
-            return Promise.reject(e);
-          })
           .then(() => {
             replyToTCP(conn, Socks.AUTH.NOAUTH);
             return conn.receive();
           })
-          .then((buffer:ArrayBuffer) => {
-            Socks.interpretSocksRequest(new Uint8Array(buffer), socksRequest);
-          })
+          .then(Socks.interpretSocksRequest)
           .catch((e) => {
             // TODO: this should be a SOCKS response
             replyToTCP(conn, Socks.AUTH.NONE);
             return Promise.reject(e);
           })
-          .then(() => {
+          .then((socksRequest:SocksRequest) => {
             return (socksRequest.protocol == 'tcp') ?
                 this.doTcp(conn, socksRequest) :
                 this.doUdp(conn);
           })
           .catch((e) => {
-            dbgWarn('failed to establish SOCKS session: ' + e.message);
-            conn.disconnect();
+            dbgWarn('SOCKS connection failed: ' + e.message);
+            conn.close();
           });
     }
 
@@ -119,16 +113,15 @@ module Socks {
         protocol: 'tcp',
         address: socksRequest.addressString,
         port: socksRequest.port,
-        send: (buffer:ArrayBuffer) => { conn.sendRaw(buffer); },
-        terminate: () => { this.tcpServer.endConnection(conn.socketId); }
-      };
+        // TODO: replace (`terminate` and `send`) with `conn`.
+        send: conn.sendRaw,
+        terminate: conn.close };
       return this.createChannel_(params)
         .then((endpointInfo:Channel.EndpointInfo) => {
           // Clean up when the TCP connection terminates.
-          conn.onceDisconnected().then(() => {
-            endpointInfo.terminate();
-          });
-          conn.on('recv', endpointInfo.send);
+          conn.onceDisconnected.then(endpointInfo.terminate,
+                                     endpointInfo.terminate);
+          conn.dataHandlerQueue.setHandler(endpointInfo.send);
           var socksResponse = Server.composeSocksResponse(
               endpointInfo.address, endpointInfo.port);
           conn.sendRaw(socksResponse);
@@ -138,30 +131,26 @@ module Socks {
     /**
      * Returns a promise to negotiate a UDP session with the SOCKS client.
      */
-    private doUdp(conn:TCP.Connection) {
+    private doUdp = (conn:TCP.Connection) : Promise<void> => {
       var udpRelay = new Socks.UdpRelay();
-      return udpRelay.bind(this.tcpServer.addr, 0)
+      return udpRelay.bind(this.tcpServer.address, 0)
           .then(() => {
             return Promise.resolve(udpRelay);
           }, (e) => {
             return Promise.reject(new Error('could not create udp relay: ' + e.message));
           })
           .then(() => {
-            var udpSession:UdpSession = new UdpSession(
-                udpRelay,
-                this.createChannel_,
-                () => { this.tcpServer.endConnection(conn.socketId); });
+            var udpSession:UdpSession =
+                new UdpSession(udpRelay, this.createChannel_, conn.close);
             // Clean up any UDP datachannels when the TCP connection terminates.
-            conn.onceDisconnected().then(() => {
-              udpSession.disconnected();
-            });
+            conn.onceDisconnected.then(udpSession.disconnected);
             var socksResponse = Server.composeSocksResponse(
                 udpRelay.getAddress(), udpRelay.getPort());
             conn.sendRaw(socksResponse);
           });
     }
 
-    disconnect() { this.tcpServer.disconnect(); }
+    disconnect() { this.tcpServer.closeAll(); }
 
     /**
      * Examines the supplied session establishment bytes, throwing an
@@ -249,7 +238,7 @@ module Socks {
       this.udpRelay_.setDataReceivedHandler(this.onData_);
     }
 
-    private onData_ = (data:ArrayBuffer) => {
+    private onData_ = (data:ArrayBuffer) : void => {
       // Split the datagram into two parts: the UDP header and the payload.
       // TODO: have interpretUdpRequest return an integer which we can use here
       var headerLength = 10;
@@ -298,7 +287,7 @@ module Socks {
      * Closes all datachannels created by this UDP session.
      * Intended to be called when the outer-lying TCP connection is terminated.
      */
-    public disconnected() : void {
+    public disconnected = () : void => {
       // TODO!
       dbg('TODO: close all udp datachannels');
     }
