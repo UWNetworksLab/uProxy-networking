@@ -365,6 +365,7 @@ module SocksToRtc {
 
 }  // module SocksToRtc
 
+// This is what is avauilable to Freedom.
 function initClient() {
   // Create local peer and attach freedom message handlers, then emit |ready|.
   var socksToRtc = new SocksToRtc.SocksToRtc();
@@ -373,6 +374,5 @@ function initClient() {
   freedom.on('stop', socksToRtc.reset);
   freedom.emit('ready', {});
 }
-
 
 initClient();

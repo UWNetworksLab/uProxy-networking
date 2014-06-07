@@ -90,7 +90,9 @@ module.exports = (grunt) ->
       echoServer_Chrome: copyBuiltModule 'echo-server', 'chrome-app/'
       socksToRtc_Chrome: copyBuiltModule 'socks-to-rtc', 'chrome-app/'
       rtcToNet_Chrome: copyBuiltModule 'rtc-to-net', 'chrome-app/'
-      lib_Chrome: copyBuiltModule 'lib', 'chrome-app/'
+      handler_Chrome: copyBuiltModule 'handler', 'chrome-app/'
+      tcp_Chrome: copyBuiltModule 'tcp', 'chrome-app/'
+      udp_Chrome: copyBuiltModule 'udp', 'chrome-app/'
 
       # Firefox App
       firefoxApp: copySrcModule 'firefox-app'
@@ -105,16 +107,21 @@ module.exports = (grunt) ->
       echoServer_Firefox: copyBuiltModule 'echo-server', 'firefox-app/data/'
       socksToRtc_Firefox: copyBuiltModule 'socks-to-rtc', 'firefox-app/data/'
       rtcToNet_Firefox: copyBuiltModule 'rtc-to-net', 'firefox-app/data/'
-      lib_Firefox: copyBuiltModule 'lib', 'firefox-app/data/'
+      # ? what more... ?
     }  # copy
 
     #-------------------------------------------------------------------------
     # All typescript compiles to build/ initially.
     typescript: {
+      arraybuffers: typeScriptSrcRule 'arraybuffers'
+      handler: typeScriptSrcRule 'handler'
+      tcp: typeScriptSrcRule 'tcp'
+      udp: typeScriptSrcRule 'udp'
       echoServer: typeScriptSrcRule 'echo-server'
       socksToRtc: typeScriptSrcRule 'socks-to-rtc'
       rtcToNet: typeScriptSrcRule 'rtc-to-net'
       chromeApp: typeScriptSrcRule 'chrome-app'
+      firefoxApp: typeScriptSrcRule 'firefox-app'
     }
 
     #-------------------------------------------------------------------------
@@ -182,23 +189,42 @@ module.exports = (grunt) ->
     'typescript:rtcToNet'
   ]
 
+  taskManager.add 'tcp', [
+    'base'
+    'typescript:tcp'
+  ]
+
+  taskManager.add 'handler', [
+    'base'
+    'typescript:handler'
+  ]
+
+  taskManager.add 'udp', [
+    'base'
+    'typescript:udp'
+  ]
+
   taskManager.add 'chromeApp', [
     'base'
+    'handler'
+    'tcp'
+    'udp'
+    'echoServer'
+    'socksToRtc'
+    'rtcToNet'
+    'typescript:chromeApp'
     'copy:chromeApp'
     'copy:freedomChrome'
     'copy:freedomProvidersChrome'
-    'echoServer'
     'copy:echoServer_Chrome'
-    'socksToRtc'
     'copy:socksToRtc_Chrome'
-    'rtcToNet'
     'copy:rtcToNet_Chrome'
-    'copy:lib_Chrome'
   ]
 
   taskManager.add 'firefoxApp', [
     'base'
     'copy:firefoxApp'
+    'typescript:firefoxApp'
     'copy:freedomFirefox'
     'copy:freedomProvidersFirefox'
     'echoServer'
@@ -207,7 +233,6 @@ module.exports = (grunt) ->
     'copy:socksToRtc_Firefox'
     'rtcToNet'
     'copy:rtcToNet_Firefox'
-    'copy:lib_Firefox'
   ]
 
   taskManager.add 'build', [

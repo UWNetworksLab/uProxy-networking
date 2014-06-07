@@ -3,7 +3,7 @@
   "description": "Listen for incoming requests, and echo them back.",
   "app": {
     "script": [
-      "../socks-to-rtc/tcp.js",
+      "../tcp/tcp.js",
       "tcp_echo_server.js"
     ]
   },

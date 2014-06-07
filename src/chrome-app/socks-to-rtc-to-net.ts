@@ -7,14 +7,25 @@
 /// <reference path='../freedom-typescript-api/interfaces/transport.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
+/// <reference path='../echo-server/freedom-module.d.ts' />
+/// <reference path='../socks-to-rtc/freedom-module.d.ts' />
+/// <reference path='../rtc-to-net/freedom-module.d.ts' />
+
+// A wrapper to capture the work done by freedom when it imports modules by
+// reading the freedom.json file.
+declare module freedom {
+  export function TcpEchoServer() : freedom.TcpEchoServer;
+  export function SocksToRtc() : freedom.SocksToRtc;
+  export function RtcToNet() : freedom.RtcToNet;
+}
 
 var LOCALHOST = '127.0.0.1';
 var DEFAULT_ECHO_PORT = 9998;
 var DEFAULT_SOCKS_PORT = 9999;
 
-var socksToRtc = freedom.SocksToRtc();
-var rtcToNet = freedom.RtcToNet();
-var tcpEchoServer = freedom.TcpEchoServer();
+var tcpEchoServer :freedom.TcpEchoServer = freedom.TcpEchoServer();
+var socksToRtc :freedom.SocksToRtc = freedom.SocksToRtc();
+var rtcToNet :freedom.RtcToNet = freedom.RtcToNet();
 
 // Attach freedom handlers to peers.
 socksToRtc.on('sendSignalToPeer', function(signal) {
@@ -43,11 +54,14 @@ rtcToNet.on('sendSignalToPeer', function(signal) {
   socksToRtc.emit('handleSignalFromPeer', signal);
 });
 
-// Actually startup the servers.
-rtcToNet.emit('start');
+// CONSIDER: When networking code stabalises, we could remove the echo server.
+// For now it's helpful for testing.
 tcpEchoServer.emit('start', {address: LOCALHOST, port: DEFAULT_ECHO_PORT});
+
+// Startup the servers.
+rtcToNet.emit('start');
 // Once the socksToRtc peer successfully starts, it fires 'sendSignalToPeer'.
 socksToRtc.emit('start', {
   'address':   LOCALHOST,
-  'port':   DEFAULT_PORT,
+  'port':   DEFAULT_SOCKS_PORT,
 });

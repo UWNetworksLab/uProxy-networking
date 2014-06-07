@@ -70,11 +70,12 @@ module TCP {
 
       // Create new connection.
       dbg('TCP.Server accepted connection on socket id ' + socketId);
-      var conn = new Connection(
-          socketId,
-          // We provide Connection with a way to remove itself from the
-          // server's list of connections if/when it closes itself.
-          () => { delete this.conns[socketId]; });
+      var conn = new Connection(socketId);
+      // When the connection is disconnected correctly, or by error, remove
+      // from the server's list of connections.
+      conn.onceDisconnected.then(
+        () => { delete this.conns[socketId]; },
+        (e) => { delete this.conns[socketId]; })
       this.conns[socketId] = conn;
       this.onConnection(conn);
     }
@@ -117,8 +118,6 @@ module TCP {
     // or fulfilled. We use isClosed to ensure that we only fulfill/reject the
     // onceDisconnectd once.
     private isClosed_ :boolean;
-    // A function to remove itself from the server's list of open connections.
-    private removeFromServer_ :() =>void;
     // The underlying Freedom TCP socket.
     private connectionSocket_ :TcpSocket;
     // Private functions called to invoke fullfil/reject onceDisconnected.
@@ -129,8 +128,7 @@ module TCP {
     // This constructor should not be called directly. It should be called by
     // Tcp.Server who will provide it with an onClose function to remove itself
     // from the server's list of open connections.
-    constructor(public socketId :number, removeFromServer:()=>void) {
-      this.removeFromServer_ = removeFromServer;
+    constructor(public socketId :number) {
       this.isClosed_ = false;
       this.onceDisconnected = new Promise<void>((F, R) => {
         this.fulfillDisconnect_ = F;  // To be fired on good disconnect.
@@ -153,9 +151,8 @@ module TCP {
 
     // This happens when the Tcp connection is closed by the other end or
     // because  of an error. When closed by the other end, onceDisconnected is
-    // fullfilled.  If there's an error, onceDisconnected is rejected. Either
-    // way, we note our connection is closed and remove ourselve from the
-    // server's listing of open connections.
+    // fullfilled.  If there's an error, onceDisconnected is rejected with the
+    // error.
     private onDisconnectHandler_ = (info:TcpSocket.DisconnectInfo) : void => {
       if (info.errcode) {
         var e = 'Socket ' + this.socketId + ' disconnected with errcode '
@@ -166,13 +163,10 @@ module TCP {
         this.fulfillDisconnect_();
       }
       this.isClosed_ = true;
-      this.removeFromServer_();
     }
 
     // This is called to close the underlying socket. This fulfills the
-    // disconnect Promise `onceDisconnected`, removes the connection from the
-    // sever's list of open connections, and gives back a promise for when the
-    // connection has finished being closed down.
+    // disconnect Promise `onceDisconnected`.
     public close = () : Promise<void> => {
       if (this.isClosed_) {
         dbgErr('Socket ' + this.socketId + ' was attempted to be closed after '
@@ -180,7 +174,6 @@ module TCP {
         return;
       }
       this.fulfillDisconnect_();
-      this.removeFromServer_();
       return this.connectionSocket_.close();
     }
 

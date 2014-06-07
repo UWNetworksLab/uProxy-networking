@@ -8,6 +8,7 @@
 /// <reference path='../tcp/tcp.ts' />
 /// <reference path='../udp/udprelay.ts' />
 /// <reference path='../interfaces/arraybuffer.d.ts' />
+/// <reference path='socks-headers.ts' />
 
 module Socks {
 
@@ -40,7 +41,7 @@ module Socks {
       this.tcpServer = new TCP.Server(address, port, this.establishSession_);
     }
 
-    getAddressAndPort() : AddressAndPort {
+    getAddressAndPort() : Net.AddressAndPort {
       return { address: this.tcpServer.address, port: this.tcpServer.port };
     }
 

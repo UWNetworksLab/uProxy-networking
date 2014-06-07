@@ -3,10 +3,10 @@
   "description": "Proxy remote connections to their destination.",
   "app": {
     "script": [
-      "netclient.js",
-      "udpclient.js",
+      "../tcp/netclient.js",
+      "../udp/udpclient.js",
+      "../arraybuffers/arraybuffers.js"
       "rtc-to-net.js",
-      "../util/arraybuffers.js"
     ]
   },
   "dependencies": {

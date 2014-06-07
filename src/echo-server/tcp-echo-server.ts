@@ -26,6 +26,9 @@ class TcpEchoServer {
 
       // From now on just send the data back.
       conn.dataHandlerQueue.setHandler((moreData :ArrayBuffer) => {
+        if(moreData.byteLength <= 0) {
+
+        }
         conn.sendRaw(moreData);
       });
     });
@@ -33,8 +36,16 @@ class TcpEchoServer {
   }
 }
 
-freedom.on('start', (addressAndPort: AddressAndPort) => {
-  new TcpEchoServer(addressAndPort.address, addressAndPort.port);
+var tcpServer :TcpEchoServer;
+
+// TODO: smarter encapsulation logic for echo server.
+freedom.on('start', (addressAndPort: Net.AddressAndPort) => {
+  if(tcpServer) { tcpServer.server.closeAll(); }
+  tcpServer = new TcpEchoServer(addressAndPort.address, addressAndPort.port);
+});
+
+freedom.on('stop', () => {
+  if(tcpServer) { tcpServer.server.closeAll(); tcpServer = null; }
 });
 
 console.log('TcpEchoServer installed');

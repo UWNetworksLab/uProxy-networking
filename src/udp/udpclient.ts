@@ -1,6 +1,8 @@
 /// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
 /// <reference path='../freedom-typescript-api/interfaces/udp-socket.d.ts' />
 /// <reference path='../third_party/promise/promise.d.ts' />
+/// <reference path='../interfaces/communications.d.ts' />
+
 module Net {
   import UdpSocket = freedom.UdpSocket;
 
@@ -32,7 +34,7 @@ module Net {
      * port, and start relaying events. Specify port zero to have the system
      * choose a free port.
      */
-    public bind() : Promise<Net.Endpoint> {
+    public bind() : Promise<Net.AddressAndPort> {
       // TODO: not sure what else this should be?
       return this.socket.bind('127.0.0.1', 0)
           .then((resultCode:number) => {
