@@ -5,8 +5,8 @@
     "script": [
       "../tcp/netclient.js",
       "../udp/udpclient.js",
-      "../arraybuffers/arraybuffers.js"
-      "rtc-to-net.js",
+      "../arraybuffers/arraybuffers.js",
+      "rtc-to-net.js"
     ]
   },
   "dependencies": {
