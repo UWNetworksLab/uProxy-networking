@@ -2,13 +2,11 @@
   Runs the socksToRtc and rtcToNet peers (in separate webworkers) and tests that
   they can signal and set up a proxy connection.
 */
-/// <reference path='socks.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/transport.d.ts' />
-/// <reference path='../../node_modules/uproxy-build-tools/src/util/arraybuffers.d.ts' />
+/// <reference path='../socks-to-rtc/socks.ts' />
+/// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
+/// <reference path='../freedom-typescript-api/interfaces/transport.d.ts' />
+/// <reference path='../arraybuffers/arraybuffers.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
-
-
 
 var LOCALHOST = '127.0.0.1';
 var DEFAULT_ECHO_PORT = 9998;

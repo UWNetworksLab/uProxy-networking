@@ -1,10 +1,11 @@
 /*
   Server which handles socks connections over WebRTC datachannels.
 */
-/// <reference path='netclient.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/transport.d.ts' />
-/// <reference path='../../node_modules/uproxy-build-tools/src/util/arraybuffers.d.ts' />
+/// <reference path='../tcp/netclient.ts' />
+/// <reference path='../udp/udpclient.ts' />
+/// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
+/// <reference path='../freedom-typescript-api/interfaces/transport.d.ts' />
+/// <reference path='../arraybuffers/arraybuffers.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 
 console.log('WEBWORKER - RtcToNet: ' + self.location.href);

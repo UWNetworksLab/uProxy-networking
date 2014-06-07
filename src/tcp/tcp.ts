@@ -2,10 +2,9 @@
  * This is a TCP server based on Freedom's sockets API.
  */
 
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/tcp-socket.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
-// /// <reference path='../../node_modules/uproxy-build-tools/src/arraybuffers/arraybuffers.ts' />
-/// <reference path='../../node_modules/uproxy-build-tools/src/handler/handler-queue.ts' />
+/// <reference path='../freedom-typescript-api/interfaces/tcp-socket.d.ts' />
+/// <reference path='../third_party/promise/promise.d.ts' />
+/// <reference path='../handler/handler-queue.ts' />
 
 module TCP {
   import TcpSocket = freedom.TcpSocket;
@@ -82,7 +81,7 @@ module TCP {
 
     // Disconnect all sockets and stops listening.
     public closeAll = () : Promise<void> => {
-      var allPromises = [];
+      var allPromises :Promise<void>[] = [];
 
       // Close the server socket.
       if (this.serverSocket_) {

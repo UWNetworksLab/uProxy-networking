@@ -1,7 +1,7 @@
 /*
   For testing just the TCP server portion (see src/client/tcp.ts)
 */
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
+/// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 /// <reference path='../tcp/tcp.ts' />
 

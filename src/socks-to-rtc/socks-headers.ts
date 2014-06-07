@@ -69,7 +69,10 @@ module Socks {
    *   | 1  |  1  | X'00' |  1   | Variable |    2     |
    *   +----+-----+-------+------+----------+----------+
    */
-  export function interpretSocksRequest(byteArray:Uint8Array, result:SocksRequest) : void {
+  export function interpretSocksRequest(buffer:ArrayBuffer) : SocksRequest {
+    var byteArray :Uint8Array = new Uint8Array(buffer);
+
+    var result :SocksRequest = {};
     // Fail if the request is too short to be valid.
     if(byteArray.length < 9) {
       throw new Error('SOCKS request too short');
@@ -91,6 +94,8 @@ module Socks {
     result.protocol = result.cmd == REQUEST_CMD.CONNECT ? 'tcp' : 'udp';
 
     interpretSocksAddress(byteArray.subarray(3), result);
+
+    return result;
   }
 
   /**
