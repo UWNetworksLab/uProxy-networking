@@ -22,41 +22,42 @@ declare module freedom {
 var LOCALHOST = '127.0.0.1';
 var DEFAULT_ECHO_PORT = 9998;
 var DEFAULT_SOCKS_PORT = 9999;
+var fakeSessionId = 'some fake session id';
 
 // CONSIDER: When networking code stabalises, we could remove the echo server.
 // For now it's helpful for testing.
 var tcpEchoServer :freedom.TcpEchoServer = freedom.TcpEchoServer();
 tcpEchoServer.emit('start', {address: LOCALHOST, port: DEFAULT_ECHO_PORT});
 
-/*
 var socksToRtc :freedom.SocksToRtc = freedom.SocksToRtc();
 var rtcToNet :freedom.RtcToNet = freedom.RtcToNet();
 
 // Attach freedom handlers to peers.
-socksToRtc.on('sendSignalToPeer', function(signal) {
+socksToRtc.on('sendSignalToPeer', (signalData:string) => {
   console.log(' * SOCKS-RTC signalling RTC-NET.'); // + JSON.stringify(signal));
   // Ordinarily, |signal| would have to go over a non-censored network to
   // complete NAT hole punching. In this contrived chrome app, both peers are on
   // the same machine, so we skip that fun stuff.
-  rtcToNet.emit('handleSignalFromPeer', signal);
+  rtcToNet.emit('handleSignalFromPeer',
+                {peerId: fakeSessionId, data: signalData});
   // If all goes correctly, the rtcToNet will fire a 'sendSignalToPeer'.
 });
 
 // Listen for socksToRtc success or failure signals, and just print them for now.
-socksToRtc.on('socksToRtcSuccess', function(addressAndPort) {
+socksToRtc.on('socksToRtcSuccess', (addressAndPort:Net.AddressAndPort) => {
   console.log('Received socksToRtcSuccess for: '
       + JSON.stringify(addressAndPort));
 });
 
-socksToRtc.on('socksToRtcFailure', function(addressAndPort) {
+socksToRtc.on('socksToRtcFailure', (addressAndPort:Net.AddressAndPort) => {
   console.error('Received socksToRtcFailure for: '
       + JSON.stringify(addressAndPort));
 });
 
 // Server tells socksToRtc about itself.
-rtcToNet.on('sendSignalToPeer', function(signal) {
+rtcToNet.on('sendSignalToPeer', (signal:PeerSignal) => {
   console.log(' * RTC-NET signaling SOCKS-RTC.');  // + JSON.stringify(signal));
-  socksToRtc.emit('handleSignalFromPeer', signal);
+  socksToRtc.emit('handleSignalFromPeer', signal.data);
 });
 
 // Startup the servers.
@@ -66,4 +67,4 @@ socksToRtc.emit('start', {
   'address':   LOCALHOST,
   'port':   DEFAULT_SOCKS_PORT,
 });
-*/
+

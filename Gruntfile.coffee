@@ -90,7 +90,7 @@ module.exports = (grunt) ->
       chromeApp: Rule.copySrcModule 'chrome-app'
       freedomChrome: { files: [ {
         expand: true, cwd: 'node_modules/freedom-for-chrome/'
-        src: ['freedom-for-chrome.js']
+        src: ['freedom-for-chrome.js', 'freedom.map']
         dest: 'build/chrome-app/' } ] }
       freedomProvidersChrome: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
