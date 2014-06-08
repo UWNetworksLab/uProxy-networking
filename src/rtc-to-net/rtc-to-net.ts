@@ -169,6 +169,13 @@ module RtcToNet {
           var command :Channel.Command = {type: Channel.COMMANDS.PONG};
           this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
               JSON.stringify(command)));
+        } else if (command.type === Channel.COMMANDS.SOCKS_DISCONNECTED) {
+          dbg('received SOCKS_DISCONNECTED with tag = ' + command.tag);
+          if(command.tag in this.netClients) {
+            this.netClients[command.tag].close();
+          } else {
+            dbg('failed to find netClient with tag = ' + command.tag);
+          }
         } else {
           // TODO: support SocksDisconnected command
           dbgWarn('unsupported control command: ' + JSON.stringify(command));

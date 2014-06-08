@@ -47,7 +47,7 @@ module TCP {
     // onConnectionHandler_ is more or less TCP Accept: it is called when a new
     // TCP connection is established.
     private onConnectionHandler_ =
-        (acceptValue:TcpSocket.OnConnectInfo) : void => {
+        (acceptValue:TcpSocket.ConnectInfo) : void => {
       var socketId = acceptValue.socket;
 
       // Check that we haven't reach the maximum number of connections
@@ -155,12 +155,13 @@ module TCP {
     // fullfilled.  If there's an error, onceDisconnected is rejected with the
     // error.
     private onDisconnectHandler_ = (info:TcpSocket.DisconnectInfo) : void => {
-      if (info.errcode) {
+      if (info.errcode !== 'NONE') {
         var e = 'Socket ' + this.socketId + ' disconnected with errcode '
           + info.errcode + ': ' + info.message;
         dbgErr(e);
         this.rejectDisconnect_(new Error(e));
       } else {
+        dbg('Socket closed correctly (socket-id: ' + this.socketId + ')');
         this.fulfillDisconnect_();
       }
       this.isClosed_ = true;

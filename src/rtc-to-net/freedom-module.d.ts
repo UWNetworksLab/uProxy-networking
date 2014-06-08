@@ -16,5 +16,6 @@ declare module freedom {
 
     on(type:string, readyHandler:Function);
     on(type:'ready', readyHandler:()=>void);
+    on(type:'sendSignalToPeer', f:(signalToPeer:PeerSignal) => void);
   }
 }

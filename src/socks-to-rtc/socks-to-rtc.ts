@@ -53,9 +53,9 @@ module SocksToRtc {
      * TODO: update this to return a promise that fulfills/rejects, after freedom v0.5
      * is ready.
      */
-    public start = (address:string, port:number) => {
+    public start = (addressAndPort : Net.AddressAndPort) => {
       this.reset();  // Begin with fresh components.
-      dbg('starting: ' + JSON.stringify({address: address, port: port}));
+      dbg('starting SocksToRtc: ' + JSON.stringify(addressAndPort));
       // SOCKS sessions biject to peerconnection datachannels.
       this.transport_ = freedom['transport']();
       this.transport_.on('onData', this.onDataFromPeer_);
@@ -67,12 +67,12 @@ module SocksToRtc {
         this.transport_.setup('SocksToRtc', chan.identifier).then(
           () => {
             dbg('SocksToRtc transport_.setup succeeded');
-            freedom.emit('socksToRtcSuccess', {address: address, port: port});
+            freedom.emit('socksToRtcSuccess', addressAndPort);
           }
         ).catch(
           (e) => {
             dbgErr('SocksToRtc transport_.setup failed ' + e);
-            freedom.emit('socksToRtcFailure', {address: address, port: port});
+            freedom.emit('socksToRtcFailure', addressAndPort);
           }
         );
 
@@ -112,7 +112,7 @@ module SocksToRtc {
       });  // fCore.createChannel
 
       // Create SOCKS server and start listening.
-      this.socksServer_ = new Socks.Server(address, port,
+      this.socksServer_ = new Socks.Server(addressAndPort,
                                            this.createDataChannel_);
       this.socksServer_.listen();
     }
@@ -286,7 +286,7 @@ module SocksToRtc {
      */
     private closeConnectionToPeer = (tag:string) => {
       if (!(tag in this.dataChannels_)) {
-        dbgWarn('unknown datachannel ' + tag + ' has closed');
+        dbgErr('unknown datachannel ' + tag + ' has closed');
         return;
       }
       dbg('datachannel ' + tag + ' has closed. ending SOCKS session for channel.');

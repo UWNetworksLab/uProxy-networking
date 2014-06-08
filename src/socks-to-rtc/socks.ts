@@ -33,12 +33,11 @@ module Socks {
      * @param port port on which to bind the server
      * @param createChannel_ function to create a new datachannel
      */
-    constructor(
-        address:string,
-        port:number,
+    constructor(addressAndPort : Net.AddressAndPort,
         private createChannel_:(params:Channel.EndpointInfo)
                                => Promise<Channel.EndpointInfo>) {
-      this.tcpServer = new TCP.Server(address, port, this.establishSession_);
+      this.tcpServer = new TCP.Server(addressAndPort.address,
+          addressAndPort.port, this.establishSession_);
     }
 
     getAddressAndPort() : Net.AddressAndPort {
@@ -48,9 +47,11 @@ module Socks {
     /**
      * Returns a promise to start listening for connections.
      */
-    listen() {
+    listen() : Promise<void> {
+      dbg('SOCKS5 startinging up on: ' + this.tcpServer.address + ':'
+          + this.tcpServer.port);
       return this.tcpServer.listen().then(() => {
-        dbg('SOCKS5 LISTENING ' + this.tcpServer.address + ':'
+        dbg('SOCKS5 listening on: ' + this.tcpServer.address + ':'
           + this.tcpServer.port);
       });
     }
@@ -80,8 +81,9 @@ module Socks {
      * relevant handlers in such a way that data is passed back and forth to
      * SOCKS client along the datachannel.
      */
-    private establishSession_ = (conn:TCP.Connection): void => {
+    private establishSession_ = (conn:TCP.Connection) : void => {
       var udpRelay:Socks.UdpRelay;
+      console.log('establishSession_: ' + conn.toString());
 
       conn.receive()
           .then(Server.validateHandshake)
@@ -109,7 +111,8 @@ module Socks {
     /**
      * Returns a promise to negotiate a TCP connection with the SOCKS client.
      */
-    private doTcp(conn:TCP.Connection, socksRequest:Socks.SocksRequest) {
+    private doTcp = (conn:TCP.Connection, socksRequest:Socks.SocksRequest)
+        : Promise<void> {
       var params:Channel.EndpointInfo = {
         protocol: 'tcp',
         address: socksRequest.addressString,
@@ -126,7 +129,7 @@ module Socks {
           var socksResponse = Server.composeSocksResponse(
               endpointInfo.address, endpointInfo.port);
           conn.sendRaw(socksResponse);
-        });
+        },
     }
 
     /**
