@@ -112,7 +112,7 @@ module Socks {
      * Returns a promise to negotiate a TCP connection with the SOCKS client.
      */
     private doTcp = (conn:TCP.Connection, socksRequest:Socks.SocksRequest)
-        : Promise<void> {
+        : Promise<void> => {
       var params:Channel.EndpointInfo = {
         protocol: 'tcp',
         address: socksRequest.addressString,
@@ -129,7 +129,7 @@ module Socks {
           var socksResponse = Server.composeSocksResponse(
               endpointInfo.address, endpointInfo.port);
           conn.sendRaw(socksResponse);
-        },
+        });
     }
 
     /**
