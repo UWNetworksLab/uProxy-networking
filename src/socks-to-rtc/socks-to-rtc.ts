@@ -31,6 +31,7 @@ module SocksToRTC {
      */
     private channels_:{[tag:string]:Channel.EndpointInfo} = {};
     private peerId_:string = null;         // Of the remote rtc-to-net peer.
+    private remotePeer_:PeerInfo = null;
 
     // Private state kept for ping-pong (heartbeat and ack).
     private pingPongSendIntervalId_ :number = null;
@@ -52,6 +53,7 @@ module SocksToRTC {
       this.reset_();  // Begin with fresh components.
       dbg('starting - target peer: ' + JSON.stringify(remotePeer));
       // Bind peerID to scope so promise can work.
+      this.remotePeer_ = remotePeer;
       var peerId = this.peerId_ = remotePeer.peerId;
       if (!peerId) {
         dbgErr('no Peer ID provided! cannot connect.');
@@ -141,6 +143,7 @@ module SocksToRTC {
       }
       this.signallingChannel_ = null;
       this.peerId_ = null;
+      this.remotePeer_ = null;
     }
 
     /**
@@ -327,14 +330,17 @@ module SocksToRTC {
             JSON.stringify(command)));
       }, 1000);
 
-      var PING_PONG_CHECK_INTERVAL_MS :number = 10000;
+      var PING_PONG_CHECK_INTERVAL_MS :number = 5000;
       this.pingPongCheckIntervalId_ = setInterval(() => {
         var nowDate = new Date();
         if (!this.lastPingPongReceiveDate_ ||
             (nowDate.getTime() - this.lastPingPongReceiveDate_.getTime()) >
              PING_PONG_CHECK_INTERVAL_MS) {
           dbgWarn('no ping-pong detected, closing peer');
+          // Save remotePeer before closing because it will be reset.
+          var remotePeer = this.remotePeer_;
           this.close();
+          freedom.emit('socksToRtcTimeout', remotePeer);
         }
       }, PING_PONG_CHECK_INTERVAL_MS);
     }
