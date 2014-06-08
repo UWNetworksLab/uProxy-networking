@@ -219,7 +219,7 @@ module RtcToNet {
       // PONGs from rtc-to-net will be returned to socks-to-rtc immediately
       // after PINGs are received, so we only need to set an interval to
       // check for PINGs received.
-      var PING_PONG_CHECK_INTERVAL_MS :number = 10000;
+      var PING_PONG_CHECK_INTERVAL_MS :number = 5000;
       this.pingPongCheckIntervalId_ = setInterval(() => {
         var nowDate = new Date();
         if (!this.lastPingPongReceiveDate_ ||
