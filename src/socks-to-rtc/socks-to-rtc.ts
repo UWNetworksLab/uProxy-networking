@@ -54,12 +54,12 @@ module SocksToRtc {
      * is ready.
      */
     public start = (addressAndPort : Net.AddressAndPort) => {
-      this.reset();  // Begin with fresh components.
+      this.reset_();  // Begin with fresh components.
       dbg('starting SocksToRtc: ' + JSON.stringify(addressAndPort));
       // SOCKS sessions biject to peerconnection datachannels.
       this.transport_ = freedom['transport']();
       this.transport_.on('onData', this.onDataFromPeer_);
-      this.transport_.on('onClose', this.onCloseHandler_);
+      this.transport_.on('onClose', this.onTransportCloseHandler_);
       // Messages received via signalling channel must reach the remote peer
       // through something other than the peerconnection. (e.g. XMPP). This is
       // the Freedom channel object to send messages to the peer.
@@ -117,27 +117,19 @@ module SocksToRtc {
       this.socksServer_.listen();
     }
 
-    public close = () => {
-      if (this.transport_) {
-        // Close transport, then onCloseHandler_ will take care of resetting
-        // state.
-        this.transport_.close();
-      } else {
-        // Transport already closed, just call reset.
-        this.reset_();
-      }
+    public stop = () => {
+      this.reset_();
     }
 
-    private onCloseHandler_ = () => {
-      dbg('onCloseHandler_ invoked for transport.')
+    private onTransportCloseHandler_ = () => {
+      dbg('onTransportCloseHandler_ invoked for transport.')
       // Set this.transport to null so reset_ doesn't attempt to close it again.
       this.transport_ = null;
       this.reset_();
     }
 
-    /**
-     * Stop SOCKS server and close data channels and peer connections.
-     */
+    // Stop SOCKS server and close peer-connection (and hence all data
+    // channels).
     private reset_ = () => {
       dbg('resetting peer...');
       this.stopPingPong_();
@@ -341,7 +333,7 @@ module SocksToRtc {
     }
 
     public toString = () => {
-      var ret ='<SocksToRtc.Peer: failed toString()>';
+      var ret ='<SocksToRtc: failed toString()>';
       try {
         ret = JSON.stringify({ socksServer: this.socksServer_,
                                transport: this.transport_,
@@ -372,9 +364,8 @@ module SocksToRtc {
              PING_PONG_CHECK_INTERVAL_MS) {
           dbgWarn('no ping-pong detected, closing peer');
           // Save remotePeer before closing because it will be reset.
-          var remotePeer = this.remotePeer_;
-          this.close();
-          freedom.emit('socksToRtcTimeout', remotePeer);
+          this.stop();
+          freedom.emit('socksToRtcTimeout', '');
         }
       }, PING_PONG_CHECK_INTERVAL_MS);
     }
@@ -408,7 +399,7 @@ function initClient() {
   var socksToRtc = new SocksToRtc.SocksToRtc();
   freedom.on('handleSignalFromPeer', socksToRtc.handlePeerSignal);
   freedom.on('start', socksToRtc.start);
-  freedom.on('stop', socksToRtc.reset);
+  freedom.on('stop', socksToRtc.stop);
   freedom.emit('ready', {});
 }
 
