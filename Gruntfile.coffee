@@ -1,7 +1,11 @@
 # How to build socks-rtc and its various demos.
 
-# TODO: work out an automatic way to only take what we need rather than the
-# whole library.
+# TODO: work out an automatic way to only the src we need rather than the whole
+# library. Maybe have a separate Gruntfile in each subdirectory with some common
+# rules for building a project accoridng to using a standard dir layout.
+
+# Also: provide a way to specify needed modules, and when they are not there to
+# give a sensible error.
 
 TaskManager = require './node_modules/uproxy-build-tools/build/taskmanager/taskmanager'
 
@@ -43,32 +47,39 @@ module.exports = (grunt) ->
 
     #-------------------------------------------------------------------------
     copy: {
-      # Base
-      typeScriptSrc: { files: [ {
-        expand: true, cwd: 'src/'
-        src: ['**/*.ts']
-        dest: 'build/typescript-src/' } ] }
-      buildToolsTypeScript: { files: [ {
-          expand: true, cwd: 'node_modules/uproxy-build-tools/build/typescript-src',
-          src: ['**/*.ts'],
-          dest: 'build/typescript-src/'
+      # TODO: provide a warning if local project overrides a build-tools
+      # directory?
+      # Copy all the built stuff from build-tools
+      buildToolsBuild: { files: [ {
+          expand: true, cwd: 'node_modules/uproxy-build-tools/build',
+          src: ['**'],
+          dest: 'build'
         } ] }
       thirdPartyTypeScript: { files: [
+        # Copy any typescript from the third_party directory
         {
           expand: true,
           src: ['third_party/**/*.ts']
           dest: 'build/typescript-src/'
         },
+        # freedom-typescript-api interfaces.
         {
           expand: true, cwd: 'node_modules'
           src: ['freedom-typescript-api/interfaces/**/*.ts']
           dest: 'build/typescript-src'
         }
       ]}
+      # Generic freedom providers we need.
       freedomProvidersBuild: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
-        src: ['*']
+        src: ['**']
         dest: 'build/freedom-providers/' } ] }
+      # This project's typescript should be in the standard place for all
+      # typescript code: build/typescript-src/
+      typeScriptSrc: { files: [ {
+        expand: true, cwd: 'src/'
+        src: ['**/*.ts']
+        dest: 'build/typescript-src/' } ] }
 
       # Individual modules.
       echoServer: Rule.copySrcModule 'echo-server'
@@ -164,7 +175,7 @@ module.exports = (grunt) ->
   taskManager = new TaskManager.Manager();
 
   taskManager.add 'base', [
-    'copy:buildToolsTypeScript'
+    'copy:buildToolsBuild'
     'copy:thirdPartyTypeScript'
     'copy:freedomProvidersBuild'
     'copy:typeScriptSrc'

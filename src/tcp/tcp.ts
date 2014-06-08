@@ -129,6 +129,7 @@ module TCP {
     // Tcp.Server who will provide it with an onClose function to remove itself
     // from the server's list of open connections.
     constructor(public socketId :number) {
+      this.dataHandlerQueue = new Handler.Queue<ArrayBuffer>();
       this.isClosed_ = false;
       this.onceDisconnected = new Promise<void>((F, R) => {
         this.fulfillDisconnect_ = F;  // To be fired on good disconnect.
