@@ -3,6 +3,8 @@
   "description": "Listen for incoming requests, and echo them back.",
   "app": {
     "script": [
+      "../arraybuffers/arraybuffers.js",
+      "../handler/handler-queue.js",
       "../tcp/tcp.js",
       "tcp-echo-server.js"
     ]
