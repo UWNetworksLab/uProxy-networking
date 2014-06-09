@@ -31,10 +31,10 @@ module Socks {
     /**
      * @param address local interface on which to bind the server
      * @param port port on which to bind the server
-     * @param createChannel_ function to create a new datachannel
+     * @param createDataChannel_ function to create a new datachannel
      */
     constructor(endpoint:Net.Endpoint,
-        private createChannel_:(params:Channel.EndpointInfo)
+        private createDataChannel_:(params:Channel.EndpointInfo)
                                => Promise<Channel.EndpointInfo>) {
       this.tcpServer = new Tcp.Server(endpoint.address, endpoint.port,
           this.establishSession_);
@@ -91,7 +91,7 @@ module Socks {
             replyToTCP(conn, Socks.AUTH.NOAUTH);
             return conn.receive();
           })
-          .then(Socks.interpretSocksRequest)
+          .then(Socks.interpretSocksRequestBuffer)
           .catch((e) => {
             // TODO: this should be a SOCKS response
             replyToTCP(conn, Socks.AUTH.NONE);
@@ -120,7 +120,7 @@ module Socks {
         // TODO: replace (`terminate` and `send`) with `conn`.
         send: conn.send,
         terminate: conn.close };
-      return this.createChannel_(params)
+      return this.createDataChannel_(params)
         .then((endpointInfo:Channel.EndpointInfo) => {
           // Clean up when the TCP connection terminates.
           conn.onceDisconnected.then(endpointInfo.terminate,
@@ -145,7 +145,7 @@ module Socks {
           })
           .then(() => {
             var udpSession:UdpSession =
-                new UdpSession(udpRelay, this.createChannel_, conn.close);
+                new UdpSession(udpRelay, this.createDataChannel_, conn.close);
             // Clean up any UDP datachannels when the TCP connection terminates.
             conn.onceDisconnected.then(udpSession.disconnected);
             var socksResponse = Server.composeSocksResponse(
@@ -237,7 +237,7 @@ module Socks {
 
     constructor(
         private udpRelay_:Socks.UdpRelay,
-        private createChannel_:(params:Channel.EndpointInfo) => Promise<Channel.EndpointInfo>,
+        private createDataChannel_:(params:Channel.EndpointInfo) => Promise<Channel.EndpointInfo>,
         private terminate_:() => any) {
       this.udpRelay_.setDataReceivedHandler(this.onData_);
     }
@@ -278,7 +278,7 @@ module Socks {
           },
           terminate: () => { this.terminate_(); }
         };
-        this.channels_[dest] = this.createChannel_(params);
+        this.channels_[dest] = this.createDataChannel_(params);
       }
       // Send the payload on the datachannel.
       this.channels_[dest]

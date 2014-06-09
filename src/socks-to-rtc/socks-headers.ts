@@ -69,8 +69,7 @@ module Socks {
    *   | 1  |  1  | X'00' |  1   | Variable |    2     |
    *   +----+-----+-------+------+----------+----------+
    */
-  export function interpretSocksRequest(buffer:ArrayBuffer) : SocksRequest {
-    var byteArray :Uint8Array = new Uint8Array(buffer);
+  export function interpretSocksRequest(byteArray:Uint8Array) : SocksRequest {
 
     var result :SocksRequest = {};
     // Fail if the request is too short to be valid.
@@ -96,6 +95,11 @@ module Socks {
     interpretSocksAddress(byteArray.subarray(3), result);
 
     return result;
+  }
+
+  export function interpretSocksRequestBuffer(buffer:ArrayBuffer)
+      : SocksRequest {
+    return interpretSocksRequest(new Uint8Array(buffer));
   }
 
   /**
