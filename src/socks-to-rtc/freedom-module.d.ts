@@ -13,8 +13,8 @@ declare module freedom {
 
     on(type:string, readyHandler:Function);
     on(type:'ready', f:()=>void);
-    on(type:'socksToRtcSuccess', f:(addressAndPort:Net.AddressAndPort) => void);
-    on(type:'socksToRtcFailure', f:(addressAndPort:Net.AddressAndPort) => void);
+    on(type:'socksToRtcSuccess', f:(endpoint:Net.Endpoint) => void);
+    on(type:'socksToRtcFailure', f:(endpoint:Net.Endpoint) => void);
     on(type:'sendSignalToPeer', f:(msg:string) => void);
   }
 }

@@ -27,8 +27,7 @@ Rule.copyBuiltModule = (name, dest) ->
 # HACK: override noImplicitAny=false to deal with inability to specity
 # `core.XXX` providers. See: https://github.com/freedomjs/freedom/issues/57
 Rule.typeScriptSrc = (name) ->
-    src: ['build/typescript-src/' + name + '/**/*.ts',
-          '!build/typescript-src/' + name + '/**/*.d.ts']
+    src: ['build/typescript-src/' + name + '/**/*.ts', '!**/*.d.ts']
     dest: 'build/'
     options:
       basePath: 'build/typescript-src/'

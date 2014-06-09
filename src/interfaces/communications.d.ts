@@ -11,7 +11,7 @@ interface PeerSignal {
 
 // Useful abbreviation for this common interface.
 declare module Net {
-  export interface AddressAndPort {
+  export interface Endpoint {
     address:string;
     port:number;
   }

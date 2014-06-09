@@ -6,7 +6,7 @@
 declare module freedom {
   interface TcpEchoServer {
     emit(type:string, value:Object) : void;
-    emit(type:'start', addressAndPort : Net.AddressAndPort) : void;
+    emit(type:'start', endpoint:Net.Endpoint) : void;
 
     emit(type:string) : void;
     emit(type:'stop') : void

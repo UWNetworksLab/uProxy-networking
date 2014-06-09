@@ -44,14 +44,14 @@ socksToRtc.on('sendSignalToPeer', (signalData:string) => {
 });
 
 // Listen for socksToRtc success or failure signals, and just print them for now.
-socksToRtc.on('socksToRtcSuccess', (addressAndPort:Net.AddressAndPort) => {
+socksToRtc.on('socksToRtcSuccess', (endpoint:Net.Endpoint) => {
   console.log('Received socksToRtcSuccess for: '
-      + JSON.stringify(addressAndPort));
+      + JSON.stringify(endpoint));
 });
 
-socksToRtc.on('socksToRtcFailure', (addressAndPort:Net.AddressAndPort) => {
+socksToRtc.on('socksToRtcFailure', (endpoint:Net.Endpoint) => {
   console.error('Received socksToRtcFailure for: '
-      + JSON.stringify(addressAndPort));
+      + JSON.stringify(endpoint));
 });
 
 // Server tells socksToRtc about itself.
