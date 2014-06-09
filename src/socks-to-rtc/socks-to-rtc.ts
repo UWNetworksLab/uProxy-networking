@@ -79,32 +79,29 @@ module SocksToRTC {
           }
         );
 
-        // signalling channel messages are batched and dispatched each second.
-        // the unshift/pop business is supposed to help prevent clobbering messages.
+        // Signalling channel messages are batched and dispatched each second.
         // TODO: kill this loop!
         // TODO: size limit on batched message
         // TODO: this code is completely common to rtc-to-net (growing need for shared lib)
         var queuedMessages = [];
         setInterval(() => {
-          var batch = [];
-          while (queuedMessages.length > 0) {
-            batch.push(queuedMessages.pop());
-          }
-          if (batch.length > 0) {
+          if (queuedMessages.length > 0) {
             dbg('dispatching signalling channel messages...');
             freedom.emit('sendSignalToPeer', {
               peerId: peerId,
-              data: batch.join('===')
+              data: JSON.stringify({
+                version: 1,
+                messages: queuedMessages
+              })
             });
+            queuedMessages = [];
           }
         }, 1000);
 
         this.signallingChannel_ = chan.channel;
         this.signallingChannel_.on('message', function(msg) {
-          // msg is plain-text, e.g.:
-          //   {"candidate":{"sdpMLineIndex":0,"sdpMid":"audio","candidate":"a=candidate:1587603213 1 udp 2122260223 69.91.136.43 57727 typ host generation 0\r\n"}} 
           dbg('signalling channel message: ' + msg);
-          queuedMessages.unshift(msg);
+          queuedMessages.push(msg);
         });
         dbg('signalling channel to SCTP peer connection ready.');
         // Send hello command to initiate communication, which will cause
@@ -323,13 +320,19 @@ module SocksToRTC {
         dbgErr('signalling channel missing!');
         return;
       }
-      // msg is a '==='-separated string.
       // TODO: this code is completely common to rtc-to-net (growing need for shared lib)
-      var messages = msg.data.split('===');
-      for (var i = 0; i < messages.length; i++) {
-        var message = messages[i];
-        dbg('received signalling channel message: ' + message);
-        this.signallingChannel_.emit('message', message);
+      try {
+        var batchedMessages :any = JSON.parse(msg.data);
+        if (batchedMessages.version != 1) {
+          throw new Error('only version 1 batched messages supported');
+        }
+        for (var i = 0; i < batchedMessages.messages.length; i++) {
+          var message = batchedMessages.messages[i];
+          dbg('received signalling channel message: ' + message);
+          this.signallingChannel_.emit('message', message);
+        }
+      } catch (e) {
+        dbgErr('could not parse batched messages: ' + e.message);
       }
     }
 
