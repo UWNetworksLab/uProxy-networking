@@ -1,12 +1,12 @@
 /*
   Server which handles socks connections over WebRTC datachannels.
 */
-/// <reference path='../tcp/netclient.ts' />
 /// <reference path='../udp/udpclient.ts' />
 /// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
 /// <reference path='../freedom-typescript-api/interfaces/transport.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
+/// <reference path='../tcp/tcp.ts' />
 
 console.log('WEBWORKER - RtcToNet: ' + self.location.href);
 
@@ -19,10 +19,10 @@ module RtcToNet {
    */
   export class Peer {
 
-    private signallingChannel:any = null;
-    private transport:freedom.Transport = null;
+    private signallingChannel_:any = null;
+    private transport_:freedom.Transport = null;
     // TODO: this is messy...a common superclass would help
-    private netClients:{[tag:string]:Net.Client} = {};
+    private netClients:{[tag:string]:Tcp.Connection} = {};
     private udpClients:{[tag:string]:Net.UdpClient} = {};
     private server_ :Server = null;
 
@@ -39,14 +39,16 @@ module RtcToNet {
       });
     }
 
-    constructor (public peerId:string, channel, server) {
+    constructor (public peerId:string, channel:freedom.ChannelSpecifier,
+        server:Server) {
+      this.server_ = server;
       dbg('created new peer: ' + peerId);
       // peerconnection's data channels biject ot Net.Clients.
-      this.server_ = server;
-      this.transport = freedom['transport']();
-      this.transport.on('onData', this.passPeerDataToNet_);
-      this.transport.on('onClose', this.onCloseHandler_);
-      this.transport.setup('RtcToNet-' + peerId, channel.identifier).then(
+      this.transport_ = freedom['transport']();
+      // TODO: rename: pass peer-data to net?
+      this.transport_.on('onData', this.handleTransportData_);
+      this.transport_.on('onClose', this.onCloseHandler_);
+      this.transport_.setup('RtcToNet-' + peerId, channel.identifier).then(
         // TODO: emit signals when peer-to-peer connections are setup or fail.
         () => {
           dbg('RtcToNet transport.setup succeeded');
@@ -54,7 +56,6 @@ module RtcToNet {
         },
         (e) => { dbgErr('RtcToNet transport.setup failed ' + e); }
       );
-
       // Signalling channel messages are batched and dispatched each second.
       // TODO: kill this loop!
       // TODO: size limit on batched message
@@ -87,11 +88,12 @@ module RtcToNet {
      */
     // TODO(yagoon): rename this handleSignal()
     public sendSignal = (data:string) => {
-      if (!this.signallingChannel) {
+      dbgErr('???? this is called ???? ');
+      if (!this.signallingChannel_) {
         dbgErr('signalling channel missing!');
         return;
       }
-      this.signallingChannel.emit('message', data);
+      this.signallingChannel_.emit('message', data);
     }
 
     /**
@@ -117,70 +119,76 @@ module RtcToNet {
       return this.transport === null;
     }
 
-    /**
-     * Pass messages from peer connection to net.
-     */
-    private passPeerDataToNet_ = (message:freedom.Transport.IncomingMessage) => {
-      // TODO: This handler is also O(n) for ALL the data channels. Super
-      // terrible. Maybe it's fixed after freedom 0.2?
+    //
+    private handleNetConnectRequest_ =
+        (tag:string, request:Channel.NetConnectRequest) : void => {
+      if ((tag in this.netClients) || (tag in this.udpClients)) {
+        dbgErr('Net.Client already exists for datachannel: ' + tag);
+        return;
+      }
+      this.connectClientToNet_(tag, request)
+          .then((endpoint:Net.Endpoint) => {
+            return endpoint;
+          }, (e) => {
+            dbgWarn('could not create netclient: ' + e.message);
+            return undefined;
+          })
+          .then((endpoint?:Net.Endpoint) => {
+            var response:Channel.NetConnectResponse = {};
+            if (endpoint) {
+              response.address = endpoint.address;
+              response.port = endpoint.port;
+            }
+            var out:Channel.Command = {
+                type: Channel.COMMANDS.NET_CONNECT_RESPONSE,
+                tag: tag,
+                data: JSON.stringify(response)
+            }
+            this.transport_.send('control',
+                ArrayBuffers.stringToArrayBuffer(JSON.stringify(out)));
+          });
+    }
+
+    private handleControlCommand_ = (command:Channel.Command) : void => {
+      if (command.type === Channel.COMMANDS.NET_CONNECT_REQUEST) {
+        var request:Channel.NetConnectRequest = JSON.parse(command.data);
+        this.handleNetConnectRequest_(command.tag, request);
+      } else if (command.type === Channel.COMMANDS.HELLO) {
+        // Hello command is used to establish communication from socks-to-rtc,
+        // just ignore it.
+        dbg('received hello from peerId ' + this.peerId);
+        freedom.emit('rtcToNetConnectionEstablished', this.peerId);
+      }  else if (command.type === Channel.COMMANDS.PING) {
+        this.lastPingPongReceiveDate_ = new Date();
+        var command :Channel.Command = {type: Channel.COMMANDS.PONG};
+        this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
+            JSON.stringify(command)));
+      } else if (command.type === Channel.COMMANDS.SOCKS_DISCONNECTED) {
+        dbg('received SOCKS_DISCONNECTED with tag = ' + command.tag);
+        if(command.tag in this.netClients) {
+          this.netClients[command.tag].close();
+        } else {
+          dbg('failed to find netClient with tag = ' + command.tag);
+        }
+      } else {
+        // TODO: support SocksDisconnected command
+        dbgErr('Unsupported control command: ' + JSON.stringify(command));
+      }
+    }
+
+    // Handle data sent transport.
+    private handleTransportData_ =
+        (message:freedom.Transport.IncomingMessage) : void => {
       if (!message.tag) {
         dbgErr('received message without datachannel tag!: ' + JSON.stringify(message));
         return;
       }
-
       if (message.tag == 'control') {
         var command:Channel.Command = JSON.parse(
-            ArrayBuffers.arrayBufferToString(message.data));
-        if (command.type === Channel.COMMANDS.NET_CONNECT_REQUEST) {
-          var request:Channel.NetConnectRequest = JSON.parse(command.data);
-          if ((command.tag in this.netClients) ||
-              (command.tag in this.udpClients)) {
-            dbgWarn('Net.Client already exists for datachannel: ' + command.tag);
-            return;
-          }
-          this.prepareNetChannelLifecycle_(command.tag, request)
-              .then((endpoint:Net.AddressAndPort) => {
-                return endpoint;
-              }, (e) => {
-                dbgWarn('could not create netclient: ' + e.message);
-                return undefined;
-              })
-              .then((endpoint?:Net.AddressAndPort) => {
-                var response:Channel.NetConnectResponse = {};
-                if (endpoint) {
-                  response.address = endpoint.address;
-                  response.port = endpoint.port;
-                }
-                var out:Channel.Command = {
-                    type: Channel.COMMANDS.NET_CONNECT_RESPONSE,
-                    tag: command.tag,
-                    data: JSON.stringify(response)
-                }
-                this.transport.send('control',
-                    ArrayBuffers.stringToArrayBuffer(JSON.stringify(out)));
-              });
-        } else if (command.type === Channel.COMMANDS.HELLO) {
-          // Hello command is used to establish communication from socks-to-rtc,
-          // just ignore it.
-          dbg('received hello from peerId ' + this.peerId);
-          freedom.emit('rtcToNetConnectionEstablished', this.peerId);
-        }  else if (command.type === Channel.COMMANDS.PING) {
-          this.lastPingPongReceiveDate_ = new Date();
-          var command :Channel.Command = {type: Channel.COMMANDS.PONG};
-          this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
-              JSON.stringify(command)));
-        } else if (command.type === Channel.COMMANDS.SOCKS_DISCONNECTED) {
-          dbg('received SOCKS_DISCONNECTED with tag = ' + command.tag);
-          if(command.tag in this.netClients) {
-            this.netClients[command.tag].close();
-          } else {
-            dbg('failed to find netClient with tag = ' + command.tag);
-          }
-        } else {
-          // TODO: support SocksDisconnected command
-          dbgWarn('unsupported control command: ' + JSON.stringify(command));
-        }
+          ArrayBuffers.arrayBufferToString(message.data));
+        this.handleControlCommand_(command);
       } else {
+        // Pass messages from peer connection to net.
         dbg(message.tag + ' <--- received ' + JSON.stringify(message));
         if(message.tag in this.netClients) {
           dbg('forwarding ' + message.data.byteLength +
@@ -191,48 +199,54 @@ module RtcToNet {
               ' udp bytes from datachannel ' + message.tag);
           this.udpClients[message.tag].send(message.data);
         } else {
-          dbgErr('[RtcToNet] non-existent channel! Msg: ' + JSON.stringify(message));
+          dbgErr('[RtcToNet] non-existent channel! Msg: ' +
+                 JSON.stringify(message));
         }
       }
+    }
+
+    // connect a new TCP client to the destination and setup handling of being
+    // disconnected and handling of data.
+    private connectTcpClient_ = (tag :string, endpoint :Net.Endpoint)
+        : Promise<Net.Endpoint> => {
+      var netClient = new Tcp.Connection({ destination: endpoint });
+      this.netClients[tag] = netClient;
+      netClient.dataFromSocketQueue.setHandler((data) => {
+        this.transport_.send(tag, data);
+      });
+      netClient.onceDisconnected.then(() => {
+        var command:Channel.Command = {
+            type: Channel.COMMANDS.NET_DISCONNECTED,
+            tag: tag
+        };
+        this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
+            JSON.stringify(command)));
+        delete this.netClients[tag];
+        dbg('send NET-DISCONNECTED ---> ' + tag);
+      });
+      return netClient.onceConnected;
     }
 
     /**
      * Returns a promise to tie a Net.Client for Destination |dest| to
      * data-channel |tag|.
      */
-    private prepareNetChannelLifecycle_ =
-        (tag:string, request:Channel.NetConnectRequest) : Promise<Net.AddressAndPort> => {
-      if (request.protocol == 'tcp') {
-        var dest:Net.AddressAndPort = {
-          address: request.address,
-          port: request.port
-        };
-        var netClient = new Net.Client(
-            (data) => { this.transport.send(tag, data); },  // onResponse
-            dest);
-        return netClient.create().then((endpoint:Net.AddressAndPort) => {
-          this.netClients[tag] = netClient;
-          // Send NetClient remote disconnections back to SOCKS peer, then shut the
-          // data channel locally.
-          netClient.onceDisconnected().then(() => {
-            var command:Channel.Command = {
-                type: Channel.COMMANDS.NET_DISCONNECTED,
-                tag: tag
-            };
-            this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
-                JSON.stringify(command)));
-            dbg('send NET-DISCONNECTED ---> ' + tag);
-          });
-          return endpoint;
-        });
+    // TODO: use endpoint everywhere and avoid having to construct/deconstruct
+    // it.
+    private connectClientToNet_ =
+        (tag:string, request:Channel.NetConnectRequest)
+        : Promise<Net.Endpoint> => {
+      if (request.protocol === 'tcp') {
+        return this.connectTcpClient_(tag, { address: request.address,
+                                             port: request.port });
       } else {
         // UDP.
         var client = new Net.UdpClient(
             request.address,
             request.port,
-            (data:ArrayBuffer) => { this.transport.send(tag, data); });
+            (data:ArrayBuffer) => { this.transport_.send(tag, data); });
         return client.bind()
-            .then((endpoint:Net.AddressAndPort) => {
+            .then((endpoint:Net.Endpoint) => {
               dbg('udp socket is bound!');
               this.udpClients[tag] = client;
               return endpoint;
@@ -241,9 +255,10 @@ module RtcToNet {
     }
 
     public close = () => {
-      // Just call this.transport.close, then let onCloseHandler_ do
+      // Just call this.transport_.close, then let onCloseHandler_ do
       // the rest of the cleanup.
-      this.transport.close();
+      this.transport_.close();
+      dbg('RtcToNet.close: expect closing of all netclients shortly.');
     }
 
     /**
@@ -263,7 +278,7 @@ module RtcToNet {
             (nowDate.getTime() - this.lastPingPongReceiveDate_.getTime()) >
              PING_PONG_CHECK_INTERVAL_MS) {
           dbgWarn('no ping-pong detected, closing peer');
-          this.transport.close();
+          this.transport_.close();
         }
       }, PING_PONG_CHECK_INTERVAL_MS);
     }

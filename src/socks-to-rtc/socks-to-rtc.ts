@@ -53,9 +53,9 @@ module SocksToRtc {
      * TODO: update this to return a promise that fulfills/rejects, after freedom v0.5
      * is ready.
      */
-    public start = (addressAndPort : Net.AddressAndPort) => {
+    public start = (endpoint:Net.Endpoint) => {
       this.reset_();  // Begin with fresh components.
-      dbg('starting SocksToRtc: ' + JSON.stringify(addressAndPort));
+      dbg('starting SocksToRtc: ' + JSON.stringify(endpoint));
       // SOCKS sessions biject to peerconnection datachannels.
       this.transport_ = freedom['transport']();
       this.transport_.on('onData', this.onDataFromPeer_);
@@ -67,12 +67,13 @@ module SocksToRtc {
         this.transport_.setup('SocksToRtc', chan.identifier).then(
           () => {
             dbg('SocksToRtc transport_.setup succeeded');
-            freedom.emit('socksToRtcSuccess', addressAndPort);
+            freedom.emit('socksToRtcSuccess', endpoint);
+            this.startPingPong_();
           }
         ).catch(
           (e) => {
             dbgErr('SocksToRtc transport_.setup failed ' + e);
-            freedom.emit('socksToRtcFailure', addressAndPort);
+            freedom.emit('socksToRtcFailure', endpoint);
           }
         );
 
@@ -112,8 +113,7 @@ module SocksToRtc {
       });  // fCore.createChannel
 
       // Create SOCKS server and start listening.
-      this.socksServer_ = new Socks.Server(addressAndPort,
-                                           this.createDataChannel_);
+      this.socksServer_ = new Socks.Server(endpoint, this.createDataChannel_);
       this.socksServer_.listen();
     }
 

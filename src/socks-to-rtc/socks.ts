@@ -14,33 +14,33 @@ module Socks {
 
   /**
    * Send reply back over a TCP connection.
-   * Assumes |conn| is a valid TCP.Connection.
+   * Assumes |conn| is a valid Tcp.Connection.
    */
   // TODO: rename this! it should only be used during the handshake phase
-  function replyToTCP(conn:TCP.Connection, authType:Socks.AUTH) {
+  function replyToTCP(conn:Tcp.Connection, authType:Socks.AUTH) {
     var response:Uint8Array = new Uint8Array(2);
     response[0] = Socks.VERSION5;
     response[1] = authType;
-    conn.sendRaw(response.buffer);
+    conn.send(response.buffer);
   }
 
   export class Server {
 
-    private tcpServer:TCP.Server;
+    private tcpServer:Tcp.Server;
 
     /**
      * @param address local interface on which to bind the server
      * @param port port on which to bind the server
      * @param createChannel_ function to create a new datachannel
      */
-    constructor(addressAndPort : Net.AddressAndPort,
+    constructor(endpoint:Net.Endpoint,
         private createChannel_:(params:Channel.EndpointInfo)
                                => Promise<Channel.EndpointInfo>) {
-      this.tcpServer = new TCP.Server(addressAndPort.address,
-          addressAndPort.port, this.establishSession_);
+      this.tcpServer = new Tcp.Server(endpoint.address, endpoint.port,
+          this.establishSession_);
     }
 
-    getAddressAndPort() : Net.AddressAndPort {
+    getEndpoint() : Net.Endpoint {
       return { address: this.tcpServer.address, port: this.tcpServer.port };
     }
 
@@ -81,7 +81,7 @@ module Socks {
      * relevant handlers in such a way that data is passed back and forth to
      * SOCKS client along the datachannel.
      */
-    private establishSession_ = (conn:TCP.Connection) : void => {
+    private establishSession_ = (conn:Tcp.Connection) : void => {
       var udpRelay:Socks.UdpRelay;
       console.log('establishSession_: ' + conn.toString());
 
@@ -111,31 +111,31 @@ module Socks {
     /**
      * Returns a promise to negotiate a TCP connection with the SOCKS client.
      */
-    private doTcp = (conn:TCP.Connection, socksRequest:Socks.SocksRequest)
+    private doTcp = (conn:Tcp.Connection, socksRequest:Socks.SocksRequest)
         : Promise<void> => {
       var params:Channel.EndpointInfo = {
         protocol: 'tcp',
         address: socksRequest.addressString,
         port: socksRequest.port,
         // TODO: replace (`terminate` and `send`) with `conn`.
-        send: conn.sendRaw,
+        send: conn.send,
         terminate: conn.close };
       return this.createChannel_(params)
         .then((endpointInfo:Channel.EndpointInfo) => {
           // Clean up when the TCP connection terminates.
           conn.onceDisconnected.then(endpointInfo.terminate,
                                      endpointInfo.terminate);
-          conn.dataHandlerQueue.setHandler(endpointInfo.send);
+          conn.dataFromSocketQueue.setHandler(endpointInfo.send);
           var socksResponse = Server.composeSocksResponse(
               endpointInfo.address, endpointInfo.port);
-          conn.sendRaw(socksResponse);
+          conn.send(socksResponse);
         });
     }
 
     /**
      * Returns a promise to negotiate a UDP session with the SOCKS client.
      */
-    private doUdp = (conn:TCP.Connection) : Promise<void> => {
+    private doUdp = (conn:Tcp.Connection) : Promise<void> => {
       var udpRelay = new Socks.UdpRelay();
       return udpRelay.bind(this.tcpServer.address, 0)
           .then(() => {
@@ -150,7 +150,7 @@ module Socks {
             conn.onceDisconnected.then(udpSession.disconnected);
             var socksResponse = Server.composeSocksResponse(
                 udpRelay.getAddress(), udpRelay.getPort());
-            conn.sendRaw(socksResponse);
+            conn.send(socksResponse);
           });
     }
 
