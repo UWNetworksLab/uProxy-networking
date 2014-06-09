@@ -361,7 +361,7 @@ module SocksToRTC {
             JSON.stringify(command)));
       }, 1000);
 
-      var PING_PONG_CHECK_INTERVAL_MS :number = 5000;
+      var PING_PONG_CHECK_INTERVAL_MS :number = 10000;
       this.pingPongCheckIntervalId_ = setInterval(() => {
         var nowDate = new Date();
         if (!this.lastPingPongReceiveDate_ ||
