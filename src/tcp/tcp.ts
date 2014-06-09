@@ -59,9 +59,6 @@ module Tcp {
 
       // Check that we haven't reach the maximum number of connections
       var connectionsCount = Object.keys(this.conns).length;
-      dbg('Tcp.Server(' + this.address + ':' + this.port +
-          ') : new connection (' + socketId +
-          ').  Conn count: ' + connectionsCount + ']');
       if (connectionsCount >= this.maxConnections) {
         // Stop too many connections.  We create a new socket here from the
         // incoming Id and immediately close it, because we don't yet have a
@@ -80,7 +77,7 @@ module Tcp {
 
       // Create new connection.
       dbg('Tcp.Server accepted connection on socket id ' + socketId);
-      var conn = new Connection(socketId);
+      var conn = new Connection({existingSocketId:socketId});
       // When the connection is disconnected correctly, or by error, remove
       // from the server's list of connections.
       conn.onceDisconnected.then(
@@ -97,7 +94,17 @@ module Tcp {
           + ' . Conn Count: ' + Object.keys(this.conns).length + ']');
         })
       this.conns[socketId] = conn;
+      dbg(this.toString());
       this.onConnection(conn);
+    }
+
+    public toString = () : string => {
+      var s = 'Tcp.Server(' + this.address + ':' + this.port +
+          ') connections: ' + Object.keys(this.conns).length + '\n{';
+      for(var socketId in this.conns) {
+        s += '  ' + this.conns[socketId].toString() + '\n';
+      }
+      return s += '}';
     }
 
     // Disconnect all sockets and stops listening.
@@ -236,6 +243,8 @@ module Tcp {
     // fullfilled.  If there's an error, onceDisconnected is rejected with the
     // error.
     private onDisconnectHandler_ = (info:TcpSocket.DisconnectInfo) : void => {
+      dbg('onDisconnectHandler_ (conn-id: ' + this.connectionId + ')');
+
       if(this.state_ === Connection.State.CLOSED) {
         dbgWarn('Got onDisconnect in state closed (connId=' +
             this.connectionId + '): errcode=' + info.errcode +
@@ -253,7 +262,7 @@ module Tcp {
         return;
       }
 
-      dbg('Socket closed correctly (socket-id: ' + this.connectionId + ')');
+      dbg('Socket closed correctly (conn-id: ' + this.connectionId + ')');
       this.fulfillDisconnect_();
     }
 
@@ -261,7 +270,7 @@ module Tcp {
     // disconnect Promise `onceDisconnected`.
     public close = () : Promise<void> => {
       if (this.state_ === Connection.State.CLOSED) {
-        dbgErr('Socket ' + this.connectionId + ' was attempted to be closed ' +
+        dbgErr('Conn  ' + this.connectionId + ' was attempted to be closed ' +
           'after it was already closed.');
         return;
       }
@@ -285,7 +294,7 @@ module Tcp {
     }
 
     public toString = () => {
-      return '<Tcp.Connection[' + this.connectionId + ']>';
+      return 'Tcp.Connection(' + this.connectionId + ':' + Connection.State[this.state_] + ')';
     }
 
   }  // class Tcp.Connection

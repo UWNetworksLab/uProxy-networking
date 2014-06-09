@@ -68,7 +68,7 @@ module SocksToRtc {
           () => {
             dbg('SocksToRtc transport_.setup succeeded');
             freedom.emit('socksToRtcSuccess', endpoint);
-            this.startPingPong_();
+            // this.startPingPong_();
           }
         ).catch(
           (e) => {
