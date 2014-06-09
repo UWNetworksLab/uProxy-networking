@@ -53,12 +53,33 @@ module RtcToNet {
         },
         (e) => { dbgErr('RtcToNet transport.setup failed ' + e); }
       );
+
+      // signalling channel messages are batched and dispatched each second.
+      // the unshift/pop business is supposed to help prevent clobbering messages.
+      // TODO: kill this loop!
+      // TODO: size limit on batched message
+      // TODO: this code is completely common to socks-to-rtc (growing need for shared lib)
+      var queuedMessages = [];
+      setInterval(() => {
+        var batch = [];
+        while (queuedMessages.length > 0) {
+          batch.push(queuedMessages.pop());
+        }
+        if (batch.length > 0) {
+          dbg('dispatching signalling channel messages...');
+          freedom.emit('sendSignalToPeer', {
+            peerId: peerId,
+            data: batch.join('===')
+          });
+        }
+      }, 1000);
+
       this.signallingChannel = channel.channel;
       this.signallingChannel.on('message', (msg) => {
-        freedom.emit('sendSignalToPeer', {
-            peerId: peerId,
-            data: msg
-        });
+        // msg is plain-text, e.g.:
+        //   {"candidate":{"sdpMLineIndex":0,"sdpMid":"audio","candidate":"a=candidate:1587603213 1 udp 2122260223 69.91.136.43 57727 typ host generation 0\r\n"}} 
+        dbg('signalling channel message: ' + msg);
+        queuedMessages.unshift(msg);
       });
       dbg('signalling channel to SCTP peer connection ready.');
     }
@@ -273,7 +294,14 @@ module RtcToNet {
       // TODO: Check for access control?
       // dbg('sending signal to transport: ' + JSON.stringify(signal.data));
       this.fetchOrCreatePeer_(signal.peerId).then((peer) => {
-        peer.sendSignal(signal.data);
+        // msg is a '==='-separated string.
+        // TODO: this code is completely common to rtc-to-net (growing need for shared lib)
+        var messages = signal.data.split('===');
+        for (var i = 0; i < messages.length; i++) {
+          var message = messages[i];
+          dbg('received signalling channel message: ' + message);
+          peer.sendSignal(message);
+        }
       });
     }
 
