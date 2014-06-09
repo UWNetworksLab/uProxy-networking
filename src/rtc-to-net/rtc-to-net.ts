@@ -52,7 +52,7 @@ module RtcToNet {
         // TODO: emit signals when peer-to-peer connections are setup or fail.
         () => {
           dbg('RtcToNet transport.setup succeeded');
-          this.startPingPong_();
+          // this.startPingPong_();
         },
         (e) => { dbgErr('RtcToNet transport.setup failed ' + e); }
       );
@@ -83,12 +83,13 @@ module RtcToNet {
       dbg('signalling channel to SCTP peer connection ready.');
     }
 
-    /**
-     * Send data over the peer's signalling channel, or queue if not ready.
-     */
-    // TODO(yagoon): rename this handleSignal()
-    public sendSignal = (data:string) => {
-      dbgErr('???? this is called ???? ');
+    // Handle a message we have received from the peer, which just involves
+    // passing it to the transport provider.
+    //
+    // CONSIDER: when freedom supports better signalling, we be passing around
+    // mechanisms to speak to signalling channel directly and avoid some of the
+    // freedom-root module communication.
+    public handleSignalFromPeer = (data:string) => {
       if (!this.signallingChannel_) {
         dbgErr('signalling channel missing!');
         return;
@@ -119,7 +120,7 @@ module RtcToNet {
       return this.transport === null;
     }
 
-    //
+    // handle a request to create a new P2P network connection.
     private handleNetConnectRequest_ =
         (tag:string, request:Channel.NetConnectRequest) : void => {
       if ((tag in this.netClients) || (tag in this.udpClients)) {
@@ -304,7 +305,7 @@ module RtcToNet {
     private peers_:{[peerId:string]:Promise<Peer>} = {};
 
     /**
-     * Send PeerSignal over peer's signallin chanel.
+     * The peer has send us a message via the signalling channel.
      */
     public handleSignal = (signal:PeerSignal) => {
       if (!signal.peerId) {
@@ -323,7 +324,7 @@ module RtcToNet {
           for (var i = 0; i < batchedMessages.messages.length; i++) {
             var message = batchedMessages.messages[i];
             dbg('received signalling channel message: ' + message);
-            peer.sendSignal(message);
+            peer.handleSignalFromPeer(message);
           }
         } catch (e) {
           dbgErr('could not parse batched messages: ' + e.message);
