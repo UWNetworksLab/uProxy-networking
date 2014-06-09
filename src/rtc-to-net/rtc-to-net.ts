@@ -23,6 +23,7 @@ module RtcToNet {
     // TODO: this is messy...a common superclass would help
     private netClients:{[tag:string]:Net.Client} = {};
     private udpClients:{[tag:string]:Net.UdpClient} = {};
+    private server_ :Server = null;
 
     // Private state kept for ping-pong (heartbeat and ack).
     private pingPongCheckIntervalId_ :number = null;
@@ -30,15 +31,17 @@ module RtcToNet {
 
     // Static initialiser which returns a promise to create a new Peer
     // instance complete with a signalling channel for NAT piercing.
-    static CreateWithChannel = (peerId:string) : Promise<Peer> => {
+    static CreateWithChannel = (peerId :string, server :Server)
+        : Promise<Peer> => {
       return fCore.createChannel().then((channel) => {
-        return new Peer(peerId, channel);
+        return new Peer(peerId, channel, server);
       });
     }
 
-    constructor (public peerId:string, channel) {
+    constructor (public peerId:string, channel, server) {
       dbg('created new peer: ' + peerId);
       // peerconnection's data channels biject ot Net.Clients.
+      this.server_ = server;
       this.transport = freedom['transport']();
       this.transport.on('onData', this.passPeerDataToNet_);
       this.transport.on('onClose', this.onCloseHandler_);
@@ -85,6 +88,14 @@ module RtcToNet {
         this.udpClients[i].close();
       }
       freedom.emit('rtcToNetConnectionClosed', this.peerId);
+      // Set transport to null to ensure this object won't be accidentally
+      // used again.
+      this.transport = null;
+      this.server_.removePeer(this.peerId);
+    }
+
+    public isClosed = () : boolean => {
+      return this.transport === null;
     }
 
     /**
@@ -273,9 +284,30 @@ module RtcToNet {
       if (peerId in this.peers_) {
         return this.peers_[peerId];
       }
-      var peer = RtcToNet.Peer.CreateWithChannel(peerId);
+      var peer = RtcToNet.Peer.CreateWithChannel(peerId, this);
       this.peers_[peerId] = peer;
       return peer;
+    }
+
+    /**
+     * Remove a peer from the server.  This should be called after the peer
+     * closes its transport.
+     */
+    public removePeer(peerId :string) : void {
+      if (!(peerId in this.peers_)) {
+        dbgWarn('removePeer: peer not found ' + peerId);
+        return;
+      }
+
+      this.peers_[peerId].then((peer) => {
+        // Verify that peer's transport is closed before deleting.
+        if (!peer.isClosed()) {
+          dbgErr('Cannot remove unclosed peer, ' + peerId);
+          return;
+        }
+        dbg('Removing peer: ' + peerId);
+        delete this.peers_[peerId];
+      }).catch((e) => { dbgErr('Error closing peer ' + peerId + ', ' + e); });
     }
 
     /**
