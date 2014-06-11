@@ -177,6 +177,9 @@ module SocksToRtc {
       return new Promise((F,R) => {
         this.connectCallbacks_[tag] = (response:Channel.NetConnectResponse) => {
           if (response.address) {
+            // TODO: This is not right! send and terminate get overwritten in
+            // bad ways. There is a followup CL to pull request coming to fix
+            // this.
             var endpointInfo:Channel.EndpointInfo = {
               protocol: params.protocol,
               address: response.address,
