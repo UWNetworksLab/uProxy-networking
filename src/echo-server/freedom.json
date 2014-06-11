@@ -3,8 +3,10 @@
   "description": "Listen for incoming requests, and echo them back.",
   "app": {
     "script": [
-      "../socks-to-rtc/tcp.js",
-      "tcp_echo_server.js"
+      "../arraybuffers/arraybuffers.js",
+      "../handler/handler-queue.js",
+      "../tcp/tcp.js",
+      "tcp-echo-server.js"
     ]
   },
   "permissions": [

@@ -6,3 +6,4 @@ node_modules/*
 *.bak
 tmp/*
 build/*
+.grunt

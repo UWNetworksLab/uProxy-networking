@@ -2,10 +2,10 @@
   "manifest_version": 2,
   "name": "socks-RTC",
   "description": "Experiments in proxying SOCKS5 over WebRTC",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "app": {
     "background": {
-      "page": "socks_rtc.html"
+      "page": "socks-rtc.html"
     }
   },
   "permissions": [

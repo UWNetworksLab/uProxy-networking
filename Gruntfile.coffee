@@ -1,119 +1,147 @@
+# How to build socks-rtc and its various demos.
+
+# TODO: work out an automatic way to only the src we need rather than the whole
+# library. Maybe have a separate Gruntfile in each subdirectory with some common
+# rules for building a project accoridng to using a standard dir layout.
+
+# Also: provide a way to specify needed modules, and when they are not there to
+# give a sensible error.
+
 TaskManager = require './node_modules/uproxy-build-tools/build/taskmanager/taskmanager'
 
-module.exports = (grunt) ->
+#-------------------------------------------------------------------------
+# Rule-making helper function that assume expected directory layout.
+#
+# Function to make a copy rule for a module directory, assuming standard
+# layout. Copies all non (ts/sass) compiled files into the corresponding
+# build directory.
+Rule = require('./node_modules/uproxy-build-tools/Gruntfile.coffee').Rule;
+Rule.copySrcModule = (name, dest) ->
+    expand: true, cwd: 'src/'
+    src: [name + '/**', '!' + name + '/**/*.ts', '!' + name + '/**/*.sass']
+    dest: 'build'
+Rule.copyBuiltModule = (name, dest) ->
+    expand: true, cwd: 'build/'
+    src: [name + '/**']
+    dest: 'build/' + dest
+# HACK: override noImplicitAny=false to deal with inability to specity
+# `core.XXX` providers. See: https://github.com/freedomjs/freedom/issues/57
+Rule.typeScriptSrc = (name) ->
+    src: ['build/typescript-src/' + name + '/**/*.ts', '!**/*.d.ts']
+    dest: 'build/'
+    options:
+      basePath: 'build/typescript-src/'
+      ignoreError: false
+      noImplicitAny: false
+      sourceMap: true
 
+
+#-------------------------------------------------------------------------
+module.exports = (grunt) ->
   path = require('path');
 
+  #-------------------------------------------------------------------------
   grunt.initConfig {
     pkg: grunt.file.readJSON('package.json')
 
+    #-------------------------------------------------------------------------
     copy: {
-      freedomChrome: { files: [ {
-        expand: true, cwd: 'node_modules/freedom-for-chrome/'
-        src: ['freedom-for-chrome.js']
-        dest: 'build/chrome-app/' } ] }
-      freedomFirefox: { files: [ {
-        expand: true, cwd: 'node_modules/freedom-for-firefox/'
-        src: ['freedom-for-firefox.jsm', 'freedom.map']
-        dest: 'build/firefox-app/data' } ] }
+      # TODO: provide a warning if local project overrides a build-tools
+      # directory?
+      # Copy all the built stuff from build-tools
+      buildToolsBuild: { files: [ {
+          expand: true, cwd: 'node_modules/uproxy-build-tools/build',
+          src: ['**'],
+          dest: 'build'
+        } ] }
+      thirdPartyTypeScript: { files: [
+        # Copy any typescript from the third_party directory
+        {
+          expand: true,
+          src: ['third_party/**/*.ts']
+          dest: 'build/typescript-src/'
+        },
+        # freedom-typescript-api interfaces.
+        {
+          expand: true, cwd: 'node_modules'
+          src: ['freedom-typescript-api/interfaces/**/*.ts']
+          dest: 'build/typescript-src'
+        }
+      ]}
+      # Generic freedom providers we need.
       freedomProvidersBuild: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
-        src: ['*']
-        dest: 'build/freedom-providers' } ] }
+        src: ['**']
+        dest: 'build/freedom-providers/' } ] }
+      # This project's typescript should be in the standard place for all
+      # typescript code: build/typescript-src/
+      typeScriptSrc: { files: [ {
+        expand: true, cwd: 'src/'
+        src: ['**/*.ts']
+        dest: 'build/typescript-src/' } ] }
+
+      # Individual modules.
+      echoServer: Rule.copySrcModule 'echo-server'
+      socksToRtc: Rule.copySrcModule 'socks-to-rtc'
+      rtcToNet: Rule.copySrcModule 'rtc-to-net'
+
+      # Chrome App
+      chromeApp: Rule.copySrcModule 'chrome-app'
+      freedomChrome: { files: [ {
+        expand: true, cwd: 'node_modules/freedom-for-chrome/'
+        src: ['freedom-for-chrome.js', 'freedom.map']
+        dest: 'build/chrome-app/' } ] }
       freedomProvidersChrome: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
         src: ['*']
         dest: 'build/chrome-app/freedom-providers' } ] }
+      echoServer_Chrome: Rule.copyBuiltModule 'echo-server', 'chrome-app/'
+      socksToRtc_Chrome: Rule.copyBuiltModule 'socks-to-rtc', 'chrome-app/'
+      arraybuffers_Chrome: Rule.copyBuiltModule 'arraybuffers', 'chrome-app/'
+      rtcToNet_Chrome: Rule.copyBuiltModule 'rtc-to-net', 'chrome-app/'
+      handler_Chrome: Rule.copyBuiltModule 'handler', 'chrome-app/'
+      tcp_Chrome: Rule.copyBuiltModule 'tcp', 'chrome-app/'
+      udp_Chrome: Rule.copyBuiltModule 'udp', 'chrome-app/'
+
+      # Firefox App
+      firefoxApp: Rule.copySrcModule 'firefox-app'
+      freedomFirefox: { files: [ {
+        expand: true, cwd: 'node_modules/freedom-for-firefox/'
+        src: ['freedom-for-firefox.jsm', 'freedom.map']
+        dest: 'build/firefox-app/data' } ] }
       freedomProvidersFirefox: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
         src: ['*']
         dest: 'build/firefox-app/data/freedom-providers' } ] }
-      buildUtil: { files: [ {
-          expand: true, cwd: 'node_modules/uproxy-build-tools/build/util',
-          src: ['**/*.js'],
-          dest: 'build/util'
-        } ] }
-
-      # User should include the compiled source directly from:
-      #   - build/socks-to-rtc
-      #   - build/rtc-to-net
-      socks2rtc: { files: [ {
-        expand: true, cwd: 'src/'
-        src: ['socks-to-rtc/**/*.json']
-        dest: 'build/' } ] }
-      rtc2net: { files: [ {
-        expand: true, cwd: 'src/'
-        src: ['rtc-to-net/**/*.json']
-        dest: 'build/' } ] }
-      echoChrome: { files: [ {
-        expand: true, cwd: 'test/'
-        src: ['**']
-        dest: 'build/chrome-app/test/' } ] }
-      echoFirefox: { files: [ {
-        expand: true, cwd: 'test/'
-        src: ['**']
-        dest: 'build/firefox-app/data/test/' } ] }
-      firefoxApp: { files: [ {
-          expand: true, cwd: 'src/firefox-app'
-          src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
-          dest: 'build/firefox-app/'
-        }, {
-          expand: true, cwd: 'src/chrome-app'
-          src: ['socks_rtc.json', 'socks_to_rtc_to_net.js']
-          dest: 'build/firefox-app/data' 
-        }, {
-          expand: true, cwd: 'build/socks-to-rtc',
-          src: ['**/*.js', '**/*.json'],
-          dest: 'build/firefox-app/data/socks-to-rtc'
-        }, {
-          expand: true, cwd: 'build/rtc-to-net',
-          src: ['**/*.js', '**/*.json'],
-          dest: 'build/firefox-app/data/rtc-to-net'
-        }, {
-          expand: true, cwd: 'node_modules/uproxy-build-tools/build/util',
-          src: ['**/*.js'],
-          dest: 'build/firefox-app/data/util'
-        } ] }
-      chromeApp: { files: [ {
-          expand: true, cwd: 'src/chrome-app'
-          src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
-          dest: 'build/chrome-app/'
-        }, {
-          expand: true, cwd: 'build/socks-to-rtc',
-          src: ['**/*.js', '**/*.json'],
-          dest: 'build/chrome-app/socks-to-rtc'
-        }, {
-          expand: true, cwd: 'build/rtc-to-net',
-          src: ['**/*.js', '**/*.json'],
-          dest: 'build/chrome-app/rtc-to-net'
-        }, {
-          expand: true, cwd: 'node_modules/uproxy-build-tools/build/util',
-          src: ['**/*.js'],
-          dest: 'build/chrome-app/util'
-        } ] }
-    }
+      echoServer_Firefox: Rule.copyBuiltModule 'echo-server', 'firefox-app/data/'
+      socksToRtc_Firefox: Rule.copyBuiltModule 'socks-to-rtc', 'firefox-app/data/'
+      rtcToNet_Firefox: Rule.copyBuiltModule 'rtc-to-net', 'firefox-app/data/'
+      # ? what more... ?
+    }  # copy
 
     #-------------------------------------------------------------------------
     # All typescript compiles to build/ initially.
     typescript: {
-      socks2rtc:
-        src: ['src/socks-to-rtc/**/*.ts']
-        dest: 'build/'
-        options: { basePath: 'src', ignoreError: false }
-      rtc2net:
-        src: ['src/rtc-to-net/**/*.ts']
-        dest: 'build/'
-        options: { basePath: 'src', ignoreError: false }
-      chromeApp:
-        src: ['src/chrome-app/**/*.ts']
-        dest: 'build/'
-        options: { basePath: 'src/', ignoreError: false }
+      arraybuffers: Rule.typeScriptSrc 'arraybuffers'
+      handler: Rule.typeScriptSrc 'handler'
+      tcp: Rule.typeScriptSrc 'tcp'
+      udp: Rule.typeScriptSrc 'udp'
+      echoServer: Rule.typeScriptSrc 'echo-server'
+      socksToRtc: Rule.typeScriptSrc 'socks-to-rtc'
+      rtcToNet: Rule.typeScriptSrc 'rtc-to-net'
+      chromeApp: Rule.typeScriptSrc 'chrome-app'
+      firefoxApp: Rule.typeScriptSrc 'firefox-app'
     }
 
+    #-------------------------------------------------------------------------
     jasmine: {
-      socksToRtc:
-        src: ['build/chrome-app/socks-to-rtc/socks-headers.js']
-        options : { specs : 'build/socks-to-rtc/**/*.spec.js' }
+      socksToRtc_socksHeader:
+        src: ['build/socks-to-rtc/socks-headers.js',
+              'build/socks-to-rtc/socks.js']
+        options:
+          specs: 'build/socks-to-rtc/socks-headers.spec.js'
+          outfile: 'build/socks-to-rtc/_SpecRunner.html'
+          keepRunner: true
     }
 
     env: {
@@ -145,18 +173,95 @@ module.exports = (grunt) ->
   # Define the tasks
   taskManager = new TaskManager.Manager();
 
-  # TODO: create separate build commands for just the socks-to-rtc and rtc-to-net
-  # libaries, chrome app, and firefox app.
+  taskManager.add 'base', [
+    'copy:buildToolsBuild'
+    'copy:thirdPartyTypeScript'
+    'copy:freedomProvidersBuild'
+    'copy:typeScriptSrc'
+  ]
+
+  taskManager.add 'echoServer', [
+    'base'
+    'copy:echoServer'
+    'typescript:echoServer'
+  ]
+
+  taskManager.add 'socksToRtc', [
+    'base'
+    'copy:socksToRtc'
+    'typescript:socksToRtc'
+  ]
+
+  taskManager.add 'rtcToNet', [
+    'base'
+    'copy:rtcToNet'
+    'typescript:rtcToNet'
+  ]
+
+  taskManager.add 'tcp', [
+    'base'
+    'typescript:tcp'
+  ]
+
+  taskManager.add 'handler', [
+    'base'
+    'typescript:handler'
+  ]
+
+  taskManager.add 'udp', [
+    'base'
+    'typescript:udp'
+  ]
+
+  taskManager.add 'chromeApp', [
+    'base'
+    'handler'
+    'tcp'
+    'udp'
+    'echoServer'
+    'socksToRtc'
+    'rtcToNet'
+    'copy:handler_Chrome'
+    'copy:udp_Chrome'
+    'copy:tcp_Chrome'
+    'copy:arraybuffers_Chrome'
+    'copy:echoServer_Chrome'
+    'copy:socksToRtc_Chrome'
+    'copy:rtcToNet_Chrome'
+    'copy:freedomChrome'
+    'copy:freedomProvidersChrome'
+    'typescript:chromeApp'
+    'copy:chromeApp'
+  ]
+
+  taskManager.add 'firefoxApp', [
+    'base'
+    'copy:firefoxApp'
+    'typescript:firefoxApp'
+    'copy:freedomFirefox'
+    'copy:freedomProvidersFirefox'
+    'echoServer'
+    'copy:echoServer_Firefox'
+    'socksToRtc'
+    'copy:socksToRtc_Firefox'
+    'rtcToNet'
+    'copy:rtcToNet_Firefox'
+  ]
+
   taskManager.add 'build', [
-    'typescript'
-    'copy'
+    'base'
+    'echoServer'
+    'socksToRtc'
+    'rtcToNet'
+    'chromeApp'
+    'firefoxApp'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
   # and on Travis/Sauce Labs.
   taskManager.add 'test', [
     'build'
-    'jasmine:socksToRtc'
+    'jasmine:socksToRtc_socksHeader'
   ]
 
   # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and
@@ -177,3 +282,5 @@ module.exports = (grunt) ->
   taskManager.list().forEach((taskName) =>
     grunt.registerTask taskName, (taskManager.get taskName)
   );
+
+module.exports.Rule = Rule;

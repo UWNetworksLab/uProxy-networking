@@ -1,0 +1,18 @@
+{
+  "name": "socks-rtc",
+  "description": "socks-rtc Freedom manifest",
+  "app": {
+    "script": [
+      "socks-to-rtc-to-net.js"
+    ]
+  },
+  "dependencies": {
+    "SocksToRtc": { "url": "socks-to-rtc/freedom.json" },
+    "RtcToNet": { "url": "rtc-to-net/freedom.json" },
+    "TcpEchoServer": { "url": "echo-server/freedom.json" }
+  },
+  "permissions": [
+    "core.tcpsocket",
+    "core.udpsocket"
+  ]
+}

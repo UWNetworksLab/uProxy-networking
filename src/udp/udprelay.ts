@@ -1,5 +1,5 @@
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/udp-socket.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
+/// <reference path='../freedom-typescript-api/interfaces/udp-socket.d.ts' />
+/// <reference path='../third_party/promise/promise.d.ts' />
 module Socks {
   import UdpSocket = freedom.UdpSocket;
 
@@ -26,7 +26,7 @@ module Socks {
    *    the UDP_ASSOCIATE was negotiated is terminated
    *
    * One relay should be created in response to each UDP_ASSOCIATE command.
-   * 
+   *
    * Other notes:
    *  - while the RFC states that the relay MUST drop any message originating
    *    from an IP other than that which requested the association, this
