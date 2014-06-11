@@ -112,12 +112,12 @@ module RtcToNet {
       freedom.emit('rtcToNetConnectionClosed', this.peerId);
       // Set transport to null to ensure this object won't be accidentally
       // used again.
-      this.transport = null;
+      this.transport_ = null;
       this.server_.removePeer(this.peerId);
     }
 
     public isClosed = () : boolean => {
-      return this.transport === null;
+      return this.transport_ === null;
     }
 
     // handle a request to create a new P2P network connection.

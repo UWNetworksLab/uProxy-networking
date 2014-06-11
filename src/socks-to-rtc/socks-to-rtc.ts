@@ -250,7 +250,7 @@ module SocksToRtc {
           if (command.tag in this.connectCallbacks_) {
             var callback = this.connectCallbacks_[command.tag];
             callback(response);
-            delete Peer.connectCallbacks[command.tag];
+            delete this.connectCallbacks_[command.tag];
           } else {
             dbgWarn('received connect callback for unknown datachannel: ' +
                 command.tag);
