@@ -236,7 +236,7 @@ module SocksToRTC {
           if (command.tag in Peer.connectCallbacks) {
             var callback = Peer.connectCallbacks[command.tag];
             callback(response);
-            Peer.connectCallbacks[command.tag] = undefined;
+            delete Peer.connectCallbacks[command.tag];
           } else {
             dbgWarn('received connect callback for unknown datachannel: ' +
                 command.tag);
@@ -373,7 +373,6 @@ module SocksToRTC {
 }  // module SocksToRTC
 
 function initClient() {
-
   // Create local peer and attach freedom message handlers, then emit |ready|.
   var peer = new SocksToRTC.Peer();
   freedom.on('handleSignalFromPeer', peer.handlePeerSignal);
