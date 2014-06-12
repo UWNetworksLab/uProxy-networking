@@ -57,6 +57,13 @@ declare module Channel {
     terminate:() => any;
   }
 
+  // Used to batch messages sent over the signalling channel.
+  // TODO: rename to MessageBatch
+  export interface BatchedMessages {
+    version :number;
+    messages :string[];
+  }
+
 }  // module Channel
 
 

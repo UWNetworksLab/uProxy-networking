@@ -78,12 +78,30 @@ module SocksToRTC {
             freedom.emit('socksToRtcFailure', remotePeer);
           }
         );
+
+        // Signalling channel messages are batched and dispatched each second.
+        // TODO: kill this loop!
+        // TODO: size limit on batched message
+        // TODO: this code is completely common to rtc-to-net (growing need for shared lib)
+        var queuedMessages = [];
+        setInterval(() => {
+          if (queuedMessages.length > 0) {
+            dbg('dispatching signalling channel messages...');
+            freedom.emit('sendSignalToPeer', {
+              peerId: peerId,
+              data: JSON.stringify({
+                version: 1,
+                messages: queuedMessages
+              })
+            });
+            queuedMessages = [];
+          }
+        }, 1000);
+
         this.signallingChannel_ = chan.channel;
         this.signallingChannel_.on('message', function(msg) {
-          freedom.emit('sendSignalToPeer', {
-              peerId: peerId,
-              data: msg
-          });
+          dbg('signalling channel message: ' + msg);
+          queuedMessages.push(msg);
         });
         dbg('signalling channel to SCTP peer connection ready.');
         // Send hello command to initiate communication, which will cause
@@ -302,7 +320,20 @@ module SocksToRTC {
         dbgErr('signalling channel missing!');
         return;
       }
-      this.signallingChannel_.emit('message', msg.data);
+      // TODO: this code is completely common to rtc-to-net (growing need for shared lib)
+      try {
+        var batchedMessages :any = JSON.parse(msg.data);
+        if (batchedMessages.version != 1) {
+          throw new Error('only version 1 batched messages supported');
+        }
+        for (var i = 0; i < batchedMessages.messages.length; i++) {
+          var message = batchedMessages.messages[i];
+          dbg('received signalling channel message: ' + message);
+          this.signallingChannel_.emit('message', message);
+        }
+      } catch (e) {
+        dbgErr('could not parse batched messages: ' + e.message);
+      }
     }
 
     public toString = () => {
@@ -330,7 +361,7 @@ module SocksToRTC {
             JSON.stringify(command)));
       }, 1000);
 
-      var PING_PONG_CHECK_INTERVAL_MS :number = 5000;
+      var PING_PONG_CHECK_INTERVAL_MS :number = 10000;
       this.pingPongCheckIntervalId_ = setInterval(() => {
         var nowDate = new Date();
         if (!this.lastPingPongReceiveDate_ ||
