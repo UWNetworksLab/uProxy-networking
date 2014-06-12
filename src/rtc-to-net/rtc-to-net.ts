@@ -60,6 +60,7 @@ module RtcToNet {
       // TODO: kill this loop!
       // TODO: size limit on batched message
       // TODO: this code is completely common to socks-to-rtc (growing need for shared lib)
+      // TODO: https://github.com/uProxy/uProxy/issues/230
       var queuedMessages = [];
       setInterval(() => {
         if (queuedMessages.length > 0) {
@@ -75,8 +76,8 @@ module RtcToNet {
         }
       }, 1000);
 
-      this.signallingChannel = channel.channel;
-      this.signallingChannel.on('message', (msg) => {
+      this.signallingChannel_ = channel.channel;
+      this.signallingChannel_.on('message', (msg) => {
         dbg('signalling channel message: ' + msg);
         queuedMessages.push(msg);
       });

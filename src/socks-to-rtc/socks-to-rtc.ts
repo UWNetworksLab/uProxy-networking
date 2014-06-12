@@ -85,13 +85,11 @@ module SocksToRtc {
         setInterval(() => {
           if (queuedMessages.length > 0) {
             dbg('dispatching signalling channel messages...');
-            freedom.emit('sendSignalToPeer', {
-              peerId: peerId,
-              data: JSON.stringify({
+            freedom.emit('sendSignalToPeer',
+              JSON.stringify({
                 version: 1,
                 messages: queuedMessages
-              })
-            });
+              }));
             queuedMessages = [];
           }
         }, 1000);
@@ -321,7 +319,7 @@ module SocksToRtc {
       // implementation/uproxy's use of it as this is dependent on the social
       // networks throtteling.
       try {
-        var batchedMessages :any = JSON.parse(msg.data);
+        var batchedMessages :Channel.BatchedMessages = JSON.parse(msg);
         if (batchedMessages.version != 1) {
           throw new Error('only version 1 batched messages supported');
         }
