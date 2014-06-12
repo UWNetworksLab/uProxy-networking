@@ -1,7 +1,9 @@
 /*
   For testing just the TCP server portion (see src/client/tcp.ts)
 */
-var window = {};
+if (typeof window === "undefined") {
+  var window = {};
+}
 
 TcpEchoServer = function(address, port) {
   console.log('Starting TcpEchoServer(' + address + ', ' + port + ')');
