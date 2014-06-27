@@ -14,6 +14,16 @@ module RtcToNet {
 
   var fCore = freedom.core();
 
+  //
+  interface Connection {
+    // 'tcp' or 'udp'.
+    kind     :Channel.kind;
+    // Address on which we connected to the remote server.
+    endpoint :Net.Endpoint;
+    // TCP connection to the endpoint
+    conn     ?:Tcp.Connection;
+  }
+
   /**
    * RtcToNet.Peer - serves net requests from WebRTC peer connections.
    */
@@ -24,7 +34,6 @@ module RtcToNet {
     // TODO: this is messy...a common superclass would help
     private netClients:{[tag:string]:Tcp.Connection} = {};
     private udpClients:{[tag:string]:Net.UdpClient} = {};
-    private server_ :Server = null;
 
     // Private state kept for ping-pong (heartbeat and ack).
     private pingPongCheckIntervalId_ :number = null;
@@ -32,16 +41,14 @@ module RtcToNet {
 
     // Static initialiser which returns a promise to create a new Peer
     // instance complete with a signalling channel for NAT piercing.
-    static CreateWithChannel = (peerId :string, server :Server)
+    static CreateWithChannel = (peerId :string)
         : Promise<Peer> => {
       return fCore.createChannel().then((channel) => {
         return new Peer(peerId, channel, server);
       });
     }
 
-    constructor (public peerId:string, channel:freedom.ChannelSpecifier,
-        server:Server) {
-      this.server_ = server;
+    constructor (public peerId:string, channel:freedom.ChannelSpecifier) {
       dbg('created new peer: ' + peerId);
       // peerconnection's data channels biject ot Net.Clients.
       this.transport_ = freedom['transport']();
@@ -114,7 +121,6 @@ module RtcToNet {
       // Set transport to null to ensure this object won't be accidentally
       // used again.
       this.transport_ = null;
-      this.server_.removePeer(this.peerId);
     }
 
     public isClosed = () : boolean => {
@@ -340,7 +346,7 @@ module RtcToNet {
       if (peerId in this.peers_) {
         return this.peers_[peerId];
       }
-      var peer = RtcToNet.Peer.CreateWithChannel(peerId, this);
+      var peer = RtcToNet.Peer.CreateWithChannel(peerId);
       this.peers_[peerId] = peer;
       return peer;
     }

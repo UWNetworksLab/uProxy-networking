@@ -1,9 +1,13 @@
 // Types for communications between socks-to-rtc and rtc-to-net.
 
-// Signals to peers from RtcToNet include a peerId which is used to identify
-// which peer to send signaling messages to, or to indicate which peer sent
-// RtcToNet a signalling message. Signalling messages pass the SDP headers that
-// contain the public facing IP/PORT for establishing P2P connections.
+/// <reference path='../third_party/promise/promise.d.ts' />
+/// <reference path='../handler/handler-queue.ts' />
+
+// |PeerSignal| holds information for signals to peers from RtcToNet. This
+// includes a peerId which is used to identify which peer to send signaling
+// messages to, or to indicate which peer sent RtcToNet a signalling message.
+// Signalling messages pass the SDP headers that contain the public facing
+// IP/PORT for establishing P2P connections.
 interface PeerSignal {
   peerId :string;
   data :string;
@@ -11,17 +15,50 @@ interface PeerSignal {
 
 // Useful abbreviation for this common interface.
 declare module Net {
+  // TODO: Rename this to TransportAddress.
   export interface Endpoint {
-    address:string;
+    address:string;  // TODO: rename to IpAddress
     port:number;
   }
+
+  export enum Protocol {
+    UDP, TCP
+  }
+
+  // Sent to request a connection be established with a remote server.
+  export interface ConnectRequest {
+    // 'tcp' or 'udp'.
+    protocol :Protocol;
+    // Destination address and port.
+    endpoint :Endpoint
+  }
+
+  // Interface that wraps up data that can be transported to an endpoint, e.g. a
+  // stream of data to a TCP socket or over WebRTC.
+  export interface Transport {
+    onceConnected: Promise<void>;
+    onceClosed: Promise<void>;
+
+    send: (data:ArrayBuffer) => Promise<void>;
+    // Calling receive sets |dataFromTransportQueue|'s handler.
+    receive: () => Promise<ArrayBuffer>;
+
+    // `dataToPeerQueue` has handler set by class when `onceConnected` is
+    // `fulfilled.
+    dataToTransportQueue: Handler.Queue<ArrayBuffer, void>;
+    dataFromTransportQueue: Handler.Queue<ArrayBuffer, void>;
+
+    close: () => Promise<void>;
+  }
+
 }
 
 // Interfaces and enums for P2P DataChannels used for socks-rtc proxying.
 declare module Channel {
 
   // Commands send over a special command data channel.
-  export enum COMMANDS {
+  export enum Commands {
+    // TODO REQUEST/RESPONCE no longer should go on the command channel.
     NET_CONNECT_REQUEST = 1,   // implies `data :NetConnectRequest`
     NET_CONNECT_RESPONSE = 2,  // implies `data :NetConnectResponse`
     NET_DISCONNECTED = 3,      // implies there is no data
@@ -34,47 +71,11 @@ declare module Channel {
   // "Top-level" message for the control channel.
   export interface Command {
     // Name of message, e.g. NetConnectRequest.
-    type:COMMANDS;
+    type   :Commands;
     // Datachannel with which this message is associated.
-    tag?:string;
+    tag    ?:string;
     // JSON-encoded message, e.g. NetConnectRequest, depends on `type`.
-    data?:string;
-  }
-
-  // Sent to request a connection be established with a remote server.
-  export interface NetConnectRequest {
-    // 'tcp' or 'udp'.
-    protocol:string;
-    // Destination address and port.
-    address:string;
-    port:number;
-  }
-
-  export interface NetConnectResponse {
-    // Address and port on which we have made the connection to the
-    // remote server, or both undefined if the connection could not be
-    // made.
-    address?:string;
-    port?:number;
-  }
-
-  // Used for communication between the TCP-facing SOCKS server and the WebRTC-
-  // facing SocksToRtc module when creating a new data channel for  proxying.
-  //
-  // At some point these might diverge but right now they both need to send data
-  // to the other side and be notified of terminations from the other side so
-  // this common interface works for us.
-  export interface EndpointInfo {
-    // 'tcp' or 'udp'.
-    protocol:string;
-    // Address on which we connected to the remote server.
-    address:string;
-    // Port on which we connected to the remote server.
-    port:number;
-    // Function which sends data to the other side.
-    send:(bytes:ArrayBuffer) => any;
-    // Function which tells the other side to terminate.
-    terminate:() => any;
+    data   ?:string;
   }
 
   // Used to batch messages sent over the signalling channel.
@@ -83,5 +84,4 @@ declare module Channel {
     version :number;
     messages :string[];
   }
-
 }  // module Channel

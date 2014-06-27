@@ -1,122 +1,189 @@
 /*
   SocksToRtc.Peer passes socks requests over WebRTC datachannels.
 */
-/// <reference path='socks.ts' />
-/// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../freedom-typescript-api/interfaces/transport.d.ts' />
+/// <reference path='../freedom-typescript-api/interfaces/peer-connection.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.ts' />
+/// <reference path='../handler/handler-queue.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 
 // TODO replace with a reference to freedom ts interface once it exists.
 console.log('WEBWORKER SocksToRtc: ' + self.location.href);
 
+// Wraps all possible interactions with the parent Freedom module; the events
+// that this module may need to handle, and the messages it is responsible for
+// sending.
+//
+// Providing a typescript interface minimizes the use of string-literals,
+// allows typechecking of those interactions, and provides a single place to
+// swap out that functionality. This should match the file |freedom-
+// module.d.ts|: on-handlers here will be emit functions there and visa versa.
+declare module freedom {
+  // Once the socks-rtc module is ready, it emits 'ready'.
+  function emit(t:'ready') : void;
+
+  // Start is expected to start a SOCKS5 proxy listening at the given endpoint.
+  // It is expected to result in signalling messages being sent and received,
+  // and eventually either the
+  function on(t:'start', f:(endpoint:Net.Endpoint) => void) : void;
+
+  // Signalling messages are used by WebRTC to send/receive data needed to setup
+  // the P2P connection. e.g. public facing port and IP. It is assumed that
+  // signalling messages go to the peer that is acting as the end-point of the
+  // socks5 proxy server.
+  function on(t:'handleSignalFromPeer', f:(signal:string) => void) : void;
+  function emit(t:'sendSignalToPeer', s:string);
+
+  // Once a connection to the peer has successfully been established, socks-to-
+  // rtc emits a |socksToRtcSuccess| message.
+  function emit(t:'socksToRtcSuccess');
+  // If the connection to the peer failed, socks-to-rtc emits a
+  // |socksToRtcFailure| message.
+  function emit(t:'socksToRtcFailure');
+
+  // socks-to-rtc is expected to send a |socksToRtcTimeout| if the connection to
+  // the peer is lost for more than a given time , e.g. the peer's computer
+  // lost connectivity.
+  function emit(t:'socksToRtcTimeout');
+
+  // TODO: add an emit for when the remote side closes down the peer-connection,
+  // or rename |socksToRtcTimeout| to capture that case too.
+
+  // When stop is called, it is expected that socks-to-rtc stops listening on
+  // the endpoint given to start and that it closes to the peer.
+  function on(t:'stop', f:() => void) : void;
+}
+
+//
+interface SignallingChannel extends freedom.OnAndEmit {
+  on(t:'', handler:Function) : void;
+  emit(eventType:string, handler:Function) : void;
+}
+
+// This is what is avauilable to Freedom.
+function initClient() {
+  // Create local socks-to-rtc class instance and attach freedom message
+  // handlers, then emit |ready|.  TODO: in freedom v0.5, we can/should use an
+  // interface and drop this explicit module-to-class linking.
+  var socksToRtc = new SocksToRtc.SocksToRtc(ParentModule);
+  freedom.on('handleSignalFromPeer', socksToRtc.handlePeerSignal);
+  freedom.on('start', socksToRtc.start);
+  freedom.on('stop', socksToRtc.stop);
+  freedom.emit('ready', {});
+}
+
 module SocksToRtc {
 
   var fCore = freedom.core();
 
-  /**
-   * SocksToRtc.Peer
-   *
-   * Contains a local SOCKS server which passes requests remotely through
-   * WebRTC peer connections.
-   */
+  // The |SocksToRtc| class runs a SOCKS5 proxy server which passes requests
+  // remotely through WebRTC peer connections.
   export class SocksToRtc {
 
-    private socksServer_:Socks.Server = null;     // Local SOCKS server.
-    // TODO: give proper typing to `sinallingChannel_`
-    private signallingChannel_:any = null;        // NAT piercing route.
-    private transport_:freedom.Transport = null;  // For actual proxying.
+    // TODO: these should be parameterized/editable from the uProxy UI/consumer
+    // of this class.
+    private stunServers_ : stringp[] =
+      [ "stun:stun.l.google.com:19302",
+        "stun:stun1.l.google.com:19302",
+        "stun:stun2.l.google.com:19302",
+        "stun:stun3.l.google.com:19302",
+        "stun:stun4.l.google.com:19302" ];
 
-    /**
-     * Currently open data channels, indexed by data channel tag name.
-     */
+    // Freedom channel to use for sending signalling messages to .
+    private signallingChannelSpecifier_ :freedom.ChannelSpecifier = null;
+    private onceSignallingChannelReady_ :Promise<freedom.ChannelSpecifier>;
 
-    // Private state kept for ping-pong (heartbeat and ack).
-    private pingPongSendIntervalId_ :number = null;
-    private pingPongCheckIntervalId_ :number = null;
-    private lastPingPongReceiveDate_ :Date = null;
-    private dataChannels_:{[tag:string]:Channel.EndpointInfo} = {};
+    // Message handler queues to/from the peer.
+    private signalsToPeerQueue_   :Handler.Queue<string, void> =
+        new Handler.Queue<string,void>();
+    private signalsFromPeerQueue_ :Handler.Queue<string, void> =
+        new Handler.Queue<string,void>();
 
-    // Connection callbacks, by datachannel tag name.
-    // TODO: figure out a more elegant way to store these callbacks
-    private connectCallbacks_ :
-      {[tag:string] : (response:Channel.NetConnectResponse) => void} = {};
-
+    // Tcp server that is listening for SOCKS connections.
+    private tcpServer_       :Tcp.Server = null;
+    // The connection to the peer that is acting as the endpoint for the proxy
+    // connection.
+    private peerConnection_  :freedom.PeerConnection = null;
 
     constructor() {}
 
-    /**
-     * Start the SocksToRtc Peer, based on the the local host and port to
-     * listen on.
-     * This will emit a socksToRtcSuccess signal when the peer connection is esablished,
-     * or a socksToRtcFailure signal if there is an error openeing the peer connection.
-     * TODO: update this to return a promise that fulfills/rejects, after freedom v0.5
-     * is ready.
-     */
+    // Start the SocksToRtc Peer, based on the the local host and port to
+    // listen on.
+    // This will emit a socksToRtcSuccess signal when the peer connection is esablished,
+    // or a socksToRtcFailure signal if there is an error openeing the peer connection.
+    // TODO: update this to return a promise that fulfills/rejects, after freedom v0.5
+    // is ready.
     public start = (endpoint:Net.Endpoint) => {
       this.reset_();  // Begin with fresh components.
       dbg('starting SocksToRtc: ' + JSON.stringify(endpoint));
-      // SOCKS sessions biject to peerconnection datachannels.
-      this.transport_ = freedom['transport']();
-      this.transport_.on('onData', this.onDataFromPeer_);
-      this.transport_.on('onClose', this.onTransportCloseHandler_);
+
       // Messages received via signalling channel must reach the remote peer
       // through something other than the peerconnection. (e.g. XMPP). This is
-      // the Freedom channel object to send messages to the peer.
-      fCore.createChannel().then((chan) => {
-        this.transport_.setup('SocksToRtc', chan.identifier).then(
-          () => {
+      // the Freedom channel object to sends signalling messages to the peer.
+      this.onceSignallingChannelReady_ =
+
+      this.onceSignallingChannelReady_ = prepareSignallingChannel_()
+        .then(this.setupPeerConnection_)
+        .then(() => {
             dbg('SocksToRtc transport_.setup succeeded');
-            freedom.emit('socksToRtcSuccess', endpoint);
+            freedom.emit('socksToRtcSuccess');
             // this.startPingPong_();
-          }
-        ).catch(
-          (e) => {
+          })
+        .then(this.startSendingQueuedMessages_)
+        .then(this.sendHelloToPeer_)
+        .then(() => {
+            // Create SOCKS server and start listening.
+            this.socksServer_ = new Socks.Server(endpoint, this.makeNetRequestOnRtc_);
+            this.socksServer_.listen();
+          })
+        .catch((e) => {
             dbgErr('SocksToRtc transport_.setup failed ' + e);
-            freedom.emit('socksToRtcFailure', endpoint);
-          }
-        );
-
-        // Signalling channel messages are batched and dispatched each second.
-        // TODO: kill this loop!
-        // TODO: size limit on batched message
-        // TODO: this code is completely common to rtc-to-net (growing need for shared lib)
-        var queuedMessages = [];
-        setInterval(() => {
-          if (queuedMessages.length > 0) {
-            dbg('dispatching signalling channel messages...');
-            freedom.emit('sendSignalToPeer',
-              JSON.stringify({
-                version: 1,
-                messages: queuedMessages
-              }));
-            queuedMessages = [];
-          }
-        }, 1000);
-
-        this.signallingChannel_ = chan.channel;
-        this.signallingChannel_.on('message', function(msg) {
-          dbg('signalling channel message: ' + msg);
-          queuedMessages.push(msg);
-        });
-        dbg('signalling channel to SCTP peer connection ready.');
-        // Send hello command to initiate communication, which will cause
-        // the promise returned this.transport_.setup to fulfill.
-        // TODO: remove hello command once freedom.transport.setup
-        // is changed to automatically negotiate the connection.
-        dbg('sending hello command.');
-        var command :Channel.Command = {type: Channel.COMMANDS.HELLO};
-        this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
-            JSON.stringify(command)));
-      });  // fCore.createChannel
-
-      // Create SOCKS server and start listening.
-      this.socksServer_ = new Socks.Server(endpoint, this.createDataChannel_);
-      this.socksServer_.listen();
+            freedom.emit('socksToRtcFailure');
+          });
     }
 
     public stop = () => {
       this.reset_();
+    }
+
+    // Stop SOCKS server and close peer-connection (and hence all data
+    // channels).
+    private reset_ = () => {
+      dbg('resetting peer...');
+
+      this.signalsToPeerQueue_.clear();
+      this.signalsFromPeerQueue_.clear();
+
+      this.tcpServer_.shutdown();
+
+      if (this.signallingChannel_) {
+        this.signallingChannel_.channel.close();
+        this.signallingChannel_ = null;
+      }
+    }
+
+
+    private this.sendHelloToPeer_ = () : void {
+      dbg('signalling channel to SCTP peer connection ready.');
+      // Send hello command to initiate communication, which will cause
+      // the promise returned this.transport_.setup to fulfill.
+      // TODO: remove hello command once freedom.transport.setup
+      // is changed to automatically negotiate the connection.
+      dbg('sending hello command.');
+      var command :Channel.Command = {type: Channel.COMMANDS.HELLO};
+      this.peerConnection_.send('control', ArrayBuffers.stringToArrayBuffer(
+          JSON.stringify(command)));
+    }
+
+    // Starts preparing the signalling channel
+    private prepareSignallingChannel_ = () : Promise<freedom.ChannelSpecifier> {
+      return new Promise((F,R) => {
+        fCore.createChannel().then((chan) => {
+          chan.on('message', this.signalsFromPeerQueue_.handle);
+          this.signalsToPeerQueue_.setHandler();
+          this.signallingChannelSpecifier_ = chan;
+          F();
+          return this.signallingChannelSpecifier_.identifier;
+      });  // fCore.createChannel
     }
 
     private onTransportCloseHandler_ = () => {
@@ -126,27 +193,40 @@ module SocksToRtc {
       this.reset_();
     }
 
-    // Stop SOCKS server and close peer-connection (and hence all data
-    // channels).
-    private reset_ = () => {
-      dbg('resetting peer...');
-      this.stopPingPong_();
-      if (this.socksServer_) {
-        this.socksServer_.disconnect();  // Disconnects internal TCP server.
-        this.socksServer_ = null;
-      }
-      for (var tag in this.dataChannels_) {
-        this.closeConnectionToPeer(tag);
-      }
-      this.dataChannels_ = {};
-      if(this.transport_) {
-        this.transport_.close();
-        this.transport_ = null;
-      }
-      if (this.signallingChannel_) {  // TODO: is this actually right?
-        this.signallingChannel_.emit('close');
-      }
-      this.signallingChannel_ = null;
+    private setupPeerConnection_(channelIdentifier :ChannelEndpointIdentifier)
+        : Promise<void> {
+      // SOCKS sessions biject to peerconnection datachannels.
+      this.peerConnection_ = freedom['core.peer-connection']();
+
+      this.peerConnection_.on('onReceived', this.onDataFromPeer_);
+      this.peerConnection_.on('onClose', this.onPeerClosed_);
+      this.peerConnection_.on('onOpenDataChannel', (channelInfo) => {
+        dbgErr('unexpected onOpenDataChannel event: ' +
+            JSON.stringify(channelInfo));
+      });
+      this.peerConnection_.on('onCloseDataChannel', this.onDataChannelClosed_);
+      return this.peerConnection_.setup(channelIdentifier, 'SocksToRtc',
+          this.stunServers_);
+    }
+
+    // Signalling channel messages are batched and dispatched each second.
+    // TODO: kill this loop!
+    // TODO: size limit on batched message
+    // TODO: this code is completely common to rtc-to-net (growing need for
+    //       shared lib)
+    private startSendingQueuedMessages_() {
+      this.queuedMessages_ = [];
+      setInterval(() => {
+        if (this.queuedMessages_.length > 0) {
+          dbg('dispatching signalling channel messages...');
+          freedom.emit('sendSignalToPeer',
+            JSON.stringify({
+              version: 1,
+              messages: this.queuedMessages_
+            }));
+          this.queuedMessages_ = [];
+        }
+      }, 1000);
     }
 
     // TODO: reuse tag names from a pool.
@@ -157,7 +237,8 @@ module SocksToRtc {
     /**
      * Setup a new data channel.
      */
-    private createDataChannel_ = (params:Channel.EndpointInfo)
+    private makeNetRequestOnRtc_ = (
+        socksChannelKind:Channel.Kind, endpoint:Channel.Endpoint)
         : Promise<Channel.EndpointInfo> => {
       if (!this.transport_) {
         dbgWarn('transport not ready');
@@ -166,15 +247,19 @@ module SocksToRtc {
 
       // Generate a name for this connection and associate it with the SOCKS session.
       var tag = SocksToRtc.obtainTag_();
-      this.dataChannels_[tag] = params;
+      this.connections_[tag] = ;
 
       // This gets a little funky: ask the peer to establish a connection to
       // the remote host and register a callback for when it gets back to us
       // on the control channel.
       // TODO: how to add a timeout, in case the remote end never replies?
-      return new Promise((F,R) => {
+      return new Promise<Endpoint>((F,R) => {
         this.connectCallbacks_[tag] = (response:Channel.NetConnectResponse) => {
           if (response.address) {
+
+            // CONSIDER: maybe set a timeout for automatic rejection? Although
+            // Chrome should probably be doing that itself.
+
             // TODO: This is not right! send and terminate get overwritten in
             // bad ways. There is a followup CL to pull request coming to fix
             // this.
@@ -239,6 +324,7 @@ module SocksToRtc {
       if (msg.tag == 'control') {
         var command:Channel.Command = JSON.parse(
             ArrayBuffers.arrayBufferToString(msg.data));
+        dbg('onDataFromPeer_: control command: ' + command.type);
 
         if (command.type === Channel.COMMANDS.NET_CONNECT_RESPONSE) {
           // Call the associated callback and forget about it.
@@ -260,7 +346,7 @@ module SocksToRtc {
         } else if (command.type === Channel.COMMANDS.PONG) {
           this.lastPingPongReceiveDate_ = new Date();
         } else {
-          dbgWarn('unsupported control command: ' + command.type);
+          dbgErr('unsupported control command: ' + command.type);
         }
       } else {
         if (!(msg.tag in this.dataChannels_)) {
@@ -326,7 +412,7 @@ module SocksToRtc {
         for (var i = 0; i < batchedMessages.messages.length; i++) {
           var message = batchedMessages.messages[i];
           dbg('received signalling channel message: ' + message);
-          this.signallingChannel_.emit('message', message);
+          this.signallingChannel_.channel.emit('message', message);
         }
       } catch (e) {
         dbgErr('could not parse batched messages: ' + e.message);
@@ -338,7 +424,7 @@ module SocksToRtc {
       try {
         ret = JSON.stringify({ socksServer: this.socksServer_,
                                transport: this.transport_,
-                               signallingChannel: this.signallingChannel_,
+                               signallingChannel: this.signallingChannel_.identifier,
                                channels: this.dataChannels_ });
       } catch (e) {}
       return ret;
@@ -366,7 +452,7 @@ module SocksToRtc {
           dbgWarn('no ping-pong detected, closing peer');
           // Save remotePeer before closing because it will be reset.
           this.stop();
-          freedom.emit('socksToRtcTimeout', '');
+          freedom.emit('socksToRtcTimeout');
         }
       }, PING_PONG_CHECK_INTERVAL_MS);
     }
@@ -394,14 +480,6 @@ module SocksToRtc {
 
 }  // module SocksToRtc
 
-// This is what is avauilable to Freedom.
-function initClient() {
-  // Create local peer and attach freedom message handlers, then emit |ready|.
-  var socksToRtc = new SocksToRtc.SocksToRtc();
-  freedom.on('handleSignalFromPeer', socksToRtc.handlePeerSignal);
-  freedom.on('start', socksToRtc.start);
-  freedom.on('stop', socksToRtc.stop);
-  freedom.emit('ready', {});
-}
+
 
 initClient();

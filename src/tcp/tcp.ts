@@ -11,6 +11,7 @@
 module Tcp {
   import TcpSocket = freedom.TcpSocket;
 
+  // Helper function.
   function endpointOfSocketInfo(info:TcpSocket.SocketInfo) : Net.Endpoint {
      return { address: info.peerAddress, port: info.peerPort }
   }
@@ -18,6 +19,13 @@ module Tcp {
   // A limit on the max number of TCP connections before we start rejecting
   // new ones.
   var DEFAULT_MAX_CONNECTIONS = 1048576;
+
+  // TODO: support starting listening again after stopping
+  // TODO: support changing the connection handler.
+  // TODO: For dynamic port allocation, provide a way to get the post that we
+  // end up listening on.
+  // TODO: make endpoint into getter: we don't support changing it by
+  // assignment.
 
   // Tcp.Server: a TCP Server. This listens for connections when listen is
   // called, and handles the new connection as specified by the onConnection
@@ -28,15 +36,14 @@ module Tcp {
     private conns:{[socketId:number] : Tcp.Connection} = {};
 
     // Create TCP server.
-    // `address` = Address to be listening on.
+    // `endpoint` = Address and port to be listening on. Port 0 is used for
+    // dynamic port allocation.
     // `port` = the port to listen on; 0 = dynamic allocation.
     // `onConnection` = the handler for new TCP Connections.
     // `maxConnections` = the number of connections after which all new ones
     // will be closed as soon as they connect.
-    // TODO: make address and port into getters; we don't support changing them.
-    constructor(public address        :string,
-                public port           :number,
-                public onConnection   :(c:Connection) => void,
+    constructor(public endpoint       :Net.Endpoint,
+                private onConnection   :(c:Connection) => void,
                 public maxConnections ?:number) {
       this.maxConnections = maxConnections || DEFAULT_MAX_CONNECTIONS;
       this.serverSocket_ = freedom['core.tcpsocket']();
@@ -45,10 +52,25 @@ module Tcp {
       this.serverSocket_.on('onConnection', this.onConnectionHandler_);
     }
 
+    // CONSIDER: use a generic util class for better object management, e.g.
+    // below should just be return conns.values().
+    public connections = () => {
+      var allConnectionsList : Connection[] = [];
+      Object.keys(this.conns).map((i) => {
+        allConnectionsList.push(this.conns[i]);
+      });
+      return allConnectionsList;
+    }
+
+    public connectionsCount = () => {
+      return Object.keys(this.conns).length;
+    }
+
     // Listens on the serverSocket_ to `address:port` for new TCP connections.
     // Returns a Promise that this server is now listening.
     public listen = () : Promise<void> => {
-      return this.serverSocket_.listen(this.address, this.port);
+      return this.serverSocket_.listen(this.endpoint.address,
+                                       this.endpoint.port);
     }
 
     // onConnectionHandler_ is more or less TCP Accept: it is called when a new
@@ -80,26 +102,27 @@ module Tcp {
       var conn = new Connection({existingSocketId:socketId});
       // When the connection is disconnected correctly, or by error, remove
       // from the server's list of connections.
-      conn.onceDisconnected.then(
+      conn.onceClosed.then(
         () => {
           delete this.conns[socketId];
-          dbg('Tcp.Server(' + this.address + ':' + this.port +
-          ') : connection closed (' + socketId + '). Conn Count: ' +
-          Object.keys(this.conns).length + ']');
+          dbg('Tcp.Server(' + JSON.stringify(this.endpoint) +
+              ') : connection closed (' + socketId + '). Conn Count: ' +
+              Object.keys(this.conns).length + ']');
         },
         (e) => {
           delete this.conns[socketId];
-          dbgWarn('Tcp.Server(' + this.address + ':' + this.port +
-          ') : connection closed by error (' + socketId + ')' + e.toString()
-          + ' . Conn Count: ' + Object.keys(this.conns).length + ']');
+          dbgWarn('Tcp.Server(' + JSON.stringify(this.endpoint) +
+              ') : connection closed by error (' + socketId + ')' + e.toString()
+              + ' . Conn Count: ' + Object.keys(this.conns).length + ']');
         })
       this.conns[socketId] = conn;
       dbg(this.toString());
       this.onConnection(conn);
     }
 
+    // Mostly useful fro debugging
     public toString = () : string => {
-      var s = 'Tcp.Server(' + this.address + ':' + this.port +
+      var s = 'Tcp.Server(' + JSON.stringify(this.endpoint) +
           ') connections: ' + Object.keys(this.conns).length + '\n{';
       for(var socketId in this.conns) {
         s += '  ' + this.conns[socketId].toString() + '\n';
@@ -107,14 +130,9 @@ module Tcp {
       return s += '}';
     }
 
-    // Disconnect all sockets and stops listening.
+    // Closes all active connections.
     public closeAll = () : Promise<void> => {
       var allPromises :Promise<void>[] = [];
-
-      // Close the server socket.
-      if (this.serverSocket_) {
-        allPromises.push(this.serverSocket_.close());
-      }
 
       // Close all Tcp connections.
       for (var i in this.conns) {
@@ -127,20 +145,27 @@ module Tcp {
         dbg('successfully closed all Tcp Connections.');
       });
     }
+
+    public stopListening = () : Promise<void> => {
+      // Close the server socket.
+      return this.serverSocket_.close().then(() => {
+        dbg('successfully stopped listening for more connections.');
+      });
+    }
+
+    public shutdown = () : Promise<void> => {
+      return this.stopListening().then(this.closeAll);
+    }
   }  // class Tcp.Server
 
-  /**
-   * Tcp.Connection - Wraps up a single TCP connection to a client
-   *
-   * @param {number} socketId The ID of the server<->client socket.
-   */
+  // Tcp.Connection - Manages up a single TCP connection.
   export class Connection {
     // Unique identifier for each connection.
     private static globalConnectionId_ :number = 0;
 
     // Promise for when this connection is closed.
     public onceConnected :Promise<Net.Endpoint>;
-    public onceDisconnected :Promise<void>;
+    public onceClosed :Promise<void>;
     // Queue of data to be handled, and the capacity to set a handler and
     // handle the data.
     public dataFromSocketQueue :Handler.Queue<ArrayBuffer,void>;
@@ -149,16 +174,16 @@ module Tcp {
     // Public unique connectionId.
     public connectionId :string;
 
-    // isClosed() === state_ === Connection.State.CLOSED iff onceDisconnected
+    // isClosed() === state_ === Connection.State.CLOSED iff onceClosed
     // has been rejected or fulfilled. We use isClosed to ensure that we only
     // fulfill/reject the onceDisconnectd once.
     private state_ :Connection.State;
     // The underlying Freedom TCP socket.
     private connectionSocket_ :TcpSocket;
-    // Private functions called to invoke fullfil/reject onceDisconnected.
-    private fulfillDisconnect_ :()=>void;
+    // Private functions called to invoke fullfil/reject onceClosed.
+    private fulfillClosed_ :()=>void;
     // reeject is used for Bad disconnections (errors)
-    private rejectDisconnect_ :(e:Error)=>void;
+    private rejectClosed_ :(e:Error)=>void;
 
     // A TCP connection for a given socket.
     constructor(connectionKind:Connection.Kind) {
@@ -176,7 +201,7 @@ module Tcp {
             Promise.reject<Net.Endpoint>(new Error(
                 'Badly formed New Tcp Connection Kind:' +
                 JSON.stringify(connectionKind)));
-        this.onceDisconnected =
+        this.onceClosed =
             Promise.reject<void>(new Error(
                 'Badly formed New Tcp Connection Kind:' +
                 JSON.stringify(connectionKind)));
@@ -185,7 +210,7 @@ module Tcp {
 
       if(connectionKind.existingSocketId) {
         // If we already have an open socket; i.e. from a previous tcp listen.
-        // So we get the old freedom socket.
+        // So we get a handler to the old freedom socket.
         this.connectionSocket_ =
             freedom['core.tcpsocket'](connectionKind.existingSocketId);
         this.onceConnected =
@@ -193,14 +218,13 @@ module Tcp {
         this.state_ = Connection.State.CONNECTED;
         this.connectionId = this.connectionId + '.A.' +
             connectionKind.existingSocketId;
-      } else if (connectionKind.destination) {
-        // connectionKind specifies to create a new tcp socket to the given
-        // destination.
+      } else if (connectionKind.endpoint) {
+        // Create a new tcp socket to the given endpoint.
         this.connectionSocket_ = freedom['core.tcpsocket']();
         this.onceConnected =
             this.connectionSocket_
-                .connect(connectionKind.destination.address,
-                         connectionKind.destination.port)
+                .connect(connectionKind.endpoint.address,
+                         connectionKind.endpoint.port)
                 .then(this.connectionSocket_.getInfo)
                 .then(endpointOfSocketInfo)
         this.state_ = Connection.State.CONNECTING;
@@ -211,22 +235,24 @@ module Tcp {
             JSON.stringify(connectionKind)));
       }
 
-      // Handle data using a HandlerQueue for ArrayBuffers (queues up data
-      // until a data hanlder is specified)
+      // Use the dataFromSocketQueue handler for data from the socket.
       this.connectionSocket_.on('onData',
           (readInfo:TcpSocket.ReadInfo) : void => {
         this.dataFromSocketQueue.handle(readInfo.data);
       });
 
+      // Once we are connected, we start sending data to the underlying socket.
+      // |dataToSocketQueue| allows a class using this connection to start
+      // queuing data to be send to the socket.
       this.onceConnected.then(() => {
         this.dataToSocketQueue.setPromiseHandler(this.connectionSocket_.write);
       });
 
-      // TODO: change to only ever fullfil, but give data on the way we were
+      // TODO: change to only fullfiling, but give data on the way we were
       // disconnected.
-      this.onceDisconnected = new Promise<void>((F, R) => {
-        this.fulfillDisconnect_ = F;  // To be fired on good disconnect.
-        this.rejectDisconnect_ = R;  // To be fired on bad disconnect.
+      this.onceClosed = new Promise<void>((F, R) => {
+        this.fulfillClosed_ = F;  // To be fired on good disconnect.
+        this.rejectClosed_ = R;  // To be fired on bad disconnect.
       });
       this.connectionSocket_.on('onDisconnect', this.onDisconnectHandler_);
     }
@@ -258,12 +284,12 @@ module Tcp {
         var e = 'Socket ' + this.connectionId + ' disconnected with errcode '
           + info.errcode + ': ' + info.message;
         dbgErr(e);
-        this.rejectDisconnect_(new Error(e));
+        this.rejectClosed_(new Error(e));
         return;
       }
 
       dbg('Socket closed correctly (conn-id: ' + this.connectionId + ')');
-      this.fulfillDisconnect_();
+      this.fulfillClosed_();
     }
 
     // This is called to close the underlying socket. This fulfills the
@@ -274,8 +300,8 @@ module Tcp {
           'after it was already closed.');
         return;
       }
-      return this.connectionSocket_.close().then(this.fulfillDisconnect_,
-                                                 this.fulfillDisconnect_)
+      return this.connectionSocket_.close().then(this.fulfillClosed_,
+                                                 this.fulfillClosed_)
     }
 
     // Boolean function to check if this connection is closed;
@@ -306,15 +332,15 @@ module Tcp {
       // To wrap up a connection for an existing socket
       existingSocketId ?:number;
       // TO create a new TCP connection to this target address and port.
-      destination ?:Net.Endpoint;
+      endpoint         ?:Net.Endpoint;
     }
 
-    // Exactly one of the arguments must be specified.
+    // Describes the state of a connection.
     export enum State {
-      ERROR,
-      CONNECTING,
-      CONNECTED,
-      CLOSED
+      ERROR, // Cannot change state.
+      CONNECTING, // Can change to ERROR or CONNECTED.
+      CONNECTED, // Can change to ERROR or CLOSED.
+      CLOSED // Cannot change state.
     }
   } // module Connection
 

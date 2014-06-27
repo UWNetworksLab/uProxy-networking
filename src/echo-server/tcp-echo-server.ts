@@ -9,12 +9,16 @@
 class TcpEchoServer {
   public server :Tcp.Server;
 
-  constructor(public address:string, public port:number) {
-    console.log('Starting TcpEchoServer(' + address + ', ' + port + ')...');
-    this.server = new Tcp.Server(address, port, this.onConnection_);
+  // '4' is the char-code for control-D which we use to close the TCP
+  // connection.
+  public static CTRL_D_HEX_STR_CODE = '4'
+
+  constructor(public endpoint:Net.Endpoint) {
+    console.log('Starting TcpEchoServer(' + JSON.stringify(endpoint) + ')...');
+    this.server = new Tcp.Server(endpoint, this.onConnection_);
 
     this.server.listen().then(() => {
-      console.log('TCP echo server listening on ' + address + ':' + port);
+      console.log('TCP echo server listening on ' + JSON.stringify(endpoint));
     });
   }
 
@@ -32,7 +36,7 @@ class TcpEchoServer {
         console.log('More data: ' + data.byteLength + " bytes.");
         var hexStrOfData = ArrayBuffers.arrayBufferToHexString(moreData);
         console.log('data as hex-string: ' + hexStrOfData);
-        if(hexStrOfData === '4') {
+        if(hexStrOfData === TcpEchoServer.CTRL_D_HEX_STR_CODE) {
           conn.close();
           return
         }
@@ -48,7 +52,7 @@ var tcpServer :TcpEchoServer;
 // TODO: smarter encapsulation logic for echo server.
 freedom.on('start', (endpoint:Net.Endpoint) => {
   if(tcpServer) { tcpServer.server.closeAll(); }
-  tcpServer = new TcpEchoServer(endpoint.address, endpoint.port);
+  tcpServer = new TcpEchoServer(endpoint);
 });
 
 freedom.on('stop', () => {
