@@ -1,7 +1,7 @@
 /// <reference path="../freedom-typescript-api/interfaces/freedom.d.ts" />
 /// <reference path="../freedom-typescript-api/interfaces/tcp-socket.d.ts" />
 /// <reference path="../third_party/promise/promise.d.ts" />
-/// <reference path="../handler/handler-queue.d.ts" />
+/// <reference path="../handler/queue.d.ts" />
 /// <reference path="../interfaces/communications.d.ts" />
 declare module Tcp {
   class Server {

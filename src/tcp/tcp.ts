@@ -5,7 +5,7 @@
 /// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
 /// <reference path='../freedom-typescript-api/interfaces/tcp-socket.d.ts' />
 /// <reference path='../third_party/promise/promise.d.ts' />
-/// <reference path='../handler/handler-queue.ts' />
+/// <reference path='../handler/queue.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 
 module Tcp {
@@ -245,7 +245,7 @@ module Tcp {
       // |dataToSocketQueue| allows a class using this connection to start
       // queuing data to be send to the socket.
       this.onceConnected.then(() => {
-        this.dataToSocketQueue.setPromiseHandler(this.connectionSocket_.write);
+        this.dataToSocketQueue.setAsyncHandler(this.connectionSocket_.write);
       });
 
       // TODO: change to only fullfiling, but give data on the way we were
@@ -257,10 +257,10 @@ module Tcp {
       this.connectionSocket_.on('onDisconnect', this.onDisconnectHandler_);
     }
 
-    // reveieve returns a promise to get the next chunk of data.
+    // Receive returns a promise for exactly the next |ArrayBuffer| of data.
     public receive = () : Promise<ArrayBuffer> => {
       return new Promise((F,R) => {
-        this.dataFromSocketQueue.onceHandler(F).catch(R);
+        this.dataFromSocketQueue.setSyncNextHandler(F).catch(R);
       });
     }
 

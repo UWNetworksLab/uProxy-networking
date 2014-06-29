@@ -1,7 +1,7 @@
 // Types for communications between socks-to-rtc and rtc-to-net.
 
 /// <reference path='../third_party/promise/promise.d.ts' />
-/// <reference path='../handler/handler-queue.ts' />
+/// <reference path='../handler/queue.ts' />
 
 // |PeerSignal| holds information for signals to peers from RtcToNet. This
 // includes a peerId which is used to identify which peer to send signaling

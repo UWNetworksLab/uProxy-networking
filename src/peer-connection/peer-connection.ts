@@ -4,11 +4,11 @@
 // platform compatibility library webrtc-adaptor.js (from:
 // https://code.google.com/p/webrtc/source/browse/stable/samples/js/base/adapter.js)
 
-/// <reference path='../third_party/typings/es6-promises/es6-promises.d.ts' />
+/// <reference path='../arraybuffers/arraybuffers.ts' />
+/// <reference path='../handler/queue.ts' />
+/// <reference path="../third_party/promise/promise.d.ts" />
 /// <reference path='../third_party/typings/webrtc/RTCPeerConnection.d.ts' />
 /// <reference path='../third_party/typings/webcrypto/WebCrypto.d.ts' />
-/// <reference path='../handler/queue.ts' />
-/// <reference path='../arraybuffers/arraybuffers.ts' />
 
 module WebRtc {
 
@@ -21,39 +21,20 @@ module WebRtc {
   //   "closed"
   // };
 
-  interface SignallingMessage {
+  export interface SignallingMessage {
     sdp         ?:RTCSessionDescriptionInit;
     candidate   ?:RTCIceCandidateInit;
   }
 
-  enum State {
+  export enum State {
     WAITING,      // Can move to CONNECTING.
     CONNECTING,   // Can move to CONNECTED or DISCONNECTED.
     CONNECTED,    // Can move to DISCONNECTED.
     DISCONNECTED  // End-state, cannot change.
   };
 
-  // Data sent to or received from a peer on a data channel in the peer
-  // connection.
-  public interface Data {
-    string ?:string;
-    buffer ?:ArrayBuffer;
-    // TODO: add when supported by WebRtc in Chrome and FF.
-    // https://code.google.com/p/webrtc/issues/detail?id=2276
-    //
-    // bufferView ?:ArrayBufferView;
-    // blob  ?:Blob
-    // domString  ?:DOMString
-  }
-  public interface StringData {
-    string :string;
-  }
-  public interface BufferData {
-    buffer :ArrayBuffer;
-  }
-
   // Small convenience wrapper for WebCrypto random Uint32.
-  var randomUint32 = () : number => {
+  export var randomUint32 = () : number => {
     var randomArray = new Uint32Array(1);
     crypto.getRandomValues(randomArray);
     return randomArray[0];
@@ -61,7 +42,7 @@ module WebRtc {
 
   // Super cheep simple hash function for comparison of SDP headers to choose
   // initiator.
-  var stringHash = (s:string, bytes:number) : string => {
+  export var stringHash = (s:string, bytes:number) : string => {
     // Note: array creation always rounds down to nearest int.
     var array = new Uint16Array((bytes + 1) / 2);
     for (i = 0; i < this.length; i++) {
@@ -73,10 +54,10 @@ module WebRtc {
   // A wrapper for peer-connection and it's associated data channels.
   // The most important diagram is this one:
   // http://dev.w3.org/2011/webrtc/editor/webrtc.html#idl-def-RTCSignalingState
-  class PeerConnection =
+  export class PeerConnection {
 
     // Name for debugging.
-    private peerName_     :string;
+    public peerName     :string;
 
     // The WebRtc peer connection.
     private pc_           :RTCPeerConnection;
@@ -136,7 +117,7 @@ module WebRtc {
     // if |createOffer| is true, the consturctor will immidiately initiate
     // negotiation.
     constructor(peerName:string, stunServers:string[], createOffer:boolean) {
-      this.peerName_ = peerName || 'unnamed-pc-' + randomUint32();
+      this.peerName = peerName || 'unnamed-pc-' + randomUint32();
 
       this.onDataChannelQueue = new Handler.Queue<DataChannel,void>();
 
@@ -152,7 +133,7 @@ module WebRtc {
       };
       // Get TURN servers for the peer connection.
       this.pcConfig_ = {iceServers: []};
-      stunServers =
+      stunServers = [
         "stun:stun.l.google.com:19302",
         "stun:stun1.l.google.com:19302",
         "stun:stun2.l.google.com:19302",
@@ -178,8 +159,8 @@ module WebRtc {
 
     // For debugging: prints the state of the peer connection including all
     // associated data channels.
-    public toString = () : string {
-      var s :string = this.peerName_ + ' (' + this.pc_.signalingState +
+    public toString = () : string => {
+      var s :string = this.peerName + ' (' + this.pc_.signalingState +
           '): { \n';
       var channelLabel :string;
       for (channelLabel in this.pcDataChannels_) {
@@ -216,7 +197,7 @@ module WebRtc {
     // the result of either setLocalDescription() or setRemoteDescription()
     // being invoked. Or it can happen when the peer connection gets
     // unexpectedly closed down.
-    private onSignallingStateChange_ : () : void {
+    private onSignallingStateChange_ = () : void => {
       if (this.pc_.signalingState === 'closed') {
         this.close();
         return;
@@ -226,7 +207,7 @@ module WebRtc {
       // is |CONNECTING|, otherwise this is an error.
       if (this.pcState !== State.CONNECTING) {
         // Something unexpected happened, better close down properly.
-        console.error(this.peerName_ + ': ' +
+        console.error(this.peerName + ': ' +
               'Unexpected onSignallingStateChange: ' +
               this.pc_.signalingState);
         this.close();
@@ -244,10 +225,10 @@ module WebRtc {
     // Called when openDataChannel is called to and we have not yet negotiated
     // our connection, or called when some WebRTC internal event requires
     // renegotiation of SDP headers.
-    private negotiateConnection_ = function (e) {
+    private negotiateConnection_ = () : void => {
       //console.log(this.peerName + ': ' + 'negotiateConnection_', this._pc, e);
       if (this.pcState_ === State.DISCONNECTED) {
-        console.error(peerName_ + ': ' + 'negotiateConnection_ called on ' +
+        console.error(peerName + ': ' + 'negotiateConnection_ called on ' +
             'DISCONNECTED state.');
         return;
       }
@@ -278,25 +259,19 @@ module WebRtc {
               console.error('Failed to set local description: ' + e.toString());
               this.close();
             });
-        }
       }
-    };
+    }
 
     // Provide nice function for public access to queuing of messages.
-    public handlerSignalMessage = (signal:SignallingMessage) : Promise<void> {
+    public handlerSignalMessage = (signal:SignallingMessage)
+        : Promise<void> => {
       return this.fromPeerSignalQueue.handle(signal);
     }
 
     // Handle a message sent on the signalling channel (form the other peer) to
     // this peer.
-    private signalMessageHandler_ = (signal :SignallingMessage) {
+    private signalMessageHandler_ = (signal :SignallingMessage) => {
       //console.log(this.peerName + ': ' + 'handleSignalMessage: \n' + messageText);
-
-        private createOffer_ = () : Promise<RTCSessionDescription>
-        private createAnswer_ = () : Promise<RTCSessionDescription>
-        private setLocalDescription_ = (d:RTCSessionDescription)
-        private setRemoteDescription_ = (d:RTCSessionDescription)
-
       if (signal.sdp) {
         // If we are offering and they are also offerring at the same time, pick
         // the one who has the lower hash value for their description: this is
@@ -323,15 +298,15 @@ module WebRtc {
         //console.log(this.peerName + ': Adding ice candidate: ' + JSON.stringify(signal.candidate));
         this.pc_.addIceCandidate(ice_candidate);
       } else {
-        console.warn(this.peerName_ + ': ' +
+        console.warn(this.peerName + ': ' +
             'handleSignalMessage got unexpected message: ', messageText);
       }
-    };
+    }
 
     // Open a new data channel with the peer.
     public openDataChannel = (channelLabel:string,
                               options:RTCDataChannelInit={})
-        : DataChannel {
+        : DataChannel => {
       // Firefox does not fire the |'negotiationneeded'| event, so we need to
       // negotate here if we are not connected. See
       // https://bugzilla.mozilla.org/show_bug.cgi?id=840728
@@ -344,7 +319,7 @@ module WebRtc {
       var rtcDataChannel = this.pc_.createDataChannel(channelLabel, options);
       var dataChannel = this.addRtcDataChannel_(rtcDataChannel);
       return dataCHannel;
-    };
+    }
 
     // When a peer creates a data channel, this function is called with the
     // |RTCDataChannelEvent|. We then create the data channel wrapper and add
@@ -353,8 +328,8 @@ module WebRtc {
     private onPeerStartedDataChannel_ =
         (rtcDataChannelEvent:RTCDataChannelEvent) : void => {
       this.peerCreatedChannelQueue.handle(
-          this.addRtcDataChannel_(rtcDataChannelEvent.channel);
-    };
+          this.addRtcDataChannel_(rtcDataChannelEvent.channel));
+    }
 
     // Add a rtc data channel and return the it wrapped as a DataChannel
     private addRtcDataChannel_ = (rtcDataChannel:RTCDataChannel)

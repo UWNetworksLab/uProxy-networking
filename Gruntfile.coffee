@@ -15,7 +15,7 @@ TaskManager = require './node_modules/uproxy-build-tools/build/taskmanager/taskm
 # Function to make a copy rule for a module directory, assuming standard
 # layout. Copies all non (ts/sass) compiled files into the corresponding
 # build directory.
-Rule = require('./node_modules/uproxy-build-tools/Gruntfile.coffee').Rule;
+Rule = require('uproxy-build-tools/Gruntfile.coffee').Rule;
 Rule.copySrcModule = (name, dest) ->
     expand: true, cwd: 'src/'
     src: [name + '/**', '!' + name + '/**/*.ts', '!' + name + '/**/*.sass']
@@ -24,8 +24,9 @@ Rule.copyBuiltModule = (name, dest) ->
     expand: true, cwd: 'build/'
     src: [name + '/**']
     dest: 'build/' + dest
-# HACK: override noImplicitAny=false to deal with inability to specity
-# `core.XXX` providers. See: https://github.com/freedomjs/freedom/issues/57
+# HACK: this overrides Rule's |noImplicitAny=false| to deal with inability to
+# refer to `core.XXX` providers as members in JavaScript. See:
+# https://github.com/freedomjs/freedom/issues/57
 Rule.typeScriptSrc = (name) ->
     src: ['build/typescript-src/' + name + '/**/*.ts', '!**/*.d.ts']
     dest: 'build/'
@@ -84,6 +85,7 @@ module.exports = (grunt) ->
       echoServer: Rule.copySrcModule 'echo-server'
       socksToRtc: Rule.copySrcModule 'socks-to-rtc'
       rtcToNet: Rule.copySrcModule 'rtc-to-net'
+      peerConnection: Rule.copySrcModule 'peer-connection'
 
       # Chrome App
       chromeApp: Rule.copySrcModule 'chrome-app'
@@ -132,6 +134,7 @@ module.exports = (grunt) ->
     #-------------------------------------------------------------------------
     # All typescript compiles to build/ initially.
     typescript: {
+      peerConnection: Rule.typeScriptSrc 'peer-connection'
       arraybuffers: Rule.typeScriptSrc 'arraybuffers'
       handler: Rule.typeScriptSrc 'handler'
       tcp: Rule.typeScriptSrc 'tcp'
@@ -211,6 +214,12 @@ module.exports = (grunt) ->
     'copy:typeScriptSrc'
   ]
 
+  taskManager.add 'peerConnection', [
+    'base'
+    'copy:peerConnection'
+    'typescript:peerConnection'
+  ]
+
   taskManager.add 'echoServer', [
     'base'
     'copy:echoServer'
@@ -281,6 +290,7 @@ module.exports = (grunt) ->
 
   taskManager.add 'build', [
     'base'
+    'peerConnection'
     'echoServer'
     'socksToRtc'
     'rtcToNet'

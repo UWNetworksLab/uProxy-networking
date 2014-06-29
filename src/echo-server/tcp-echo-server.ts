@@ -27,23 +27,25 @@ class TcpEchoServer {
     conn.onceConnected.then((endpoint) => {
       console.log(' Connection resolved to: ' + JSON.stringify(endpoint));
     });
+    // This use of |receive| is contrived, but shows you how to use it to get
+    // the first ArrayBuffer of data and treat handling it differently.
     conn.receive().then((data :ArrayBuffer) => {
-      console.log('The first data was ' + data.byteLength + " bytes.");
-      conn.send(data);
-
-      // From now on just send the data back.
-      conn.dataFromSocketQueue.setHandler((moreData :ArrayBuffer) => {
-        console.log('More data: ' + data.byteLength + " bytes.");
-        var hexStrOfData = ArrayBuffers.arrayBufferToHexString(moreData);
-        console.log('data as hex-string: ' + hexStrOfData);
-        if(hexStrOfData === TcpEchoServer.CTRL_D_HEX_STR_CODE) {
-          conn.close();
-          return
-        }
-        conn.send(moreData);
-      });
+      console.log('Received first data!');
+      this.onData_(conn, data);
+      // Now handle further data as we get it using |this.onData_|.
+      conn.dataFromSocketQueue.setSyncHandler(this.onData_.bind(this, conn));
     });
+  }
 
+  private onData_ = (conn:Tcp.Connection, data :ArrayBuffer) : void => {
+    console.log('Received: ' + data.byteLength + " bytes.");
+    var hexStrOfData = ArrayBuffers.arrayBufferToHexString(data);
+    console.log('Received data as hex-string: ' + hexStrOfData);
+    if(hexStrOfData === TcpEchoServer.CTRL_D_HEX_STR_CODE) {
+      conn.close();
+      return;
+    }
+    conn.send(data);
   }
 }
 
