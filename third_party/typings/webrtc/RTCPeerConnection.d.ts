@@ -83,7 +83,12 @@ interface RTCPeerState {
 }
 
 interface RTCDataChannelInit {
-	reliable: boolean;
+	ordered             ?: boolean; // messages must be sent in-order.
+  maxPacketLifeTime   ?: number;  // unsigned short
+  maxRetransmits      ?: number;  // unsigned short
+  protocol            ?: string;  // default = ''
+  negotiated          ?: boolean; // default = false;
+  id                  ?: number;  // unsigned short
 }
 
 declare enum RTCSdpType {
