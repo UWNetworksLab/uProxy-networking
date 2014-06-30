@@ -31,10 +31,10 @@ module WebRtc {
     // blob  ?:Blob
     // domString  ?:DOMString
   }
-  export interface StringData {
+  interface StringData {
     str :string;
   }
-  export interface BufferData {
+  interface BufferData {
     buffer :Uint8Array;
   }
 
