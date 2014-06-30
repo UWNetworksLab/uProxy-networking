@@ -40,12 +40,19 @@ declare var RTCIceServer: {
 	new (): RTCIceServer;
 }
 
-// For Firefox specific prefixes.
+// moz (Firefox) specific prefixes.
 interface mozRTCPeerConnection extends RTCPeerConnection {
 }
 declare var mozRTCPeerConnection: {
 	prototype: mozRTCPeerConnection;
 	new (settings: RTCPeerConnectionConfig, constraints?:MediaConstraints): mozRTCPeerConnection;
+}
+// webkit (Chrome) specific prefixes.
+interface webkitRTCPeerConnection extends RTCPeerConnection {
+}
+declare var webkitRTCPeerConnection: {
+	prototype: webkitRTCPeerConnection;
+	new (settings: RTCPeerConnectionConfig, constraints?:MediaConstraints): webkitRTCPeerConnection;
 }
 
 // For Chrome, look at the code here: https://code.google.com/p/chromium/codesearch#chromium/src/third_party/libjingle/source/talk/app/webrtc/webrtcsession.cc&sq=package:chromium&dr=C&l=63
