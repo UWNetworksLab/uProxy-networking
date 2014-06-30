@@ -42,7 +42,7 @@ module WebRtc {
   // http://dev.w3.org/2011/webrtc/editor/webrtc.html#rtcdatachannel
   //
   //
-  class DataChannel {
+  export class DataChannel {
     public label :string;
 
     public fromPeerDataQueue      :Handler.Queue<Data,void>;

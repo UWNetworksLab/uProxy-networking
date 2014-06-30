@@ -12,18 +12,9 @@
 
 module WebRtc {
 
-  // enum RTCSignalingState {
-  //   "stable",
-  //   "have-local-offer",
-  //   "have-remote-offer",
-  //   "have-local-pranswer",
-  //   "have-remote-pranswer",
-  //   "closed"
-  // };
-
   export interface SignallingMessage {
-    sdp         ?:RTCSessionDescriptionInit;
-    candidate   ?:RTCIceCandidateInit;
+    candidate ?:RTCIceCandidate;
+    sdp ?:RTCSessionDescription;
   }
 
   export enum State {
@@ -45,10 +36,11 @@ module WebRtc {
   export var stringHash = (s:string, bytes:number) : string => {
     // Note: array creation always rounds down to nearest int.
     var array = new Uint16Array((bytes + 1) / 2);
-    for (i = 0; i < this.length; i++) {
-        array[i % bytes] += this.charCodeAt(i);
+    var i :number;
+    for (i = 0; i < s.length; i++) {
+        array[i % bytes] ^= s.charCodeAt(i);
     }
-    return ArrayBuffers.arrayBufferToString(array.buffer);
+    return String.fromCharCode.apply(null, array);
   }
 
   // A wrapper for peer-connection and it's associated data channels.
@@ -61,17 +53,14 @@ module WebRtc {
 
     // The WebRtc peer connection.
     private pc_           :RTCPeerConnection;
-    // WebRtc contraints and config for the peer connection.
-    private pcConstraints_  :MediaConstraints;
-    private pcConfig_       :RTCPeerConnectionConfig;
     // All WebRtc data channels associated with this data peer.
     private pcDataChannels_     :{[channelLabel:string] : DataChannel};
 
     // Internal promise completion functions for the |onceConnected| and
     // |onceDisconnected| promises. These must only be called once.
-    private fulfillconnected_ : () => void;
-    private rejectConnected_ : (e:Error) => void;
-    private fulfillDisconnected_ : () => void;
+    private fulfillConnected_     :() => void;
+    private rejectConnected_      :(e:Error) => void;
+    private fulfillDisconnected_  :() => void;
 
     // The current state of the data peer;
     public pcState        :State;
@@ -89,37 +78,20 @@ module WebRtc {
     // Signals from the remote peer to be handled by this peer.
     public fromPeerSignalQueue :Handler.Queue<SignallingMessage,void>;
 
-
-    // Promise wrappers for async WebRtc calls that return the session
-    // description that should be set as the local description and sent to the
-    // peer.
-    private createOffer_ = () : Promise<RTCSessionDescription> => {
-      return new Promise((F,R) => { this.pc_.createOffer(F, R) });
-    }
-    private createAnswer_ = () : Promise<RTCSessionDescription> => {
-      return new Promise((F,R) => { this.pc_.createAnswer(F, R) });
-    }
-    // Setting the description provides a SDP message signalling message to send
-    // to the peer.
-    private setLocalDescription_ = (d:RTCSessionDescription)
-        : Promise<SignallingMessage> => {
-      return new Promise((F,R) => {
-          this.pc_.setLocalDescription(d, F.bind(this,{'sdp':d}), R);
-        });
-    }
-    private setRemoteDescription_ = (d:RTCSessionDescription)
-        : Promise<SignallingMessage> => {
-      return new Promise((F,R) => {
-          this.pc_.setRemoteDescription(d, F.bind(this,{'sdp':d}), R);
-        });
-    }
-
     // if |createOffer| is true, the consturctor will immidiately initiate
     // negotiation.
-    constructor(peerName:string, stunServers:string[], createOffer:boolean) {
-      this.peerName = peerName || 'unnamed-pc-' + randomUint32();
+    constructor(peerName:string, createOffer:boolean, stunServers:string[]) {
+      this.peerName = this.peerName || 'unnamed-pc-' + randomUint32();
 
-      this.onDataChannelQueue = new Handler.Queue<DataChannel,void>();
+      this.onceConnected = new Promise<void>((F,R) => {
+          this.fulfillConnected_ = F;
+          this.rejectConnected_ = R;
+        });
+      this.onceDisconnected = new Promise<void>((F,R) => {
+          this.fulfillDisconnected_ = F;
+        });
+
+      this.peerCreatedChannelQueue = new Handler.Queue<DataChannel,void>();
 
       this.toPeerSignalQueue = new Handler.Queue<SignallingMessage,void>();
       this.fromPeerSignalQueue = new Handler.Queue<SignallingMessage,void>();
@@ -127,34 +99,62 @@ module WebRtc {
       // This state variable is an abstraction of the PeerConnection state that
       // simplifies usage and management of state.
       this.pcState = State.WAITING;
+
       this.pcDataChannels_ = {};
-      this.pcConstraints_ = {
+
+      // WebRtc contraints and config for the peer connection.
+      var pcConstraints :MediaConstraints = {
         optional: [{DtlsSrtpKeyAgreement: true}]
       };
-      // Get TURN servers for the peer connection.
-      this.pcConfig_ = {iceServers: []};
-      stunServers = [
-        "stun:stun.l.google.com:19302",
-        "stun:stun1.l.google.com:19302",
-        "stun:stun2.l.google.com:19302",
-        "stun:stun3.l.google.com:19302",
-        "stun:stun4.l.google.com:19302"
-      ];
+      var pcConfig :RTCPeerConnectionConfig = {iceServers: []};
+      // Add default STUN/TURN servers for setting up the peer connection.
+      if(!stunServers) {
+        stunServers = ([
+          "stun:stun.l.google.com:19302",
+          "stun:stun1.l.google.com:19302",
+          "stun:stun2.l.google.com:19302",
+          "stun:stun3.l.google.com:19302",
+          "stun:stun4.l.google.com:19302"
+        ]);
+      }
       stunServers.map((stunServer) => {
-          this.pcConfig.iceServers.push({ 'url' : stunServer });
+          pcConfig.iceServers.push({ 'url' : stunServer });
         });
 
-      this.pc_ = new RTCPeerConnection(this.pcConfig_, this.pcConstraints);
+      this.pc_ = new RTCPeerConnection(pcConfig, pcConstraints);
       // Add basic event handlers.
-      this.pc_.addEventListener('icecandidate', (candidate) => {
-          this.toPeerSignalQueue.handle({'candidate':candidate});
+      this.pc_.onicecandidate = ((event:RTCIceCandidateEvent) => {
+          this.toPeerSignalQueue.handle({candidate: event.candidate});
         });
-      this.pc_.addEventListener('negotiationneeded', this.negotiateConnection_);
-      this.pc_.addEventListener('datachannel', this.onPeerStartedDataChannel_);
-      this.pc_.addEventListener('signalingstatechange',
-          this.onSignallingStateChange_);
+      this.pc_.onnegotiationneeded = (this.negotiateConnection_);
+      this.pc_.ondatachannel = (this.onPeerStartedDataChannel_);
+      this.pc_.onsignalingstatechange = (this.onSignallingStateChange_);
 
-      if(createOffer) { negotiateConnection_(); }
+      if(createOffer) { this.negotiateConnection_(); }
+    }
+
+    // Promise wrappers for async WebRtc calls that return the session
+    // description that should be set as the local description and sent to the
+    // peer.
+    private createOffer_ = () : Promise<RTCSessionDescription> => {
+      return new Promise((F,R) => { this.pc_.createOffer(F, R); });
+    }
+    private createAnswer_ = () : Promise<RTCSessionDescription> => {
+      return new Promise((F,R) => { this.pc_.createAnswer(F, R); });
+    }
+    // Setting the description provides a SDP message signalling message to send
+    // to the peer.
+    private setLocalDescription_ = (d:RTCSessionDescription)
+        : Promise<SignallingMessage> => {
+      return new Promise((F,R) => {
+          this.pc_.setLocalDescription(d, F.bind(this,{sdp:d}), R);
+        });
+    }
+    private setRemoteDescription_ = (d:RTCSessionDescription)
+        : Promise<SignallingMessage> => {
+      return new Promise((F,R) => {
+          this.pc_.setRemoteDescription(d, F.bind(this,{sdp:d}), R);
+        });
     }
 
     // For debugging: prints the state of the peer connection including all
@@ -191,7 +191,7 @@ module WebRtc {
         // Note is expected to invoke |onSignallingStateChange_|
         this.pc_.close();
       }
-    };
+    }
 
     // The RTCPeerConnection signalingState has changed. This state change is
     // the result of either setLocalDescription() or setRemoteDescription()
@@ -227,8 +227,8 @@ module WebRtc {
     // renegotiation of SDP headers.
     private negotiateConnection_ = () : void => {
       //console.log(this.peerName + ': ' + 'negotiateConnection_', this._pc, e);
-      if (this.pcState_ === State.DISCONNECTED) {
-        console.error(peerName + ': ' + 'negotiateConnection_ called on ' +
+      if (this.pcState === State.DISCONNECTED) {
+        console.error(this.peerName + ': ' + 'negotiateConnection_ called on ' +
             'DISCONNECTED state.');
         return;
       }
@@ -251,7 +251,7 @@ module WebRtc {
       // CONSIDER: might we ever need to re-create an onAnswer? Exactly how/when
       // do onnegotiation events get raised? Do they get raised on both sides?
       // Or only for the initiator?
-      if (this.pcState_ === State.WAITING) {
+      if (this.pcState === State.WAITING) {
         this.createOffer_()
           .then(this.setLocalDescription_)
           .then(this.toPeerSignalQueue.handle)
@@ -280,7 +280,8 @@ module WebRtc {
         // candidate list which is guarenteed to be unique for 2 peers.
         if (signal.sdp.type == 'offer' &&
             this.pc_.signalingState == 'have-local-offer' &&
-            stringHash(signal.sdp, 4) < stringHash(this.localDescription_, 4)) {
+            stringHash(JSON.stringify(signal.sdp), 4) <
+                stringHash(JSON.stringify(this.pc_.localDescription), 4)) {
           // TODO: implement reset and use their offer.
           console.error('Simultainious offers not not yet implemented.');
           this.close();
@@ -299,7 +300,8 @@ module WebRtc {
         this.pc_.addIceCandidate(ice_candidate);
       } else {
         console.warn(this.peerName + ': ' +
-            'handleSignalMessage got unexpected message: ', messageText);
+            'handleSignalMessage got unexpected message: ' +
+            JSON.stringify(signal));
       }
     }
 
@@ -318,7 +320,7 @@ module WebRtc {
 
       var rtcDataChannel = this.pc_.createDataChannel(channelLabel, options);
       var dataChannel = this.addRtcDataChannel_(rtcDataChannel);
-      return dataCHannel;
+      return dataChannel;
     }
 
     // When a peer creates a data channel, this function is called with the
@@ -336,7 +338,7 @@ module WebRtc {
         : DataChannel => {
       var dataChannel = new DataChannel(dataChannel);
       this.pcDataChannels_[dataChannel.label] = dataChannel;
-      dataChannel.onceClosed(() => {
+      dataChannel.onceClosed.then(() => {
           delete this.pcDataChannels_[dataChannel.label];
         });
       return dataChannel;

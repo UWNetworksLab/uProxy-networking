@@ -40,11 +40,12 @@ declare var RTCIceServer: {
 	new (): RTCIceServer;
 }
 
-interface webkitRTCPeerConnection extends RTCPeerConnection {
+// For Firefox specific prefixes.
+interface mozRTCPeerConnection extends RTCPeerConnection {
 }
-declare var webkitRTCPeerConnection: {
-	prototype: webkitRTCPeerConnection;
-	new (settings: RTCPeerConnectionConfig, constraints?:MediaConstraints): webkitRTCPeerConnection;
+declare var mozRTCPeerConnection: {
+	prototype: mozRTCPeerConnection;
+	new (settings: RTCPeerConnectionConfig, constraints?:MediaConstraints): mozRTCPeerConnection;
 }
 
 // For Chrome, look at the code here: https://code.google.com/p/chromium/codesearch#chromium/src/third_party/libjingle/source/talk/app/webrtc/webrtcsession.cc&sq=package:chromium&dr=C&l=63
@@ -127,11 +128,11 @@ interface RTCDataChannel extends EventTarget {
 	reliable: boolean;
 	readyState: string; // RTCDataChannelState; see TODO(3)
 	bufferedAmount: number;
-	onopen: (event: Event)=> void;
-	onerror: (event: Event)=> void;
-	onclose: (event: Event)=> void;
+	onopen: (event: Event) => void;
+	onerror: (event: Event) => void;
+	onclose: (event: Event) => void;
 	close(): void;
-	onmessage: (event: RTCMessageEvent)=> void;
+	onmessage: (event: RTCMessageEvent) => void;
 	binaryType: string;
 	send(data: string);
 	send(data: ArrayBuffer);
@@ -152,7 +153,7 @@ declare var RTCDataChannelEvent: {
 	new (eventInitDict: RTCDataChannelEventInit);
 }
 
-interface RTCIceCandidateEvent extends Event{
+interface RTCIceCandidateEvent extends Event {
 	candidate: RTCIceCandidate;
 }
 
@@ -174,7 +175,7 @@ interface RTCSessionDescriptionCallback {
 	(sdp: RTCSessionDescription): void;
 }
 interface RTCPeerConnectionErrorCallback {
-	(errorInformation: string): void;
+	(errorInformation: DOMError): void;
 }
 
 interface RTCIceGatheringState {
@@ -229,19 +230,20 @@ interface RTCPeerConnection {
 	getLocalStreams(): MediaStream[];
 	getRemoteStreams(): MediaStream[];
 	createDataChannel(label?: string, dataChannelDict?: RTCDataChannelInit): RTCDataChannel;
-	ondatachannel: (event: Event)=> void;
+	ondatachannel: (event: Event) => void;
 	addStream(stream: MediaStream, constraints?: MediaConstraints): void;
 	removeStream(stream: MediaStream): void;
 	close(): void;
-	onnegotiationneeded: (event: Event)=> void;
-	onconnecting: (event: Event)=> void;
-	onopen: (event: Event)=> void;
-	onaddstream: (event: RTCMediaStreamEvent)=> void;
-	onremovestream: (event: RTCMediaStreamEvent)=> void;
-	onstatechange: (event: Event)=> void;
-	onicechange: (event: Event)=> void;
-	onicecandidate: (event: RTCIceCandidateEvent)=> void;
-	onidentityresult: (event: Event)=> void;
+	onnegotiationneeded: (event: Event) => void;
+	onconnecting: (event: Event) => void;
+	onopen: (event: Event) => void;
+	onaddstream: (event: RTCMediaStreamEvent) => void;
+	onremovestream: (event: RTCMediaStreamEvent) => void;
+	onstatechange: (event: Event) => void;
+	onicechange: (event: Event) => void;
+	onicecandidate: (event: RTCIceCandidateEvent) => void;
+	onidentityresult: (event: Event) => void;
+	onsignalingstatechange: (event: Event) => void;
 }
 declare var RTCPeerConnection: {
 	prototype: RTCPeerConnection;
