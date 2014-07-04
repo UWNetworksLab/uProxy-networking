@@ -10,13 +10,17 @@
 
 module WebRtc {
 
-  // Messages may be limited to a 16KB length
+  // Messages are limited to a 16KB length by SCTP; we use 15k for safety.
+  // TODO: test if we can up this to 16k; test the edge-cases!
   // http://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-07#section-6.6
-  var CHUNK_SIZE = 15000;
+  var CHUNK_SIZE = 1024 * 15;
   // The maximum amount of bytes we should allow to get queued up in
-  // peerconnection (250k), any more and we start queueing in JS.
-  var PC_QUEUE_LIMIT = 1024 * 250;
-  // Javascript has trouble representing integers larger than 2^53 exactly
+  // peerconnection (10k), any more and we start queueing in JS. Note: WebRTC
+  // specified that if the buffer gets full a data channel is closed, so we
+  // really don't want that happen accidentally.
+  var PC_QUEUE_LIMIT = 1024 * 10;
+  // Javascript has trouble representing integers larger than 2^53. So we simply
+  // don't support trying to send array's bigger than that.
   var MAX_MESSAGE_SIZE = Math.pow(2, 53);
 
   // Data sent to or received from a peer on a data channel in the peer
@@ -27,9 +31,9 @@ module WebRtc {
     // TODO: add when supported by WebRtc in Chrome and FF.
     // https://code.google.com/p/webrtc/issues/detail?id=2276
     //
-    // bufferView ?:ArrayBufferView;
-    // blob  ?:Blob
-    // domString  ?:DOMString
+    // bufferView  ?:ArrayBufferView;
+    // blob        ?:Blob
+    // domString   ?:DOMString
   }
   interface StringData {
     str :string;
@@ -43,7 +47,6 @@ module WebRtc {
   //
   //
   export class DataChannel {
-    public label :string;
 
     public fromPeerDataQueue      :Handler.Queue<Data,void>;
     // The toPeerDataQueue is chunked by the send call and conjection controlled
@@ -53,12 +56,17 @@ module WebRtc {
     public onceOpenned      :Promise<void>;
     public onceClosed       :Promise<void>;
 
+    private label_ :string;
     private wasOpenned_     :boolean;
     private rejectOpenned_  :(e:Error) => void;
 
+    public getLabel = () : string => {
+      return this.label_;
+    }
+
     // Wrapper for
     constructor(private rtcDataChannel_:RTCDataChannel) {
-      this.label = this.rtcDataChannel_.label;
+      this.label_ = this.rtcDataChannel_.label;
       this.onceOpenned = new Promise<void>((F,R) => {
           this.rejectOpenned_ = R;
           // RTCDataChannels created by a RTCDataChannelEvent have an initial

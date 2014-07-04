@@ -12,7 +12,16 @@
 
 module WebRtc {
 
+  export interface PeerConnectionConfig {
+    initiateConnection     :boolean;
+    webrtcPcConfig         :RTCPeerConnectionConfig;
+    webrtcMediaConstraints :RTCMediaConstraints;
+    peerName               ?:string;
+  }
+
   export interface SignallingMessage {
+    // Should be one of these only. TODO: use union types when TypeScript
+    // supports them.
     candidate ?:RTCIceCandidate;
     sdp ?:RTCSessionDescription;
   }
@@ -80,8 +89,10 @@ module WebRtc {
 
     // if |createOffer| is true, the consturctor will immidiately initiate
     // negotiation.
-    constructor(peerName:string, createOffer:boolean, stunServers:string[]) {
-      this.peerName = this.peerName || 'unnamed-pc-' + randomUint32();
+    constructor(private config_ :PeerConnectionConfig) {
+
+      this.peerName = this.config_.peerName ||
+          'unnamed-pc-' + randomUint32();
 
       this.onceConnected = new Promise<void>((F,R) => {
           this.fulfillConnected_ = F;
@@ -102,26 +113,8 @@ module WebRtc {
 
       this.pcDataChannels_ = {};
 
-      // WebRtc contraints and config for the peer connection.
-      var pcConstraints :MediaConstraints = {
-        optional: [{DtlsSrtpKeyAgreement: true}]
-      };
-      var pcConfig :RTCPeerConnectionConfig = {iceServers: []};
-      // Add default STUN/TURN servers for setting up the peer connection.
-      if(!stunServers) {
-        stunServers = ([
-          "stun:stun.l.google.com:19302",
-          "stun:stun1.l.google.com:19302",
-          "stun:stun2.l.google.com:19302",
-          "stun:stun3.l.google.com:19302",
-          "stun:stun4.l.google.com:19302"
-        ]);
-      }
-      stunServers.map((stunServer) => {
-          pcConfig.iceServers.push({ 'url' : stunServer });
-        });
-
-      this.pc_ = new RTCPeerConnection(pcConfig, pcConstraints);
+      this.pc_ = new RTCPeerConnection(this.config_.webrtcPcConfig,
+                                       this.config_.webrtcMediaConstraints);
       // Add basic event handlers.
       this.pc_.onicecandidate = ((event:RTCIceCandidateEvent) => {
           this.toPeerSignalQueue.handle({candidate: event.candidate});
@@ -130,7 +123,7 @@ module WebRtc {
       this.pc_.ondatachannel = (this.onPeerStartedDataChannel_);
       this.pc_.onsignalingstatechange = (this.onSignallingStateChange_);
 
-      if(createOffer) { this.negotiateConnection_(); }
+      if(this.config_.initiateConnection) { this.negotiateConnection_(); }
     }
 
     // Promise wrappers for async WebRtc calls that return the session
@@ -233,6 +226,12 @@ module WebRtc {
         return;
       }
 
+      if (this.pcState === State.CONNECTING) {
+        console.error('Unexpected call to negotiateConnection: ' +
+            this.toString());
+        return;
+      }
+
       // TODO: fix/remove this when Chrome issue is fixed. This code is a hack
       // to simply reset the same local and remote description which will
       // trigger the appropriate data channel open event. This can happen in
@@ -259,11 +258,12 @@ module WebRtc {
               console.error('Failed to set local description: ' + e.toString());
               this.close();
             });
+        return;
       }
     }
 
     // Provide nice function for public access to queuing of messages.
-    public handlerSignalMessage = (signal:SignallingMessage)
+    public handleSignalMessage = (signal:SignallingMessage)
         : Promise<void> => {
       return this.fromPeerSignalQueue.handle(signal);
     }
@@ -337,9 +337,9 @@ module WebRtc {
     private addRtcDataChannel_ = (rtcDataChannel:RTCDataChannel)
         : DataChannel => {
       var dataChannel = new DataChannel(dataChannel);
-      this.pcDataChannels_[dataChannel.label] = dataChannel;
+      this.pcDataChannels_[dataChannel.getLabel()] = dataChannel;
       dataChannel.onceClosed.then(() => {
-          delete this.pcDataChannels_[dataChannel.label];
+          delete this.pcDataChannels_[dataChannel.getLabel()];
         });
       return dataChannel;
     }
