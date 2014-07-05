@@ -17,29 +17,30 @@ TaskManager = require './node_modules/uproxy-build-tools/build/taskmanager/taskm
 # build directory.
 Rule = require('uproxy-build-tools/Gruntfile.coffee').Rule;
 Rule.copySrcModule = (name, dest) ->
-    expand: true, cwd: 'src/'
-    src: [name + '/**', '!' + name + '/**/*.ts', '!' + name + '/**/*.sass']
-    dest: 'build'
+  expand: true, cwd: 'src/'
+  src: [name + '/**', '!' + name + '/**/*.ts', '!' + name + '/**/*.sass']
+  dest: 'build'
 Rule.copyBuiltModule = (name, dest) ->
-    expand: true, cwd: 'build/'
-    src: [name + '/**']
-    dest: 'build/' + dest
+  expand: true, cwd: 'build/'
+  src: [name + '/**']
+  dest: 'build/' + dest
+# Copy all libraries (but not samples and typescript src) into the desitination
+# directory (typically a sample app)
 Rule.copyLibForSample = (dest) ->
-    expand: true, cwd: 'build'
-    src: ['**/*', '!samples', '!typescript-src']
-    dest: 'build/' + dest
+  expand: true, cwd: 'build'
+  src: ['**/*', '!samples', '!typescript-src']
+  dest: 'build/' + dest
 # HACK: this overrides Rule's |noImplicitAny=false| to deal with inability to
 # refer to `core.XXX` providers as members in JavaScript. See:
 # https://github.com/freedomjs/freedom/issues/57
 Rule.typeScriptSrc = (name) ->
-    src: ['build/typescript-src/' + name + '/**/*.ts', '!**/*.d.ts']
-    dest: 'build/'
-    options:
-      basePath: 'build/typescript-src/'
-      ignoreError: false
-      noImplicitAny: false
-      sourceMap: true
-
+  src: ['build/typescript-src/' + name + '/**/*.ts', '!**/*.d.ts']
+  dest: 'build/'
+  options:
+    basePath: 'build/typescript-src/'
+    ignoreError: false
+    noImplicitAny: false
+    sourceMap: true
 
 #-------------------------------------------------------------------------
 module.exports = (grunt) ->
@@ -86,10 +87,12 @@ module.exports = (grunt) ->
         dest: 'build/typescript-src/' } ] }
 
       # Individual modules.
+      tcp: Rule.copySrcModule 'udp'
+      udp: Rule.copySrcModule 'tcp'
+      peerConnection: Rule.copySrcModule 'peer-connection'
       echoServer: Rule.copySrcModule 'echo-server'
       socksToRtc: Rule.copySrcModule 'socks-to-rtc'
       rtcToNet: Rule.copySrcModule 'rtc-to-net'
-      peerConnection: Rule.copySrcModule 'peer-connection'
 
       # Sample peer-connection App
       pcSampleApp: Rule.copySrcModule 'samples/peer-connection'
@@ -101,7 +104,7 @@ module.exports = (grunt) ->
         expand: true, cwd: 'node_modules/freedom-for-chrome/'
         src: ['freedom-for-chrome.js', 'freedom.map']
         dest: 'build/samples/chrome-app/' } ] }
-      libForChromeApp: Rule.copyLibForSample 'chrome-app/'
+      libForChromeApp: Rule.copyLibForSample 'samples/chrome-app/'
 
       echoServer_Chrome: Rule.copyBuiltModule 'echo-server', 'chrome-app/'
       socksToRtc_Chrome: Rule.copyBuiltModule 'socks-to-rtc', 'chrome-app/'
@@ -125,9 +128,7 @@ module.exports = (grunt) ->
         expand: true, cwd: 'node_modules/freedom-for-firefox/'
         src: ['freedom-for-firefox.jsm', 'freedom.map']
         dest: 'build/samples/firefox-app/data' } ] }
-      libForFirefoxApp: Rule.copyLibForSample 'firefox-app/data/'
-
-      # ? what more... ?
+      libForFirefoxApp: Rule.copyLibForSample 'samples/firefox-app/data/'
     }  # copy
 
     #-------------------------------------------------------------------------
@@ -211,29 +212,32 @@ module.exports = (grunt) ->
     'copy:thirdPartyTypeScript'
     'copy:freedomProvidersBuild'
     'copy:typeScriptSrc'
+
+  taskManager.add 'modulesSrc', [
+    'copy:tcp'
+    'copy:udp'
+    'copy:peerConnection'
+    'copy:rtcToNet'
+    'copy:socksToRtc'
   ]
 
   taskManager.add 'peerConnection', [
     'base'
-    'copy:peerConnection'
     'typescript:peerConnection'
   ]
 
   taskManager.add 'echoServer', [
     'base'
-    'copy:echoServer'
     'typescript:echoServer'
   ]
 
   taskManager.add 'socksToRtc', [
     'base'
-    'copy:socksToRtc'
     'typescript:socksToRtc'
   ]
 
   taskManager.add 'rtcToNet', [
     'base'
-    'copy:rtcToNet'
     'typescript:rtcToNet'
   ]
 
@@ -252,7 +256,7 @@ module.exports = (grunt) ->
     'typescript:udp'
   ]
 
-  taskManager.add '', [
+  taskManager.add 'peerConnection', [
     ''
 
   taskManager.add 'chromeApp', [
