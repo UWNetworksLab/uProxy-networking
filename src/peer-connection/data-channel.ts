@@ -191,7 +191,7 @@ module WebRtc {
         setTimeout(this.conjestionControlSendHandler, 20);
       } else {
         if(!this.toPeerDataQueue.isHandling()) {
-          this.toPeerDataQueue.setAsyncHandler(this.handleSendDataToPeer_);
+          this.toPeerDataQueue.setHandler(this.handleSendDataToPeer_);
         }
       }
     }

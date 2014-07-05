@@ -18,6 +18,12 @@ declare module WebRtc {
     sdp       ?:RTCSessionDescription;
   }
 
+  // Once you are connected to the peer, you know the local/remote addresses.
+  export interface ConnectionAddresses {
+    local  :Net.Endpoint;  // the local transport address/port
+    remote :Net.Endpoint;  // the remote peer's transport address/port
+  }
+
   enum State {
     WAITING,      // Can move to CONNECTING.
     CONNECTING,   // Can move to CONNECTED or DISCONNECTED.
@@ -32,9 +38,14 @@ declare module WebRtc {
     public pcState :State;
 
     // The |onceConnected| promise is fulfilled when pcState === CONNECTED
-    public onceConnected :Promise<void>;
+    public onceConnected :Promise<ConnectionAddresses>;
     // The |onceDisconnected| promise is fulfilled when pcState === DISCONNECTED
     public onceDisconnected :Promise<void>;
+
+    // Try to connect to the peer. Will change state from |WAITING| to
+    // |CONNECTING|. If there was an error, promise is rejected. Otherwise
+    // returned promise === |onceConnected|.
+    public negotiateConnection :() => Promise<ConnectionAddresses>;
 
     // A peer connection can either open a data channel to the peer (will
     // change from |WAITING| state to |CONNECTING|)
