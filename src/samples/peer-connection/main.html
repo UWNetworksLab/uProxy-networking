@@ -1,0 +1,39 @@
+<html>
+<head>
+  <title>Experiments in raw socket-based transports for WebRTC data channels</title>
+  <script src='third_party/webrtc/adaptor.js'></script>
+  <script src='peer-connection/data-channel.js'></script>
+  <script src='peer-connection/peer-connection.js'></script>
+</head>
+
+<body>
+  <div>
+    <button id='initiateConnectionButton'>Start</button>
+  </div>
+  <div id='connectionAddresses'></div>
+  <div>
+    Copy this into the other browser window:
+  </div>
+  <textarea id='copy' disabled></textarea>
+
+  <div>
+    Paste text from the other window and click Receive:
+  </div>
+  <textarea id='paste'></textarea>
+  <div>
+    <button id='handleRemoteConnectionButton'>Receive</button>
+  </div>
+
+  <div>
+    Paste text from the other window and click Receive:
+  </div>
+  <textarea id='message'></textarea>
+  <div>
+    <button id='sendMessageButton'>Send</button>
+  </div>
+
+  <!-- main.js references DOM el being created already -->
+  <script src='main.js'></script>
+
+</body>
+</html>
