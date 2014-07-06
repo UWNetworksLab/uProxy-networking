@@ -247,6 +247,19 @@ module WebRtc {
       }
     }
 
+    private closeWithError_ = (s:string) : void => {
+      console.error(s);
+      if (this.pcState === State.CONNECTING) {
+        this.rejectConnected_(new Error(s));
+      }
+      this.pcState = State.DISCONNECTED;
+      this.fulfillDisconnected_();
+      if (this.pc_.signalingState !== 'closed') {
+        // Note is expected to invoke |onSignallingStateChange_|
+        this.pc_.close();
+      }
+    }
+
     // The RTCPeerConnection signalingState has changed. This state change is
     // the result of either setLocalDescription() or setRemoteDescription()
     // being invoked. Or it can happen when the peer connection gets
@@ -261,11 +274,10 @@ module WebRtc {
       // is |CONNECTING|, otherwise this is an error.
       if (this.pcState !== State.CONNECTING) {
         // Something unexpected happened, better close down properly.
-        console.error(this.peerName + ': ' +
+        this.closeWithError_(this.peerName + ': ' +
               'Unexpected onSignallingStateChange in state: ' +
               State[this.pcState] +
               ' with pc_.signallingState: ' + this.pc_.signalingState);
-        this.close();
         return;
       }
 
@@ -309,9 +321,8 @@ module WebRtc {
         },
         // Error (unclear from the spec if this can actually happen)
         (e) => {
-          console.error(this.peerName + ': ' +
+          this.closeWithError_(this.peerName + ': ' +
             'onSignallingStateChange getStats error: ' + e.toString());
-          this.close();
         }
       );
     }
@@ -361,8 +372,8 @@ module WebRtc {
                description: {type: d.type, sdp: d.sdp} });
             })
           .catch((e) => {
-              console.error('Failed to set local description: ' + e.toString());
-              this.close();
+              this.closeWithError_('Failed to set local description: ' +
+                  e.toString());
             });
         return this.onceConnected;
       }
@@ -384,8 +395,7 @@ module WebRtc {
               stringHash(JSON.stringify(signal.description.sdp), 4) <
                   stringHash(JSON.stringify(this.pc_.localDescription.sdp), 4)) {
             // TODO: implement reset and use their offer.
-            console.error('Simultainious offers not not yet implemented.');
-            this.close();
+            this.closeWithError_('Simultainious offers not not yet implemented.');
             return;
           }
           this.pcState = State.CONNECTING;
@@ -400,14 +410,12 @@ module WebRtc {
                       {type: SignalType.ANSWER,
                        description: {type: d.type, sdp: d.sdp} });
                 })
-              .catch((e) => {
-                  console.error('Failed to set remote description: ' +
-                     +  JSON.stringify(remoteDescrition) + ' (' +
-                     typeof(remoteDescrition) + '); Error: ' + e.toString());
-                  this.close();
-                })
               .then(() => {
                   this.fromPeerCandidateQueue.setHandler(this.addIceCandidate_);
+                })
+              .catch((e) => {
+                  this.closeWithError_('Failed to connect to offer:' +
+                      e.toString());
                 });
           break;
          // Answer to an offer we sent
@@ -415,14 +423,13 @@ module WebRtc {
           var remoteDescrition :RTCSessionDescription =
               new RTCSessionDescription(signal.description);
           this.setRemoteDescription_(remoteDescrition)
-              .catch((e) => {
-                  console.error('Failed to set remote description: ' +
-                      ': ' +  JSON.stringify(remoteDescrition) + ' (' +
-                      typeof(remoteDescrition) + '); Error: ' + e.toString());
-                  this.close();
-                })
               .then(() => {
                   this.fromPeerCandidateQueue.setHandler(this.addIceCandidate_);
+                })
+              .catch((e) => {
+                  this.closeWithError_('Failed to set remote description: ' +
+                      ': ' +  JSON.stringify(remoteDescrition) + ' (' +
+                      typeof(remoteDescrition) + '); Error: ' + e.toString());
                 });
           break;
         // Add remote ice candidate.
