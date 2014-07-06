@@ -101,7 +101,7 @@ module WebRtc {
     // The WebRtc peer connection.
     private pc_            :RTCPeerConnection;
     // All WebRtc data channels associated with this data peer.
-    public pcDataChannels     :{[channelLabel:string] : DataChannel};
+    public dataChannels     :{[channelLabel:string] : DataChannel};
 
     // Internal promise completion functions for the |onceConnecting|,
     // |onceConnected| and |onceDisconnected| promises. Must only be
@@ -167,7 +167,7 @@ module WebRtc {
       // simplifies usage and management of state.
       this.pcState = State.WAITING;
 
-      this.pcDataChannels = {};
+      this.dataChannels = {};
 
       this.pc_ = new RTCPeerConnection(this.config_.webrtcPcConfig,
                                        this.config_.webrtcMediaConstraints);
@@ -270,6 +270,15 @@ module WebRtc {
         return;
       }
 
+      if (this.pc_.signalingState === 'stable' &&
+          this.pcState === State.CONNECTED) {
+        // This happens when new data channels are created. TODO: file an issue
+        // in Chrome; unclear that this should happen when creating new data
+        // channels.
+        // https://code.google.com/p/webrtc/issues/detail?id=2431
+        return;
+      }
+
       // Non-close signalling state changes should only be happening when state
       // is |CONNECTING|, otherwise this is an error.
       if (this.pcState !== State.CONNECTING) {
@@ -351,6 +360,7 @@ module WebRtc {
       // Negotiation messages are falsely requested for new data channels.
       //   https://code.google.com/p/webrtc/issues/detail?id=2431
       if (this.pc_.localDescription && this.pc_.remoteDescription) {
+        // TODO: remove when we are using a good version of chrome.
         console.warn('Dodging strange negotiateConnection.')
         this.pc_.setLocalDescription(this.pc_.localDescription,
                                      () => {}, console.error);
@@ -490,9 +500,9 @@ module WebRtc {
     private addRtcDataChannel_ = (rtcDataChannel:RTCDataChannel)
         : DataChannel => {
       var dataChannel :DataChannel = new DataChannel(rtcDataChannel);
-      this.pcDataChannels[dataChannel.getLabel()] = dataChannel;
+      this.dataChannels[dataChannel.getLabel()] = dataChannel;
       dataChannel.onceClosed.then(() => {
-          delete this.pcDataChannels[dataChannel.getLabel()];
+          delete this.dataChannels[dataChannel.getLabel()];
         });
       return dataChannel;
     }
@@ -503,9 +513,9 @@ module WebRtc {
       var s :string = this.peerName + ' (' + this.pc_.signalingState +
           '): { \n';
       var channelLabel :string;
-      for (channelLabel in this.pcDataChannels) {
+      for (channelLabel in this.dataChannels) {
         s += '  ' + channelLabel + ': ' +
-            this.pcDataChannels[channelLabel].toString() + '\n';
+            this.dataChannels[channelLabel].toString() + '\n';
       }
       s += '}';
       return s;

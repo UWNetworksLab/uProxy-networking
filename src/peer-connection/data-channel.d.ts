@@ -25,11 +25,12 @@ declare module WebRtc {
     // the data channel has been openned).
     public onceClosed :Promise<void>;
 
-    // Send data to the peer. Queues data until |onceOpenned| is fulfilled.
-    public toPeerDataQueue :Handler.Queue<Data, void>;
     // Data from the peer. No data will be added to the queue after |onceClosed|
     // is fulfilled.
     public fromPeerDataQueue :Handler.Queue<Data, void>;
-  }
 
+    // Send data; promise returns when all the data has been passed on to the
+    // undertlying network layer for ending.
+    public send :(data:Data) => Promise<void>;
+  }
 }

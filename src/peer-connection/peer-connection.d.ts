@@ -39,6 +39,9 @@ declare module WebRtc {
     // The state of this peer connection.
     public pcState :State;
 
+    // All open data channels.
+    public dataChannels     :{[channelLabel:string] : DataChannel};
+
     // The |onceConnecting| promise is fulfilled when |pcState === CONNECTING|.
     // i.e. when either |handleSignalMessage| is called with an offer message,
     // or when |negotiateConnection| is called. The promise is never be rejected
@@ -59,7 +62,7 @@ declare module WebRtc {
     public openDataChannel :(channelLabel: string,
                              options?: RTCDataChannelInit) => DataChannel;
     // Or handle data channels opened by the peer (these events will )
-    public peerCreatedChannels :Handler.Queue<DataChannel, void>;
+    public peerCreatedChannelQueue :Handler.Queue<DataChannel, void>;
 
     // The |handleSignalMessage| function should be called with signalling
     // messages from the remote peer.

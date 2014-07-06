@@ -49,9 +49,10 @@ module WebRtc {
   export class DataChannel {
 
     public fromPeerDataQueue      :Handler.Queue<Data,void>;
-    // The toPeerDataQueue is chunked by the send call and conjection controlled
-    // by the handler this class sets.
-    public toPeerDataQueue        :Handler.Queue<Data,void>;
+
+    // The |toPeerDataQueue_| is chunked by the send call and conjection
+    // controlled by the handler this class sets.
+    private toPeerDataQueue_        :Handler.Queue<Data,void>;
 
     public onceOpenned      :Promise<void>;
     public onceClosed       :Promise<void>;
@@ -119,7 +120,7 @@ module WebRtc {
     // data is too big we also fail.
     //
     // CONSIDER: We could support blob data by streaming into array-buffers.
-    private send = (data:Data) : Promise<void> => {
+    public send = (data:Data) : Promise<void> => {
       if (!(data.str || data.buffer)) {
         return Promise.reject<void>(new Error(
             'data must have at least string or buffer set'));
@@ -150,7 +151,7 @@ module WebRtc {
     // TODO: add an issue for chunking strings, write issue number here, then
     // write the code and resolve the issue :-)
     private chunkStringOntoQueue_ = (data:StringData) : Promise<void> => {
-      return this.toPeerDataQueue.handle(data);
+      return this.toPeerDataQueue_.handle(data);
     }
 
     private chunkBufferOntoQueue_ = (data:BufferData) : Promise<void> => {
@@ -160,7 +161,7 @@ module WebRtc {
       var promises :Promise<void>[] = [];
       while(startByte < buffer.byteLength) {
         endByte = Math.min(startByte + CHUNK_SIZE, data.buffer.byteLength);
-        promises.push(this.toPeerDataQueue.handle(
+        promises.push(this.toPeerDataQueue_.handle(
             {buffer: data.buffer.subarray(startByte, endByte)}));
         startByte += CHUNK_SIZE;
       }
@@ -189,13 +190,13 @@ module WebRtc {
     // as we can without wasting timeout callbacks.
     private conjestionControlSendHandler = () : void => {
       if(this.rtcDataChannel_.bufferedAmount + CHUNK_SIZE > PC_QUEUE_LIMIT) {
-        if(this.toPeerDataQueue.isHandling()) {
-          this.toPeerDataQueue.stopHandling();
+        if(this.toPeerDataQueue_.isHandling()) {
+          this.toPeerDataQueue_.stopHandling();
         }
         setTimeout(this.conjestionControlSendHandler, 20);
       } else {
-        if(!this.toPeerDataQueue.isHandling()) {
-          this.toPeerDataQueue.setHandler(this.handleSendDataToPeer_);
+        if(!this.toPeerDataQueue_.isHandling()) {
+          this.toPeerDataQueue_.setHandler(this.handleSendDataToPeer_);
         }
       }
     }
