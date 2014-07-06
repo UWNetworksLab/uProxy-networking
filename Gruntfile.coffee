@@ -21,12 +21,25 @@ Rule.copySrcModule = (name, dest) ->
   expand: true, cwd: 'src/'
   src: [name + '/**', '!' + name + '/**/*.ts', '!' + name + '/**/*.sass']
   dest: 'build'
+  onlyIf: 'modified'
 # Copy all libraries (but not samples and typescript src) into the desitination
 # directory (typically a sample app)
-Rule.copyAllBuildModulesTo = (dest) ->
-  expand: true, cwd: 'build'
-  src: ['**/*', '!samples', '!typescript-src']
-  dest: 'build/' + dest
+Rule.copyAllModulesTo = (dest) ->
+  files: [
+    {  # Copy all modules in the build directory to the sample
+      expand: true, cwd: 'build'
+      src: ['**/*', '!samples/**', '!typescript-src/**',
+            '!samples', '!typescript-src']
+      dest: 'build/' + dest
+      onlyIf: 'modified'
+    }
+    {  # Useful to support the map files
+      expand: true, cwd: 'build'
+      src: ['typescript-src/**/*']
+      dest: 'build/' + dest
+      onlyIf: 'modified'
+    }
+  ]
 # HACK: this overrides Rule's |noImplicitAny=false| to deal with inability to
 # refer to `core.XXX` providers as members in JavaScript. See:
 # https://github.com/freedomjs/freedom/issues/57
@@ -54,23 +67,37 @@ module.exports = (grunt) ->
       # Copy all the built stuff from build-tools
       buildToolsBuild: { files: [ {
           expand: true, cwd: 'node_modules/uproxy-build-tools/build'
-          src: ['**'],
+          src: ['**']
           dest: 'build'
+          onlyIf: 'modified'
         } ] }
-
       # Generic freedom things to copy into build/
       freedomProviders: { files: [ {
-        expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
-        src: ['**']
-        dest: 'build/freedom-providers/' } ] }
+          expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
+          src: ['**']
+          dest: 'build/freedom-providers/'
+          onlyIf: 'modified'
+        } ] }
       freedomForChrome: { files: [ {
-        expand: true, cwd: 'node_modules/freedom-for-chrome'
-        src: ['freedom-for-chrome.js', 'freedom.map']
-        dest: 'build/freedom-for-chrome/' } ] }
+          expand: true, cwd: 'node_modules/freedom-for-chrome'
+          src: ['freedom-for-chrome.js', 'freedom.map']
+          dest: 'build/freedom-for-chrome/'
+          onlyIf: 'modified'
+        } ] }
       freedomForFirefox: { files: [ {
-        expand: true, cwd: 'node_modules/freedom-for-firefox'
-        src: ['freedom-for-firefox.jsm', 'freedom.map']
-        dest: 'build/freedom-for-firefox/' } ] }
+          expand: true, cwd: 'node_modules/freedom-for-firefox'
+          src: ['freedom-for-firefox.jsm', 'freedom.map']
+          dest: 'build/freedom-for-firefox/'
+          onlyIf: 'modified'
+        } ] }
+
+      # Copy any JavaScript from the third_party directory
+      thirdPartyJavaScript: { files: [ {
+          expand: true,
+          src: ['third_party/**/*.js']
+          dest: 'build/'
+          onlyIf: 'modified'
+        } ] }
 
       thirdPartyTypeScript: { files: [
         # Copy any typescript from the third_party directory
@@ -78,12 +105,14 @@ module.exports = (grunt) ->
           expand: true,
           src: ['third_party/**/*.ts']
           dest: 'build/typescript-src/'
+          onlyIf: 'modified'
         },
         # freedom-typescript-api interfaces.
         {
           expand: true, cwd: 'node_modules/freedom-typescript-api'
           src: ['interfaces/**/*.ts']
           dest: 'build/typescript-src/freedom-typescript-api/'
+          onlyIf: 'modified'
         }
       ]}
 
@@ -98,15 +127,20 @@ module.exports = (grunt) ->
       tcp: Rule.copySrcModule 'udp'
       udp: Rule.copySrcModule 'tcp'
       peerConnection: Rule.copySrcModule 'peer-connection'
-      echoServer: Rule.copySrcModule 'echo-server'
       socksToRtc: Rule.copySrcModule 'socks-to-rtc'
       rtcToNet: Rule.copySrcModule 'rtc-to-net'
 
-      # Sample peer-connection App
-      pcSampleApp: Rule.copySrcModule 'samples/peer-connection'
-      libForPcSampleApp: Rule.copyAllBuildModulesTo 'samples/peer-connection'
-      # Chrome App
+      # Sample Apps
+      #
+      # Echo server Chrome App
+      echoServer: Rule.copySrcModule 'samples/echo-server'
+      libForEchoServer: Rule.copyAllModulesTo 'samples/echo-server'
+      # WebRtc peer-connection Webpage
+      webrtcPc: Rule.copySrcModule 'samples/webrtc-pc'
+      libForWebrtcPc: Rule.copyAllModulesTo 'samples/webrtc-pc'
+      # ChromeApp
       chromeApp: Rule.copySrcModule 'samples/chrome-app'
+      libForChromeApp: Rule.copyAllBuildModulesTo 'samples/chrome-app/'
 
       freedomForChromeApp: { files: [ {
         expand: true, cwd: 'node_modules/freedom-for-chrome/'
@@ -126,21 +160,19 @@ module.exports = (grunt) ->
       tcp_Chrome: Rule.copyBuiltModule 'tcp', 'chrome-app/'
       udp_Chrome: Rule.copyBuiltModule 'udp', 'chrome-app/'
 
-      libForChromeApp: Rule.copyAllBuildModulesTo 'samples/chrome-app/'
-
       freedomProvidersBuild: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
         src: ['*']
         dest: 'build/freedom-providers' } ] }
-
-      firefoxApp: Rule.copySrcModule 'samples/firefox-app'
 
       freedomFirefox: { files: [ {
         expand: true, cwd: 'node_modules/freedom-for-firefox/'
         src: ['freedom-for-firefox.jsm', 'freedom.map']
         dest: 'build/samples/firefox-app/data' } ] }
 
+      firefoxApp: Rule.copySrcModule 'samples/firefox-app'
       libForFirefoxApp: Rule.copyAllBuildModulesTo 'samples/firefox-app/data/'
+
       # ? what more... ?
     }  # copy
 
@@ -238,6 +270,8 @@ module.exports = (grunt) ->
     # copy all typescript to build/typescript-src
     'copy:thirdPartyTypeScript'
     'copy:typeScriptSrc'
+    # third party JS
+    'copy:thirdPartyJavaScript'
     # Copy freedom modules to build/
     'copy:freedomProviders'
     'copy:freedomForChrome'
@@ -275,34 +309,53 @@ module.exports = (grunt) ->
   # tasks for sample apps
   taskManager.add 'sample-webrtcPc', [
     'base'
+    'peerConnection'
     'typescript:webrtcPc'
+    'copy:webrtcPc'
+    'copy:libForWebrtcPc'
   ]
 
   taskManager.add 'sample-echoServer', [
     'base'
+    'tcp'
+    'udp'
     'typescript:echoServer'
+    'copy:echoServer'
+    'copy:libForEchoServer'
   ]
 
   taskManager.add 'sample-chromeApp', [
     'base'
-    'copy:chromeApp'
+    'tcp'
+    'udp'
+    'socksToRtc'
+    'rtcToNet'
     'typescript:chromeApp'
+    'copy:chromeApp'
+    'copy:libForChromeApp'
   ]
 
   taskManager.add 'sample-firefoxApp', [
     'base'
-    'copy:firefoxApp'
+    'tcp'
+    'udp'
+    'socksToRtc'
+    'rtcToNet'
     'typescript:firefoxApp'
+    'copy:firefoxApp'
+    'copy:libForFirefoxApp'
   ]
 
   #-------------------------------------------------------------------------
   taskManager.add 'build', [
     'base'
+    # Modules in socks-rtc
     'tcp'
     'udp'
     'peerConnection'
     'socksToRtc'
     'rtcToNet'
+    # Sample Apps in socks-rtc
     'sample-webrtcPc'
     'sample-echoServer'
     'sample-chromeApp'

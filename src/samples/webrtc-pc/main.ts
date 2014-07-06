@@ -3,24 +3,27 @@
 
 //------------------------------------------------------------------------------
 // Setup vars for dom elements & their behaviour.
-var nameTextarea = <HTMLInputElement>document.getElementById("name");
-var connectionAddressesDiv =
-    document.getElementById("connectionAddresses");
+var nameTextarea = <HTMLInputElement>document.getElementById('name');
 
-var copyTextarea = <HTMLInputElement>document.getElementById("copy");
+var errorDiv = document.getElementById('error');
+var stateDiv = document.getElementById('state');
+var connectionAddressesDiv =
+    document.getElementById('connectionAddresses');
+
+var copyTextarea = <HTMLInputElement>document.getElementById('copy');
 var initiateConnectionButton =
-    <HTMLButtonElement>document.getElementById("initiateConnectionButton");
+    <HTMLButtonElement>document.getElementById('initiateConnectionButton');
 initiateConnectionButton.onclick = initiateConnection;
 
-var pasteTextarea = <HTMLInputElement>document.getElementById("paste");
+var pasteTextarea = <HTMLInputElement>document.getElementById('paste');
 var receiveButton =
-    <HTMLButtonElement>document.getElementById("handleRemoteConnectionButton");
+    <HTMLButtonElement>document.getElementById('handleRemoteConnectionButton');
 receiveButton.onclick = onRemoteSignallingMessages;
 
-var sendTextarea = <HTMLInputElement>document.getElementById("message");
+var sendTextarea = <HTMLInputElement>document.getElementById('message');
 var sendButton =
-    <HTMLButtonElement>document.getElementById("sendmessageButton");
-receiveButton.onclick = sendMessage;
+    <HTMLButtonElement>document.getElementById('sendMessageButton');
+sendButton.onclick = sendMessage;
 
 //------------------------------------------------------------------------------
 // Create a new peer connection.
@@ -37,34 +40,50 @@ var pcConfig :WebRtc.PeerConnectionConfig = {
     }
   };
 var pc :WebRtc.PeerConnection = new WebRtc.PeerConnection(pcConfig);
-pc.toPeerSignalQueue.setSyncHandler((signal) => {
-    copyTextarea.innerText += JSON.stringify(signal);
+pc.toPeerSignalQueue.setSyncHandler(onLocalSignallingMessage);
+
+stateDiv.innerText = 'WAITING.';
+
+pc.onceConnecting.then(() => {
+    stateDiv.innerText = 'CONNECTING...';
+  });
+
+pc.onceConnected.then((addresses) => {
+    stateDiv.innerText = 'CONNECTED!';
+    connectionAddressesDiv.innerText = JSON.stringify(addresses);
+    sendTextarea.disabled=false;
+  });
+
+pc.onceDisconnected.then(() => {
+    stateDiv.innerText = 'DISCONNECTED.';
   });
 
 //------------------------------------------------------------------------------
 // called when the start button is clicked.
 // only called on the initiating side.
 function initiateConnection() {
-  pc.negotiateConnection().then((connectionAddresses) => {
-      sendTextarea.disabled=false;
-      connectionAddressesDiv.innerText=JSON.stringify(connectionAddresses);
-    });
+  console.log('initiateConnection');
+  pc.negotiateConnection().catch((e) => {
+    errorDiv.innerText = 'ERROR: ' + e.toString();
+  });
   initiateConnectionButton.disabled=true;
 };
 
-// adds a message to the copy box.
-function onLocalSignallingMessage(message) {
+// Adds a signal to the copy box.
+function onLocalSignallingMessage(signal:WebRtc.SignallingMessage) {
+  console.log('onLocalSignallingMessage');
   copyTextarea.value = copyTextarea.value.trim() + '\n' +
-      JSON.stringify(message);
+      JSON.stringify(signal);
 };
 
 // dispatches each line from the paste box as a signalling channel message.
 function onRemoteSignallingMessages() {
+  console.log('onRemoteSignallingMessages');
   var messages = pasteTextarea.value.split('\n');
   for (var i = 0; i < messages.length; i++) {
     var s:string = messages[i];
-    var message:WebRtc.SignallingMessage = JSON.parse(s);
-    pc.handleSignalMessage;
+    var signal:WebRtc.SignallingMessage = JSON.parse(s);
+    pc.handleSignalMessage(signal);
   }
 };
 

@@ -26,12 +26,18 @@ module WebRtc {
     remote :Net.Endpoint;  // the remote peer's transport address/port
   }
 
+  export enum SignalType {
+    OFFER, ANSWER, CANDIDATE, NO_MORE_CANDIDATES
+  }
+
   export interface SignallingMessage {
-    // Should be one of these only. TODO: use union types when TypeScript
-    // supports them.
-    candidate ?:RTCIceCandidate;
-    offer     ?:RTCSessionDescription;
-    answer    ?:RTCSessionDescription;
+    // CONSIDER: use string-enum when typescript supports it.
+    type          :SignalType
+    // The |candidate| parameter us set iff type === CANDIDATE
+    candidate     ?:RTCIceCandidateInit;
+    // The |description| parameter is set iff type === OFFER or
+    // type === ANSWER
+    description   ?:RTCSessionDescriptionInit;
   }
 
   export enum State {
@@ -97,14 +103,21 @@ module WebRtc {
     // All WebRtc data channels associated with this data peer.
     private pcDataChannels_     :{[channelLabel:string] : DataChannel};
 
-    // Internal promise completion functions for the |onceConnected| and
-    // |onceDisconnected| promises. These must only be called once.
+    // Internal promise completion functions for the |onceConnecting|,
+    // |onceConnected| and |onceDisconnected| promises. Must only be
+    // called once (per respective promise).
+    private fulfillConnecting_    : () => void;
     private fulfillConnected_     :(addresses:ConnectionAddresses) => void;
     private rejectConnected_      :(e:Error) => void;
     private fulfillDisconnected_  :() => void;
 
     // The current state of the data peer;
     public pcState        :State;
+    // Promise if fulfilled once we are starting to try to connect, either
+    // because a peer sent us the appropriate signalling message (an offer) or
+    // because we called negotiateConnection. Will be fulfilled before
+    // |onceConnected|. Will never be rejected.
+    public onceConnecting  :Promise<void>;
     // Fulfilled once we are connected to the peer. Rejected if connection fails
     // to be established.
     public onceConnected  :Promise<ConnectionAddresses>;
@@ -124,8 +137,15 @@ module WebRtc {
       this.peerName = this.config_.peerName ||
           'unnamed-pc-' + randomUint32();
 
+      this.onceConnecting = new Promise<void>((F,R) => {
+          this.fulfillConnecting_ = F;
+        });
       this.onceConnected = new Promise<ConnectionAddresses>((F,R) => {
-          this.fulfillConnected_ = F;
+          // This ensures that onceConnecting consequences happen before
+          // onceConnected.
+          this.fulfillConnected_ = (addresses:ConnectionAddresses) => {
+              this.onceConnecting.then(F.bind(null,addresses));
+            };
           this.rejectConnected_ = R;
         });
       this.onceDisconnected = new Promise<void>((F,R) => {
@@ -146,7 +166,17 @@ module WebRtc {
                                        this.config_.webrtcMediaConstraints);
       // Add basic event handlers.
       this.pc_.onicecandidate = ((event:RTCIceCandidateEvent) => {
-          this.toPeerSignalQueue.handle({candidate: event.candidate});
+          if(event.candidate) {
+            this.toPeerSignalQueue.handle({
+                type: SignalType.CANDIDATE,
+                candidate: { candidate: event.candidate.candidate,
+                             sdpMid: event.candidate.sdpMid,
+                             sdpMLineIndex: event.candidate.sdpMLineIndex }
+              });
+            } else {
+              this.toPeerSignalQueue.handle(
+                  { type: SignalType.NO_MORE_CANDIDATES });
+            }
         });
       this.pc_.onnegotiationneeded = (this.negotiateConnection);
       this.pc_.ondatachannel = (this.onPeerStartedDataChannel_);
@@ -216,8 +246,9 @@ module WebRtc {
       if (this.pcState !== State.CONNECTING) {
         // Something unexpected happened, better close down properly.
         console.error(this.peerName + ': ' +
-              'Unexpected onSignallingStateChange: ' +
-              this.pc_.signalingState);
+              'Unexpected onSignallingStateChange in state: ' +
+              State[this.pcState] +
+              ' with pc_.signallingState: ' + this.pc_.signalingState);
         this.close();
         return;
       }
@@ -239,23 +270,26 @@ module WebRtc {
         // TODO: add need stat-getting for Firefox.
         // TODO: when Chrome meets the spec, update to match.
         (report :RTCStatsReport) => {
-          // If something if broken.
-          if (report.stat('googActiveConnection') !== 'true') {
-            console.error(this.peerName + ': ' +
-                'googActiveConnection !== true');
-            this.close();
-            return;
+          var results = report.result();
+          for (var i = 0; i < results.length; i++) {
+            var result = results[i];
+            // look for the googActiveConnection report...
+            if (result.stat('googActiveConnection') === 'true') {
+              this.pcState = State.CONNECTED;
+              var localFields = result.stat('googLocalAddress').split(':');
+              var remoteFields = result.stat('googRemoteAddress').split(':');
+              this.fulfillConnected_({
+                  local:  {address: localFields[0],
+                           port: parseInt(localFields[1])},
+                  remote: {address: remoteFields[0],
+                           port: parseInt(remoteFields[1])}
+                });
+              return;
+            }
           }
-
-          this.pcState = State.CONNECTED;
-          var localFields = report.stat('googLocalAddress').split(':');
-          var remoteFields = report.stat('googRemoteAddress').split(':');
-          this.fulfillConnected_({
-              local:  {address: localFields[0],
-                       port: parseInt(localFields[1])},
-              remote: {address: remoteFields[0],
-                       port: parseInt(remoteFields[1])}
-            });
+          // Get stats doesn't reliably work, so we have to pull it
+          // TODO: bug request?
+          window.setTimeout(this.completeConnection_, 200);
         },
         // Error (unclear from the spec if this can actually happen)
         (e) => {
@@ -290,20 +324,26 @@ module WebRtc {
       // Negotiation messages are falsely requested for new data channels.
       //   https://code.google.com/p/webrtc/issues/detail?id=2431
       if (this.pc_.localDescription && this.pc_.remoteDescription) {
-          this.pc_.setLocalDescription(this.pc_.localDescription,
-                                       () => {}, console.error);
-          this.pc_.setRemoteDescription(this.pc_.remoteDescription,
-                                        () => {}, console.error);
-          return this.onceConnected;
+        console.warn('Dodging strange negotiateConnection.')
+        this.pc_.setLocalDescription(this.pc_.localDescription,
+                                     () => {}, console.error);
+        this.pc_.setRemoteDescription(this.pc_.remoteDescription,
+                                      () => {}, console.error);
+        return this.onceConnected;
       }
 
       // CONSIDER: might we ever need to re-create an onAnswer? Exactly how/when
       // do onnegotiation events get raised? Do they get raised on both sides?
       // Or only for the initiator?
       if (this.pcState === State.WAITING) {
+        this.pcState = State.CONNECTING;
+        this.fulfillConnecting_();
         this.createOffer_()
           .then(this.setLocalDescription_)
-          .then((d) => { this.toPeerSignalQueue.handle({offer: d}); })
+          .then((d:RTCSessionDescription) => { this.toPeerSignalQueue.handle(
+              {type: SignalType.OFFER,
+               description: {type: d.type, sdp: d.sdp} });
+            })
           .catch((e) => {
               console.error('Failed to set local description: ' + e.toString());
               this.close();
@@ -314,48 +354,78 @@ module WebRtc {
 
     // Handle a signalling message from the remote peer.
     public handleSignalMessage = (signal :SignallingMessage) : void => {
-      //console.log(this.peerName + ': ' + 'handleSignalMessage: \n' + messageText);
-
+      console.log(this.peerName + ': ' + 'handleSignalMessage: \n' +
+          JSON.stringify(signal));
       // If we are offering and they are also offerring at the same time, pick
       // the one who has the lower hash value for their description: this is
       // equivalent to having a special random id, but voids the need for an
       // extra random number. TODO: instead of hash, we could use the IP/port
       // candidate list which is guarenteed to be unique for 2 peers.
-      if (signal.offer) {
-        if(this.pc_.signalingState === 'have-local-offer' &&
-            stringHash(JSON.stringify(signal.offer), 4) <
-                stringHash(JSON.stringify(this.pc_.localDescription), 4)) {
-          // TODO: implement reset and use their offer.
-          console.error('Simultainious offers not not yet implemented.');
-          this.close();
-          return;
-        }
-        this.setRemoteDescription_(signal.offer)  // initial offer from peer
-            .then(this.createAnswer_)
-            .then(this.setLocalDescription_)
-            .then((d) => { this.toPeerSignalQueue.handle({answer: d}); })
-            .catch((e) => {
+      switch(signal.type) {
+        //
+        case SignalType.OFFER:
+          if(this.pc_.signalingState === 'have-local-offer' &&
+              stringHash(JSON.stringify(signal.description.sdp), 4) <
+                  stringHash(JSON.stringify(this.pc_.localDescription.sdp), 4)) {
+            // TODO: implement reset and use their offer.
+            console.error('Simultainious offers not not yet implemented.');
+            this.close();
+            return;
+          }
+          this.pcState = State.CONNECTING;
+          this.fulfillConnecting_();
+          var remoteDescrition :RTCSessionDescription =
+              new RTCSessionDescription(signal.description);
+          this.setRemoteDescription_(remoteDescrition)  // initial offer from peer
+              .then(this.createAnswer_)
+              .then(this.setLocalDescription_)
+              .then((d:RTCSessionDescription) => {
+                  this.toPeerSignalQueue.handle(
+                      {type: SignalType.ANSWER,
+                       description: {type: d.type, sdp: d.sdp} });
+                })
+              .catch((e) => {
+                  console.error('Failed to set remote description: ' +
+                     +  JSON.stringify(remoteDescrition) + ' (' +
+                     typeof(remoteDescrition) + '); Error: ' + e.toString());
+                  this.close();
+                });
+          break;
+         // Answer to an offer we sent
+        case SignalType.ANSWER:
+          var remoteDescrition :RTCSessionDescription =
+              new RTCSessionDescription(signal.description);
+          this.setRemoteDescription_(remoteDescrition)
+              .catch((e) => {
                 console.error('Failed to set remote description: ' +
-                    e.toString());
+                    ': ' +  JSON.stringify(remoteDescrition) + ' (' +
+                    typeof(remoteDescrition) + '); Error: ' + e.toString());
                 this.close();
               });
-      } else if (signal.answer) {  // Answer to an offer we sent
-        this.setRemoteDescription_(signal.answer)
-            .catch((e) => {
-              console.error('Failed to set remote description: ' +
-                  e.toString());
-              this.close();
-            });
-      } else if (signal.candidate) {  // Add remote ice candidate.
-        // CONSIDER: Should we be passing/getting the SDP line index?
-        // e.g. https://code.google.com/p/webrtc/source/browse/stable/samples/js/apprtc/js/main.js#331
-        //console.log(this.peerName + ': Adding ice candidate: ' + JSON.stringify(signal.candidate));
-        this.pc_.addIceCandidate(new RTCIceCandidate(signal.candidate));
-      } else {
-        console.warn(this.peerName + ': ' +
-            'handleSignalMessage got unexpected message: ' +
-            JSON.stringify(signal));
-      }
+          break;
+        // Add remote ice candidate.
+        case SignalType.CANDIDATE:
+          // CONSIDER: Should we be passing/getting the SDP line index?
+          // e.g. https://code.google.com/p/webrtc/source/browse/stable/samples/js/apprtc/js/main.js#331
+          //console.log(this.peerName + ': Adding ice candidate: ' + JSON.stringify(signal.candidate));
+          try {
+            this.pc_.addIceCandidate(new RTCIceCandidate(signal.candidate));
+          } catch(e) {
+            console.error(this.peerName + ': ' + 'addIceCandidate: ' +
+                JSON.stringify(signal.candidate) + ' (' +
+                typeof(signal.candidate) + '); Error: ' + e.toString());
+          }
+          break;
+        case SignalType.NO_MORE_CANDIDATES:
+          console.info(this.peerName + ': handleSignalMessage: noMoreCandidates');
+          break;
+
+        default:
+          console.error(this.peerName + ': ' +
+              'handleSignalMessage got unexpected message: ' +
+              JSON.stringify(signal) + ' (' + typeof(signal) + ')');
+          break;
+      }  // switch
     }
 
     // Open a new data channel with the peer.

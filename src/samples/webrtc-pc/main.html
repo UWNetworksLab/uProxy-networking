@@ -1,12 +1,19 @@
 <html>
 <head>
-  <title>Experiments in raw socket-based transports for WebRTC data channels</title>
-  <script src='third_party/webrtc/adaptor.js'></script>
+  <title>Peer Connection Sample Code</title>
+  <script src='handler/queue.js'></script>
+  <script src='third_party/webrtc-adapter/adapter.js'></script>
   <script src='peer-connection/data-channel.js'></script>
   <script src='peer-connection/peer-connection.js'></script>
+  <style>
+  </style>
 </head>
 
 <body>
+  <div id='state'></div>
+  <div id='error'></div>
+  <div id='connectionAddresses'></div>
+
   <div>
     <button id='initiateConnectionButton'>Start</button>
   </div>
@@ -25,7 +32,7 @@
   </div>
 
   <div>
-    Paste text from the other window and click Receive:
+    Enter a message to send to the peer
   </div>
   <textarea id='message'></textarea>
   <div>

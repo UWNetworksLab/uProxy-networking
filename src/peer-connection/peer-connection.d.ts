@@ -39,6 +39,11 @@ declare module WebRtc {
     // The state of this peer connection.
     public pcState :State;
 
+    // The |onceConnecting| promise is fulfilled when |pcState === CONNECTING|.
+    // i.e. when either |handleSignalMessage| is called with an offer message,
+    // or when |negotiateConnection| is called. The promise is never be rejected
+    // and is guarenteed to fulfilled before |onceConnected|.
+    public onceConnecting  :Promise<void>;
     // The |onceConnected| promise is fulfilled when pcState === CONNECTED
     public onceConnected :Promise<ConnectionAddresses>;
     // The |onceDisconnected| promise is fulfilled when pcState === DISCONNECTED
@@ -58,7 +63,7 @@ declare module WebRtc {
 
     // The |handleSignalMessage| function should be called with signalling
     // messages from the remote peer.
-    public handleSignalMessage :(signal:SignallingMessage) => Promise<void>;
+    public handleSignalMessage :(signal:SignallingMessage) => void;
     // The underlying handler that holds/handles signals intended to go to the
     // remote peer. A handler should be set that sends messages to the remote
     // peer.
