@@ -16,11 +16,11 @@
       border: 2px solid #DDD;
       margin: 5px;
     }
-    div#error {
+    div#errors {
       padding: 5px;
       width: 790px;
       border: 2px solid #922;
-      background: 2px solid #FCC;
+      background: #FCC;
       margin: 5px;
     }
     div#connect {
@@ -73,8 +73,9 @@
       border-top: 1px solid #DDD;
       padding: 5px;
     }
-    button.close-channel-button {
-      float: right;
+    button.close-btn {
+      position: relative;
+      right: 5px;
     }
   </style>
 </head>
@@ -84,47 +85,52 @@
 
   <div id='status'>
     <div class='info' id='state'>{{state}}</div>
-    <div class='info' id='error' ng-hide='error === ""'>{{error}}</div>
     <div class='info' id='connection-info' ng-hide='connectInfo === ""'>{{connectInfo}}</div>
+  </div>
+
+  <div class='info' id='errors' ng-hide='errors.length === 0'>
+    <div ng-repeat='error in errors'>{{error}}</div>
+    <button class='close-btn' id='clear-errors-btn' ng-click='clearErrors()'>clear</button>
   </div>
 
   <div id='connect'>
     <div class='card' id='local'>
-      <button id='initiate-connection-cutton'>Initiate Connection</button>
+      <button id='initiate-connection-btn' ng-click='initiateConnection()'>Initiate Connection</button>
       <div id='copy-information' ng-hide='state === "WAITING."'>
         <div>Now send this into the other peer:</div>
-        <textarea id='copy' disabled></textarea>
+        <textarea id='copy' disabled ng-model='localInfo'></textarea>
       </div>
     </div>
 
     <div class='card' id='remote'>
-      Paste text from the other window and click Receive: <br/>
-      <textarea id='paste'></textarea> <br/>
-      <button id='receive-button' ng-click='processRemoteSignallingMessages()'>Receive</button>
+      <div>Paste text from the other window and click Receive: </div>
+      <textarea id='paste' ng-model='remoteInfo'></textarea>
+      <div><button id='receive-btn' ng-click='processRemoteSignallingMessages()'>Receive</button></div>
     </div>
   </div>
 
   <div id='channels' ng-show='state === "CONNECTED!"'>
-    Channel label: <input type='text' id='label' size='20'>{{newChannelLabel}}</input>
-    <button id='create-channel-button' ng-click='newChannelLabel(newChannelLabel)'>Create Channel</button>
+    Channel label: <input type='text' id='label' size='20' ng-model='newChannelLabel'></input>
+    <button id='create-channel-btn' ng-click='newChannelLabel(newChannelLabel)'>Create Channel</button>
   </div>
 
   <div id='channel-list'>
     <div class='chat' id='channel-hello' ng-repeat='(channelLabel, channel) in channels'>
       <div class='channel-header'>Channel Label: <span class='channel-label'>{{channel.label}}</span>
-        <button class='remove-channel-button' ng-show='channel.state === "CLOSED"'>remove</button>
-        <button class='close-channel-button' ng-show='channel.state === "OPEN"'>close</button>
+        <button class='close-btn' ng-show='channel.state === "CLOSED"'>remove</button>
+        <button class='close-btn' ng-show='channel.state === "OPEN"'>close</button>
       </div>
       <div class='messages'>
         <div ng-repeat='message in messages'>{{message}}</div>
       </div>
       <div class='send'>
         <input type='text' id='message' size='60'></input>
-        <button class='sendMessageButton' ng-click='channel.label'>Send</button>
+        <button class='send-message-btn' ng-click='channel.label'>Send</button>
       </div>
     </div>
   </div>
 
+  </div>
   <!-- main.js references DOM el being created already -->
   <script src='main.js'></script>
 

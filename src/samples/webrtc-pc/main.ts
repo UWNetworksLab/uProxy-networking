@@ -5,11 +5,12 @@
 //------------------------------------------------------------------------------
 interface Channel {
   state :string; // 'open', 'connecting', 'closed'
+  messages :string[];
 }
 
 interface WebrtcPcControllerScope extends ng.IScope {
   state :string;  // 'WAITING.', 'CONNECTING...', 'CONNECTED!', 'DISCONNECTED.'
-  error :string;
+  errors :string[];
   connectInfo :string;
 
   localInfo :string;
@@ -22,6 +23,7 @@ interface WebrtcPcControllerScope extends ng.IScope {
   // User actions
   initiateConnection :() => void;
   processRemoteSignallingMessages :() => void;
+  clearErrors :() => void;
 
   createChannel :(channelLabel:string) => void;
   send :(channelLabel:string, message:string) => void;
@@ -52,13 +54,16 @@ webrtcPcApp.controller('webrtcPcController',
     ($scope :WebrtcPcControllerScope) => {
   //----------------------------------------------------------------------------
   $scope.state = 'WAITING.';
-  $scope.error = '';
+  $scope.errors = [];
   $scope.connectInfo = '';
+  $scope.channels = {};
 
   $scope.localInfo = '';
   $scope.remoteInfo = '';
 
   $scope.newChannelLabel = 'test-channel-label';
+
+  $scope.clearErrors = () => { $scope.errors = []; }
 
   //----------------------------------------------------------------------------
   // Promise completion callbacks
@@ -71,7 +76,7 @@ webrtcPcApp.controller('webrtcPcController',
         $scope.connectInfo = JSON.stringify(addresses);
       });
     }).catch((e) => {
-      $scope.$apply(() => { $scope.error = e.toString(); });
+      $scope.$apply(() => { $scope.errors.push(e.toString()); });
     });
   pc.onceDisconnected.then(() => {
       $scope.$apply(() => { $scope.state = 'DISCONNECTED.'; });
@@ -98,18 +103,31 @@ webrtcPcApp.controller('webrtcPcController',
   // remote peer via the signalling channel.
   $scope.processRemoteSignallingMessages = () => {
     console.log('onRemoteSignallingMessages');
+    var signal:WebRtc.SignallingMessage;
+    var s:string
+    var i:number;
     var messages = $scope.remoteInfo.split('\n');
     for (var i = 0; i < messages.length; i++) {
-      var s:string = messages[i];
-      var signal:WebRtc.SignallingMessage = JSON.parse(s);
-      pc.handleSignalMessage(signal);
+      s = messages[i].trim();
+      if(s.length > 0) {
+        try {
+          signal = JSON.parse(s);
+          console.log('handleSignalMessage: ' + signal);
+          pc.handleSignalMessage(signal);
+        } catch(e) {
+          $scope.errors.push('Bad signal message: "' + s + '"' + e.toString());
+        }
+      }
     }
   }
 
   $scope.createChannel = (channelLabel) => {
     $scope.$apply(() => {
       var dataChannel = pc.openDataChannel(channelLabel);
-      $scope.channels[channelLabel] = { state: dataChannel.getState() };
+      $scope.channels[channelLabel] = {
+        state: dataChannel.getState(),
+        messages: []
+      };
       dataChannel.onceOpenned.then(() => {
           $scope.$apply(() => {
               $scope.channels[channelLabel].state = dataChannel.getState();
