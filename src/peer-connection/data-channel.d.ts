@@ -17,6 +17,7 @@ declare module WebRtc {
 
     // Guarenteed to be invarient for the life of the data channel.
     public getLabel :() => string;
+    public getState :() => string;  // 'connecting', 'open', 'closed'
 
     // Promise for when the data channel has been openned.
     public onceOpenned :Promise<void>;

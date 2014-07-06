@@ -64,6 +64,10 @@ module WebRtc {
       return this.label_;
     }
 
+    public getState = () : string => {
+      return this.rtcDataChannel_.readyState;
+    }
+
     // Wrapper for
     constructor(private rtcDataChannel_:RTCDataChannel) {
       this.label_ = this.rtcDataChannel_.label;

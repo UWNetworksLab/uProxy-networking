@@ -101,7 +101,7 @@ module WebRtc {
     // The WebRtc peer connection.
     private pc_            :RTCPeerConnection;
     // All WebRtc data channels associated with this data peer.
-    private pcDataChannels_     :{[channelLabel:string] : DataChannel};
+    public pcDataChannels     :{[channelLabel:string] : DataChannel};
 
     // Internal promise completion functions for the |onceConnecting|,
     // |onceConnected| and |onceDisconnected| promises. Must only be
@@ -167,7 +167,7 @@ module WebRtc {
       // simplifies usage and management of state.
       this.pcState = State.WAITING;
 
-      this.pcDataChannels_ = {};
+      this.pcDataChannels = {};
 
       this.pc_ = new RTCPeerConnection(this.config_.webrtcPcConfig,
                                        this.config_.webrtcMediaConstraints);
@@ -483,9 +483,9 @@ module WebRtc {
     private addRtcDataChannel_ = (rtcDataChannel:RTCDataChannel)
         : DataChannel => {
       var dataChannel :DataChannel = new DataChannel(rtcDataChannel);
-      this.pcDataChannels_[dataChannel.getLabel()] = dataChannel;
+      this.pcDataChannels[dataChannel.getLabel()] = dataChannel;
       dataChannel.onceClosed.then(() => {
-          delete this.pcDataChannels_[dataChannel.getLabel()];
+          delete this.pcDataChannels[dataChannel.getLabel()];
         });
       return dataChannel;
     }
@@ -496,9 +496,9 @@ module WebRtc {
       var s :string = this.peerName + ' (' + this.pc_.signalingState +
           '): { \n';
       var channelLabel :string;
-      for (channelLabel in this.pcDataChannels_) {
+      for (channelLabel in this.pcDataChannels) {
         s += '  ' + channelLabel + ': ' +
-            this.pcDataChannels_[channelLabel].toString() + '\n';
+            this.pcDataChannels[channelLabel].toString() + '\n';
       }
       s += '}';
       return s;
