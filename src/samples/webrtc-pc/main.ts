@@ -20,7 +20,10 @@ var receiveButton =
     <HTMLButtonElement>document.getElementById('handleRemoteConnectionButton');
 receiveButton.onclick = onRemoteSignallingMessages;
 
-var sendTextarea = <HTMLInputElement>document.getElementById('message');
+var messages = document.getElementById('messages');
+
+var channelLabelInput = <HTMLInputElement>document.getElementById('label');
+var sendMessageInput = <HTMLInputElement>document.getElementById('message');
 var sendButton =
     <HTMLButtonElement>document.getElementById('sendMessageButton');
 sendButton.onclick = sendMessage;
@@ -52,10 +55,14 @@ pc.onceConnected.then((addresses) => {
     stateDiv.innerText = 'CONNECTED!';
     connectionAddressesDiv.innerText = JSON.stringify(addresses);
     sendTextarea.disabled=false;
+    receiveButton.disabled=true;
+    pasteTextarea.disabled=true;
   });
 
 pc.onceDisconnected.then(() => {
     stateDiv.innerText = 'DISCONNECTED.';
+    sendButton.disabled=true;
+    sendTextarea.disabled=true;
   });
 
 //------------------------------------------------------------------------------
@@ -88,5 +95,5 @@ function onRemoteSignallingMessages() {
 };
 
 function sendMessage() {
-
+  channelLabelInput
 }

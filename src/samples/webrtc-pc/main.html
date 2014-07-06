@@ -6,13 +6,25 @@
   <script src='peer-connection/data-channel.js'></script>
   <script src='peer-connection/peer-connection.js'></script>
   <style>
+    textarea {
+      width: 100%;
+      font-family: monospace;
+    }
+    .info {
+      font-family: monospace;
+    }
+    #messages {
+      height: 10em;
+      font-family: monospace;
+      border: 1px solid #999;
+    }
   </style>
 </head>
 
 <body>
-  <div id='state'></div>
-  <div id='error'></div>
-  <div id='connectionAddresses'></div>
+  <div class='info' id='state'></div>
+  <div class='info' id='error'></div>
+  <div class='info' id='connectionAddresses'></div>
 
   <div>
     <button id='initiateConnectionButton'>Start</button>
@@ -31,12 +43,14 @@
     <button id='handleRemoteConnectionButton'>Receive</button>
   </div>
 
+  <div id='messages'></div>
   <div>
     Enter a message to send to the peer
   </div>
-  <textarea id='message'></textarea>
   <div>
-    <button id='sendMessageButton'>Send</button>
+  Label: <input type='text' id='label' size='20'></input>
+  Message: <input type='text' id='message' size='60'></input>
+  <button id='sendMessageButton'>Send</button>
   </div>
 
   <!-- main.js references DOM el being created already -->

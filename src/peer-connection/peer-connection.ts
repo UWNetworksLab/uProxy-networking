@@ -129,6 +129,7 @@ module WebRtc {
 
     // Signals to be send to the remote peer by this peer.
     public toPeerSignalQueue :Handler.Queue<SignallingMessage,void>;
+    public fromPeerCandidateQueue :Handler.Queue<RTCIceCandidate,void>;
 
     // if |createOffer| is true, the consturctor will immidiately initiate
     // negotiation.
@@ -152,9 +153,15 @@ module WebRtc {
           this.fulfillDisconnected_ = F;
         });
 
+      // New data channels from the peer.
       this.peerCreatedChannelQueue = new Handler.Queue<DataChannel,void>();
 
+      // Messages to send to the peer.
       this.toPeerSignalQueue = new Handler.Queue<SignallingMessage,void>();
+
+      // candidates form the peer; need to be queued until after remote
+      // descrption has been set.
+      this.fromPeerCandidateQueue = new Handler.Queue<RTCIceCandidate,void>();
 
       // This state variable is an abstraction of the PeerConnection state that
       // simplifies usage and management of state.
@@ -206,8 +213,17 @@ module WebRtc {
     // to do anything with the remote description once it has been set.
     private setRemoteDescription_ = (d:RTCSessionDescription)
         : Promise<void> => {
-      return new Promise<void>((F,R) => { this.pc_.setRemoteDescription(d, F, R); });
+      return new Promise<void>((F,R) => {
+          this.pc_.setRemoteDescription(d, F, R);
+        });
     }
+    // add an ice candidate, promise is for when it is added.
+    private addIceCandidate_ = (c:RTCIceCandidate) : Promise<void> => {
+      return new Promise<void>((F,R) => {
+          try { this.pc_.addIceCandidate(c, F, R); }
+          catch(e) { R(e); }
+        });
+    };
 
     // Close the peer connection. This function is idempotent.
     public close = () : void => {
@@ -389,6 +405,9 @@ module WebRtc {
                      +  JSON.stringify(remoteDescrition) + ' (' +
                      typeof(remoteDescrition) + '); Error: ' + e.toString());
                   this.close();
+                })
+              .then(() => {
+                  this.fromPeerCandidateQueue.setHandler(this.addIceCandidate_);
                 });
           break;
          // Answer to an offer we sent
@@ -397,11 +416,14 @@ module WebRtc {
               new RTCSessionDescription(signal.description);
           this.setRemoteDescription_(remoteDescrition)
               .catch((e) => {
-                console.error('Failed to set remote description: ' +
-                    ': ' +  JSON.stringify(remoteDescrition) + ' (' +
-                    typeof(remoteDescrition) + '); Error: ' + e.toString());
-                this.close();
-              });
+                  console.error('Failed to set remote description: ' +
+                      ': ' +  JSON.stringify(remoteDescrition) + ' (' +
+                      typeof(remoteDescrition) + '); Error: ' + e.toString());
+                  this.close();
+                })
+              .then(() => {
+                  this.fromPeerCandidateQueue.setHandler(this.addIceCandidate_);
+                });
           break;
         // Add remote ice candidate.
         case SignalType.CANDIDATE:
@@ -409,7 +431,8 @@ module WebRtc {
           // e.g. https://code.google.com/p/webrtc/source/browse/stable/samples/js/apprtc/js/main.js#331
           //console.log(this.peerName + ': Adding ice candidate: ' + JSON.stringify(signal.candidate));
           try {
-            this.pc_.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            this.fromPeerCandidateQueue.handle(
+                new RTCIceCandidate(signal.candidate));
           } catch(e) {
             console.error(this.peerName + ': ' + 'addIceCandidate: ' +
                 JSON.stringify(signal.candidate) + ' (' +
@@ -459,14 +482,13 @@ module WebRtc {
     // Add a rtc data channel and return the it wrapped as a DataChannel
     private addRtcDataChannel_ = (rtcDataChannel:RTCDataChannel)
         : DataChannel => {
-      var dataChannel = new DataChannel(dataChannel);
+      var dataChannel :DataChannel = new DataChannel(rtcDataChannel);
       this.pcDataChannels_[dataChannel.getLabel()] = dataChannel;
       dataChannel.onceClosed.then(() => {
           delete this.pcDataChannels_[dataChannel.getLabel()];
         });
       return dataChannel;
     }
-
 
     // For debugging: prints the state of the peer connection including all
     // associated data channels.

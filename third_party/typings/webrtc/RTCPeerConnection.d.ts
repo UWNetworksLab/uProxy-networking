@@ -247,13 +247,15 @@ interface RTCPeerConnection {
                       failureCallback?: RTCPeerConnectionErrorCallback): void;
   localDescription: RTCSessionDescription;
   setRemoteDescription(description: RTCSessionDescription,
-                        successCallback?: RTCVoidCallback,
-                        failureCallback?: RTCPeerConnectionErrorCallback): void;
+                       successCallback?: RTCVoidCallback,
+                       failureCallback?: RTCPeerConnectionErrorCallback): void;
   remoteDescription: RTCSessionDescription;
   signalingState: string; // RTCSignalingState; see TODO(1)
   updateIce(configuration?: RTCConfiguration,
             constraints?: RTCMediaConstraints): void;
-  addIceCandidate(candidate: RTCIceCandidate): void;
+  addIceCandidate(candidate: RTCIceCandidate,
+                  successCallback?: RTCVoidCallback,
+                  failureCallback?: RTCPeerConnectionErrorCallback): void;
   iceGatheringState: string;  // RTCIceGatheringState; see TODO(1)
   iceConnectionState: string;  // RTCIceConnectionState; see TODO(1)
   getLocalStreams(): MediaStream[];
