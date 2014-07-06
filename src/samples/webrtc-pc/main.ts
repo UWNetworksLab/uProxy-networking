@@ -1,32 +1,34 @@
 /// <reference path='../../peer-connection/peer-connection.d.ts' />
 /// <reference path='../../peer-connection/data-channel.d.ts' />
+/// <reference path='../../third_party/typings/angularjs/angular.d.ts' />
 
 //------------------------------------------------------------------------------
-// Setup vars for dom elements & their behaviour.
-var nameTextarea = <HTMLInputElement>document.getElementById('name');
+interface Channel {
+  state :string; // 'open', 'connecting', 'closed'
+}
 
-var errorDiv = document.getElementById('error');
-var stateDiv = document.getElementById('state');
-var connectionAddressesDiv =
-    document.getElementById('connectionAddresses');
+interface WebrtcPcControllerScope extends ng.IScope {
+  state :string;  // 'WAITING.', 'CONNECTING...', 'CONNECTED!', 'DISCONNECTED.'
+  error :string;
+  connectInfo :string;
 
-var copyTextarea = <HTMLInputElement>document.getElementById('copy');
-var initiateConnectionButton =
-    <HTMLButtonElement>document.getElementById('initiateConnectionButton');
-initiateConnectionButton.onclick = initiateConnection;
+  localInfo :string;
+  remoteInfo :string;
 
-var pasteTextarea = <HTMLInputElement>document.getElementById('paste');
-var receiveButton =
-    <HTMLButtonElement>document.getElementById('handleRemoteConnectionButton');
-receiveButton.onclick = onRemoteSignallingMessages;
+  newChannelLabel :string;
 
-var messages = document.getElementById('messages');
+  channels : {[channelLabel:string] : Channel};
 
-var channelLabelInput = <HTMLInputElement>document.getElementById('label');
-var sendMessageInput = <HTMLInputElement>document.getElementById('message');
-var sendButton =
-    <HTMLButtonElement>document.getElementById('sendMessageButton');
-sendButton.onclick = sendMessage;
+  // User actions
+  initiateConnection :() => void;
+  processRemoteSignallingMessages :() => void;
+
+  createChannel :(channelLabel:string) => void;
+  send :(channelLabel:string, message:string) => void;
+
+  // Callback from pc
+  onLocalSignallingMessage :(signal:WebRtc.SignallingMessage) => void;
+}
 
 //------------------------------------------------------------------------------
 // Create a new peer connection.
@@ -43,57 +45,91 @@ var pcConfig :WebRtc.PeerConnectionConfig = {
     }
   };
 var pc :WebRtc.PeerConnection = new WebRtc.PeerConnection(pcConfig);
-pc.toPeerSignalQueue.setSyncHandler(onLocalSignallingMessage);
-
-stateDiv.innerText = 'WAITING.';
-
-pc.onceConnecting.then(() => {
-    stateDiv.innerText = 'CONNECTING...';
-  });
-
-pc.onceConnected.then((addresses) => {
-    stateDiv.innerText = 'CONNECTED!';
-    connectionAddressesDiv.innerText = JSON.stringify(addresses);
-    sendTextarea.disabled=false;
-    receiveButton.disabled=true;
-    pasteTextarea.disabled=true;
-  });
-
-pc.onceDisconnected.then(() => {
-    stateDiv.innerText = 'DISCONNECTED.';
-    sendButton.disabled=true;
-    sendTextarea.disabled=true;
-  });
 
 //------------------------------------------------------------------------------
-// called when the start button is clicked.
-// only called on the initiating side.
-function initiateConnection() {
-  console.log('initiateConnection');
-  pc.negotiateConnection().catch((e) => {
-    errorDiv.innerText = 'ERROR: ' + e.toString();
-  });
-  initiateConnectionButton.disabled=true;
-};
+var webrtcPcApp = angular.module('webrtcPcApp', []);
+webrtcPcApp.controller('webrtcPcController',
+    ($scope :WebrtcPcControllerScope) => {
+  //----------------------------------------------------------------------------
+  $scope.state = 'WAITING.';
+  $scope.error = '';
+  $scope.connectInfo = '';
 
-// Adds a signal to the copy box.
-function onLocalSignallingMessage(signal:WebRtc.SignallingMessage) {
-  console.log('onLocalSignallingMessage');
-  copyTextarea.value = copyTextarea.value.trim() + '\n' +
-      JSON.stringify(signal);
-};
+  $scope.localInfo = '';
+  $scope.remoteInfo = '';
 
-// dispatches each line from the paste box as a signalling channel message.
-function onRemoteSignallingMessages() {
-  console.log('onRemoteSignallingMessages');
-  var messages = pasteTextarea.value.split('\n');
-  for (var i = 0; i < messages.length; i++) {
-    var s:string = messages[i];
-    var signal:WebRtc.SignallingMessage = JSON.parse(s);
-    pc.handleSignalMessage(signal);
+  $scope.newChannelLabel = 'test-channel-label';
+
+  //----------------------------------------------------------------------------
+  // Promise completion callbacks
+  pc.onceConnecting.then(() => {
+      $scope.$apply(() => { $scope.state = 'CONNECTING...'; });
+    });
+  pc.onceConnected.then((addresses) => {
+      $scope.$apply(() => {
+        $scope.state = 'CONNECTED!';
+        $scope.connectInfo = JSON.stringify(addresses);
+      });
+    }).catch((e) => {
+      $scope.$apply(() => { $scope.error = e.toString(); });
+    });
+  pc.onceDisconnected.then(() => {
+      $scope.$apply(() => { $scope.state = 'DISCONNECTED.'; });
+    });
+
+  // called when the start button is clicked. Only called on the initiating
+  // side.
+  $scope.initiateConnection = () =>  {
+    console.log('initiateConnection');
+    pc.negotiateConnection();
+  };
+
+  // Adds a signal text to the copy box. Callback from pc.
+  $scope.onLocalSignallingMessage = (signal:WebRtc.SignallingMessage) => {
+    $scope.$apply(() => {
+      console.log('onLocalSignallingMessage');
+      $scope.localInfo = $scope.localInfo.trim() + '\n' +
+        JSON.stringify(signal);
+    });
+  };
+  pc.toPeerSignalQueue.setSyncHandler($scope.onLocalSignallingMessage);
+
+  // Handles each line in the received 'paste' box which are messages from the
+  // remote peer via the signalling channel.
+  $scope.processRemoteSignallingMessages = () => {
+    console.log('onRemoteSignallingMessages');
+    var messages = $scope.remoteInfo.split('\n');
+    for (var i = 0; i < messages.length; i++) {
+      var s:string = messages[i];
+      var signal:WebRtc.SignallingMessage = JSON.parse(s);
+      pc.handleSignalMessage(signal);
+    }
   }
-};
 
-function sendMessage() {
-  channelLabelInput
-}
+  $scope.createChannel = (channelLabel) => {
+    $scope.$apply(() => {
+      var dataChannel = pc.openDataChannel(channelLabel);
+      $scope.channels[channelLabel] = { state: dataChannel.getState() };
+      dataChannel.onceOpenned.then(() => {
+          $scope.$apply(() => {
+              $scope.channels[channelLabel].state = dataChannel.getState();
+            });
+        });
+      dataChannel.onceClosed.then(() => {
+          $scope.$apply(() => {
+              $scope.channels[channelLabel].state = dataChannel.getState();
+            });
+        });
+    });
+  }
+
+  $scope.send = (channelLabel:string, channelMessage:string) => {
+    console.log('send: ' + channelLabel + ' : ' + channelMessage);
+  }
+});
+
+/* webrtcPcApp.controller('dataChannelPcController',
+    ($scope :WebrtcPcControllerScope) => {
+
+});
+*/

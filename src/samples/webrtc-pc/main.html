@@ -3,54 +3,126 @@
   <title>Peer Connection Sample Code</title>
   <script src='handler/queue.js'></script>
   <script src='third_party/webrtc-adapter/adapter.js'></script>
+  <script src='third_party/angular/angular-1.3.0-beta14.min.js'></script>
   <script src='peer-connection/data-channel.js'></script>
   <script src='peer-connection/peer-connection.js'></script>
   <style>
-    textarea {
+    div.info {
+      font-family: monospace;
+    }
+    div#status {
+      padding: 5px;
+      width: 790px;
+      border: 2px solid #DDD;
+      margin: 5px;
+    }
+    div#error {
+      padding: 5px;
+      width: 790px;
+      border: 2px solid #922;
+      background: 2px solid #FCC;
+      margin: 5px;
+    }
+    div#connect {
+    }
+    div#connect textarea {
       width: 100%;
       font-family: monospace;
+      resize:vertical;
     }
-    .info {
-      font-family: monospace;
+    div.card {
+      display: inline-block;
+      vertical-align:top;
+      padding:5px;
+      margin:5px;
+      border: 2px solid #DDD;
     }
-    #messages {
+    div#local {
+      width: 381px;
+    }
+    div#copy-information {
+    }
+    div#remote {
+      width: 381px;
+    }
+    div#channels {
+      border: 2px solid #DDD;
+      margin: 5px;
+      padding: 5px;
+      width: 790px;
+    }
+    div.chat {
+      border: 2px solid #DDD;
+      margin: 5px;
+      width: 800px;
+    }
+    div.messages {
       height: 10em;
       font-family: monospace;
-      border: 1px solid #999;
+      overflow: scroll;
+    }
+    div.channel-header {
+      border-bottom: 1px solid #DDD;
+      padding: 5px;
+    }
+    span.channel-label {
+      font-family: monospace;
+      font-weight: bold;
+    }
+    div.send {
+      border-top: 1px solid #DDD;
+      padding: 5px;
+    }
+    button.close-channel-button {
+      float: right;
     }
   </style>
 </head>
 
-<body>
-  <div class='info' id='state'></div>
-  <div class='info' id='error'></div>
-  <div class='info' id='connectionAddresses'></div>
+<body ng-app="webrtcPcApp">
+  <div ng-controller="webrtcPcController">
 
-  <div>
-    <button id='initiateConnectionButton'>Start</button>
-  </div>
-  <div id='connectionAddresses'></div>
-  <div>
-    Copy this into the other browser window:
-  </div>
-  <textarea id='copy' disabled></textarea>
-
-  <div>
-    Paste text from the other window and click Receive:
-  </div>
-  <textarea id='paste'></textarea>
-  <div>
-    <button id='handleRemoteConnectionButton'>Receive</button>
+  <div id='status'>
+    <div class='info' id='state'>{{state}}</div>
+    <div class='info' id='error' ng-hide='error === ""'>{{error}}</div>
+    <div class='info' id='connection-info' ng-hide='connectInfo === ""'>{{connectInfo}}</div>
   </div>
 
-  <div id='messages'></div>
-  <div>
-    Enter a message to send to the peer
+  <div id='connect'>
+    <div class='card' id='local'>
+      <button id='initiate-connection-cutton'>Initiate Connection</button>
+      <div id='copy-information' ng-hide='state === "WAITING."'>
+        <div>Now send this into the other peer:</div>
+        <textarea id='copy' disabled></textarea>
+      </div>
+    </div>
+
+    <div class='card' id='remote'>
+      Paste text from the other window and click Receive: <br/>
+      <textarea id='paste'></textarea> <br/>
+      <button id='receive-button' ng-click='processRemoteSignallingMessages()'>Receive</button>
+    </div>
   </div>
-  <div>
-  Label: <input type='text' id='label' size='20'></input>
-  Message: <input type='text' id='message' size='60'></input>
-  <button id='sendMessageButton'>Send</button>
+
+  <div id='channels' ng-show='state === "CONNECTED!"'>
+    Channel label: <input type='text' id='label' size='20'>{{newChannelLabel}}</input>
+    <button id='create-channel-button' ng-click='newChannelLabel(newChannelLabel)'>Create Channel</button>
+  </div>
+
+  <div id='channel-list'>
+    <div class='chat' id='channel-hello' ng-repeat='(channelLabel, channel) in channels'>
+      <div class='channel-header'>Channel Label: <span class='channel-label'>{{channel.label}}</span>
+        <button class='remove-channel-button' ng-show='channel.state === "CLOSED"'>remove</button>
+        <button class='close-channel-button' ng-show='channel.state === "OPEN"'>close</button>
+      </div>
+      <div class='messages'>
+        <div ng-repeat='message in messages'>{{message}}</div>
+      </div>
+      <div class='send'>
+        <input type='text' id='message' size='60'></input>
+        <button class='sendMessageButton' ng-click='channel.label'>Send</button>
+      </div>
+    </div>
   </div>
 
   <!-- main.js references DOM el being created already -->
