@@ -1,15 +1,17 @@
-/// <reference path="../handler/queue.d.ts" />
-/// <reference path="../third_party/promise/promise.d.ts" />
+/// <reference path="../interfaces/communications.d.ts" />
 /// <reference path="../third_party/typings/webrtc/RTCPeerConnection.d.ts" />
 /// <reference path="../third_party/typings/webcrypto/WebCrypto.d.ts" />
+/// <reference path="../third_party/promise/promise.d.ts" />
+
+/// <reference path="../handler/queue.ts" />
 
 declare module WebRtc {
 
   interface PeerConnectionConfig {
-    initiateConnection     :boolean;
     webrtcPcConfig         :RTCPeerConnectionConfig;
     webrtcMediaConstraints :RTCMediaConstraints;
     peerName               ?:string;
+    initiateConnection     ?:boolean;
   }
 
   interface SignallingMessage {
@@ -19,7 +21,7 @@ declare module WebRtc {
   }
 
   // Once you are connected to the peer, you know the local/remote addresses.
-  export interface ConnectionAddresses {
+  interface ConnectionAddresses {
     local  :Net.Endpoint;  // the local transport address/port
     remote :Net.Endpoint;  // the remote peer's transport address/port
   }
@@ -29,10 +31,10 @@ declare module WebRtc {
     CONNECTING,   // Can move to CONNECTED or DISCONNECTED.
     CONNECTED,    // Can move to DISCONNECTED.
     DISCONNECTED  // End-state, cannot change.
-  };
+  }
 
   class PeerConnection {
-    constructor(private config_ :PeerConnectionConfig);
+    constructor(config:PeerConnectionConfig);
 
     // The state of this peer connection.
     public pcState :State;
@@ -54,13 +56,13 @@ declare module WebRtc {
     // Or handle data channels opened by the peer (these events will )
     public peerCreatedChannels :Handler.Queue<DataChannel, void>;
 
-    // Called with signalling messages from the peer: helpful abbreviation for
-    // |fromPeerSignalQueue.handle|
+    // The |handleSignalMessage| function should be called with signalling
+    // messages from the remote peer.
     public handleSignalMessage :(signal:SignallingMessage) => Promise<void>;
-
-    // The underlying handler queues for signals to and from the peer.
+    // The underlying handler that holds/handles signals intended to go to the
+    // remote peer. A handler should be set that sends messages to the remote
+    // peer.
     public toPeerSignalQueue :Handler.Queue<SignallingMessage, void>;
-    public fromPeerSignalQueue :Handler.Queue<SignallingMessage, void>;
 
     // Closing the peer connection will close all associated data channels
     // and set |pcState| to |DISCONNECTED| (and hence fulfills

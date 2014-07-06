@@ -4,12 +4,13 @@
 // platform compatibility library webrtc-adaptor.js (from:
 // https://code.google.com/p/webrtc/source/browse/stable/samples/js/base/adapter.js)
 
-/// <reference path='../arraybuffers/arraybuffers.ts' />
-/// <reference path='../handler/queue.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 /// <reference path="../third_party/promise/promise.d.ts" />
 /// <reference path='../third_party/typings/webrtc/RTCPeerConnection.d.ts' />
 /// <reference path='../third_party/typings/webcrypto/WebCrypto.d.ts' />
+
+/// <reference path='../arraybuffers/arraybuffers.ts' />
+/// <reference path='../handler/queue.ts' />
 
 module WebRtc {
 
@@ -311,7 +312,7 @@ module WebRtc {
       }
     }
 
-    // Provide nice function for public access to queuing of messages.
+    // Handle a signalling message from the remote peer.
     public handleSignalMessage = (signal :SignallingMessage) : void => {
       //console.log(this.peerName + ': ' + 'handleSignalMessage: \n' + messageText);
 

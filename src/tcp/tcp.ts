@@ -245,7 +245,7 @@ module Tcp {
       // |dataToSocketQueue| allows a class using this connection to start
       // queuing data to be send to the socket.
       this.onceConnected.then(() => {
-        this.dataToSocketQueue.setAsyncHandler(this.connectionSocket_.write);
+        this.dataToSocketQueue.setHandler(this.connectionSocket_.write);
       });
 
       // TODO: change to only fullfiling, but give data on the way we were

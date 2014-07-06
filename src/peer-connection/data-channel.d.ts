@@ -1,6 +1,7 @@
-/// <reference path="../handler/queue.d.ts" />
 /// <reference path="../third_party/promise/promise.d.ts" />
 /// <reference path="../third_party/typings/webrtc/RTCPeerConnection.d.ts" />
+
+/// <reference path="../handler/queue.ts" />
 
 declare module WebRtc {
 

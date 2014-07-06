@@ -3,23 +3,23 @@
 
 //------------------------------------------------------------------------------
 // Setup vars for dom elements & their behaviour.
-var nameTextarea :HTMLInputElement = document.getElementById("name");
-var connectionAddressesDiv :HTMLElement =
+var nameTextarea = <HTMLInputElement>document.getElementById("name");
+var connectionAddressesDiv =
     document.getElementById("connectionAddresses");
 
-var copyTextarea :HTMLInputElement = document.getElementById("copy");
-var initiateConnectionButton :HTMLButtonElement =
-    document.getElementById("initiateConnectionButton");
+var copyTextarea = <HTMLInputElement>document.getElementById("copy");
+var initiateConnectionButton =
+    <HTMLButtonElement>document.getElementById("initiateConnectionButton");
 initiateConnectionButton.onclick = initiateConnection;
 
-var pasteTextarea :HTMLInputElement = document.getElementById("paste");
-var receiveButton :HTMLButtonElement =
-    document.getElementById("handleRemoteConnectionButton");
+var pasteTextarea = <HTMLInputElement>document.getElementById("paste");
+var receiveButton =
+    <HTMLButtonElement>document.getElementById("handleRemoteConnectionButton");
 receiveButton.onclick = onRemoteSignallingMessages;
 
-var sendTextarea :HTMLInputElement = document.getElementById("message");
-var sendButton :HTMLButtonElement =
-    document.getElementById("sendmessageButton");
+var sendTextarea = <HTMLInputElement>document.getElementById("message");
+var sendButton =
+    <HTMLButtonElement>document.getElementById("sendmessageButton");
 receiveButton.onclick = sendMessage;
 
 //------------------------------------------------------------------------------
@@ -32,12 +32,14 @@ var pcConfig :WebRtc.PeerConnectionConfig = {
                    {url: 'stun:stun3.l.google.com:19302'},
                    {url: 'stun:stun4.l.google.com:19302'}],
     },
-    webrtcMediaContraints: {
+    webrtcMediaConstraints: {
       optional: [{DtlsSrtpKeyAgreement: true}]
     }
   };
 var pc :WebRtc.PeerConnection = new WebRtc.PeerConnection(pcConfig);
-pc.
+pc.toPeerSignalQueue.setSyncHandler((signal) => {
+    copyTextarea.innerText += JSON.stringify(signal);
+  });
 
 //------------------------------------------------------------------------------
 // called when the start button is clicked.
@@ -45,16 +47,16 @@ pc.
 function initiateConnection() {
   pc.negotiateConnection().then((connectionAddresses) => {
       sendTextarea.disabled=false;
-      connectionAddressesDiv.value=JSON.stringify(connectionAddresses);
+      connectionAddressesDiv.innerText=JSON.stringify(connectionAddresses);
     });
   initiateConnectionButton.disabled=true;
-}
+};
 
 // adds a message to the copy box.
 function onLocalSignallingMessage(message) {
   copyTextarea.value = copyTextarea.value.trim() + '\n' +
       JSON.stringify(message);
-}
+};
 
 // dispatches each line from the paste box as a signalling channel message.
 function onRemoteSignallingMessages() {
@@ -62,6 +64,10 @@ function onRemoteSignallingMessages() {
   for (var i = 0; i < messages.length; i++) {
     var s:string = messages[i];
     var message:WebRtc.SignallingMessage = JSON.parse(s);
-    pc.message;
+    pc.handleSignalMessage;
   }
+};
+
+function sendMessage() {
+
 }
