@@ -72,6 +72,8 @@ module WebRtc {
     // Wrapper for
     constructor(private rtcDataChannel_:RTCDataChannel) {
       this.label_ = this.rtcDataChannel_.label;
+      this.fromPeerDataQueue = new Handler.Queue<Data,void>();
+      this.toPeerDataQueue_ = new Handler.Queue<Data,void>();
       this.onceOpenned = new Promise<void>((F,R) => {
           this.rejectOpenned_ = R;
           // RTCDataChannels created by a RTCDataChannelEvent have an initial
@@ -93,7 +95,10 @@ module WebRtc {
 
       // Make sure to reject the onceOpenned promise if state went from
       // |connecting| to |close|.
-      this.onceOpenned.then(() => { this.wasOpenned_ = true; });
+      this.onceOpenned.then(() => { 
+        this.wasOpenned_ = true; 
+        this.toPeerDataQueue_.setHandler(this.handleSendDataToPeer_);
+      });
       this.onceClosed.then(() => {
           if(!this.wasOpenned_) { this.rejectOpenned_(new Error(
               'Failed to open; closed while trying to open.')); }
@@ -104,13 +109,13 @@ module WebRtc {
     // the queue of data from the peer.
     private onDataFromPeer_ = (messageEvent : RTCMessageEvent) : void => {
       if (typeof messageEvent.data === 'string') {
-        this.fromPeerDataQueue.handle({string: messageEvent.data});
-      }
-      if (typeof messageEvent.data === 'ArrayBuffer') {
+        this.fromPeerDataQueue.handle({str: messageEvent.data});
+      } else if (typeof messageEvent.data === 'ArrayBuffer') {
         this.fromPeerDataQueue.handle({buffer: messageEvent.data});
+      } else {
+        console.error('Unexpected data from peer that has type: ' +
+            JSON.stringify(messageEvent));
       }
-      console.error('Unexpected data from peer that has type: ' +
-          JSON.stringify(messageEvent));
     }
 
     // Promise completes once all the data has been sent. This is async because

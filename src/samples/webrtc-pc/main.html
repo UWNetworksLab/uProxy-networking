@@ -99,14 +99,14 @@
       <div id='copy-information' ng-hide='state === "WAITING."'>
         <div>Local info:</div>
         <textarea id='copy' disabled ng-model='localInfo'></textarea>
-        <div ng-show='state === "CONNECTING..."'>Send this text to the remote peer.</div>
+        <div ng-show='state === "CONNECTED!" || state === "CONNECTING..."'>Send this text to the remote peer.</div>
       </div>
     </div>
 
     <div class='card' id='remote'>
       <div>Remote info:</div>
-      <textarea id='paste' ng-model='remoteInfo' ng-disabled='state === "CONNECTED!" || state === "DISCONNECTED."'></textarea>
-      <div ng-show='state === "WAITING." || state === "CONNECTING..."'>
+      <textarea id='paste' ng-model='remoteInfo' ng-disabled='state === "DISCONNECTED."'></textarea>
+      <div ng-show='state === "CONNECTED!" || state === "WAITING." || state === "CONNECTING..."'>
         Paste text from the remote peer, then click Receive.
         <button id='receive-btn' ng-click='processRemoteSignallingMessages()'>Receive</button>
       </div>
@@ -128,8 +128,8 @@
         <div ng-repeat='message in messages'>{{message}}</div>
       </div>
       <div class='send'>
-        <input type='text' id='message' size='60'></input>
-        <button class='send-message-btn' ng-click='channel.label'>Send</button>
+        <input type='text' id='message' size='60' ng-model='chatMessage'></input>
+        <button class='send-message-btn' ng-click='send(channel.label, chatMessage)'>Send</button>
       </div>
     </div>
   </div>

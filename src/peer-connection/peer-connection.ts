@@ -281,7 +281,11 @@ module WebRtc {
 
       // Non-close signalling state changes should only be happening when state
       // is |CONNECTING|, otherwise this is an error.
-      if (this.pcState !== State.CONNECTING) {
+      // Right now in chrome in state CONNECTED, re-negotiation can happen and
+      // it will trigger non-close signalling state change. Till this behavior
+      // changes, include CONNECTED state as well.
+      if (this.pcState !== State.CONNECTING &&
+          this.pcState !== State.CONNECTED) {
         // Something unexpected happened, better close down properly.
         this.closeWithError_(this.peerName + ': ' +
               'Unexpected onSignallingStateChange in state: ' +
@@ -352,6 +356,8 @@ module WebRtc {
             'negotiateConnection: ' + this.toString()));
       }
 
+      // TODO: negotiation need to happen as in initial round, where a round
+      // of information exchange is needed. Remove following code?
       // TODO: fix/remove this when Chrome issue is fixed. This code is a hack
       // to simply reset the same local and remote description which will
       // trigger the appropriate data channel open event. This can happen in
@@ -359,20 +365,20 @@ module WebRtc {
       //
       // Negotiation messages are falsely requested for new data channels.
       //   https://code.google.com/p/webrtc/issues/detail?id=2431
-      if (this.pc_.localDescription && this.pc_.remoteDescription) {
+      /*if (this.pc_.localDescription && this.pc_.remoteDescription) {
         // TODO: remove when we are using a good version of chrome.
         console.warn('Dodging strange negotiateConnection.')
         this.pc_.setLocalDescription(this.pc_.localDescription,
                                      () => {}, console.error);
         this.pc_.setRemoteDescription(this.pc_.remoteDescription,
-                                      () => {}, console.error);
+                                     () => {}, console.error);
         return this.onceConnected;
-      }
+      }*/
 
       // CONSIDER: might we ever need to re-create an onAnswer? Exactly how/when
       // do onnegotiation events get raised? Do they get raised on both sides?
       // Or only for the initiator?
-      if (this.pcState === State.WAITING) {
+      if (this.pcState === State.WAITING || this.pcState == State.CONNECTED) {
         this.pcState = State.CONNECTING;
         this.fulfillConnecting_();
         this.createOffer_()
