@@ -368,10 +368,21 @@ module WebRtc {
       /*if (this.pc_.localDescription && this.pc_.remoteDescription) {
         // TODO: remove when we are using a good version of chrome.
         console.warn('Dodging strange negotiateConnection.')
-        this.pc_.setLocalDescription(this.pc_.localDescription,
-                                     () => {}, console.error);
-        this.pc_.setRemoteDescription(this.pc_.remoteDescription,
-                                     () => {}, console.error);
+        if (this.pc_.localDescription.type === "offer") {
+          this.pc_.setLocalDescription(this.pc_.localDescription,
+              () => { console.log('reset offer local description'); },
+              console.error);
+          this.pc_.setRemoteDescription(this.pc_.remoteDescription,
+              () => { console.log('reset answer remote description'); },
+              console.error);
+        } else { // was 'answer'
+          this.pc_.setRemoteDescription(this.pc_.remoteDescription,
+              () => { console.log('reset offer remote description'); },
+              console.error);
+          this.pc_.setLocalDescription(this.pc_.localDescription,
+              () => { console.log('reset answer local description'); },
+              console.error);
+        }
         return this.onceConnected;
       }*/
 
