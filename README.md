@@ -1,8 +1,8 @@
-# socks-rtc
+# uproxy-networking
 
-[![Build Status](https://travis-ci.org/uProxy/socks-rtc.svg?branch=master)](https://travis-ci.org/uProxy/socks-rtc) [![devDependency Status](https://david-dm.org/uProxy/socks-rtc/dev-status.svg)](https://david-dm.org/uProxy/socks-rtc#info=devDependencies)
+[![Build Status](https://travis-ci.org/uProxy/uproxy-networking.svg?branch=master)](https://travis-ci.org/uProxy/uproxy-networking) [![devDependency Status](https://david-dm.org/uProxy/uproxy-networking/dev-status.svg)](https://david-dm.org/uProxy/uproxy-networking#info=devDependencies)
 
-A library to proxy SOCKS5 via WebRTC.
+uProxy's networking library provides a localhost SOCKS5 proxy that sends traffic over WebRTC to the peer, or recieves traffic from a peer over WebRTC and sends it to the destination website.
 
 This is built on top of [freedom](https://github.com/freedomjs/freedom).
 
@@ -10,7 +10,7 @@ At the moment this only supports chrome; Firefox is in progress and you can test
 
 ## Overview
 
-There are two modules: _socks-to-rtc_ and _rtc-to-net_.
+There are two main freedom modules: _socks-to-rtc_ and _rtc-to-net_.
 
  - _socks-to-rtc_ provides a local proxy (which the user could point their browser proxy settings to) which passes requests over a WebRTC peerconnection.
  - _rtc-to-net_ acts as the 'remote' proxy which receives the requests from the _socks-to-rtc_ peer over WebRTC, passes the request to the destination webserver, and serves the response back to _socks-to-rtc_.
