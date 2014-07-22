@@ -4,7 +4,7 @@
 
 A library to proxy SOCKS5 via WebRTC.
 
-This is built on top of [freedom](https://github.com/UWNetworksLab/freedom).
+This is built on top of [freedom](https://github.com/freedomjs/freedom).
 
 At the moment this only supports chrome; Firefox is in progress and you can test/run the echo-server with it right now.
 
@@ -82,3 +82,15 @@ There will be more tests soon!
  - Setup the [cfx tool](https://developer.mozilla.org/en-US/Add-ons/SDK/Tutorials/Installation).
  - `cd build/firefox-app` and then run the command `cfx run` which should startup firefox with the Firefox echo-server app running.
  - Use `telnet 127.0.0.1 9998` to verify that echo server echo's what you send it. (type some stuff and see the same stuff repeated back to you). `Ctrl-]` then type `quit` exit telnet.
+
+## Building for Android
+uproxy-networking works on Android!
+Remember to install the android-sdk such that `android` and `adb` are on your PATH.
+* Configure an Android device
+  * So far tested on Ubuntu 14.04LTS using an emulated Nexus 4 device running Android L
+  * The device MUST be configured with an SD card and "Use Host GPU"
+* `grunt cca` will build the project, create an Android APK, and install it onto the device. If no device is attached, the default Android emulator is used
+* `adb forward tcp:19999 tcp:9999` will forward localhost:19999 to the emulator's port 9999.
+  * This is the SOCKS5 proxy
+* `adb forward tcp:19998 tcp:9998` will forward localhost:19998 to the emulator's port 9998.
+  * `telnet localhost 19998` is now the echo server on the device

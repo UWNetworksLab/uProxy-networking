@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "app": {
     "background": {
-      "page": "socks_rtc.html"
+      "scripts": ["background.js"]
     }
   },
   "permissions": [
