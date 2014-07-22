@@ -21,7 +21,7 @@
     "uproxy-build-tools": "~0.0.5",
     "freedom-for-chrome": "~0.2.0",
     "freedom-for-firefox": "~0.4.0",
-    "freedom-typescript-api": "~0.1.5"
+    "freedom-typescript-api": "~0.1.5",
     "cca": "^0.1.1"
   },
   "scripts": {
