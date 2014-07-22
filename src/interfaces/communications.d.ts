@@ -7,7 +7,9 @@ declare module Channel {
     NET_CONNECT_RESPONSE = 2,
     NET_DISCONNECTED = 3,
     SOCKS_DISCONNECTED = 4,
-    HELLO = 5
+    HELLO = 5,
+    PING = 6,
+    PONG = 7
   }
 
   // "Top-level" message for the control channel.
@@ -53,6 +55,13 @@ declare module Channel {
     send:(bytes:ArrayBuffer) => any;
     // Function which tells the other side to terminate.
     terminate:() => any;
+  }
+
+  // Used to batch messages sent over the signalling channel.
+  // TODO: rename to MessageBatch
+  export interface BatchedMessages {
+    version :number;
+    messages :string[];
   }
 
 }  // module Channel

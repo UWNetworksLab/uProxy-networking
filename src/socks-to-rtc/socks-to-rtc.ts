@@ -31,6 +31,12 @@ module SocksToRTC {
      */
     private channels_:{[tag:string]:Channel.EndpointInfo} = {};
     private peerId_:string = null;         // Of the remote rtc-to-net peer.
+    private remotePeer_:PeerInfo = null;
+
+    // Private state kept for ping-pong (heartbeat and ack).
+    private pingPongSendIntervalId_ :number = null;
+    private pingPongCheckIntervalId_ :number = null;
+    private lastPingPongReceiveDate_ :Date = null;
 
     // Connection callbacks, by datachannel tag name.
     // TODO: figure out a more elegant way to store these callbacks
@@ -44,9 +50,10 @@ module SocksToRTC {
      * is ready.
      */
     public start = (remotePeer:PeerInfo) => {
-      this.reset();  // Begin with fresh components.
+      this.reset_();  // Begin with fresh components.
       dbg('starting - target peer: ' + JSON.stringify(remotePeer));
       // Bind peerID to scope so promise can work.
+      this.remotePeer_ = remotePeer;
       var peerId = this.peerId_ = remotePeer.peerId;
       if (!peerId) {
         dbgErr('no Peer ID provided! cannot connect.');
@@ -55,7 +62,7 @@ module SocksToRTC {
       // SOCKS sessions biject to peerconnection datachannels.
       this.transport_ = freedom['transport']();
       this.transport_.on('onData', this.onDataFromPeer_);
-      this.transport_.on('onClose', this.closeConnectionToPeer);
+      this.transport_.on('onClose', this.onCloseHandler_);
       // Messages received via signalling channel must reach the remote peer
       // through something other than the peerconnection. (e.g. XMPP)
       fCore.createChannel().then((chan) => {
@@ -63,6 +70,7 @@ module SocksToRTC {
           () => {
             dbg('SocksToRtc transport_.setup succeeded');
             freedom.emit('socksToRtcSuccess', remotePeer);
+            this.startPingPong_();
           }
         ).catch(
           (e) => {
@@ -70,12 +78,30 @@ module SocksToRTC {
             freedom.emit('socksToRtcFailure', remotePeer);
           }
         );
+
+        // Signalling channel messages are batched and dispatched each second.
+        // TODO: kill this loop!
+        // TODO: size limit on batched message
+        // TODO: this code is completely common to rtc-to-net (growing need for shared lib)
+        var queuedMessages = [];
+        setInterval(() => {
+          if (queuedMessages.length > 0) {
+            dbg('dispatching signalling channel messages...');
+            freedom.emit('sendSignalToPeer', {
+              peerId: peerId,
+              data: JSON.stringify({
+                version: 1,
+                messages: queuedMessages
+              })
+            });
+            queuedMessages = [];
+          }
+        }, 1000);
+
         this.signallingChannel_ = chan.channel;
         this.signallingChannel_.on('message', function(msg) {
-          freedom.emit('sendSignalToPeer', {
-              peerId: peerId,
-              data: msg
-          });
+          dbg('signalling channel message: ' + msg);
+          queuedMessages.push(msg);
         });
         dbg('signalling channel to SCTP peer connection ready.');
         // Send hello command to initiate communication, which will cause
@@ -94,11 +120,30 @@ module SocksToRTC {
       this.socksServer_.listen();
     }
 
+    public close = () => {
+      if (this.transport_) {
+        // Close transport, then onCloseHandler_ will take care of resetting
+        // state.
+        this.transport_.close();
+      } else {
+        // Transport already closed, just call reset.
+        this.reset_();
+      }
+    }
+
+    private onCloseHandler_ = () => {
+      dbg('onCloseHandler_ invoked for transport.')
+      // Set this.transport to null so reset_ doesn't attempt to close it again.
+      this.transport_ = null;
+      this.reset_();
+    }
+
     /**
      * Stop SOCKS server and close data channels and peer connections.
      */
-    public reset = () => {
+    private reset_ = () => {
       dbg('resetting peer...');
+      this.stopPingPong_();
       if (this.socksServer_) {
         this.socksServer_.disconnect();  // Disconnects internal TCP server.
         this.socksServer_ = null;
@@ -107,7 +152,7 @@ module SocksToRTC {
         this.closeConnectionToPeer(tag);
       }
       this.channels_ = {};
-      if(this.transport_) {
+      if (this.transport_) {
         this.transport_.close();
         this.transport_ = null;
       }
@@ -116,6 +161,7 @@ module SocksToRTC {
       }
       this.signallingChannel_ = null;
       this.peerId_ = null;
+      this.remotePeer_ = null;
     }
 
     /**
@@ -208,7 +254,7 @@ module SocksToRTC {
           if (command.tag in Peer.connectCallbacks) {
             var callback = Peer.connectCallbacks[command.tag];
             callback(response);
-            Peer.connectCallbacks[command.tag] = undefined;
+            delete Peer.connectCallbacks[command.tag];
           } else {
             dbgWarn('received connect callback for unknown datachannel: ' +
                 command.tag);
@@ -217,6 +263,8 @@ module SocksToRTC {
           // Receiving a disconnect on the remote peer should close SOCKS.
           dbg(command.tag + ' <--- received NET-DISCONNECTED');
           this.closeConnectionToPeer(command.tag);
+        } else if (command.type === Channel.COMMANDS.PONG) {
+          this.lastPingPongReceiveDate_ = new Date(); 
         } else {
           dbgWarn('unsupported control command: ' + command.type);
         }
@@ -272,7 +320,20 @@ module SocksToRTC {
         dbgErr('signalling channel missing!');
         return;
       }
-      this.signallingChannel_.emit('message', msg.data);
+      // TODO: this code is completely common to rtc-to-net (growing need for shared lib)
+      try {
+        var batchedMessages :any = JSON.parse(msg.data);
+        if (batchedMessages.version != 1) {
+          throw new Error('only version 1 batched messages supported');
+        }
+        for (var i = 0; i < batchedMessages.messages.length; i++) {
+          var message = batchedMessages.messages[i];
+          dbg('received signalling channel message: ' + message);
+          this.signallingChannel_.emit('message', message);
+        }
+      } catch (e) {
+        dbgErr('could not parse batched messages: ' + e.message);
+      }
     }
 
     public toString = () => {
@@ -285,6 +346,47 @@ module SocksToRTC {
                                channels: this.channels_ });
       } catch (e) {}
       return ret;
+    }
+
+    /**
+     * Sets up ping-pong (heartbearts and acks) with socks-to-rtc client.
+     * This is necessary to detect disconnects from the other peer, since
+     * WebRtc does not yet notify us if the peer disconnects (to be fixed
+     * Chrome version 37), at which point we should be able to remove this code.
+     */
+    private startPingPong_ = () => {
+      this.pingPongSendIntervalId_ = setInterval(() => {
+        var command :Channel.Command = {type: Channel.COMMANDS.PING};
+        this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
+            JSON.stringify(command)));
+      }, 1000);
+
+      var PING_PONG_CHECK_INTERVAL_MS :number = 10000;
+      this.pingPongCheckIntervalId_ = setInterval(() => {
+        var nowDate = new Date();
+        if (!this.lastPingPongReceiveDate_ ||
+            (nowDate.getTime() - this.lastPingPongReceiveDate_.getTime()) >
+             PING_PONG_CHECK_INTERVAL_MS) {
+          dbgWarn('no ping-pong detected, closing peer');
+          // Save remotePeer before closing because it will be reset.
+          var remotePeer = this.remotePeer_;
+          this.close();
+          freedom.emit('socksToRtcTimeout', remotePeer);
+        }
+      }, PING_PONG_CHECK_INTERVAL_MS);
+    }
+
+    private stopPingPong_ = () => {
+      // Stop setInterval functions.
+      if (this.pingPongSendIntervalId_ !== null) {
+        clearInterval(this.pingPongSendIntervalId_);
+        this.pingPongSendIntervalId_ = null;
+      }
+      if (this.pingPongCheckIntervalId_ !== null) {
+        clearInterval(this.pingPongCheckIntervalId_);
+        this.pingPongCheckIntervalId_ = null;
+      }
+      this.lastPingPongReceiveDate_ = null;
     }
 
   }  // SocksToRTC.Peer
@@ -302,12 +404,11 @@ module SocksToRTC {
 }  // module SocksToRTC
 
 function initClient() {
-
   // Create local peer and attach freedom message handlers, then emit |ready|.
   var peer = new SocksToRTC.Peer();
   freedom.on('handleSignalFromPeer', peer.handlePeerSignal);
   freedom.on('start', peer.start);
-  freedom.on('stop', peer.reset);
+  freedom.on('stop', peer.close);
   freedom.emit('ready', {});
 }
 

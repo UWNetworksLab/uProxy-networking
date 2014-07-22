@@ -23,32 +23,60 @@ module RtcToNet {
     // TODO: this is messy...a common superclass would help
     private netClients:{[tag:string]:Net.Client} = {};
     private udpClients:{[tag:string]:Net.UdpClient} = {};
+    private server_ :Server = null;
+
+    // Private state kept for ping-pong (heartbeat and ack).
+    private pingPongCheckIntervalId_ :number = null;
+    private lastPingPongReceiveDate_ :Date = null;
 
     // Static initialiser which returns a promise to create a new Peer
     // instance complete with a signalling channel for NAT piercing.
-    static CreateWithChannel = (peerId:string) : Promise<Peer> => {
+    static CreateWithChannel = (peerId :string, server :Server)
+        : Promise<Peer> => {
       return fCore.createChannel().then((channel) => {
-        return new Peer(peerId, channel);
+        return new Peer(peerId, channel, server);
       });
     }
 
-    constructor (public peerId:string, channel) {
+    constructor (public peerId:string, channel, server) {
       dbg('created new peer: ' + peerId);
       // peerconnection's data channels biject ot Net.Clients.
+      this.server_ = server;
       this.transport = freedom['transport']();
       this.transport.on('onData', this.passPeerDataToNet_);
-      this.transport.on('onClose', this.closeNetClient_);
+      this.transport.on('onClose', this.onCloseHandler_);
       this.transport.setup('RtcToNet-' + peerId, channel.identifier).then(
         // TODO: emit signals when peer-to-peer connections are setup or fail.
-        () => { dbg('RtcToNet transport.setup succeeded'); },
+        () => {
+          dbg('RtcToNet transport.setup succeeded');
+          this.startPingPong_();
+        },
         (e) => { dbgErr('RtcToNet transport.setup failed ' + e); }
       );
+
+      // Signalling channel messages are batched and dispatched each second.
+      // TODO: kill this loop!
+      // TODO: size limit on batched message
+      // TODO: this code is completely common to socks-to-rtc (growing need for shared lib)
+      var queuedMessages = [];
+      setInterval(() => {
+        if (queuedMessages.length > 0) {
+          dbg('dispatching signalling channel messages...');
+          freedom.emit('sendSignalToPeer', {
+            peerId: peerId,
+            data: JSON.stringify({
+              version: 1,
+              messages: queuedMessages
+            })
+          });
+          queuedMessages = [];
+        }
+      }, 1000);
+
       this.signallingChannel = channel.channel;
       this.signallingChannel.on('message', (msg) => {
-        freedom.emit('sendSignalToPeer', {
-            peerId: peerId,
-            data: msg
-        });
+        dbg('signalling channel message: ' + msg);
+        queuedMessages.push(msg);
       });
       dbg('signalling channel to SCTP peer connection ready.');
     }
@@ -68,14 +96,24 @@ module RtcToNet {
     /**
      * Close PeerConnection and all TCP sockets.
      */
-    public close = () => {
+    private onCloseHandler_ = () => {
+      dbg('transport closed with peerId ' + this.peerId);
+      this.stopPingPong_();
       for (var i in this.netClients) {
         this.netClients[i].close();
       }
       for (var i in this.udpClients) {
         this.udpClients[i].close();
       }
-      this.transport.close();
+      freedom.emit('rtcToNetConnectionClosed', this.peerId);
+      // Set transport to null to ensure this object won't be accidentally
+      // used again.
+      this.transport = null;
+      this.server_.removePeer(this.peerId);
+    }
+
+    public isClosed = () : boolean => {
+      return this.transport === null;
     }
 
     /**
@@ -123,7 +161,13 @@ module RtcToNet {
         } else if (command.type === Channel.COMMANDS.HELLO) {
           // Hello command is used to establish communication from socks-to-rtc,
           // just ignore it.
-          dbg('received hello.');
+          dbg('received hello from peerId ' + this.peerId);
+          freedom.emit('rtcToNetConnectionEstablished', this.peerId);
+        }  else if (command.type === Channel.COMMANDS.PING) {
+          this.lastPingPongReceiveDate_ = new Date();
+          var command :Channel.Command = {type: Channel.COMMANDS.PONG};
+          this.transport.send('control', ArrayBuffers.stringToArrayBuffer(
+              JSON.stringify(command)));
         } else {
           // TODO: support SocksDisconnected command
           dbgWarn('unsupported control command: ' + JSON.stringify(command));
@@ -188,9 +232,41 @@ module RtcToNet {
       }
     }
 
-    // TODO: it's not clear what to do here
-    private closeNetClient_ = () => {
-      dbg('transport closed');
+    public close = () => {
+      // Just call this.transport.close, then let onCloseHandler_ do
+      // the rest of the cleanup.
+      this.transport.close();
+    }
+
+    /**
+     * Sets up ping-pong (heartbearts and acks) with socks-to-rtc client.
+     * This is necessary to detect disconnects from the other peer, since
+     * WebRtc does not yet notify us if the peer disconnects (to be fixed
+     * Chrome version 37), at which point we should be able to remove this code.
+     */
+    private startPingPong_ = () => {
+      // PONGs from rtc-to-net will be returned to socks-to-rtc immediately
+      // after PINGs are received, so we only need to set an interval to
+      // check for PINGs received.
+      var PING_PONG_CHECK_INTERVAL_MS :number = 10000;
+      this.pingPongCheckIntervalId_ = setInterval(() => {
+        var nowDate = new Date();
+        if (!this.lastPingPongReceiveDate_ ||
+            (nowDate.getTime() - this.lastPingPongReceiveDate_.getTime()) >
+             PING_PONG_CHECK_INTERVAL_MS) {
+          dbgWarn('no ping-pong detected, closing peer');
+          this.transport.close();
+        }
+      }, PING_PONG_CHECK_INTERVAL_MS);
+    }
+
+    private stopPingPong_ = () => {
+      // Stop setInterval functions.
+      if (this.pingPongCheckIntervalId_ !== null) {
+        clearInterval(this.pingPongCheckIntervalId_);
+        this.pingPongCheckIntervalId_ = null;
+      }
+      this.lastPingPongReceiveDate_ = null;
     }
   }  // class RtcToNet.Peer
 
@@ -215,7 +291,20 @@ module RtcToNet {
       // TODO: Check for access control?
       // dbg('sending signal to transport: ' + JSON.stringify(signal.data));
       this.fetchOrCreatePeer_(signal.peerId).then((peer) => {
-        peer.sendSignal(signal.data);
+        // TODO: this code is completely common to rtc-to-net (growing need for shared lib)
+        try {
+          var batchedMessages :Channel.BatchedMessages = JSON.parse(signal.data);
+          if (batchedMessages.version != 1) {
+            throw new Error('only version 1 batched messages supported');
+          }
+          for (var i = 0; i < batchedMessages.messages.length; i++) {
+            var message = batchedMessages.messages[i];
+            dbg('received signalling channel message: ' + message);
+            peer.sendSignal(message);
+          }
+        } catch (e) {
+          dbgErr('could not parse batched messages: ' + e.message);
+        }
       });
     }
 
@@ -226,9 +315,30 @@ module RtcToNet {
       if (peerId in this.peers_) {
         return this.peers_[peerId];
       }
-      var peer = RtcToNet.Peer.CreateWithChannel(peerId);
+      var peer = RtcToNet.Peer.CreateWithChannel(peerId, this);
       this.peers_[peerId] = peer;
       return peer;
+    }
+
+    /**
+     * Remove a peer from the server.  This should be called after the peer
+     * closes its transport.
+     */
+    public removePeer(peerId :string) : void {
+      if (!(peerId in this.peers_)) {
+        dbgWarn('removePeer: peer not found ' + peerId);
+        return;
+      }
+
+      this.peers_[peerId].then((peer) => {
+        // Verify that peer's transport is closed before deleting.
+        if (!peer.isClosed()) {
+          dbgErr('Cannot remove unclosed peer, ' + peerId);
+          return;
+        }
+        dbg('Removing peer: ' + peerId);
+        delete this.peers_[peerId];
+      }).catch((e) => { dbgErr('Error closing peer ' + peerId + ', ' + e); });
     }
 
     /**
