@@ -131,6 +131,26 @@ module.exports = (grunt) ->
       projectRoot: 'build/chrome-app'
 
     clean: ['build/**']
+    
+    ccaPath: 'node_modules/cca/src/cca.js'
+    ccaCwd: 'build/cca-app'
+    exec: {
+      adbLog: {
+        command: 'adb logcat *:I | grep CONSOLE'
+      }
+      adbPortForward: {
+        command: 'adb forward tcp:10000 tcp:9998'
+        exitCode: [0,1]
+      }
+      ccaCreate: {
+        command: '<%= ccaPath %> create build/cca-app --link-to=build/chrome-app/manifest.json'
+        exitCode: [0,1]
+      }
+      ccaEmulate: {
+        command: '../../<%= ccaPath %> emulate android'
+        cwd: '<%= ccaCwd %>'
+      }
+    }
   }  # grunt.initConfig
 
   #-------------------------------------------------------------------------
@@ -140,6 +160,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-typescript'
   grunt.loadNpmTasks 'grunt-jasmine-node'
   grunt.loadNpmTasks 'grunt-env'
+  grunt.loadNpmTasks 'grunt-exec'
 
   #-------------------------------------------------------------------------
   # Define the tasks
@@ -170,6 +191,12 @@ module.exports = (grunt) ->
 
   taskManager.add 'default', [
     'build'
+  ]
+
+  taskManager.add 'cca', [
+    'build'
+    'exec:ccaCreate'
+    'exec:ccaEmulate'
   ]
 
   #-------------------------------------------------------------------------
