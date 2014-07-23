@@ -4,7 +4,7 @@
   "app": {
     "script": [
       "../arraybuffers/arraybuffers.js",
-      "../handler/handler-queue.js",
+      "../handler/queue.js",
       "../tcp/tcp.js",
       "tcp-echo-server.js"
     ]

@@ -47,54 +47,46 @@ module Socks {
     RESERVED            = 0x09   // 0x09 - 0xFF unassigned
   }
 
-  /**
-   * Represents the destination portion of a SOCKS request.
-   * @see interpretDestination
-   */
+  // Represents the destination portion of a SOCKS request.
+  // @see interpretDestination
   export interface Destination {
     addressType    :AddressType;
     endpoint       :Net.Endpoint;
     // The length, in bytes, of the address in an arraybuffer. Used to know far
     // to move in the arraybuffer to get to the next bit of data to interpret.
-    byteLength     :number;
+    addressByteLength     :number;
   }
 
-  /**
-   * Represents a SOCKS request.
-   * @see interpretSocksRequest
-   */
+  // Represents a SOCKS request.
+  // @see interpretSocksRequest
   export interface Request {
     version        :number;
     command        :Command;
     destination    :Destination;
   }
 
-  /**
-   * Represents a UDP request message.
-   * @see interpretUdpMessage
-   */
+  // Represents a UDP request message.
+  // @see interpretUdpMessage
   export interface UdpMessage {
     frag           :number;
     destination    :Destination;
     data           :Uint8Array;
   }
 
-  /*
-   * Interprets a SOCKS 5 request, which looks like this:
-   *
-   *   +----+-----+-------+------+----------+----------+
-   *   |VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
-   *   +----+-----+-------+------+----------+----------+
-   *   | 1  |  1  | X'00' |  1   | Variable |    2     |
-   *   +----+-----+-------+------+----------+----------+
-   */
+  // Interprets a SOCKS 5 request, which looks like this:
+  //
+  //   +----+-----+-------+------+----------+----------+
+  //   |VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
+  //   +----+-----+-------+------+----------+----------+
+  //   | 1  |  1  | X'00' |  1   | Variable |    2     |
+  //   +----+-----+-------+------+----------+----------+
   export function interpretRequestBuffer(buffer:ArrayBuffer)
-      : SocksRequest {
+      : Request {
     return interpretRequest(new Uint8Array(buffer));
   }
-  export function interpretRequest(byteArray:Uint8Array) : SocksRequest {
+  export function interpretRequest(byteArray:Uint8Array) : Request {
     var version     :number;
-    var command     :RequestCommand;
+    var command     :Command;
     var protocol    :Net.Protocol;
     var destination :Destination;
 
@@ -111,61 +103,64 @@ module Socks {
 
     command = byteArray[1];
     // Fail unless we got a CONNECT or UDP_ASSOCIATE command.
-    if (command != RequestCommand.TCP_CONNECT &&
-      command != RequestCommand.UDP_ASSOCIATE) {
-      throw new Error('unsupported SOCKS command (CMD): ' + result.cmd);
+    if (command != Command.TCP_CONNECT &&
+      command != Command.UDP_ASSOCIATE) {
+      throw new Error('unsupported SOCKS command (CMD): ' + command);
     }
 
-    destination = interpretAddress(byteArray.subarray(3));
+    destination = interpretDestination(byteArray.subarray(3));
 
     return {
       version: version,
-      command: command
+      command: command,
+      destination: destination
     };
   }
 
-  /*
-   * Interprets a SOCKS5 UDP request, which looks like this:
-   *
-   *   +----+------+------+----------+----------+----------+
-   *   |RSV | FRAG | ATYP | DST.ADDR | DST.PORT |   DATA   |
-   *   +----+------+------+----------+----------+----------+
-   *   | 2  |  1   |  1   | Variable |    2     | Variable |
-   *   +----+------+------+----------+----------+----------+
-   */
-  export function interpretUdpMessage(byteArray:Uint8Array) : UdpData {
+  // Interprets a SOCKS5 UDP request, returning the UInt8Array view of the
+  // sub-section for the DATA part of the request. The Request looks like this:
+  //
+  //   +----+------+------+----------+----------+----------+
+  //   |RSV | FRAG | ATYP | DST.ADDR | DST.PORT |   DATA   |
+  //   +----+------+------+----------+----------+----------+
+  //   | 2  |  1   |  1   | Variable |    2     | Variable |
+  //   +----+------+------+----------+----------+----------+
+  export function interpretUdpMessage(byteArray:Uint8Array) : UdpMessage {
     // Fail if the request is too short to be valid.
     if(byteArray.length < 10) {
       throw new Error('UDP request too short');
     }
 
+    var destination :Destination = interpretDestination(byteArray.subarray(3));
+
+    var udpMessage :UdpMessage = {
+      frag: byteArray[2],
+      destination: destination,
+      data: byteArray.subarray(3 + destination.addressByteLength)
+    };
+
     // Fail if client is requesting fragmentation.
-    result.frag = byteArray[2];
-    if (result.frag !== 0) {
+    if (udpMessage.frag !== 0) {
       throw new Error('fragmentation not supported');
     }
 
-    var addressLength = interpretSocksAddress(byteArray.subarray(3), result);
-
-    result.data = byteArray.subarray(3 + addressLength);
+    return udpMessage;
   }
 
 
-  /*
-   * Interprets this sub-structure, found within both "regular" SOCKS requests
-   * and UDP requests:
-   *
-   *   +------+----------+----------+
-   *   | ATYP | DST.ADDR | DST.PORT |
-   *   +------+----------+----------+
-   *   |  1   | Variable |    2     |
-   *   +------+----------+----------+
-   *
-   * The length of DST.ADDR varies according to the type found (IPv4, IPv6,
-   * host name, etc).
-   *
-   * Returns a Socks.Destination which captures this in a more convenient form.
-   */
+  // Interprets this sub-structure, found within both "regular" SOCKS requests
+  // and UDP requests:
+  //
+  //   +------+----------+----------+
+  //   | ATYP | DST.ADDR | DST.PORT |
+  //   +------+----------+----------+
+  //   |  1   | Variable |    2     |
+  //   +------+----------+----------+
+  //
+  // The length of DST.ADDR varies according to the type found (IPv4, IPv6,
+  // host name, etc).
+  //
+  // Returns a Socks.Destination which captures this in a more convenient form.
   export function interpretDestination(byteArray:Uint8Array) : Destination {
     var portOffset   :number;
     var addressType  :AddressType;
@@ -183,7 +178,7 @@ module Socks {
       addressSize = byteArray[1];
       address = '';
       for (var i = 0; i < addressSize; ++i) {
-        adress += String.fromCharCode(byteArray[2 + i]);
+        address += String.fromCharCode(byteArray[2 + i]);
       }
       portOffset = addressSize + 2;
     } else if (AddressType.IP_V6 == addressType) {
@@ -201,7 +196,7 @@ module Socks {
     return {
       addressType: addressType,
       endpoint: { address: address, port: port },
-      byteLength: portOffset + 2
+      addressByteLength: portOffset + 2
     }
   }
 
@@ -213,10 +208,8 @@ module Socks {
       }).join(':');
   }
 
-  /**
-   * Examines the supplied session establishment bytes, throwing an
-   * error if the requested SOCKS version or METHOD is unsupported.
-   */
+  // Examines the supplied session establishment bytes, throwing an
+  // error if the requested SOCKS version or METHOD is unsupported.
   export function validateHandshake(buffer:ArrayBuffer) : void {
     var handshakeBytes = new Uint8Array(buffer);
 
@@ -228,20 +221,18 @@ module Socks {
 
     // Check AUTH methods on SOCKS handshake.
     // Get supported auth methods. Starts from 1, since 0 is already read.
-    var authMethods:Socks.AUTH[] = [];
+    var authMethods:Socks.Auth[] = [];
     var numAuthMethods:number = handshakeBytes[1];
     for (var i = 0; i < numAuthMethods; i++) {
       authMethods.push(handshakeBytes[2 + i]);
     }
     // Make sure the client supports 'no authentication'.
-    if (authMethods.indexOf(Socks.AUTH.NOAUTH) <= -1) {
+    if (authMethods.indexOf(Socks.Auth.NOAUTH) <= -1) {
       throw new Error('client requires authentication');
     }
   }
 
-  /**
-   * Given an endpoint, compose a response.
-   */
+  // Given an endpoint, compose a response.
   export function composeSocksResponse(endpoint:Net.Endpoint) : ArrayBuffer {
     var buffer:ArrayBuffer = new ArrayBuffer(10);
     var bytes:Uint8Array = new Uint8Array(buffer);

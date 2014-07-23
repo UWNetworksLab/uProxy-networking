@@ -3,7 +3,7 @@
   "description": "Proxy remote connections to their destination.",
   "app": {
     "script": [
-      "../handler/handler-queue.js",
+      "../handler/queue.js",
       "../tcp/tcp.js",
       "../udp/udpclient.js",
       "../arraybuffers/arraybuffers.js",

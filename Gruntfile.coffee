@@ -66,7 +66,7 @@ module.exports = (grunt) ->
       # directory?
       # Copy all the built stuff from build-tools
       buildToolsBuild: { files: [ {
-          expand: true, cwd: 'node_modules/uproxy-build-tools/build'
+          expand: true, cwd: 'node_modules/uproxy-lib/build'
           src: ['**']
           dest: 'build'
           onlyIf: 'modified'
@@ -107,13 +107,6 @@ module.exports = (grunt) ->
           dest: 'build/typescript-src/'
           onlyIf: 'modified'
         },
-        # freedom-typescript-api interfaces.
-        {
-          expand: true, cwd: 'node_modules/freedom-typescript-api'
-          src: ['interfaces/**/*.ts']
-          dest: 'build/typescript-src/freedom-typescript-api/'
-          onlyIf: 'modified'
-        }
       ]}
 
       # All module's typescript should be in the standard place for all

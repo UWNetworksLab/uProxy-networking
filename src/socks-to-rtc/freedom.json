@@ -5,7 +5,7 @@
     "script": [
       "../tcp/tcp.js",
       "../udp/udprelay.js",
-      "../handler/handler-queue.js",
+      "../handler/queue.js",
       "../arraybuffers/arraybuffers.js",
       "socks-headers.js",
       "socks.js",
