@@ -1,10 +1,10 @@
-/// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../freedom-typescript-api/interfaces/udp-socket.d.ts' />
-/// <reference path='../third_party/promise/promise.d.ts' />
+/// <reference path='../freedom-interfaces/freedom.d.ts' />
+/// <reference path='../freedom-interfaces/udp-socket.d.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
+/// <reference path="../third_party/typings/es6-promise/es6-promise.d.ts" />
 
 module Net {
-  import UdpSocket = freedom.UdpSocket;
+  import UdpLib = freedom_UdpSocket;
 
   /**
    * Represents a UDP socket.

@@ -7,7 +7,7 @@
 # Also: provide a way to specify needed modules, and when they are not there to
 # give a sensible error.
 
-TaskManager = require 'uproxy-build-tools/build/taskmanager/taskmanager'
+TaskManager = require 'uproxy-lib/build/taskmanager/taskmanager'
 
 #-------------------------------------------------------------------------
 # Rule-making helper function that assume expected directory layout.
@@ -15,7 +15,7 @@ TaskManager = require 'uproxy-build-tools/build/taskmanager/taskmanager'
 # Function to make a copy rule for a module directory, assuming standard
 # layout. Copies all non (ts/sass) compiled files into the corresponding
 # build directory.
-Rule = require('uproxy-build-tools/Gruntfile.coffee').Rule;
+Rule = require('uproxy-lib/Gruntfile.coffee').Rule;
 # Copy all source that is not typescript to the module's build directory.
 Rule.copySrcModule = (name, dest) ->
   expand: true, cwd: 'src/'
@@ -133,7 +133,7 @@ module.exports = (grunt) ->
       libForWebrtcPc: Rule.copyAllModulesTo 'samples/webrtc-pc'
       # ChromeApp
       chromeApp: Rule.copySrcModule 'samples/chrome-app'
-      libForChromeApp: Rule.copyAllBuildModulesTo 'samples/chrome-app/'
+      libForChromeApp: Rule.copyAllModulesTo 'samples/chrome-app/'
 
       freedomForChromeApp: { files: [ {
         expand: true, cwd: 'node_modules/freedom-for-chrome/'
@@ -144,14 +144,6 @@ module.exports = (grunt) ->
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
         src: ['*']
         dest: 'build/chrome-app/freedom-providers' } ] }
-
-      echoServer_Chrome: Rule.copyBuiltModule 'echo-server', 'chrome-app/'
-      socksToRtc_Chrome: Rule.copyBuiltModule 'socks-to-rtc', 'chrome-app/'
-      arraybuffers_Chrome: Rule.copyBuiltModule 'arraybuffers', 'chrome-app/'
-      rtcToNet_Chrome: Rule.copyBuiltModule 'rtc-to-net', 'chrome-app/'
-      handler_Chrome: Rule.copyBuiltModule 'handler', 'chrome-app/'
-      tcp_Chrome: Rule.copyBuiltModule 'tcp', 'chrome-app/'
-      udp_Chrome: Rule.copyBuiltModule 'udp', 'chrome-app/'
 
       freedomProvidersBuild: { files: [ {
         expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
@@ -164,7 +156,7 @@ module.exports = (grunt) ->
         dest: 'build/samples/firefox-app/data' } ] }
 
       firefoxApp: Rule.copySrcModule 'samples/firefox-app'
-      libForFirefoxApp: Rule.copyAllBuildModulesTo 'samples/firefox-app/data/'
+      libForFirefoxApp: Rule.copyAllModulesTo 'samples/firefox-app/data/'
 
       # ? what more... ?
     }  # copy

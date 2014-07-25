@@ -2,17 +2,17 @@
  * This is a TCP server based on Freedom's sockets API.
  */
 
-/// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../freedom-typescript-api/interfaces/tcp-socket.d.ts' />
-/// <reference path='../third_party/promise/promise.d.ts' />
+/// <reference path='../freedom-interfaces/freedom.d.ts' />
+/// <reference path='../freedom-interfaces/tcp-socket.d.ts' />
 /// <reference path='../handler/queue.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
+/// <reference path="../third_party/typings/es6-promise/es6-promise.d.ts" />
 
 module Tcp {
-  import TcpSocket = freedom.TcpSocket;
+  import TcpLib = freedom_TcpSocket;
 
   // Helper function.
-  function endpointOfSocketInfo(info:TcpSocket.SocketInfo) : Net.Endpoint {
+  function endpointOfSocketInfo(info:TcpLib.SocketInfo) : Net.Endpoint {
      return { address: info.peerAddress, port: info.peerPort }
   }
 
@@ -31,9 +31,9 @@ module Tcp {
   // called, and handles the new connection as specified by the onConnection
   // argument to the constructor.
   export class Server {
-    private serverSocket_ :TcpSocket;
+    private serverSocket_ :TcpLib.Socket;
     // TODO: index by connectionId not socketID. More stable & string based.
-    private conns:{[socketId:number] : Tcp.Connection} = {};
+    private conns:{[socketId:number] : Connection} = {};
 
     // Create TCP server.
     // `endpoint` = Address and port to be listening on. Port 0 is used for
@@ -76,7 +76,7 @@ module Tcp {
     // onConnectionHandler_ is more or less TCP Accept: it is called when a new
     // TCP connection is established.
     private onConnectionHandler_ =
-        (acceptValue:TcpSocket.ConnectInfo) : void => {
+        (acceptValue:TcpLib.ConnectInfo) : void => {
       var socketId = acceptValue.socket;
 
       // Check that we haven't reach the maximum number of connections
@@ -169,7 +169,7 @@ module Tcp {
     // Queue of data to be handled, and the capacity to set a handler and
     // handle the data.
     public dataFromSocketQueue :Handler.Queue<ArrayBuffer,void>;
-    public dataToSocketQueue :Handler.Queue<ArrayBuffer, TcpSocket.WriteInfo>;
+    public dataToSocketQueue :Handler.Queue<ArrayBuffer, TcpLib.WriteInfo>;
 
     // Public unique connectionId.
     public connectionId :string;
@@ -179,7 +179,7 @@ module Tcp {
     // fulfill/reject the onceDisconnectd once.
     private state_ :Connection.State;
     // The underlying Freedom TCP socket.
-    private connectionSocket_ :TcpSocket;
+    private connectionSocket_ :TcpLib.Socket;
     // Private functions called to invoke fullfil/reject onceClosed.
     private fulfillClosed_ :()=>void;
     // reeject is used for Bad disconnections (errors)
@@ -191,18 +191,18 @@ module Tcp {
 
       this.dataFromSocketQueue = new Handler.Queue<ArrayBuffer,void>();
       this.dataToSocketQueue =
-          new Handler.Queue<ArrayBuffer,TcpSocket.WriteInfo>();
+          new Handler.Queue<ArrayBuffer,TcpLib.WriteInfo>();
 
       if(Object.keys(connectionKind).length !== 1) {
         dbgErr('Badly formed New Tcp Connection Kind:' +
                JSON.stringify(connectionKind));
         this.state_ = Connection.State.ERROR;
         this.onceConnected =
-            Promise.reject<Net.Endpoint>(new Error(
+            Promise.reject(new Error(
                 'Badly formed New Tcp Connection Kind:' +
                 JSON.stringify(connectionKind)));
         this.onceClosed =
-            Promise.reject<void>(new Error(
+            Promise.reject(new Error(
                 'Badly formed New Tcp Connection Kind:' +
                 JSON.stringify(connectionKind)));
         return;
@@ -237,7 +237,7 @@ module Tcp {
 
       // Use the dataFromSocketQueue handler for data from the socket.
       this.connectionSocket_.on('onData',
-          (readInfo:TcpSocket.ReadInfo) : void => {
+          (readInfo:TcpLib.ReadInfo) : void => {
         this.dataFromSocketQueue.handle(readInfo.data);
       });
 
@@ -268,7 +268,7 @@ module Tcp {
     // because  of an error. When closed by the other end, onceDisconnected is
     // fullfilled.  If there's an error, onceDisconnected is rejected with the
     // error.
-    private onDisconnectHandler_ = (info:TcpSocket.DisconnectInfo) : void => {
+    private onDisconnectHandler_ = (info:TcpLib.DisconnectInfo) : void => {
       dbg('onDisconnectHandler_ (conn-id: ' + this.connectionId + ')');
 
       if(this.state_ === Connection.State.CLOSED) {
@@ -315,7 +315,7 @@ module Tcp {
     /**
      * Sends a message that is pre-formatted as an arrayBuffer.
      */
-    public send = (msg :ArrayBuffer) : Promise<TcpSocket.WriteInfo> => {
+    public send = (msg :ArrayBuffer) : Promise<TcpLib.WriteInfo> => {
       return this.dataToSocketQueue.handle(msg);
     }
 
