@@ -7,8 +7,8 @@ if (typeof window === "undefined") {
   var window = {};
 }
 /// <reference path='../socks-to-rtc/socks.ts' />
-/// <reference path='../freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../freedom-typescript-api/interfaces/transport.d.ts' />
+/// <reference path='../freedom-declarations/freedom.d.ts' />
+/// <reference path='../freedom-declarations/transport.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 /// <reference path='../echo-server/freedom-module.d.ts' />
@@ -70,4 +70,3 @@ rtcToNet.on('sendSignalToPeer', (signal:PeerSignal) => {
 rtcToNet.emit('start');
 // Once the socksToRtc peer successfully starts, it fires 'sendSignalToPeer'.
 socksToRtc.emit('start', SOCKS_ENDPOINT);
-

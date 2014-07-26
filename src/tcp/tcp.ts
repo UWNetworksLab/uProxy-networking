@@ -2,8 +2,8 @@
  * This is a TCP server based on Freedom's sockets API.
  */
 
-/// <reference path='../freedom-interfaces/freedom.d.ts' />
-/// <reference path='../freedom-interfaces/tcp-socket.d.ts' />
+/// <reference path='../freedom-declarations/freedom.d.ts' />
+/// <reference path='../freedom-declarations/tcp-socket.d.ts' />
 /// <reference path='../handler/queue.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 /// <reference path="../third_party/typings/es6-promise/es6-promise.d.ts" />

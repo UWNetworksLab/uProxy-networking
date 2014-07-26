@@ -212,27 +212,15 @@ declare enum RTCSignalingState {
   'closed'
 }
 
-// This is based on the current implementation of WebRtc:
+// This is based on the current implementation of WebRtc in Chrome; the spec is
+// a little unclear on this.
 // http://dev.w3.org/2011/webrtc/editor/webrtc.html#idl-def-RTCStatsReport
-declare enum RTCStatsType {
-  "inbound-rtp",
-  "outbound-rtp"
-}
-
-interface RTCStats {
-  timestamp: Object;  // TODO: find/define the type for DOMHiResTimeStamp
-  type: string;  // RTCStatsType;
-  id: string;
-  stat?: (s:string) => string;
-}
-
 interface RTCStatsReport {
-  result: () => RTCStats[]
-  namedItem: () => void;
+  stat(id: string): string;
 }
 
 interface RTCStatsCallback {
-  (report: RTCStatsReport) : void
+  (report: RTCStatsReport): void;
 }
 
 interface RTCPeerConnection {
@@ -247,15 +235,13 @@ interface RTCPeerConnection {
                       failureCallback?: RTCPeerConnectionErrorCallback): void;
   localDescription: RTCSessionDescription;
   setRemoteDescription(description: RTCSessionDescription,
-                       successCallback?: RTCVoidCallback,
-                       failureCallback?: RTCPeerConnectionErrorCallback): void;
+                        successCallback?: RTCVoidCallback,
+                        failureCallback?: RTCPeerConnectionErrorCallback): void;
   remoteDescription: RTCSessionDescription;
   signalingState: string; // RTCSignalingState; see TODO(1)
   updateIce(configuration?: RTCConfiguration,
             constraints?: RTCMediaConstraints): void;
-  addIceCandidate(candidate: RTCIceCandidate,
-                  successCallback?: RTCVoidCallback,
-                  failureCallback?: RTCPeerConnectionErrorCallback): void;
+  addIceCandidate(candidate: RTCIceCandidate): void;
   iceGatheringState: string;  // RTCIceGatheringState; see TODO(1)
   iceConnectionState: string;  // RTCIceConnectionState; see TODO(1)
   getLocalStreams(): MediaStream[];

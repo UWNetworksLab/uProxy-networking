@@ -1,7 +1,7 @@
 /*
   SocksToRtc.Peer passes socks requests over WebRTC datachannels.
 */
-/// <reference path='../freedom-typescript-api/interfaces/peer-connection.d.ts' />
+/// <reference path='../freedom-declarations/peer-connection.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.ts' />
 /// <reference path='../handler/queue.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
@@ -33,16 +33,26 @@ module SocksToRtc {
       this.socksToRtc_ = new SocksToRtc.SocksToRtc();
     }
 
-    public start() {
-      onceSignallingChannelReady_ = prepareSignallingChannel_()
-      onceSignallingChannelReady_.then(() => {
-
-        });
-
-      ready = Promise.all([]);
-      ready.then(() => {
-        this.signalsToPeer_.setHandler(this.sendSignalToPeer_); });
-
+    // This will emit a socksToRtcSuccess signal when the peer connection is
+    // esablished, or a socksToRtcFailure signal if there is an error openeing
+    // the peer connection. TODO: update this to return a promise that
+    // fulfills/rejects, after freedom v0.5 is ready.
+    public start() : Promise<> {
+      this.onceSignallingChannelReady_ = prepareSignallingChannel_()
+      var ready :Promise<Net.Endpoint> = this.socksToRtc_.start();
+      return this.onceSignallingChannelReady_
+        .then(() => return ready)
+        .then((endpoint) => {
+            dbg('SocksToRtc:socksToRtcSuccess');
+            freedom.emit('socksToRtcSuccess');
+            // this.startPingPong_();
+            this.signalsToPeer_.setHandler(this.sendSignalToPeer_);
+            return endpoint;
+          })
+        .catch((e) => {
+            dbgErr('SocksToRtc:socksToRtcFailure: ' + e);
+            freedom.emit('socksToRtcFailure');
+          });
     }
 
     public stop() {
@@ -117,20 +127,20 @@ module SocksToRtc {
     // connection.
     private peerConnection_  :freedom.PeerConnection = null;
 
-    // From data channel labels to their TCP connections. Most of the wiring
-    // here happens via promises.
+    // From WebRTC data-channel labels to their TCP connections. Most of the
+    // wiring to manage this relationship happens via promises of the
+    // TcpConnection. We need this only for ???
     private pcTcpSessions_ :{ [dataChannelLabel:string] : TcpConnection }
 
     constructor() {}
 
-    // Start the SocksToRtc Peer, based on the the local host and port to
-    // listen on.
-    // This will emit a socksToRtcSuccess signal when the peer connection is esablished,
-    // or a socksToRtcFailure signal if there is an error openeing the peer connection.
-    // TODO: update this to return a promise that fulfills/rejects, after freedom v0.5
-    // is ready.
-    public start = (endpoint:Net.Endpoint) : Promise<void> => {
-      var onceTcpServerReady :Promise<void>;
+    // Start the SocksToRtc. Given a localhost transport addrress (endpoint). If
+    // the given port is zero, platform chooses a port and this listening port
+    // is returned by the promise.
+    public start = (endpoint:Net.Endpoint) : Promise<endpoint:Net.Endpoint> => {
+      // The |onceTcpServerReady| promise holds the address and port that the
+      // tcp-server is listening on.
+      var onceTcpServerReady :Promise<endpoint:Net.Endpoint>;
       var oncePeerConnectionReady :Promise<void>;
 
       this.reset_();  // Begin with fresh components.
@@ -147,16 +157,8 @@ module SocksToRtc {
       // the Freedom channel object to sends signalling messages to the peer.
       oncePeerConnectionReady = this.setupPeerConnection_();
 
-      return Promise.all<void>([onceTcpServerReady, oncePeerConnectionReady])
-        .then(() => {
-            dbg('SocksToRtc:socksToRtcSuccess');
-            freedom.emit('socksToRtcSuccess');
-            // this.startPingPong_();
-          })
-        .catch((e) => {
-            dbgErr('SocksToRtc:socksToRtcFailure: ' + e);
-            freedom.emit('socksToRtcFailure');
-          });
+      // Make sure both promises are ready, then return the tcp-server endpoint.
+      return oncePeerConnectionReady.then(() => return onceTcpServerReady);
     }
 
     public stop = () => {
@@ -187,7 +189,8 @@ module SocksToRtc {
     }
 
     private setupPeerConnection_ =
-        (channelIdentifier :ChannelEndpointIdentifier<string,string>) : Promise<void> => {
+        (channelIdentifier :ChannelEndpointIdentifier<string,string>)
+        : Promise<void> => {
       // SOCKS sessions biject to peerconnection datachannels.
       this.peerConnection_ = freedom['core.peer-connection']();
       this.peerConnection_.on('onReceived', this.onDataFromPeer_);
