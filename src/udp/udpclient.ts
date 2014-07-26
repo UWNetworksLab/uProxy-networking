@@ -16,7 +16,7 @@ module Net {
     /**
      * Socket on which we are sending and receiving messages.
      */
-    private socket:UdpSocket;
+    private socket:UdpLib.Socket;
 
     // Address and port to which the "client-side" socket is bound.
     private address_:string;
@@ -46,7 +46,7 @@ module Net {
             return Promise.resolve(resultCode);
           })
           .then(this.socket.getInfo)
-          .then((socketInfo:UdpSocket.SocketInfo) => {
+          .then((socketInfo:UdpLib.SocketInfo) => {
             // Record the address and port on which our socket is listening.
             this.address_ = socketInfo.localAddress;
             this.port_ = socketInfo.localPort;
@@ -70,7 +70,7 @@ module Net {
       this.socket.on('onData', this.onSocksClientData);
     }
 
-    private onSocksClientData = (recvFromInfo:UdpSocket.RecvFromInfo) => {
+    private onSocksClientData = (recvFromInfo:UdpLib.RecvFromInfo) => {
       this.onData_(recvFromInfo.data);
     }
 
