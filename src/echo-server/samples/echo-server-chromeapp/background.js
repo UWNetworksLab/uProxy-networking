@@ -7,5 +7,3 @@ document.head.appendChild(script);
 script.onload = function() {
   freedom.emit('start', { address: '127.0.0.1', port: 9999 });
 };
-//freedom.on('ready', function() {
-//});
