@@ -56,7 +56,7 @@ module.exports = (grunt) ->
         expand: true,
         overwrite: true,
         cwd: 'node_modules/uproxy-lib/src/',
-        src: ['*'],
+        src: ['**/*'],
         dest: 'build/typescript-src/' } ] }
 
     #-------------------------------------------------------------------------
@@ -144,14 +144,12 @@ module.exports = (grunt) ->
       # Modules
       tcp: Rule.typescriptSrc 'tcp'
       udp: Rule.typescriptSrc 'udp'
-      peerConnection: Rule.typescriptSrc 'peer-connection'
       socksToRtc: Rule.typescriptSrc 'socks-to-rtc'
       rtcToNet: Rule.typescriptSrc 'rtc-to-net'
       # Sample Apps
-      webrtcPc: Rule.typescriptSrc 'samples/webrtc-pc'
-      echoServer: Rule.typescriptSrc 'samples/echo-server'
-      chromeApp: Rule.typescriptSrc 'samples/chrome-app'
-      firefoxApp: Rule.typescriptSrc 'samples/firefox-app'
+      echoServerChromeApp: Rule.typescriptSrc 'echo-server/samples/echo-server-chromeapp'
+      socksRtcNetChromeApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-chromeapp'
+      socksRtcNetFirefoxApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-firefoxapp'
     }
 
     #-------------------------------------------------------------------------

@@ -1,8 +1,9 @@
-/// <reference path="../freedom-typescript-api/interfaces/freedom.d.ts" />
-/// <reference path="../freedom-typescript-api/interfaces/tcp-socket.d.ts" />
-/// <reference path="../third_party/promise/promise.d.ts" />
-/// <reference path="../handler/queue.d.ts" />
-/// <reference path="../interfaces/communications.d.ts" />
+/// <reference path='../freedom-declarations/freedom.d.ts' />
+/// <reference path='../freedom-declarations/tcp-socket.d.ts' />
+/// <reference path='../handler/queue.ts' />
+/// <reference path='../networking-declarations/communications.d.ts' />
+/// <reference path="../third_party/typings/es6-promises/es6-promises.d.ts" />
+
 declare module Tcp {
   class Server {
     constructor(public  endpoint        :Net.Endpoint,
