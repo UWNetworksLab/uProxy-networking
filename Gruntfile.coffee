@@ -66,7 +66,7 @@ module.exports = (grunt) ->
       # Copy all the built stuff from uproxy-lib
       uproxyLibBuild: { files: [ {
           expand: true, cwd: 'node_modules/uproxy-lib/build'
-          src: ['**']
+          src: ['**', '!**/typescript-src/**']
           dest: 'build'
           onlyIf: 'modified'
         } ] }
@@ -99,23 +99,15 @@ module.exports = (grunt) ->
         } ] }
 
       # Individual modules.
-      tcp: Rule.copySrcModule 'udp'
-      udp: Rule.copySrcModule 'tcp'
-      peerConnection: Rule.copySrcModule 'peerconnection'
-      socksToRtc: Rule.copySrcModule 'socks-to-rtc'
-      rtcToNet: Rule.copySrcModule 'rtc-to-net'
+      tcp: Rule.copyModule 'udp'
+      udp: Rule.copyModule 'tcp'
+      socksToRtc: Rule.copyModule 'socks-to-rtc'
+      rtcToNet: Rule.copyModule 'rtc-to-net'
 
       # Sample Apps
       #
       # Echo server Chrome App
-      echoServer: Rule.copySrcModule 'samples/echo-server'
-      libForEchoServer: Rule.copyAllModulesTo 'samples/echo-server'
-      # WebRtc peer-connection Webpage
-      webrtcPc: Rule.copySrcModule 'samples/webrtc-pc'
-      libForWebrtcPc: Rule.copyAllModulesTo 'samples/webrtc-pc'
-      # ChromeApp
-      chromeApp: Rule.copySrcModule 'samples/chrome-app'
-      libForChromeApp: Rule.copyAllModulesTo 'samples/chrome-app/'
+      echoServer: Rule.copySampleFiles 'tcp/samples/echo-server', 'lib'
 
       freedomForChromeApp: { files: [ {
         expand: true, cwd: 'node_modules/freedom-for-chrome/'
@@ -137,8 +129,8 @@ module.exports = (grunt) ->
         src: ['freedom-for-firefox.jsm', 'freedom.map']
         dest: 'build/samples/firefox-app/data' } ] }
 
-      firefoxApp: Rule.copySrcModule 'samples/firefox-app'
-      libForFirefoxApp: Rule.copyAllModulesTo 'samples/firefox-app/data/'
+      socksRtcNetChromeApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-chrome-app', 'lib'
+      socksRtcNetFirefoxApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-firefoxapp/data/', 'lib'
 
       # ? what more... ?
     }  # copy
@@ -227,7 +219,6 @@ module.exports = (grunt) ->
   taskManager.add 'copyModulesSrc', [
     'copy:tcp'
     'copy:udp'
-    'copy:peerConnection'
     'copy:rtcToNet'
     'copy:socksToRtc'
   ]
@@ -235,7 +226,7 @@ module.exports = (grunt) ->
   taskManager.add 'base', [
     # copy modules from uproxyLibBuild to build/
     'copy:uproxyLibBuild'
-    # symlink typescript src to build/typescript-src
+    # symlink all modules with typescript src to build/typescript-src
     'symlink:uproxyLibTypescriptSrc',
     'symlink:thirdPartyTypescriptSrc'
     'symlink:typescriptSrc'

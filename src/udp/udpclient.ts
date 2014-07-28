@@ -1,6 +1,6 @@
 /// <reference path='../freedom-declarations/freedom.d.ts' />
 /// <reference path='../freedom-declarations/udp-socket.d.ts' />
-/// <reference path='../interfaces/communications.d.ts' />
+/// <reference path='../networking-declarations/communications.d.ts' />
 /// <reference path="../third_party/typings/es6-promise/es6-promise.d.ts" />
 
 module Net {
