@@ -16,34 +16,10 @@ TaskManager = require 'uproxy-lib/build/taskmanager/taskmanager'
 # layout. Copies all non (ts/sass) compiled files into the corresponding
 # build directory.
 Rule = require('uproxy-lib/Gruntfile.coffee').Rule;
-# Copy all source that is not typescript to the module's build directory.
-Rule.copySrcModule = (name, dest) ->
-  expand: true, cwd: 'src/'
-  src: [name + '/**', '!' + name + '/**/*.ts', '!' + name + '/**/*.sass']
-  dest: 'build'
-  onlyIf: 'modified'
-# Copy all libraries (but not samples and typescript src) into the desitination
-# directory (typically a sample app)
-Rule.copyAllModulesTo = (dest) ->
-  files: [
-    {  # Copy all modules in the build directory to the sample
-      expand: true, cwd: 'build'
-      src: ['**/*', '!samples/**', '!typescript-src/**',
-            '!samples', '!typescript-src']
-      dest: 'build/' + dest
-      onlyIf: 'modified'
-    }
-    {  # Useful to support the map files
-      expand: true, cwd: 'build'
-      src: ['typescript-src/**/*']
-      dest: 'build/' + dest
-      onlyIf: 'modified'
-    }
-  ]
 # HACK: this overrides Rule's |noImplicitAny=false| to deal with inability to
 # refer to `core.XXX` providers as members in JavaScript. See:
 # https://github.com/freedomjs/freedom/issues/57
-Rule.typeScriptSrc = (name) ->
+Rule.typescriptSrc = (name) ->
   src: ['build/typescript-src/' + name + '/**/*.ts', '!**/*.d.ts']
   dest: 'build/'
   options:
@@ -60,12 +36,35 @@ module.exports = (grunt) ->
   grunt.initConfig {
     pkg: grunt.file.readJSON('package.json')
 
+    symlink:
+      # Symlink all module directories in `src` into typescript-src
+      typescriptSrc: { files: [ {
+        expand: true,
+        overwrite: true,
+        cwd: 'src',
+        src: ['*'],
+        dest: 'build/typescript-src/' } ] }
+      # Symlink third_party into typescript-src
+      thirdPartyTypescriptSrc: { files: [ {
+        expand: true,
+        overwrite: true,
+        cwd: '.',
+        src: ['third_party'],
+        dest: 'build/typescript-src/' } ] }
+      # Symlink third_party into typescript-src
+      uproxyLibTypescriptSrc: { files: [ {
+        expand: true,
+        overwrite: true,
+        cwd: 'node_modules/uproxy-lib/src/',
+        src: ['*'],
+        dest: 'build/typescript-src/' } ] }
+
     #-------------------------------------------------------------------------
     copy: {
-      # TODO: provide a warning if local project overrides a build-tools
-      # directory?
-      # Copy all the built stuff from build-tools
-      buildToolsBuild: { files: [ {
+      # TODO: provide a warning if local project overrides directory?
+      #
+      # Copy all the built stuff from uproxy-lib
+      uproxyLibBuild: { files: [ {
           expand: true, cwd: 'node_modules/uproxy-lib/build'
           src: ['**']
           dest: 'build'
@@ -99,27 +98,10 @@ module.exports = (grunt) ->
           onlyIf: 'modified'
         } ] }
 
-      thirdPartyTypeScript: { files: [
-        # Copy any typescript from the third_party directory
-        {
-          expand: true,
-          src: ['third_party/**/*.ts']
-          dest: 'build/typescript-src/'
-          onlyIf: 'modified'
-        },
-      ]}
-
-      # All module's typescript should be in the standard place for all
-      # typescript code: build/typescript-src/
-      typeScriptSrc: { files: [ {
-        expand: true, cwd: 'src/'
-        src: ['**/*.ts']
-        dest: 'build/typescript-src/' } ] }
-
       # Individual modules.
       tcp: Rule.copySrcModule 'udp'
       udp: Rule.copySrcModule 'tcp'
-      peerConnection: Rule.copySrcModule 'peer-connection'
+      peerConnection: Rule.copySrcModule 'peerconnection'
       socksToRtc: Rule.copySrcModule 'socks-to-rtc'
       rtcToNet: Rule.copySrcModule 'rtc-to-net'
 
@@ -165,19 +147,19 @@ module.exports = (grunt) ->
     # All typescript compiles to locations in `build/`
     typescript: {
       # From build-tools
-      arraybuffers: Rule.typeScriptSrc 'arraybuffers'
-      handler: Rule.typeScriptSrc 'handler'
+      arraybuffers: Rule.typescriptSrc 'arraybuffers'
+      handler: Rule.typescriptSrc 'handler'
       # Modules
-      tcp: Rule.typeScriptSrc 'tcp'
-      udp: Rule.typeScriptSrc 'udp'
-      peerConnection: Rule.typeScriptSrc 'peer-connection'
-      socksToRtc: Rule.typeScriptSrc 'socks-to-rtc'
-      rtcToNet: Rule.typeScriptSrc 'rtc-to-net'
+      tcp: Rule.typescriptSrc 'tcp'
+      udp: Rule.typescriptSrc 'udp'
+      peerConnection: Rule.typescriptSrc 'peer-connection'
+      socksToRtc: Rule.typescriptSrc 'socks-to-rtc'
+      rtcToNet: Rule.typescriptSrc 'rtc-to-net'
       # Sample Apps
-      webrtcPc: Rule.typeScriptSrc 'samples/webrtc-pc'
-      echoServer: Rule.typeScriptSrc 'samples/echo-server'
-      chromeApp: Rule.typeScriptSrc 'samples/chrome-app'
-      firefoxApp: Rule.typeScriptSrc 'samples/firefox-app'
+      webrtcPc: Rule.typescriptSrc 'samples/webrtc-pc'
+      echoServer: Rule.typescriptSrc 'samples/echo-server'
+      chromeApp: Rule.typescriptSrc 'samples/chrome-app'
+      firefoxApp: Rule.typescriptSrc 'samples/firefox-app'
     }
 
     #-------------------------------------------------------------------------
@@ -229,13 +211,14 @@ module.exports = (grunt) ->
   }  # grunt.initConfig
 
   #-------------------------------------------------------------------------
-  grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-clean'
+  grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
-  grunt.loadNpmTasks 'grunt-typescript'
-  grunt.loadNpmTasks 'grunt-jasmine-node'
+  grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-env'
   grunt.loadNpmTasks 'grunt-exec'
+  grunt.loadNpmTasks 'grunt-jasmine-node'
+  grunt.loadNpmTasks 'grunt-typescript'
 
   #-------------------------------------------------------------------------
   # Define the tasks
@@ -250,11 +233,12 @@ module.exports = (grunt) ->
   ]
 
   taskManager.add 'base', [
-    # copy modules from buildToolsBuild to build/
-    'copy:buildToolsBuild'
-    # copy all typescript to build/typescript-src
-    'copy:thirdPartyTypeScript'
-    'copy:typeScriptSrc'
+    # copy modules from uproxyLibBuild to build/
+    'copy:uproxyLibBuild'
+    # symlink typescript src to build/typescript-src
+    'symlink:uproxyLibTypescriptSrc',
+    'symlink:thirdPartyTypescriptSrc'
+    'symlink:typescriptSrc'
     # third party JS
     'copy:thirdPartyJavaScript'
     # Copy freedom modules to build/

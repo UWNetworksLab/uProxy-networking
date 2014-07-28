@@ -8,3 +8,4 @@ npm-debug.log
 tmp/*
 build/*
 .grunt
+*.sublime-workspace

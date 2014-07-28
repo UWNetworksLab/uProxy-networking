@@ -1,13 +1,15 @@
 /*
   SocksToRtc.Peer passes socks requests over WebRTC datachannels.
 */
-/// <reference path='../freedom-declarations/peer-connection.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.ts' />
+/// <reference path='../coreproviders/providers/uproxypeerconnection.d.ts' />
+/// <reference path='../freedom-declarations/freedom.d.ts' />
 /// <reference path='../handler/queue.ts' />
 /// <reference path='../interfaces/communications.d.ts' />
 
 console.log('WEBWORKER SocksToRtc: ' + self.location.href);
 
+/*
 // This is what is avauilable to Freedom.
 function initClient() {
   // Create local socks-to-rtc class instance and attach freedom message
@@ -18,8 +20,11 @@ function initClient() {
   freedom.on('stop', socksToRtc.stop);
   freedom.emit('ready', {});
 }
+*/
 
 module SocksToRtc {
+
+  import PcLib = freedom_UproxyPeerConnection;
 
   export class FreedomSocksClass {
     // Freedom channel to use for sending signalling messages to .
@@ -30,28 +35,29 @@ module SocksToRtc {
     private socksToRtc_ :SocksToRtc;
 
     constructor() {
-      this.socksToRtc_ = new SocksToRtc.SocksToRtc();
+      this.socksToRtc_ = new SocksToRtc();
     }
 
     // This will emit a socksToRtcSuccess signal when the peer connection is
     // esablished, or a socksToRtcFailure signal if there is an error openeing
     // the peer connection. TODO: update this to return a promise that
     // fulfills/rejects, after freedom v0.5 is ready.
-    public start() : Promise<> {
-      this.onceSignallingChannelReady_ = prepareSignallingChannel_()
+    public start() : Promise<Net.Endpoint> {
+      this.onceSignallingChannelReady_ = this.prepareSignallingChannel_()
       var ready :Promise<Net.Endpoint> = this.socksToRtc_.start();
       return this.onceSignallingChannelReady_
-        .then(() => return ready)
+        .then(() => { return ready; })
         .then((endpoint) => {
             dbg('SocksToRtc:socksToRtcSuccess');
             freedom.emit('socksToRtcSuccess');
             // this.startPingPong_();
-            this.signalsToPeer_.setHandler(this.sendSignalToPeer_);
-            return endpoint;
+            this.socksToRtc_.signalsToPeer.setHandler(this.sendSignalToPeer_);
+            return Promise.resolve(endpoint);
           })
-        .catch((e) => {
+        .catch<Net.Endpoint>((e) => {
             dbgErr('SocksToRtc:socksToRtcFailure: ' + e);
             freedom.emit('socksToRtcFailure');
+            return Promise.reject(new Error(''));
           });
     }
 
@@ -75,7 +81,7 @@ module SocksToRtc {
         });
     }
 
-    private sendSignalToPeer_ = (message:string) : void => {
+    private sendSignalToPeer_ = (signal:) : void => {
       chan.emit('message', message);
     }
 
@@ -116,13 +122,14 @@ module SocksToRtc {
         "stun:stun4.l.google.com:19302" ];
 
     // Message handler queues to/from the peer.
-    private signalsToPeer_   :Handler.Queue<string, void> =
+    public signalsToPeer   :Handler.Queue<string, void> =
         new Handler.Queue<string,void>();
-    private signalsFromPeer_ :Handler.Queue<string, void> =
+    public signalsFromPeer :Handler.Queue<string, void> =
         new Handler.Queue<string,void>();
 
     // Tcp server that is listening for SOCKS connections.
     private tcpServer_       :Tcp.Server = null;
+
     // The connection to the peer that is acting as the endpoint for the proxy
     // connection.
     private peerConnection_  :freedom.PeerConnection = null;
@@ -130,7 +137,7 @@ module SocksToRtc {
     // From WebRTC data-channel labels to their TCP connections. Most of the
     // wiring to manage this relationship happens via promises of the
     // TcpConnection. We need this only for ???
-    private pcTcpSessions_ :{ [dataChannelLabel:string] : TcpConnection }
+    private pcTcpSessions_ :{ [dataChannelLabel:string] : Tcp.Connection }
 
     constructor() {}
 

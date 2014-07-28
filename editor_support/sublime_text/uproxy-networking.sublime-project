@@ -1,0 +1,26 @@
+{
+  "folders": [
+    {
+      "path": "../../",
+      "name": "root",
+      "follow_symlinks": true
+    },
+    {
+      "path": "../../build/typescript-src",
+      "name": "build/typescript-src",
+      "follow_symlinks": true
+    }
+  ],
+  "settings": {
+    "tab_size": 2,
+    "translate_tabs_to_spaces": true,
+    "trim_trailing_white_space_on_save": true,
+    "wrap_width": 80
+  },
+  "build_systems": [
+    {
+      "name": "tsc",
+      "shell_cmd": "tsc"
+    }
+  ]
+}
