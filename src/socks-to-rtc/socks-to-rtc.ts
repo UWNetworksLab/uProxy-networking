@@ -1,7 +1,6 @@
 // SocksToRtc.Peer passes socks requests over WebRTC datachannels.
 
 /// <reference path='../socks/socks-headers.ts' />
-/// <reference path='../arraybuffers/arraybuffers.ts' />
 /// <reference path='../coreproviders/providers/uproxypeerconnection.d.ts' />
 /// <reference path='../freedom-declarations/freedom.d.ts' />
 /// <reference path='../handler/queue.ts' />
@@ -25,7 +24,7 @@ module SocksToRtc {
 
   interface Session {
     onceReady      :Promise<void>;
-    tcpConnection ?:Tcp.Connection;
+    tcpConnection  :Tcp.Connection;
   }
 
   // The |SocksToRtc| class runs a SOCKS5 proxy server which passes requests
