@@ -93,8 +93,8 @@ module.exports = (grunt) ->
       rtcToNet: Rule.copyModule 'rtc-to-net'
 
       socksRtcNet: Rule.copyModule 'socks-rtc-net'
-      socksRtcNetChromeApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-chrome-app', 'lib'
-      socksRtcNetFirefoxApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-firefoxapp/data/', 'lib'
+      socksRtcNetChromeApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp', 'lib'
+      socksRtcNetFirefoxApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-freedom-firefoxapp/data/', 'lib'
 
       # Sample Apps
       #
