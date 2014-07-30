@@ -1,0 +1,24 @@
+{
+  "name": "socks-rtc-net",
+  "description": "Sample socks over rtc to net Freedom manifest",
+  "app": {
+    "script": [
+      "lib/arraybuffers/arraybuffers.js",
+      "lib/handler/queue.js",
+      "lib/tcp/tcp.js",
+      "lib/peerconnection/peerconnection.js",
+      "lib/peerconnection/peerconnection.js",
+      "lib/socks/socks-headers.js",
+      "lib/socks-to-rtc/socks-to-rtc.js",
+      "lib/rtc-to-net/rtc-to-net.js"
+    ]
+  },
+  "dependencies": {
+    "Logger": { "url": "lib/logger/logger.json" },
+    "TcpEchoServer": { "url": "lib/echo-server/freedom.json" }
+  },
+  "permissions": [
+    "core.tcpsocket",
+    "core.udpsocket"
+  ]
+}

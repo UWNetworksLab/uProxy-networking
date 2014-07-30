@@ -1,6 +1,5 @@
 var script = document.createElement('script');
-script.setAttribute('data-manifest', 'socks_rtc.json');
-//script.setAttribute('data-manifest', 'test/tcp_echo_server.json');
+script.setAttribute('data-manifest', 'freedom.json');
 script.textContent = '{ "debug": false }';
-script.src = 'freedom-for-chrome.js';
+script.src = 'freedom/freedom-for-chrome-for-uproxy.js';
 document.head.appendChild(script);

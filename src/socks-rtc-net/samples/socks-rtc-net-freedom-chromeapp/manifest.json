@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
-  "name": "socks-RTC",
-  "description": "Experiments in proxying SOCKS5 over WebRTC",
+  "name": "socks-rtv-net",
+  "description": "Sample app for proxying SOCKS5 over WebRTC",
   "version": "0.0.2",
   "app": {
     "background": {
