@@ -88,6 +88,7 @@ module.exports = (grunt) ->
       # Individual modules.
       tcp: Rule.copyModule 'udp'
       udp: Rule.copyModule 'tcp'
+      socks: Rule.copyModule 'socks'
       socksToRtc: Rule.copyModule 'socks-to-rtc'
       rtcToNet: Rule.copyModule 'rtc-to-net'
 
@@ -132,23 +133,23 @@ module.exports = (grunt) ->
       # Modules
       tcp: Rule.typescriptSrc 'tcp'
       udp: Rule.typescriptSrc 'udp'
+      socks: Rule.typescriptSrc 'socks'
       socksToRtc: Rule.typescriptSrc 'socks-to-rtc'
       rtcToNet: Rule.typescriptSrc 'rtc-to-net'
       # Sample Apps
       echoServer: Rule.typescriptSrc 'echo-server'
       echoServerChromeApp: Rule.typescriptSrc 'echo-server/samples/echo-server-chromeapp'
-      socksRtcNetChromeApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-chromeapp'
-      socksRtcNetFirefoxApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-firefoxapp'
+      socksRtcNetChromeApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp'
+      socksRtcNetFirefoxApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-freedom-firefoxapp'
     }
 
     #-------------------------------------------------------------------------
     jasmine: {
-      socksToRtc_socksHeader:
-        src: ['build/socks-to-rtc/socks-headers.js',
-              'build/socks-to-rtc/socks.js']
+      socks:
+        src: ['build/socks/socks-headers.js']
         options:
-          specs: 'build/socks-to-rtc/socks-headers.spec.js'
-          outfile: 'build/socks-to-rtc/_SpecRunner.html'
+          specs: 'build/socks/socks-headers.spec.js'
+          outfile: 'build/socks/_SpecRunner.html'
           keepRunner: true
     }
 
@@ -225,6 +226,13 @@ module.exports = (grunt) ->
     'typescript:udp'
   ]
 
+  taskManager.add 'socks', [
+    'base'
+    'copy:socks'
+    'typescript:socks'
+    'jasmine:socks'
+  ]
+
   taskManager.add 'socksToRtc', [
     'base'
     'copy:socksToRtc'
@@ -278,6 +286,7 @@ module.exports = (grunt) ->
     'tcp'
     'udp'
     'echoServer'
+    'socks'
     'socksToRtc'
     'rtcToNet'
   ]
@@ -286,7 +295,7 @@ module.exports = (grunt) ->
   # and on Travis/Sauce Labs.
   taskManager.add 'test', [
     'build'
-    'jasmine:socksToRtc_socksHeader'
+    'jasmine:socks'
   ]
 
   # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and

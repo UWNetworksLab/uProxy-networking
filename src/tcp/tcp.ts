@@ -56,9 +56,7 @@ module Tcp {
     // below should just be return conns.values().
     public connections = () => {
       var allConnectionsList : Connection[] = [];
-      Object.keys(this.conns).map((i) => {
-        allConnectionsList.push(this.conns[i]);
-      });
+      for (var i in this.conns) { allConnectionsList.push(this.conns[i]); }
       return allConnectionsList;
     }
 

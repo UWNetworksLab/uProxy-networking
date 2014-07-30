@@ -15,10 +15,9 @@ console.log('WEBWORKER SocksToRtc: ' + self.location.href);
 
 module SocksToRtc {
 
-  // TODO: reuse tag names from a pool.
+  var tagNumber_ = 0;
   function obtainTag() {
-    var array = new Uint32Array(1);
-    return 'c' + array[0];
+    return 'c' + (tagNumber_++);
   }
 
   import PcLib = freedom_UproxyPeerConnection;
@@ -30,8 +29,6 @@ module SocksToRtc {
     public onceReady : Promise<Net.Endpoint>;
     // Message handler queues to/from the peer.
     public signalsToPeer   :Handler.Queue<string, void> =
-        new Handler.Queue<string,void>();
-    public signalsFromPeer :Handler.Queue<string, void> =
         new Handler.Queue<string,void>();
 
     // Tcp server that is listening for SOCKS connections.
@@ -47,7 +44,7 @@ module SocksToRtc {
     // DataChannel and PeerConnection to be used directly and not via a freedom
     // interface. Then all work can be done by promise binding and this can be
     // removed.
-    private tcpToRtcSessions_ :{ [channelLabel:string] : Tcp.Connection }
+    private tcpSessions_ :{ [channelLabel:string] : Tcp.Connection }
 
     // SocsToRtc server is given a localhost transport address (endpoint) to
     // start a socks server listening to, and a config for setting up a peer-
@@ -82,9 +79,9 @@ module SocksToRtc {
     // channels).
     private stop = () => {
       this.signalsToPeer.clear();
-      this.signalsFromPeer.clear();
       this.tcpServer_.shutdown();
       this.peerConnection_.close();
+      this.tcpSessions_ = {};
     }
 
     private setupPeerConnection_ = (pcConfig:WebRtc.PeerConnectionConfig)
@@ -103,14 +100,14 @@ module SocksToRtc {
     }
 
     private onPeerClosedChannel_ = (channelLabel:string) : void => {
-      if(!(channelLabel in this.tcpToRtcSessions_)) {
+      if(!(channelLabel in this.tcpSessions_)) {
         dbgErr('onPeerClosedChannel_: no channel with label: ' + channelLabel);
         return;
       }
       // CONSIDER: ordering/reclosing risks.
       this.peerConnection_.closeDataChannel(channelLabel);
-      this.tcpToRtcSessions_[channelLabel].close();
-      delete this.tcpToRtcSessions_[channelLabel];
+      this.tcpSessions_[channelLabel].close();
+      delete this.tcpSessions_[channelLabel];
     }
 
     // Setup a SOCKS5 TCP-to-rtc session from a tcp connection.
@@ -122,7 +119,7 @@ module SocksToRtc {
       // Start data channel with the peer.
       channelLabel = obtainTag();
       onceChannelOpenned = this.peerConnection_.openDataChannel(channelLabel);
-      this.tcpToRtcSessions_[channelLabel] = tcpConnection;
+      this.tcpSessions_[channelLabel] = tcpConnection;
 
       // Handle a socks TCP request. Assumes: the first TCP packet is the socks-
       // request (assuming no packet fragmentation)
@@ -154,15 +151,26 @@ module SocksToRtc {
               '; ' + tcpConnection.toString());
           tcpConnection.close();
           this.peerConnection_.closeDataChannel(channelLabel);
-          this.tcpToRtcSessions_[channelLabel];
+          this.tcpSessions_[channelLabel];
         });
+
+      tcpConnection.onceClosed.then(() => {
+        this.peerConnection_.closeDataChannel(channelLabel);
+        // TODO: should we send a message on the data channel to say it should
+        // be closed? (For Chrome < 37, where close messages don't propegate
+        // properly).
+      });
+    }
+
+    private onSignalFromPeer_ = (signal:WebRtc.SignallingMessage) : void => {
+      this.peerConnection_.handleSignalMessage(signal);
     }
 
     // Data from the remote peer over WebRtc gets sent to the
     // socket that corresponds to the channel label.
     private onDataFromPeer_ = (rtcData:PcLib.LabelledDataChannelMessage)
         : void => {
-      if(!(rtcData.channelLabel in this.tcpToRtcSessions_)) {
+      if(!(rtcData.channelLabel in this.tcpSessions_)) {
         dbgErr('onDataFromPeer_: no such channel: ' + rtcData.channelLabel);
         return;
       }
@@ -171,14 +179,14 @@ module SocksToRtc {
         return;
       }
 
-      this.tcpToRtcSessions_[rtcData.channelLabel]
+      this.tcpSessions_[rtcData.channelLabel]
         .send(rtcData.message.buffer);
     }
 
     public toString = () : string => {
       var ret ='<SocksToRtc: failed toString()>';
       ret = JSON.stringify({ tcpServer_: this.tcpServer_.toString(),
-                             tcpToRtcSessions_: this.tcpToRtcSessions_ });
+                             tcpSessions_: this.tcpSessions_ });
       return ret;
     }
   }  // class SocksToRtc
