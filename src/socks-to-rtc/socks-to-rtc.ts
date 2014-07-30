@@ -1,6 +1,6 @@
 // SocksToRtc.Peer passes socks requests over WebRTC datachannels.
 
-/// <reference path='socks-headers.ts' />
+/// <reference path='../socks/socks-headers.ts' />
 /// <reference path='../arraybuffers/arraybuffers.ts' />
 /// <reference path='../coreproviders/providers/uproxypeerconnection.d.ts' />
 /// <reference path='../freedom-declarations/freedom.d.ts' />
