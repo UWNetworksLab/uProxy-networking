@@ -12,6 +12,13 @@ console.log('WEBWORKER - RtcToNet: ' + self.location.href);
 
 module RtcToNet {
 
+  import PcLib = freedom_UproxyPeerConnection;
+
+  interface Session {
+    onceReady      :Promise<void>;
+    tcpConnection ?:Tcp.Connection;
+  }
+
   // The |RtcToNet| class holds a peer-connection and all its associated
   // proxied connections.
   export class RtcToNet {
@@ -29,7 +36,7 @@ module RtcToNet {
     // DataChannel and PeerConnection to be used directly and not via a freedom
     // interface. Then all work can be done by promise binding and this can be
     // removed.
-    private tcpSessions_ :{ [channelLabel:string] : Tcp.Connection }
+    private tcpSessions_ :{ [channelLabel:string] : Session }
 
     // SocsToRtc server is given a localhost transport address (endpoint) to
     // start a socks server listening to, and a config for setting up a peer-
@@ -63,24 +70,22 @@ module RtcToNet {
       // SOCKS sessions biject to peerconnection datachannels.
       this.peerConnection_ = freedom['core.uproxypeerconnection']();
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
-      this.peerConnection_.on('peerClosedChannel', this.onPeerClosedChannel_);
+      this.peerConnection_.on('peerClosedChannel', this.removeSession_);
       this.peerConnection_.on('peerOpenedChannel', (channelLabel:string) => {
-        dbgErr('unexpected peerOpenedChannel event: ' +
-            JSON.stringify(channelLabel));
+        tcpSessions_[channelLabel] = {};
       });
       this.peerConnection_.on('signalMessageToPeer',
           this.signalsToPeer.handle);
       return this.peerConnection_.negotiateConnection(pcConfig);
     }
 
-    private onPeerClosedChannel_ = (channelLabel:string) : void => {
-      if(!(channelLabel in this.tcpSessions_)) {
-        dbgErr('onPeerClosedChannel_: no channel with label: ' + channelLabel);
-        return;
-      }
-      // CONSIDER: ordering/reclosing risks.
+    // Remove a session if it exists. May be called more than once, e.g. by
+    // both tcpConnection closing, or by data channel closing.
+    private removeSession_ = (channelLabel:string) : void => {
+      if(!(channelLabel in this.tcpSessions_)) { return; }
+      var tcpConnection = this.tcpSessions_[channelLabel];
+      if(!tcpConnection.isClosed()) { tcpConnection.close(); }
       this.peerConnection_.closeDataChannel(channelLabel);
-      this.tcpSessions_[channelLabel].close();
       delete this.tcpSessions_[channelLabel];
     }
 
@@ -101,11 +106,18 @@ module RtcToNet {
 
       // Control messages are sent as strings.
       if(rtcData.message.str) {
-        var command :Socks.Request
+        var request :Socks.Request;
         try {
-          JSON.parse()
+          request = JSON.parse(rtcData.message.str);
         } catch (e) {
-
+          if(request.command === Socks.Command.TCP_CONNECT) {
+            this.startNewTcpSession_(rtcData.channelLabel,
+                                     request.destination.endpoint);
+          } else {
+            dbgErr('Unsupported command in SOCKS request: ' +
+                JSON.stringify(rtcData.message.str));
+            return;
+          }
         }
       }
 
@@ -117,6 +129,20 @@ module RtcToNet {
     }
 
 
+    private startNewTcpSession_ = (channelLabel:string, endpoint: Net.Endpoint)
+        : void => {
+      var tcpConnection = new Tcp.Connection({ endpoint: endpoint});
+      this.tcpSessions_[channelLabel] =
+        { tcpConnection: tcpConnection,
+          onceReady: tcpConnection.onceConnected };
+
+      tcpConnection.onceClosed.then(() => {
+        this.removeSession_(channelLabel);
+        // TODO: should we send a message on the data channel to say it should
+        // be closed? (For Chrome < 37, where close messages don't propegate
+        // properly).
+      });
+    }
 
     // handle a request to create a new P2P network connection.
     private handleNetConnectRequest_ =

@@ -294,7 +294,7 @@ module Tcp {
     // disconnect Promise `onceDisconnected`.
     public close = () : Promise<void> => {
       if (this.state_ === Connection.State.CLOSED) {
-        dbgErr('Conn  ' + this.connectionId + ' was attempted to be closed ' +
+        dbgWarn('Conn  ' + this.connectionId + ' was attempted to be closed ' +
           'after it was already closed.');
         return;
       }
