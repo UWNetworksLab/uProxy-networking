@@ -2,7 +2,7 @@
   For the RFC for socks, see:
     http://tools.ietf.org/html/rfc1928
 */
-/// <reference path='../interfaces/communications.d.ts' />
+/// <reference path='../networking-typings/communications.d.ts' />
 
 module Socks {
 
@@ -232,8 +232,10 @@ module Socks {
     }
   }
 
-  // Given an endpoint, compose a response.
-  export function composeSocksResponse(endpoint:Net.Endpoint) : ArrayBuffer {
+  // Given a destination reached, compose a response.
+  export function composeSocksResponse(destination: Destination)
+      : ArrayBuffer {
+    var endpoint:Net.Endpoint = destination.endpoint;
     var buffer:ArrayBuffer = new ArrayBuffer(10);
     var bytes:Uint8Array = new Uint8Array(buffer);
     bytes[0] = Socks.VERSION5;

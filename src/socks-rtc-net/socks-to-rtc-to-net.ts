@@ -10,7 +10,7 @@ if (typeof window === "undefined") {
 /// <reference path='../freedom-declarations/freedom.d.ts' />
 /// <reference path='../freedom-declarations/transport.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.ts' />
-/// <reference path='../interfaces/communications.d.ts' />
+/// <reference path='../networking-typings/communications.d.ts' />
 /// <reference path='../echo-server/freedom-module.d.ts' />
 /// <reference path='../socks-to-rtc/freedom-module.d.ts' />
 /// <reference path='../rtc-to-net/freedom-module.d.ts' />

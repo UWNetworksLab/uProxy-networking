@@ -1,6 +1,6 @@
-/// <reference path="../interfaces/communications.d.ts" />
+/// <reference path="../networking-typings/communications.d.ts" />
 declare module Socks {
-    var VERSION5: number;
+    var VERSION5 :number;
     enum Auth {
         NOAUTH = 0,
         GSSAPI = 1,
@@ -30,26 +30,26 @@ declare module Socks {
         RESERVED = 9,
     }
     interface Destination {
-        addressType: AddressType;
-        endpoint: Net.Endpoint;
-        addressByteLength: number;
+        addressType :AddressType;
+        endpoint :Net.Endpoint;
+        addressByteLength :number;
     }
     interface Request {
-        version: number;
-        command: Command;
-        destination: Destination;
+        version :number;
+        command :Command;
+        destination :Destination;
     }
     interface UdpMessage {
-        frag: number;
-        destination: Destination;
-        data: Uint8Array;
+        frag :number;
+        destination :Destination;
+        data :Uint8Array;
     }
-    // The interpret functions fail by throwing an error. 
-    function interpretRequestBuffer(buffer: ArrayBuffer): Request;
-    function interpretRequest(byteArray: Uint8Array): Request;
-    function interpretUdpMessage(byteArray: Uint8Array): UdpMessage;
-    function interpretDestination(byteArray: Uint8Array): Destination;
-    function interpretIpv6Address(uint16View: Uint16Array): string;
-    function validateHandshake(buffer: ArrayBuffer): void;
-    function composeSocksResponse(endpoint: Net.Endpoint): ArrayBuffer;
+    // The interpret functions fail by throwing an error.
+    function interpretRequestBuffer(buffer :ArrayBuffer) : Request;
+    function interpretRequest(byteArray :Uint8Array) : Request;
+    function interpretUdpMessage(byteArray :Uint8Array) : UdpMessage;
+    function interpretDestination(byteArray :Uint8Array) : Destination;
+    function interpretIpv6Address(uint16View :Uint16Array) : string;
+    function validateHandshake(buffer :ArrayBuffer) : void;
+    function composeSocksResponse(destination :Destination) : ArrayBuffer;
 }

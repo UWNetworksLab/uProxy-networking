@@ -3,7 +3,7 @@
 // inverse of what you see at the bottom of the main module file (socks-to-rtc
 // in this case).
 
-/// <reference path='../interfaces/communications.d.ts' />
+/// <reference path='../networking-typings/communications.d.ts' />
 
 declare module freedom {
   interface SocksToRtc {

@@ -1,7 +1,7 @@
 /// <reference path='../freedom-declarations/freedom.d.ts' />
 /// <reference path='../freedom-declarations/tcp-socket.d.ts' />
 /// <reference path='../handler/queue.ts' />
-/// <reference path='../networking-declarations/communications.d.ts' />
+/// <reference path='../networking-typings/communications.d.ts' />
 /// <reference path="../third_party/typings/es6-promises/es6-promises.d.ts" />
 
 declare module Tcp {

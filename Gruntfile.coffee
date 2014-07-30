@@ -274,13 +274,12 @@ module.exports = (grunt) ->
   #-------------------------------------------------------------------------
   taskManager.add 'build', [
     'base'
-    # Modules in socks-rtc
+    # Modules
     'tcp'
     'udp'
-    'peerConnection'
+    'echoServer'
     'socksToRtc'
     'rtcToNet'
-    'echoServer'
   ]
 
   # This is the target run by Travis. Targets in here should run locally

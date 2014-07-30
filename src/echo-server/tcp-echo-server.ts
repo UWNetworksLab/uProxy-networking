@@ -3,7 +3,7 @@
 */
 /// <reference path='../arraybuffers/arraybuffers.ts' />
 /// <reference path='../freedom-declarations/freedom.d.ts' />
-/// <reference path='../networking-declarations/communications.d.ts' />
+/// <reference path='../networking-typings/communications.d.ts' />
 /// <reference path='../tcp/tcp.ts' />
 
 class TcpEchoServer {

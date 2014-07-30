@@ -5,7 +5,7 @@
 /// <reference path='../freedom-declarations/freedom.d.ts' />
 /// <reference path='../freedom-declarations/transport.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.ts' />
-/// <reference path='../interfaces/communications.d.ts' />
+/// <reference path='../networking-typings/communications.d.ts' />
 /// <reference path='../tcp/tcp.ts' />
 
 console.log('WEBWORKER - RtcToNet: ' + self.location.href);
