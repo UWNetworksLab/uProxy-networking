@@ -92,16 +92,15 @@ module SocksToRtc {
     private setupPeerConnection_ = (pcConfig:WebRtc.PeerConnectionConfig)
         : Promise<WebRtc.ConnectionAddresses> => {
       // SOCKS sessions biject to peerconnection datachannels.
-      this.peerConnection_ = freedom['core.uproxypeerconnection']();
+      this.peerConnection_ = freedom['core.uproxypeerconnection'](pcConfig);
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
-      this.peerConnection_.on('peerClosedChannel', this.removeSession_);
       this.peerConnection_.on('peerOpenedChannel', (channelLabel:string) => {
         dbgErr('unexpected peerOpenedChannel event: ' +
             JSON.stringify(channelLabel));
       });
-      this.peerConnection_.on('signalMessageToPeer',
+      this.peerConnection_.on('signalForPeer',
           this.signalsToPeer.handle);
-      return this.peerConnection_.negotiateConnection(pcConfig);
+      return this.peerConnection_.negotiateConnection();
     }
 
     // Remove a session if it exists. May be called more than once, e.g. by
@@ -125,6 +124,10 @@ module SocksToRtc {
       channelLabel = obtainTag();
       onceChannelOpenned = this.peerConnection_.openDataChannel(channelLabel);
 
+      this.peerConnection_.onceDataChannelClosed(channelLabel).then(() => {
+          this.removeSession_(channelLabel);
+      });
+
       // Handle a socks TCP request. Assumes: the first TCP packet is the socks-
       // request (assuming no packet fragmentation)
       onceRequestReveiced =
@@ -132,8 +135,9 @@ module SocksToRtc {
           return tcpConnection.dataFromSocketQueue.setSyncNextHandler(F);
         })
         .then(Socks.interpretRequestBuffer);
-      // The session is ready when the channel is open and we have sent the
-      // request to the peer.
+      // The session is ready when the channel is open AND we have sent the
+      // request to the peer: after this we can simply pass data back and
+      // forth.
       onceReady = onceChannelOpenned
         .then(() => { return onceRequestReveiced; })
         .then((request:Socks.Request) => {

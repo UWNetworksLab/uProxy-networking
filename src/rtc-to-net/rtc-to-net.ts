@@ -70,15 +70,15 @@ module RtcToNet {
     private setupPeerConnection_ = (pcConfig:WebRtc.PeerConnectionConfig)
         : Promise<WebRtc.ConnectionAddresses> => {
       // SOCKS sessions biject to peerconnection datachannels.
-      this.peerConnection_ = freedom['core.uproxypeerconnection']();
+      this.peerConnection_ = freedom['core.uproxypeerconnection'](pcConfig);
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('peerClosedChannel', this.removeSession_);
       this.peerConnection_.on('peerOpenedChannel', (channelLabel:string) => {
         this.tcpSessions_[channelLabel] = {};
       });
-      this.peerConnection_.on('signalMessageToPeer',
+      this.peerConnection_.on('signalForPeer',
           this.signalsToPeer.handle);
-      return this.peerConnection_.negotiateConnection(pcConfig);
+      return this.peerConnection_.negotiateConnection();
     }
 
     // Remove a session if it exists. May be called more than once, e.g. by
@@ -132,6 +132,9 @@ module RtcToNet {
 
     private startNewTcpSession_ = (channelLabel:string, endpoint: Net.Endpoint)
         : void => {
+      this.peerConnection_.onceDataChannelClosed(channelLabel).then(() => {
+          this.removeSession_(channelLabel);
+      });
       var tcpConnection = new Tcp.Connection({ endpoint: endpoint});
       this.tcpSessions_[channelLabel].tcpConnection = tcpConnection;
 
