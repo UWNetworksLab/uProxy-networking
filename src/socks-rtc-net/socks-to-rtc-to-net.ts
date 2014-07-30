@@ -3,6 +3,9 @@
   they can signal and set up a proxy connection.
 */
 
+// TODO: ping-ping control messages.
+// TODO: signalling message-throtteling.
+
 if (typeof window === "undefined") {
   var window = {};
 }
