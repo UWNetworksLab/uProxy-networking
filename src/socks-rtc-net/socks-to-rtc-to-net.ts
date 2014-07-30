@@ -6,6 +6,7 @@
 // TODO: ping-ping control messages.
 // TODO: signalling message-throtteling.
 
+/*
 if (typeof window === "undefined") {
   var window = {};
 }
@@ -73,3 +74,5 @@ rtcToNet.on('sendSignalToPeer', (signal:PeerSignal) => {
 rtcToNet.emit('start');
 // Once the socksToRtc peer successfully starts, it fires 'sendSignalToPeer'.
 socksToRtc.emit('start', SOCKS_ENDPOINT);
+
+*/

@@ -92,34 +92,15 @@ module.exports = (grunt) ->
       socksToRtc: Rule.copyModule 'socks-to-rtc'
       rtcToNet: Rule.copyModule 'rtc-to-net'
 
+      socksRtcNet: Rule.copyModule 'socks-rtc-net'
+      socksRtcNetChromeApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-chrome-app', 'lib'
+      socksRtcNetFirefoxApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-firefoxapp/data/', 'lib'
+
       # Sample Apps
       #
       # Echo server Chrome App
       echoServer: Rule.copyModule 'echo-server'
       echoServerChromeApp: Rule.copySampleFiles 'echo-server/samples/echo-server-chromeapp', 'lib'
-
-      freedomForChromeApp: { files: [ {
-        expand: true, cwd: 'node_modules/freedom-for-chrome/'
-        src: ['freedom-for-chrome.js', 'freedom.map']
-        dest: 'build/samples/chrome-app/' } ] }
-
-      freedomProvidersChrome: { files: [ {
-        expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
-        src: ['*']
-        dest: 'build/chrome-app/freedom-providers' } ] }
-
-      freedomProvidersBuild: { files: [ {
-        expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
-        src: ['*']
-        dest: 'build/freedom-providers' } ] }
-
-      freedomFirefox: { files: [ {
-        expand: true, cwd: 'node_modules/freedom-for-firefox/'
-        src: ['freedom-for-firefox.jsm', 'freedom.map']
-        dest: 'build/samples/firefox-app/data' } ] }
-
-      socksRtcNetChromeApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-chrome-app', 'lib'
-      socksRtcNetFirefoxApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-firefoxapp/data/', 'lib'
 
       # ? what more... ?
     }  # copy
@@ -136,9 +117,11 @@ module.exports = (grunt) ->
       socks: Rule.typescriptSrc 'socks'
       socksToRtc: Rule.typescriptSrc 'socks-to-rtc'
       rtcToNet: Rule.typescriptSrc 'rtc-to-net'
-      # Sample Apps
+      # Echo server sample app
       echoServer: Rule.typescriptSrc 'echo-server'
       echoServerChromeApp: Rule.typescriptSrc 'echo-server/samples/echo-server-chromeapp'
+      # Socks-rtc-net sample app
+      socksRtcNet: Rule.typescriptSrc 'socks-rtc-net'
       socksRtcNetChromeApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp'
       socksRtcNetFirefoxApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-freedom-firefoxapp'
     }
@@ -257,6 +240,22 @@ module.exports = (grunt) ->
     'copy:echoServerChromeApp'
   ]
 
+  #-------------------------------------------------------------------------
+  # tasks for sample apps
+  taskManager.add 'socksRtcNet', [
+    'base'
+    'tcp'
+    'udp'
+    'socksToRtc'
+    'rtcToNet'
+    'echoServer'
+    'typescript:socksRtcNet'
+    'copy:socksRtcNet'
+    'typescript:socksRtcNetChromeApp'
+    'copy:socksRtcNetChromeApp'
+  ]
+
+
   taskManager.add 'sample-chromeApp', [
     'base'
     'tcp'
@@ -289,6 +288,7 @@ module.exports = (grunt) ->
     'socks'
     'socksToRtc'
     'rtcToNet'
+    'socksRtcNet'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
