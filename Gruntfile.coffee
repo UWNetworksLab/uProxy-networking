@@ -7,7 +7,7 @@
 # Also: provide a way to specify needed modules, and when they are not there to
 # give a sensible error.
 
-TaskManager = require 'uproxy-lib/build/taskmanager/taskmanager'
+TaskManager = require 'uproxy-lib/tools/taskmanager'
 
 #-------------------------------------------------------------------------
 # Rule-making helper function that assume expected directory layout.
@@ -15,7 +15,8 @@ TaskManager = require 'uproxy-lib/build/taskmanager/taskmanager'
 # Function to make a copy rule for a module directory, assuming standard
 # layout. Copies all non (ts/sass) compiled files into the corresponding
 # build directory.
-Rule = require('uproxy-lib/Gruntfile.coffee').Rule;
+Rule = require 'uproxy-lib/tools/common-grunt-rules'
+
 # HACK: this overrides Rule's |noImplicitAny=false| to deal with inability to
 # refer to `core.XXX` providers as members in JavaScript. See:
 # https://github.com/freedomjs/freedom/issues/57
