@@ -10,7 +10,8 @@
       "lib/peerconnection/peerconnection.js",
       "lib/socks/socks-headers.js",
       "lib/socks-to-rtc/socks-to-rtc.js",
-      "lib/rtc-to-net/rtc-to-net.js"
+      "lib/rtc-to-net/rtc-to-net.js",
+      "freedom.js"
     ]
   },
   "dependencies": {

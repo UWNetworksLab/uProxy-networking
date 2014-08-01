@@ -9,7 +9,7 @@
       "../arraybuffers/arraybuffers.js",
       "socks-headers.js",
       "socks.js",
-      "socks-to-rtc.js"
+      "socks-to-rtc.js",
     ]
   },
   "dependencies": {

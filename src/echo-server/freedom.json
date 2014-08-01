@@ -6,7 +6,8 @@
       "../arraybuffers/arraybuffers.js",
       "../handler/queue.js",
       "../tcp/tcp.js",
-      "../echo-server/tcp-echo-server.js"
+      "../echo-server/tcp-echo-server.js",
+      "freedom.js"
     ]
   },
   "permissions": [
