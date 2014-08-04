@@ -14,7 +14,10 @@ declare module Tcp {
     public connectionsCount() : number;  // equivalent to connections().length
     public closeAll: () => Promise<void>;  // calls close on all connections.
 
-    public listen: () => Promise<void>;  // start accepting new connections.
+    // start accepting new connections; returns the actual endpoint it ends up
+    // listening on (e.g. when port 0 is specifed, a dynamic port number is
+    // chosen).
+    public listen: () => Promise<Net.Endpoint>;
     public stopListening () => Promise<void>  // stop accepting new connections.
 
     public shutdown () => Promise<void> // stop listening and then close-all

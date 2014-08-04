@@ -3,7 +3,7 @@
 // inverse of what you see at the bottom of the main module file (tcp-echo-
 // server in this case).
 
-declare module freedom {
+declare module freedom_TcpEchoServer {
   interface TcpEchoServer {
     emit(type:string, value:Object) : void;
     emit(type:'start', endpoint:Net.Endpoint) : void;

@@ -1,3 +1,5 @@
+/// <reference path='../freedom-declarations/freedom.d.ts' />
+
 var tcpServer :TcpEchoServer;
 
 // TODO: smarter encapsulation logic for echo server.

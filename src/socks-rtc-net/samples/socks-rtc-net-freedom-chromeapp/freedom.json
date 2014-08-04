@@ -6,12 +6,10 @@
       "lib/arraybuffers/arraybuffers.js",
       "lib/handler/queue.js",
       "lib/tcp/tcp.js",
-      "lib/peerconnection/peerconnection.js",
-      "lib/peerconnection/peerconnection.js",
       "lib/socks/socks-headers.js",
       "lib/socks-to-rtc/socks-to-rtc.js",
       "lib/rtc-to-net/rtc-to-net.js",
-      "freedom.js"
+      "freedom-module.js"
     ]
   },
   "dependencies": {
@@ -20,6 +18,7 @@
   },
   "permissions": [
     "core.tcpsocket",
-    "core.udpsocket"
+    "core.udpsocket",
+    "core.uproxypeerconnection"
   ]
 }

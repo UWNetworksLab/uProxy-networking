@@ -26,8 +26,12 @@ module RtcToNet {
   // proxied connections.
   export class RtcToNet {
     // Message handler queues to/from the peer.
-    public signalsToPeer   :Handler.Queue<string, void> =
+    public signalsForPeer   :Handler.Queue<string, void> =
         new Handler.Queue<string,void>();
+
+    // This promise is fulfilled once the peer connection is stablished and
+    // this module is ready to start making tcp connections.
+    public onceReady :Promise<void>;
 
     // The connection to the peer that is acting as a proxy client.
     private peerConnection_  :PcLib.Pc = null;
@@ -45,31 +49,14 @@ module RtcToNet {
     // start a socks server listening to, and a config for setting up a peer-
     // connection. If the given port is zero, platform chooses a port and this
     // listening port is returned by the promise.
+    //
+    // TODO: add checking of fingerprints.
     constructor(pcConfig:WebRtc.PeerConnectionConfig) {
-      var oncePeerConnectionReady :Promise<WebRtc.ConnectionAddresses>;
-
       // Messages received via signalling channel must reach the remote peer
       // through something other than the peerconnection. (e.g. XMPP). This is
       // the Freedom channel object to sends signalling messages to the peer.
-      oncePeerConnectionReady = this.setupPeerConnection_(pcConfig);
-    }
-
-    // Close the peer-connection (and hence all data channels) and all
-    // associated TCP connections.
-    private stop = () => {
-      this.signalsToPeer.clear();
-      this.peerConnection_.close();
-      // CONSIDER: will peerConnection's closing of channels make this un-
-      // needed? is it better to include this anyway?
-      var channelLabel :string;
-      for (channelLabel in this.tcpSessions_) {
-        this.removeSession_(channelLabel);
-      }
-    }
-
-    private setupPeerConnection_ = (pcConfig:WebRtc.PeerConnectionConfig)
-        : Promise<WebRtc.ConnectionAddresses> => {
       // SOCKS sessions biject to peerconnection datachannels.
+      this.tcpSessions_ = {};
       this.peerConnection_ = freedom['core.uproxypeerconnection'](pcConfig);
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('peerClosedChannel', this.removeSession_);
@@ -77,8 +64,23 @@ module RtcToNet {
         this.tcpSessions_[channelLabel] = {};
       });
       this.peerConnection_.on('signalForPeer',
-          this.signalsToPeer.handle);
-      return this.peerConnection_.negotiateConnection();
+          this.signalsForPeer.handle);
+      this.onceReady = this.peerConnection_.onceConnected().then(() => {});
+      // TODO: add checking that the peer's fingerprint matches the provided
+      // fingerprint.
+    }
+
+    // Close the peer-connection (and hence all data channels) and all
+    // associated TCP connections.
+    private close = () => {
+      this.signalsForPeer.clear();
+      this.peerConnection_.close();
+      // CONSIDER: will peerConnection's closing of channels make this un-
+      // needed? is it better to include this anyway?
+      var channelLabel :string;
+      for (channelLabel in this.tcpSessions_) {
+        this.removeSession_(channelLabel);
+      }
     }
 
     // Remove a session if it exists. May be called more than once, e.g. by
@@ -91,7 +93,8 @@ module RtcToNet {
       delete this.tcpSessions_[channelLabel];
     }
 
-    private onSignalFromPeer_ = (signal:WebRtc.SignallingMessage) : void => {
+    public handleSignalFromPeer = (signal:WebRtc.SignallingMessage)
+        : void => {
       this.peerConnection_.handleSignalMessage(signal);
     }
 

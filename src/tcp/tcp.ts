@@ -65,10 +65,15 @@ module Tcp {
     }
 
     // Listens on the serverSocket_ to `address:port` for new TCP connections.
-    // Returns a Promise that this server is now listening.
-    public listen = () : Promise<void> => {
+    // Returns a Promise that this server is now listening with the endpoint it
+    // is listening on. If 0 was passed as the port, a dynamic port is chosen.
+    public listen = () : Promise<Net.Endpoint> => {
       return this.serverSocket_.listen(this.endpoint.address,
-                                       this.endpoint.port);
+                                       this.endpoint.port)
+          .then(this.serverSocket_.getInfo)
+          .then((info : freedom_TcpSocket.SocketInfo) => {
+            return { address: info.localAddress, port: info.localPort };
+          });
     }
 
     // onConnectionHandler_ is more or less TCP Accept: it is called when a new

@@ -73,6 +73,58 @@ module Socks {
     data           :Uint8Array;
   }
 
+
+
+  // Client to Server (Step 1)
+  //
+  // Examines the supplied session establishment bytes, throwing an
+  // error if the requested SOCKS version or METHOD is unsupported.
+  //
+  //   +----+----------+----------+
+  //   |VER | NMETHODS | METHODS  |
+  //   +----+----------+----------+
+  //   | 1  |    1     | 1 to 255 |
+  //   +----+----------+----------+
+  //
+  //
+  export function interpretAuthHandshakeBuffer(buffer:ArrayBuffer) : Auth[] {
+    var handshakeBytes = new Uint8Array(buffer);
+
+    // Only SOCKS Version 5 is supported.
+    var socksVersion = handshakeBytes[0];
+    if (socksVersion != Socks.VERSION5) {
+      throw new Error('unsupported SOCKS version: ' + socksVersion);
+    }
+
+    // Check AUTH methods on SOCKS handshake.
+    // Get supported auth methods. Starts from 1, since 0 is already read.
+    var authMethods:Socks.Auth[] = [];
+    var numAuthMethods:number = handshakeBytes[1];
+    for (var i = 0; i < numAuthMethods; i++) {
+      authMethods.push(handshakeBytes[2 + i]);
+    }
+    // Make sure the client supports 'no authentication'.
+    if (authMethods.indexOf(Socks.Auth.NOAUTH) <= -1) {
+      throw new Error('client requires authentication');
+    }
+    return authMethods;
+  }
+
+  // Server to Client (Step 2)
+  //
+  // Given an initial authentication query, compose a response with the support
+  // authentication types (none needed).
+  export function composeAuthResponse(authType:Socks.Auth)
+      : ArrayBuffer {
+    var buffer:ArrayBuffer = new ArrayBuffer(2);
+    var bytes:Uint8Array = new Uint8Array(buffer);
+    bytes[0] = Socks.VERSION5;
+    bytes[1] = authType;
+    return buffer;
+  }
+
+  // Client to Server (Step 3-A)
+  //
   // Interprets a SOCKS 5 request, which looks like this:
   //
   //   +----+-----+-------+------+----------+----------+
@@ -117,6 +169,8 @@ module Socks {
     };
   }
 
+  // Client to Server (Step 3-B)
+  //
   // Interprets a SOCKS5 UDP request, returning the UInt8Array view of the
   // sub-section for the DATA part of the request. The Request looks like this:
   //
@@ -208,32 +262,12 @@ module Socks {
       }).join(':');
   }
 
-  // Examines the supplied session establishment bytes, throwing an
-  // error if the requested SOCKS version or METHOD is unsupported.
-  export function validateHandshake(buffer:ArrayBuffer) : void {
-    var handshakeBytes = new Uint8Array(buffer);
-
-    // Only SOCKS Version 5 is supported.
-    var socksVersion = handshakeBytes[0];
-    if (socksVersion != Socks.VERSION5) {
-      throw new Error('unsupported SOCKS version: ' + socksVersion);
-    }
-
-    // Check AUTH methods on SOCKS handshake.
-    // Get supported auth methods. Starts from 1, since 0 is already read.
-    var authMethods:Socks.Auth[] = [];
-    var numAuthMethods:number = handshakeBytes[1];
-    for (var i = 0; i < numAuthMethods; i++) {
-      authMethods.push(handshakeBytes[2 + i]);
-    }
-    // Make sure the client supports 'no authentication'.
-    if (authMethods.indexOf(Socks.Auth.NOAUTH) <= -1) {
-      throw new Error('client requires authentication');
-    }
-  }
-
+  // Server to Client (Step 4-A)
+  //
+  // TODO: support failure (https://github.com/uProxy/uproxy/issues/321)
+  //
   // Given a destination reached, compose a response.
-  export function composeSocksResponse(destination: Destination)
+  export function composeRequestResponse(destination: Destination)
       : ArrayBuffer {
     var endpoint:Net.Endpoint = destination.endpoint;
     var buffer:ArrayBuffer = new ArrayBuffer(10);

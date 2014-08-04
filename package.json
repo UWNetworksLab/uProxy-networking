@@ -9,8 +9,6 @@
   "devDependencies": {
     "cca": "^0.1.1",
     "es6-promise": "^0.1.1",
-    "freedom-for-chrome": "~0.2.0",
-    "freedom-for-firefox": "~0.4.0",
     "grunt": "^0.4.4",
     "grunt-contrib-clean": "^0.5.0",
     "grunt-contrib-coffee": "^0.10.1",
@@ -23,7 +21,7 @@
     "grunt-jasmine-node": "^0.2.1",
     "grunt-typescript": "^0.3.0",
     "tsd": "^0.5.7",
-    "uproxy-lib": "^6.0.0",
+    "uproxy-lib": "^7.0.0",
     "webdriverjs": "^1.6.1"
   },
   "scripts": {

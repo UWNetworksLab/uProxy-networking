@@ -45,11 +45,12 @@ declare module Socks {
         data :Uint8Array;
     }
     // The interpret functions fail by throwing an error.
+    function interpretAuthHandshakeBuffer(buffer :ArrayBuffer) : Auth[];
+    function composeAuthResponse(auth :Auth) : ArrayBuffer;
     function interpretRequestBuffer(buffer :ArrayBuffer) : Request;
     function interpretRequest(byteArray :Uint8Array) : Request;
     function interpretUdpMessage(byteArray :Uint8Array) : UdpMessage;
     function interpretDestination(byteArray :Uint8Array) : Destination;
     function interpretIpv6Address(uint16View :Uint16Array) : string;
-    function validateHandshake(buffer :ArrayBuffer) : void;
-    function composeSocksResponse(destination :Destination) : ArrayBuffer;
+    function composeRequestResponse(destination :Destination) : ArrayBuffer;
 }

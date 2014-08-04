@@ -7,7 +7,7 @@
       "../handler/queue.js",
       "../tcp/tcp.js",
       "../echo-server/tcp-echo-server.js",
-      "freedom.js"
+      "freedom-module.js"
     ]
   },
   "permissions": [

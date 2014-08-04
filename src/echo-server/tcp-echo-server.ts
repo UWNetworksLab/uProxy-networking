@@ -2,7 +2,6 @@
   For testing just the TCP server portion (see src/client/tcp.ts)
 */
 /// <reference path='../arraybuffers/arraybuffers.ts' />
-/// <reference path='../freedom-declarations/freedom.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
 /// <reference path='../tcp/tcp.ts' />
 
@@ -17,8 +16,14 @@ class TcpEchoServer {
     console.log('Starting TcpEchoServer(' + JSON.stringify(endpoint) + ')...');
     this.server = new Tcp.Server(endpoint, this.onConnection_);
 
-    this.server.listen().then(() => {
-      console.log('TCP echo server listening on ' + JSON.stringify(endpoint));
+    this.server.listen().then((listeningEndpoint) => {
+      console.log('TCP echo server listening on ' +
+          JSON.stringify(listeningEndpoint));
+    })
+    .catch((e:Error) => {
+      console.log('Failed to listen to: ' + JSON.stringify(endpoint) +
+          e.toString);
+      this.server.shutdown();
     });
   }
 
