@@ -115,8 +115,9 @@ module Tcp {
         (e) => {
           delete this.conns[socketId];
           dbgWarn('Tcp.Server(' + JSON.stringify(this.endpoint) +
-              ') : connection closed by error (' + socketId + ')' + e.toString()
-              + ' . Conn Count: ' + Object.keys(this.conns).length + ']');
+              ') : connection closed by error (' + socketId + '): ' +
+              e.toString() + ' . Conn Count: ' +
+              Object.keys(this.conns).length + ']');
         })
       this.conns[socketId] = conn;
       dbg(this.toString());
@@ -190,7 +191,7 @@ module Tcp {
 
     // A TCP connection for a given socket.
     constructor(connectionKind:Connection.Kind) {
-      this.connectionId = 'N.' + Connection.globalConnectionId_++;
+      this.connectionId = 'N' + Connection.globalConnectionId_++;
 
       this.dataFromSocketQueue = new Handler.Queue<ArrayBuffer,void>();
       this.dataToSocketQueue =
@@ -219,7 +220,7 @@ module Tcp {
         this.onceConnected =
             this.connectionSocket_.getInfo().then(endpointOfSocketInfo);
         this.state_ = Connection.State.CONNECTED;
-        this.connectionId = this.connectionId + '.A.' +
+        this.connectionId = this.connectionId + '.A' +
             connectionKind.existingSocketId;
       } else if (connectionKind.endpoint) {
         // Create a new tcp socket to the given endpoint.
@@ -283,7 +284,7 @@ module Tcp {
 
       this.state_ = Connection.State.CLOSED;
 
-      if(info.errcode !== 'NONE') {
+      if(info.errcode !== 'SUCCESS') {
         var e = 'Socket ' + this.connectionId + ' disconnected with errcode '
           + info.errcode + ': ' + info.message;
         dbgErr(e);

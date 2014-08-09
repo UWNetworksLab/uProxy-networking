@@ -133,7 +133,7 @@ module SocksToRtc {
     }
 
     public toString = () : string => {
-      var ret ='<SocksToRtc: failed toString()>';
+      var ret :string;
       var sessionsAsStrings = [];
       var label :string;
       for (label in this.sessions_) {
@@ -201,6 +201,21 @@ module SocksToRtc {
           .then(() => { return onceChannelOpenned; })
           .then(() => { return this.doRequestHandshake_(); })
           .then(() => { return this.startSessionProxying_(); })
+    }
+
+    // Close the session.
+    public close = () : Promise<void> => {
+      if(!this.tcpConnection.isClosed()) {
+        this.tcpConnection.close();
+      }
+      // Note: closing the tcp connection should raise an event to close the
+      // data channel. But we can start closing it down now anyway (faster,
+      // more readable code).
+      if(!this.dataChannelIsClosed_) {
+        this.peerConnection_.closeDataChannel(this.channelLabel_);
+        this.dataChannelIsClosed_ = true;
+      }
+      return this.onceClosed;
     }
 
     public channelLabel = () : string => {

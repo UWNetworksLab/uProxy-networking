@@ -47,11 +47,12 @@ var socksRtc = new SocksToRtc.SocksToRtc(localhostEndpoint, socksRtcPcConfig);
 socksRtc.signalsForPeer.setSyncHandler(rtcNet.handleSignalFromPeer);
 rtcNet.signalsForPeer.setSyncHandler(socksRtc.handleSignalFromPeer);
 
-console.log("socks-rtc-net started up.");
+console.log('socks-rtc-net started up.');
 
 socksRtc.onceReady
   .then((endpoint:Net.Endpoint) => {
-    console.log("socksRtc ready. listening to SOCKS5 on: " + JSON.stringify(endpoint));
+    console.log('socksRtc ready. listening to SOCKS5 on: ' + JSON.stringify(endpoint));
+    console.log('` curl -x socks5h://localhost:9999 www.google.com `')
   })
   .catch((e) => {
     console.error('socksRtc Error: ' + e +
@@ -59,5 +60,5 @@ socksRtc.onceReady
   });
 
 rtcNet.onceReady.then(() => {
-  console.log("rtcNet ready.");
+  console.log('rtcNet ready.');
 });

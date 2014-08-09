@@ -289,8 +289,9 @@ module Socks {
       bytes[6] = parseInt(ipv4[3]);
       bytes[7] = parseInt(ipv4[4]);
     } else {
-      console.warn('composeSocksResponse: got non-ipv4, but does not yet ' +
-          'support IPv6 or DNS; returning false resolution address of 0.0.0.0');
+      console.warn('composeRequestResponse: got non-ipv4: ' +
+          JSON.stringify(destination) +
+          'returning false resolution address of 0.0.0.0');
       bytes[4] = 0;
       bytes[5] = 0;
       bytes[6] = 0;
