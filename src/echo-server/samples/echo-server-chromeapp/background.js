@@ -1,5 +1,5 @@
 var script = document.createElement('script');
-script.setAttribute('data-manifest', 'lib/echo-server/freedom.json');
+script.setAttribute('data-manifest', 'lib/echo-server/freedom-module.json');
 //script.setAttribute('data-manifest', 'test/tcp_echo_server.json');
 script.textContent = '{ "debug": false }';
 script.src = 'lib/freedom/freedom-for-chrome-for-uproxy.js';

@@ -2,6 +2,7 @@
  * This is a TCP server based on Freedom's sockets API.
  */
 
+/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../freedom/typings/tcp-socket.d.ts' />
 /// <reference path='../handler/queue.ts' />
@@ -10,6 +11,7 @@
 
 module Tcp {
   import TcpLib = freedom_TcpSocket;
+  var log :Freedom_UproxyLogging.Log = freedom['core.log']('Tcp');
 
   // Helper function.
   function endpointOfSocketInfo(info:TcpLib.SocketInfo) : Net.Endpoint {
@@ -89,38 +91,38 @@ module Tcp {
         // incoming Id and immediately close it, because we don't yet have a
         // reference to the incomming socket.
         freedom['core.tcpsocket'](socketId).close();
-        dbgErr('Too many connections: ' + connectionsCount);
+        log.error('Too many connections: ' + connectionsCount);
         return;
       }
 
       // if we don't know how to handle the connection, so close it.
       if (!this.onConnection) {
         freedom['core.tcpsocket'](socketId).close();
-        dbgErr('No connection handler is defined!');
+        log.error('No connection handler is defined!');
         return;
       }
 
       // Create new connection.
-      dbg('Tcp.Server accepted connection on socket id ' + socketId);
+      log.debug('Tcp.Server accepted connection on socket id ' + socketId);
       var conn = new Connection({existingSocketId:socketId});
       // When the connection is disconnected correctly, or by error, remove
       // from the server's list of connections.
       conn.onceClosed.then(
         () => {
           delete this.conns[socketId];
-          dbg('Tcp.Server(' + JSON.stringify(this.endpoint) +
+          log.debug('Tcp.Server(' + JSON.stringify(this.endpoint) +
               ') : connection closed (' + socketId + '). Conn Count: ' +
               Object.keys(this.conns).length + ']');
         },
         (e) => {
           delete this.conns[socketId];
-          dbgWarn('Tcp.Server(' + JSON.stringify(this.endpoint) +
+          log.warn('Tcp.Server(' + JSON.stringify(this.endpoint) +
               ') : connection closed by error (' + socketId + '): ' +
               e.toString() + ' . Conn Count: ' +
               Object.keys(this.conns).length + ']');
         })
       this.conns[socketId] = conn;
-      dbg(this.toString());
+      log.debug(this.toString());
       this.onConnection(conn);
     }
 
@@ -146,14 +148,14 @@ module Tcp {
 
       // Wait for all promises to complete.
       return Promise.all(allPromises).then(() => {
-        dbg('successfully closed all Tcp Connections.');
+        log.debug('successfully closed all Tcp Connections.');
       });
     }
 
     public stopListening = () : Promise<void> => {
       // Close the server socket.
       return this.serverSocket_.close().then(() => {
-        dbg('successfully stopped listening for more connections.');
+        log.debug('successfully stopped listening for more connections.');
       });
     }
 
@@ -198,7 +200,7 @@ module Tcp {
           new Handler.Queue<ArrayBuffer,TcpLib.WriteInfo>();
 
       if(Object.keys(connectionKind).length !== 1) {
-        dbgErr('Badly formed New Tcp Connection Kind:' +
+        log.error('Badly formed New Tcp Connection Kind:' +
                JSON.stringify(connectionKind));
         this.state_ = Connection.State.ERROR;
         this.onceConnected =
@@ -273,10 +275,10 @@ module Tcp {
     // fullfilled.  If there's an error, onceDisconnected is rejected with the
     // error.
     private onDisconnectHandler_ = (info:TcpLib.DisconnectInfo) : void => {
-      dbg('onDisconnectHandler_ (conn-id: ' + this.connectionId + ')');
+      log.debug('onDisconnectHandler_ (conn-id: ' + this.connectionId + ')');
 
       if(this.state_ === Connection.State.CLOSED) {
-        dbgWarn('Got onDisconnect in state closed (connId=' +
+        log.warn('Got onDisconnect in state closed (connId=' +
             this.connectionId + '): errcode=' + info.errcode +
             '; msg=' + info.message);
         return;
@@ -287,12 +289,12 @@ module Tcp {
       if(info.errcode !== 'SUCCESS') {
         var e = 'Socket ' + this.connectionId + ' disconnected with errcode '
           + info.errcode + ': ' + info.message;
-        dbgErr(e);
+        log.error(e);
         this.rejectClosed_(new Error(e));
         return;
       }
 
-      dbg('Socket closed correctly (conn-id: ' + this.connectionId + ')');
+      log.debug('Socket closed correctly (conn-id: ' + this.connectionId + ')');
       this.fulfillClosed_();
     }
 
@@ -300,7 +302,7 @@ module Tcp {
     // disconnect Promise `onceDisconnected`.
     public close = () : Promise<void> => {
       if (this.state_ === Connection.State.CLOSED) {
-        dbgWarn('Conn  ' + this.connectionId + ' was attempted to be closed ' +
+        log.warn('Conn  ' + this.connectionId + ' was attempted to be closed ' +
           'after it was already closed.');
         return;
       }
@@ -347,10 +349,5 @@ module Tcp {
       CLOSED // Cannot change state.
     }
   } // module Connection
-
-  var modulePrefix_ = '[Tcp] ';
-  function dbg(msg:string) { console.log(modulePrefix_ + msg); }
-  function dbgWarn(msg:string) { console.warn(modulePrefix_ + msg); }
-  function dbgErr(msg:string) { console.error(modulePrefix_ + msg); }
 
 }  // module TCP

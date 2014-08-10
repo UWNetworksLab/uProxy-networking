@@ -1,6 +1,7 @@
 // SocksToRtc.Peer passes socks requests over WebRTC datachannels.
 
 /// <reference path='../socks/socks-headers.ts' />
+/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
 /// <reference path='../freedom/coreproviders/uproxypeerconnection.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../handler/queue.ts' />
@@ -13,13 +14,14 @@
 console.log('WEBWORKER - SocksToRtc: ' + self.location.href);
 
 module SocksToRtc {
+  import WebrtcLib = freedom_UproxyPeerConnection;
+
+  var log :Freedom_UproxyLogging.Log = freedom['core.log']('SocksToRtc');
 
   var tagNumber_ = 0;
   function obtainTag() {
     return 'c' + (tagNumber_++);
   }
-
-  import PcLib = freedom_UproxyPeerConnection;
 
   // The |SocksToRtc| class runs a SOCKS5 proxy server which passes requests
   // remotely through WebRTC peer connections.
@@ -34,7 +36,7 @@ module SocksToRtc {
     private tcpServer_       :Tcp.Server = null;
     // The connection to the peer that is acting as the endpoint for the proxy
     // connection.
-    private peerConnection_  :PcLib.Pc = null;
+    private peerConnection_  :WebrtcLib.Pc = null;
     // From WebRTC data-channel labels to their TCP connections. Most of the
     // wiring to manage this relationship happens via promises of the
     // TcpConnection. We need this only for data being received from a peer-
@@ -86,7 +88,7 @@ module SocksToRtc {
       this.peerConnection_ = freedom['core.uproxypeerconnection'](pcConfig);
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('peerOpenedChannel', (channelLabel:string) => {
-        dbgErr('unexpected peerOpenedChannel event: ' +
+        log.error('unexpected peerOpenedChannel event: ' +
             JSON.stringify(channelLabel));
       });
       this.peerConnection_.on('signalForPeer',
@@ -117,14 +119,16 @@ module SocksToRtc {
 
     // Data from the remote peer over WebRtc gets sent to the
     // socket that corresponds to the channel label.
-    private onDataFromPeer_ = (rtcData:PcLib.LabelledDataChannelMessage)
+    private onDataFromPeer_ = (rtcData:WebrtcLib.LabelledDataChannelMessage)
         : void => {
+      log.debug('onDataFromPeer_: ' + JSON.stringify(rtcData));
+
       if(!(rtcData.channelLabel in this.sessions_)) {
-        dbgErr('onDataFromPeer_: no such channel: ' + rtcData.channelLabel);
+        log.error('onDataFromPeer_: no such channel: ' + rtcData.channelLabel);
         return;
       }
       if(!rtcData.message.buffer) {
-        dbgErr('onDataFromPeer_: is not a buffer: ' + JSON.stringify(rtcData));
+        log.error('onDataFromPeer_: is not a buffer: ' + JSON.stringify(rtcData));
         return;
       }
 
@@ -163,7 +167,7 @@ module SocksToRtc {
     private dataChannelIsClosed_ = false;
 
     constructor(public tcpConnection:Tcp.Connection,
-                private peerConnection_:PcLib.Pc) {
+                private peerConnection_:WebrtcLib.Pc) {
       this.channelLabel_ = obtainTag();
       this.dataChannelIsClosed_ = false;
       var onceChannelOpenned :Promise<void>;
@@ -271,10 +275,5 @@ module SocksToRtc {
       });
     }
   }  // Session
-
-  var modulePrefix_ = '[SocksToRtc] ';
-  function dbg(msg:string) { console.log(modulePrefix_ + msg); }
-  function dbgWarn(msg:string) { console.warn(modulePrefix_ + msg); }
-  function dbgErr(msg:string) { console.error(modulePrefix_ + msg); }
 
 }  // module SocksToRtc

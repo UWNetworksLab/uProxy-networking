@@ -1,4 +1,7 @@
 /// <reference path='../freedom/typings/freedom.d.ts' />
+/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
+
+var log :Freedom_UproxyLogging.Log = freedom['core.log']('echo-server');
 
 var tcpServer :TcpEchoServer;
 
@@ -12,4 +15,4 @@ freedom.on('stop', () => {
   if(tcpServer) { tcpServer.server.closeAll(); tcpServer = null; }
 });
 
-console.log('TcpEchoServer installed');
+log.info('TcpEchoServer installed');

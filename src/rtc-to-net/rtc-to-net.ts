@@ -3,6 +3,7 @@
 */
 
 /// <reference path='../socks/socks-headers.ts' />
+/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
 /// <reference path='../freedom/coreproviders/uproxypeerconnection.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../handler/queue.ts' />
@@ -15,14 +16,15 @@
 console.log('WEBWORKER - RtcToNet: ' + self.location.href);
 
 module RtcToNet {
+  import WebrtcLib = freedom_UproxyPeerConnection;
 
-  import PcLib = freedom_UproxyPeerConnection;
+  var log :Freedom_UproxyLogging.Log = freedom['core.log']('RtcToNet');
 
   // The |RtcToNet| class holds a peer-connection and all its associated
   // proxied connections.
   export class RtcToNet {
     // Message handler queues to/from the peer.
-    public signalsForPeer   :Handler.Queue<WebRtc.SignallingMessage, void> =
+    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void> =
         new Handler.Queue<WebRtc.SignallingMessage,void>();
 
     // This promise is fulfilled once the peer connection is stablished and
@@ -32,7 +34,7 @@ module RtcToNet {
     public onceClosed :Promise<void>;
 
     // The connection to the peer that is acting as a proxy client.
-    private peerConnection_  :PcLib.Pc = null;
+    private peerConnection_  :WebrtcLib.Pc = null;
     // The |sessions_| map goes from WebRTC data-channel labels to the Session.
     // Most of the wiring to manage this relationship happens via promises. We
     // need this only for data being received from a peer-connection data
@@ -95,10 +97,11 @@ module RtcToNet {
 
     // Data from the remote peer over WebRtc gets sent to the socket that
     // corresponds to the channel label, or used to make a new TCP connection.
-    private onDataFromPeer_ = (rtcData:PcLib.LabelledDataChannelMessage)
+    private onDataFromPeer_ = (rtcData:WebrtcLib.LabelledDataChannelMessage)
         : void => {
+      log.debug('onDataFromPeer_: ' + JSON.stringify(rtcData));
       if(!(rtcData.channelLabel in this.sessions_)) {
-        dbgErr('onDataFromPeer_: no such channel to send data to: ' +
+        log.error('onDataFromPeer_: no such channel to send data to: ' +
             rtcData.channelLabel);
         return;
       }
@@ -145,7 +148,7 @@ module RtcToNet {
     public isClosed = () : boolean => { return this.isClosed_; }
 
     constructor(
-        private peerConnection_:PcLib.Pc,
+        private peerConnection_:WebrtcLib.Pc,
         // The channel Label is a unique id for this data channel and session.
         private channelLabel_:string) {
       this.isClosed_ = false;
@@ -179,7 +182,7 @@ module RtcToNet {
         // ready.
         this.tcpConnection.send(webrtcData.buffer);
       } else {
-        dbgErr('handleWebRtcDataFromPeer: Bad rtcData: ' +
+        log.error('handleWebRtcDataFromPeer: Bad rtcData: ' +
             JSON.stringify(webrtcData));
       }
     }
@@ -194,10 +197,10 @@ module RtcToNet {
           this.startTcpConnection_(request.destination.endpoint)
             .then((connectedToEndpoint:Net.Endpoint) => {
               // TODO: send back to peer.
-              dbg('Connected to ' + JSON.stringify(connectedToEndpoint));
+              log.info('Connected to ' + JSON.stringify(connectedToEndpoint));
             });
         } else {
-          dbgErr('Unsupported control message: ' +
+          log.error('Unsupported control message: ' +
               controlMessage + '; in state: ' +
               this.toString());
           return;
@@ -234,11 +237,5 @@ module RtcToNet {
       });
     }
   }  // Session
-
-
-  var modulePrefix_ = '[RtcToNet] ';
-  function dbg(msg:string) { console.log(modulePrefix_ + msg); }
-  function dbgWarn(msg:string) { console.warn(modulePrefix_ + msg); }
-  function dbgErr(msg:string) { console.error(modulePrefix_ + msg); }
 
 }  // module RtcToNet

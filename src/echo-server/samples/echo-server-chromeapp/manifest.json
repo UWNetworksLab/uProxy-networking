@@ -5,7 +5,14 @@
   "version": "0.0.3",
   "app": {
     "background": {
-      "scripts": ["background.js"]
+      "scripts": [
+        "lib/logging/logging.js",
+        "lib/handler/queue.js",
+        "lib/webrtc/third_party/adapter.js",
+        "lib/webrtc/datachannel.js",
+        "lib/webrtc/peerconnection.js",
+        "background.js"
+      ]
     }
   },
   "permissions": [
