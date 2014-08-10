@@ -11,8 +11,8 @@ if (typeof window === "undefined") {
   var window = {};
 }
 /// <reference path='../socks-to-rtc/socks.ts' />
-/// <reference path='../freedom-declarations/freedom.d.ts' />
-/// <reference path='../freedom-declarations/transport.d.ts' />
+/// <reference path='../freedom/typings/freedom.d.ts' />
+/// <reference path='../freedom/typings/transport.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
 /// <reference path='../echo-server/freedom-module.d.ts' />

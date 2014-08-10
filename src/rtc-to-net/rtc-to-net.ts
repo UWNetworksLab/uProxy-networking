@@ -3,12 +3,12 @@
 */
 
 /// <reference path='../socks/socks-headers.ts' />
-/// <reference path='../coreproviders/providers/uproxypeerconnection.d.ts' />
-/// <reference path='../freedom-declarations/freedom.d.ts' />
+/// <reference path='../freedom/coreproviders/uproxypeerconnection.d.ts' />
+/// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../handler/queue.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
-/// <reference path='../peerconnection/datachannel.d.ts' />
-/// <reference path='../peerconnection/peerconnection.d.ts' />
+/// <reference path='../webrtc/datachannel.d.ts' />
+/// <reference path='../webrtc/peerconnection.d.ts' />
 /// <reference path='../tcp/tcp.ts' />
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 
@@ -22,8 +22,8 @@ module RtcToNet {
   // proxied connections.
   export class RtcToNet {
     // Message handler queues to/from the peer.
-    public signalsForPeer   :Handler.Queue<string, void> =
-        new Handler.Queue<string,void>();
+    public signalsForPeer   :Handler.Queue<WebRtc.SignallingMessage, void> =
+        new Handler.Queue<WebRtc.SignallingMessage,void>();
 
     // This promise is fulfilled once the peer connection is stablished and
     // this module is ready to start making tcp connections.
