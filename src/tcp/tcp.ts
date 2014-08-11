@@ -306,6 +306,7 @@ module Tcp {
           'after it was already closed.');
         return;
       }
+      this.dataToSocketQueue.stopHandling();
       return this.connectionSocket_.close().then(this.fulfillClosed_,
                                                  this.fulfillClosed_)
     }

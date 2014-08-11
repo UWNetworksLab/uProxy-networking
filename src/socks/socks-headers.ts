@@ -267,9 +267,8 @@ module Socks {
   // TODO: support failure (https://github.com/uProxy/uproxy/issues/321)
   //
   // Given a destination reached, compose a response.
-  export function composeRequestResponse(destination: Destination)
+  export function composeRequestResponse(endpoint:Net.Endpoint)
       : ArrayBuffer {
-    var endpoint:Net.Endpoint = destination.endpoint;
     var buffer:ArrayBuffer = new ArrayBuffer(10);
     var bytes:Uint8Array = new Uint8Array(buffer);
     bytes[0] = Socks.VERSION5;
@@ -290,7 +289,7 @@ module Socks {
       bytes[7] = parseInt(ipv4[4]);
     } else {
       console.warn('composeRequestResponse: got non-ipv4: ' +
-          JSON.stringify(destination) +
+          JSON.stringify(endpoint) +
           'returning false resolution address of 0.0.0.0');
       bytes[4] = 0;
       bytes[5] = 0;

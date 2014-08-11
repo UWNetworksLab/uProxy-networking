@@ -52,5 +52,5 @@ declare module Socks {
     function interpretUdpMessage(byteArray :Uint8Array) : UdpMessage;
     function interpretDestination(byteArray :Uint8Array) : Destination;
     function interpretIpv6Address(uint16View :Uint16Array) : string;
-    function composeRequestResponse(destination :Destination) : ArrayBuffer;
+    function composeRequestResponse(endpoint :Net.Endpoint) : ArrayBuffer;
 }

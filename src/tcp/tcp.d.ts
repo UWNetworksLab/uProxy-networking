@@ -45,7 +45,9 @@ declare module Tcp {
     public receive() : Promise<ArrayBuffer>;
     // Handler function for dataToSocketQueue is set when onceConnected is
     // fulfilled, once that happens, any data on this queue is sent on the
-    // underlying tcp-socket.
+    // underlying tcp-socket. TODO: test and check that TCP can handle
+    // arrayviews: they can are better for sending data: saves array copies for
+    // writing.
     public dataToSocketQueue :Handler.Queue<ArrayBuffer,
                                             freedom.TcpSocket.WriteInfo>;
     // Whenever data is receieved form the socket, this queue's handle function

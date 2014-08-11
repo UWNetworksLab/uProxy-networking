@@ -165,6 +165,7 @@ module RtcToNet {
           .onceDataChannelClosed(this.channelLabel_);
       this.onceClosed.then(() => {
         this.isClosed_ = true;
+        log.debug('onceClosed for: ' + this.channelLabel_);
       });
     }
 
@@ -178,9 +179,11 @@ module RtcToNet {
       if(webrtcData.str) {
         this.handleWebRtcControlMessage_(webrtcData.str);
       } else if (webrtcData.buffer && this.tcpConnection) {
+        log.debug('passing on data from pc connection to tcp (' +
+            webrtcData.buffer.byteLength + ' bytes)');
         // Note: tcpConnection is smart: it buffers and only sends when it is
         // ready.
-        this.tcpConnection.send(webrtcData.buffer);
+        this.tcpConnection.dataToSocketQueue.handle(webrtcData.buffer);
       } else {
         log.error('handleWebRtcDataFromPeer: Bad rtcData: ' +
             JSON.stringify(webrtcData));
@@ -192,25 +195,39 @@ module RtcToNet {
       try {
         request = JSON.parse(controlMessage);
       } catch (e) {
-        if(request.command === Socks.Command.TCP_CONNECT
-           && !this.tcpConnection) {
-          this.startTcpConnection_(request.destination.endpoint)
-            .then((connectedToEndpoint:Net.Endpoint) => {
-              // TODO: send back to peer.
-              log.info('Connected to ' + JSON.stringify(connectedToEndpoint));
-            });
-        } else {
-          log.error('Unsupported control message: ' +
-              controlMessage + '; in state: ' +
-              this.toString());
-          return;
-        }
+        log.error('Unsupported control message: ' +
+            controlMessage + '; in state: ' +
+            this.toString());
+        return;
+      }
+
+      if(request.command === Socks.Command.TCP_CONNECT
+         && !this.tcpConnection) {
+        this.startTcpConnection_(request.destination.endpoint)
+          .then((connectedToEndpoint:Net.Endpoint) => {
+            // TODO: send back to peer.
+            this.peerConnection_.send(
+              this.channelLabel_, {str: JSON.stringify(connectedToEndpoint)});
+            log.info('Connected to ' + JSON.stringify(connectedToEndpoint));
+          });
+      } else {
+        log.error('Unsupported control message: ' +
+            controlMessage + '; in state: ' +
+            this.toString());
+        return;
       }
     }
 
     private startTcpConnection_ = (endpoint:Net.Endpoint)
         : Promise<Net.Endpoint> => {
       this.tcpConnection = new Tcp.Connection({endpoint: endpoint});
+      // All data from the tcp-connection should go to the peer connection.
+      this.tcpConnection.dataFromSocketQueue.setSyncHandler((buffer) => {
+        log.debug('passing on data from tcp connection to pc (' +
+            buffer.byteLength + ' bytes)');
+        this.peerConnection_.send(
+          this.channelLabel_, {buffer: new Uint8Array(buffer)});
+      });
       // Make sure that closing the TCP connection closes the peer connection
       // and visa-versa. CONSIDER: should we send a message on the data channel
       // to say it should be closed? (For Chrome < 37, where close messages
@@ -218,6 +235,7 @@ module RtcToNet {
       this.tcpConnection.onceClosed.then(() => {
         if(!this.isClosed_) {
           this.peerConnection_.closeDataChannel(this.channelLabel_);
+          this.isClosed_ = true;
         }
       });
       this.onceClosed.then(() => {
