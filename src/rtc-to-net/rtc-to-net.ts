@@ -248,10 +248,14 @@ module RtcToNet {
 
     // For logging/debugging.
     public toString = () : string => {
+      var tcpString = 'undefined';
+      if (this.tcpConnection) {
+        tcpString = this.tcpConnection.toString();
+      }
       return JSON.stringify({
         channelLabel_: this.channelLabel_,
         isClosed_: this.isClosed_,
-        tcpConnection: this.tcpConnection.toString()
+        tcpConnection: tcpString
       });
     }
   }  // Session
