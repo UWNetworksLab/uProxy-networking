@@ -56,18 +56,6 @@ declare module Net {
 // Interfaces and enums for P2P DataChannels used for socks-rtc proxying.
 declare module Channel {
 
-  // Commands send over a special command data channel.
-  export enum Commands {
-    // TODO REQUEST/RESPONCE no longer should go on the command channel.
-    NET_CONNECT_REQUEST = 1,   // implies `data :NetConnectRequest`
-    NET_CONNECT_RESPONSE = 2,  // implies `data :NetConnectResponse`
-    NET_DISCONNECTED = 3,      // implies there is no data
-    SOCKS_DISCONNECTED = 4,    // implies there is no data
-    HELLO = 5,
-    PING = 6,
-    PONG = 7
-  }
-
   // "Top-level" message for the control channel.
   export interface Command {
     // Name of message, e.g. NetConnectRequest.

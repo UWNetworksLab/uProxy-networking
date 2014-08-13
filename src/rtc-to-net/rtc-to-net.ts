@@ -60,6 +60,10 @@ module RtcToNet {
       this.peerConnection_ = freedom['core.uproxypeerconnection'](pcConfig);
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('peerOpenedChannel', (channelLabel:string) => {
+        if(channelLabel === '_control_') {
+          log.debug('control channel openned.');
+          return;
+        }
         this.sessions_[channelLabel] =
             new Session(this.peerConnection_, channelLabel);
       });
@@ -99,6 +103,11 @@ module RtcToNet {
     // corresponds to the channel label, or used to make a new TCP connection.
     private onDataFromPeer_ = (rtcData:WebrtcLib.LabelledDataChannelMessage)
         : void => {
+      if(rtcData.channelLabel === '_control_') {
+        this.handleControlMessage_(rtcData.message.str);
+        return;
+      }
+
       log.debug('onDataFromPeer_: ' + JSON.stringify(rtcData));
       if(!(rtcData.channelLabel in this.sessions_)) {
         log.error('onDataFromPeer_: no such channel to send data to: ' +
@@ -107,6 +116,10 @@ module RtcToNet {
       }
       this.sessions_[rtcData.channelLabel].handleWebRtcDataFromPeer(
           rtcData.message);
+    }
+
+    private handleControlMessage_ = (controlMessage:string) : void => {
+      log.debug('handleControlMessage: ' + controlMessage);
     }
 
     public toString = () : string => {
