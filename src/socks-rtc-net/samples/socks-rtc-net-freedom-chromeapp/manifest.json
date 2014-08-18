@@ -16,8 +16,9 @@
     }
   },
   "permissions": [
-    { "sockets": { "tcp": { "connect" : "" },
-                   "tcpServer": { "listen": "" },
-                   "udp": { "send" : "", "bind" : "" } } }
-  ]
+  ],
+  "sockets": {
+    "tcp": { "connect" : "" },
+    "tcpServer": { "listen": "" },
+  }
 }
