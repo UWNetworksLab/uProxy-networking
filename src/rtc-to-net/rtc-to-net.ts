@@ -167,7 +167,7 @@ module RtcToNet {
       this.isClosed_ = false;
       // Open a data channel to the peer. The session is ready when the channel
       // is open.
-      this.onceReady = this.peerConnection_.openDataChannel(
+      this.onceReady = this.peerConnection_.onceDataChannelOpened(
           this.channelLabel_);
       // Note: A TCP connection may or may not exist. If a TCP connection does,
       // exist, then onceDataChannelClosed will then close it (bound by
@@ -239,7 +239,7 @@ module RtcToNet {
         log.debug('passing on data from tcp connection to pc (' +
             buffer.byteLength + ' bytes)');
         this.peerConnection_.send(
-          this.channelLabel_, {buffer: new Uint8Array(buffer)});
+          this.channelLabel_, {buffer: buffer});
       });
       // Make sure that closing the TCP connection closes the peer connection
       // and visa-versa. CONSIDER: should we send a message on the data channel

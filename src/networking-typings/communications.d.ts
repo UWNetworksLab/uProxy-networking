@@ -52,24 +52,3 @@ declare module Net {
   }
 
 }
-
-// Interfaces and enums for P2P DataChannels used for socks-rtc proxying.
-declare module Channel {
-
-  // "Top-level" message for the control channel.
-  export interface Command {
-    // Name of message, e.g. NetConnectRequest.
-    type   :Commands;
-    // Datachannel with which this message is associated.
-    tag    ?:string;
-    // JSON-encoded message, e.g. NetConnectRequest, depends on `type`.
-    data   ?:string;
-  }
-
-  // Used to batch messages sent over the signalling channel.
-  // TODO: rename to MessageBatch
-  export interface BatchedMessages {
-    version :number;
-    messages :string[];
-  }
-}  // module Channel

@@ -128,6 +128,7 @@ module SocksToRtc {
       log.debug('onDataFromPeer_: ' + JSON.stringify(rtcData));
 
       if(rtcData.channelLabel === '_control_') {
+        log.debug('onDataFromPeer_: to _control_: ' + rtcData.message.str);
         return;
       }
 
@@ -135,8 +136,8 @@ module SocksToRtc {
         log.error('onDataFromPeer_: no such channel: ' + rtcData.channelLabel);
         return;
       }
-      this.sessions_[rtcData.channelLabel]
-        .handleDataFromPeer(rtcData.message);
+
+      this.sessions_[rtcData.channelLabel].handleDataFromPeer(rtcData.message);
     }
 
     public toString = () : string => {
@@ -312,8 +313,8 @@ module SocksToRtc {
       // Any further data just goes to the target site.
       this.tcpConnection.dataFromSocketQueue.setSyncHandler(
           (data:ArrayBuffer) => {
-        this.peerConnection_.send(this.channelLabel_,
-            { buffer: new Uint8Array(data) });
+        log.debug('dataFromSocketQueue: ' + data.byteLength + ' bytes.');
+        this.peerConnection_.send(this.channelLabel_, { buffer: data });
       });
       // Any data from the peer goes to the TCP connection
       this.dataFromPeer_.setSyncHandler((data:WebRtc.Data) => {
@@ -322,6 +323,7 @@ module SocksToRtc {
               ') passDataToTcp: got non-buffer data: ' + JSON.stringify(data));
           return;
         }
+        log.debug('dataFromPeer_: ' + data.buffer.byteLength + ' bytes.');
         this.tcpConnection.send(data.buffer);
       });
     }

@@ -16,7 +16,8 @@
     }
   },
   "permissions": [
-    { "socket": ["tcp-connect", "tcp-listen", "udp-bind", "udp-send-to"] },
-    "https://*.appspot.com/"
+    { "sockets": { "tcp": { "connect" : "" },
+                   "tcpServer": { "listen": "" },
+                   "udp": { "send" : "", "bind" : "" } } }
   ]
 }
