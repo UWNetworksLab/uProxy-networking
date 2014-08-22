@@ -1,29 +1,33 @@
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../freedom/typings/tcp-socket.d.ts' />
-/// <reference path='../handler/queue.ts' />
+/// <reference path='../handler/queue.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
-/// <reference path="../third_party/typings/es6-promises/es6-promises.d.ts" />
+/// <reference path="../third_party/typings/es6-promise/es6-promise.d.ts" />
+
 
 declare module Tcp {
   class Server {
-    constructor(public  endpoint        :Net.Endpoint,
-                private onConnection    :(c:Connection) => void,
-                public  maxConnections  ?:number);
+    constructor(endpoint        :Net.Endpoint,
+                onConnection    :(c:Connection) => void,
+                maxConnections  ?:number);
 
-    public connections() : Connection[];
-    public connectionsCount() : number;  // equivalent to connections().length
-    public closeAll: () => Promise<void>;  // calls close on all connections.
+    public  endpoint        :Net.Endpoint;
+
+    public connections :() => Connection[];
+    public connectionsCount :() => number;  // equivalent to connections().length
+    public closeAll :() => Promise<void>;  // calls close on all connections.
 
     // start accepting new connections; returns the actual endpoint it ends up
     // listening on (e.g. when port 0 is specifed, a dynamic port number is
     // chosen).
-    public listen: () => Promise<Net.Endpoint>;
-    public stopListening () => Promise<void>  // stop accepting new connections.
+    public listen :() => Promise<Net.Endpoint>;
+    // stop accepting new connections.
+    public stopListening :() => Promise<void>;
 
-    public shutdown () => Promise<void> // stop listening and then close-all
+    public shutdown :() => Promise<void>; // stop listening and then close-all
 
     // Mostly useful for debugging
-    public toString: () => string;
+    public toString :() => string;
   }
 
   /**
@@ -37,27 +41,27 @@ declare module Tcp {
     public onceConnected :Promise<Net.Endpoint>;
     public onceClosed :Promise<void>;
     // `close` will cause onceClosed to be fulfilled.
-    public close() : Promise<void>;
+    public close :() => Promise<void>;
 
     // Send writes data to the tcp socket = dataToSocketQueue.handle
-    public send(msg: ArrayBuffer) : Promise<freedom.TcpSocket.WriteInfo>;
+    public send :(msg: ArrayBuffer) => Promise<freedom_TcpSocket.WriteInfo>;
     // `receive` sets the handler for dataFromSocketQueue.
-    public receive() : Promise<ArrayBuffer>;
+    public receive :() => Promise<ArrayBuffer>;
     // Handler function for dataToSocketQueue is set when onceConnected is
     // fulfilled, once that happens, any data on this queue is sent on the
     // underlying tcp-socket. TODO: test and check that TCP can handle
     // arrayviews: they can are better for sending data: saves array copies for
     // writing.
     public dataToSocketQueue :Handler.Queue<ArrayBuffer,
-                                            freedom.TcpSocket.WriteInfo>;
+                                            freedom_TcpSocket.WriteInfo>;
     // Whenever data is receieved form the socket, this queue's handle function
     // is called, which will queue it if no handler has been set.
     public dataFromSocketQueue :Handler.Queue<ArrayBuffer, void>;
 
     public connectionId: string;
-    public getState() : Connection.State;
-    public isClosed() : boolean;
-    public toString() : string;
+    public getState :() => Connection.State;
+    public isClosed :() => boolean;
+    public toString :() => string;
   }
 
   module Connection {

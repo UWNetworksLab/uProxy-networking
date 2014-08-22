@@ -2,15 +2,15 @@
   Server which handles socks connections over WebRTC datachannels.
 */
 
-/// <reference path='../socks/socks-headers.ts' />
+/// <reference path='../socks/socks-headers.d.ts' />
 /// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
 /// <reference path='../freedom/coreproviders/uproxypeerconnection.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
-/// <reference path='../handler/queue.ts' />
+/// <reference path='../handler/queue.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
 /// <reference path='../webrtc/datachannel.d.ts' />
 /// <reference path='../webrtc/peerconnection.d.ts' />
-/// <reference path='../tcp/tcp.ts' />
+/// <reference path='../tcp/tcp.d.ts' />
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 
 console.log('WEBWORKER - RtcToNet: ' + self.location.href);

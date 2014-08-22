@@ -9,16 +9,16 @@
         "lib/logging/logging.js",
         "lib/handler/queue.js",
         "lib/webrtc/third_party/adapter.js",
+        "lib/arraybuffers/arraybuffers.js",
         "lib/webrtc/datachannel.js",
         "lib/webrtc/peerconnection.js",
         "background.js"
       ]
     }
   },
-  "permissions": [
-  ],
+  "permissions": [],
   "sockets": {
     "tcp": { "connect" : "" },
-    "tcpServer": { "listen": "" },
+    "tcpServer": { "listen": "" }
   }
 }
