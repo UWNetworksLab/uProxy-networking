@@ -30,6 +30,14 @@ declare module Tcp {
     public toString :() => string;
   }
 
+  // Code for how a Tcp Connection is closed.
+  enum SocketCloseKind {
+    WE_CLOSED_IT,
+    REMOTELY_CLOSED,
+    NEVER_CONNECTED,
+    UNKOWN
+  }
+
   /**
   * Tcp.Connection - Wraps up a single TCP connection to a client
   *
@@ -39,9 +47,9 @@ declare module Tcp {
     constructor(connectionKind :Connection.Kind);
 
     public onceConnected :Promise<Net.Endpoint>;
-    public onceClosed :Promise<void>;
+    public onceClosed :Promise<SocketCloseKind>;
     // `close` will cause onceClosed to be fulfilled.
-    public close :() => Promise<void>;
+    public close :() => Promise<SocketCloseKind>;
 
     // Send writes data to the tcp socket = dataToSocketQueue.handle
     public send :(msg: ArrayBuffer) => Promise<freedom_TcpSocket.WriteInfo>;

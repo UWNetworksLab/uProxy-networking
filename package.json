@@ -1,11 +1,19 @@
 {
   "name": "upoxy-networking",
-  "description": "uProxy's networking library supports SOCKS5 over WebRTC",
+  "description": "uProxy's networking library: SOCKS5 over WebRTC",
   "version": "1.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/uProxy/uproxy-networking"
   },
+  "bugs": {
+    "url": "https://github.com/uProxy/uproxy-networking/issues",
+    "email": "uproxy-eng@googlegroups.com"
+  },
+  "licenses": [ {
+    "type": "Apache-2.0",
+    "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+  } ],
   "devDependencies": {
     "cca": "~0.1.1",
     "es6-promise": "~0.1.1",
@@ -21,10 +29,11 @@
     "grunt-jasmine-node": "~0.2.1",
     "grunt-typescript": "~0.3.0",
     "tsd": "~0.5.7",
-    "uproxy-lib": "^9.0.0",
+    "uproxy-lib": "^10.0.0",
     "webdriverjs": "^1.6.1"
   },
   "scripts": {
-    "test": "grunt test"
+    "test": "grunt test",
+    "prepublish": "grunt test"
   }
 }

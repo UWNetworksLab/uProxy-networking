@@ -30,6 +30,8 @@ class TcpEchoServer {
 
   private onConnection_ = (conn:Tcp.Connection) : void => {
     log.info('New TCP Connection: ' + conn.toString());
+    // The onceConnected is fulfilled by onConnection (in practice, but not
+    // specified by the freedom TCP interface)
     conn.onceConnected.then((endpoint) => {
       log.info(' Connection resolved to: ' + JSON.stringify(endpoint));
     });
@@ -45,8 +47,11 @@ class TcpEchoServer {
 
   private onData_ = (conn:Tcp.Connection, data :ArrayBuffer) : void => {
     log.info('Received: ' + data.byteLength + " bytes.");
+
     var hexStrOfData = ArrayBuffers.arrayBufferToHexString(data);
     log.info('Received data as hex-string: ' + hexStrOfData);
+
+    // This shows how you handle some data and close the connection.
     if(hexStrOfData === TcpEchoServer.CTRL_D_HEX_STR_CODE) {
       conn.close();
       return;

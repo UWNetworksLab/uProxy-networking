@@ -30,7 +30,9 @@ module RtcToNet {
     // This promise is fulfilled once the peer connection is stablished and
     // this module is ready to start making tcp connections.
     public onceReady :Promise<void>;
-    // Fulfilled when the peer connection is closed.
+    // Fulfilled when the peer connection is closed. Once closed fulfills
+    // implies that every tcp-connection is closed, or closing. This is handled
+    // by the session (by handling each data channels close event).
     public onceClosed :Promise<void>;
 
     // The connection to the peer that is acting as a proxy client.
@@ -64,11 +66,14 @@ module RtcToNet {
           log.debug('control channel openned.');
           return;
         }
-        this.sessions_[channelLabel] =
-            new Session(this.peerConnection_, channelLabel);
+        var session = new Session(this.peerConnection_, channelLabel);
+        this.sessions_[channelLabel] = session;
+        session.onceClosed.then(() => {
+          delete this.sessions_[channelLabel];
+        });
+        // TODO: add close handler.
       });
-      this.peerConnection_.on('signalForPeer',
-          this.signalsForPeer.handle);
+      this.peerConnection_.on('signalForPeer', this.signalsForPeer.handle);
       this.onceReady = this.peerConnection_.onceConnected().then(() => {});
       this.onceClosed = this.peerConnection_.onceDisconnected();
       // TODO: add checking that the peer's fingerprint matches the provided
@@ -84,14 +89,8 @@ module RtcToNet {
       var channelLabel :string;
       for (channelLabel in this.sessions_) {
         this.sessions_[channelLabel].close();
-        this.removeSession_(channelLabel);
+        delete this.sessions_[channelLabel];
       }
-    }
-
-    // Remove a session if it exists. May be called more than once, e.g. by
-    // both tcpConnection closing, or by data channel closing.
-    private removeSession_ = (channelLabel:string) : void => {
-      delete this.sessions_[channelLabel];
     }
 
     public handleSignalFromPeer = (signal:WebRtc.SignallingMessage)
@@ -238,8 +237,7 @@ module RtcToNet {
       this.tcpConnection.dataFromSocketQueue.setSyncHandler((buffer) => {
         log.debug('passing on data from tcp connection to pc (' +
             buffer.byteLength + ' bytes)');
-        this.peerConnection_.send(
-          this.channelLabel_, {buffer: buffer});
+        this.peerConnection_.send(this.channelLabel_, {buffer: buffer});
       });
       // Make sure that closing the TCP connection closes the peer connection
       // and visa-versa. CONSIDER: should we send a message on the data channel
@@ -251,6 +249,7 @@ module RtcToNet {
           this.isClosed_ = true;
         }
       });
+      // Note: onceClosed is fulfilled once the data channel is closed.
       this.onceClosed.then(() => {
         if(!this.tcpConnection.isClosed()) {
           this.tcpConnection.close();

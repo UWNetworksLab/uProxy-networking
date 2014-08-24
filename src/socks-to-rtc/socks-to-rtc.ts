@@ -29,8 +29,7 @@ module SocksToRtc {
     // Holds the IP/port that the localhost socks server is listeneing to.
     public onceReady : Promise<Net.Endpoint>;
     // Message handler queues to/from the peer.
-    public signalsForPeer   :Handler.Queue<WebRtc.SignallingMessage, void> =
-        new Handler.Queue<WebRtc.SignallingMessage,void>();
+    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
 
     // Tcp server that is listening for SOCKS connections.
     private tcpServer_       :Tcp.Server = null;
@@ -54,6 +53,7 @@ module SocksToRtc {
     // this listening port is returned by the |onceReady| promise.
     constructor(endpoint:Net.Endpoint, pcConfig:WebRtc.PeerConnectionConfig) {
       this.sessions_ = {};
+      this.signalsForPeer = new Handler.Queue<WebRtc.SignallingMessage,void>();
 
       // The |onceTcpServerReady| promise holds the address and port that the
       // tcp-server is listening on.
@@ -75,7 +75,7 @@ module SocksToRtc {
 
     // Stop SOCKS server and close peer-connection (and hence all data
     // channels).
-    private stop = () => {
+    private stop = () : void => {
       this.signalsForPeer.clear();
       this.tcpServer_.shutdown();
       this.peerConnection_.close();
@@ -162,16 +162,15 @@ module SocksToRtc {
     // The channel Label is a unique id for this data channel and session.
     private channelLabel_ :string;
 
-    public onceReady :Promise<void>;
+    // The |onceReady| promise is fulfilled when the peer sends back the
+    // destination reached, and this endpoint is the fulfill value.
+    public onceReady :Promise<Net.Endpoint>;
     public onceClosed :Promise<void>;
-
-    // This is fulfilled when the peer sends back the destination reached.
-    public onceHaveDestination :Promise<Socks.Destination>;
 
     // These are used to avoid double-closure of data channels. We don't need
     // this for tcp connections because that class already holds the open/
     // closed state.
-    private dataChannelIsClosed_ = false;
+    private dataChannelIsClosed_;
 
     // We push data from the peer into this queue so that we can write the
     // receive function to get just the next bit of data from the peer. This
@@ -208,16 +207,18 @@ module SocksToRtc {
         // should be closed? (For Chrome < 37, where close messages don't
         // propegate properly).
       });
-      this.onceClosed = Promise.all(
+      this.onceClosed = Promise.all<any>(
           [this.tcpConnection.onceClosed, onceChannelClosed]).then(() => {});
 
-      // The session is ready when the channel is open AND we have sent the
-      // request to the peer: after this we can simply pass data back and
-      // forth.
+      // The session is ready after: 1. the auth handskhape, 2. after the peer-
+      // to-peer data channel is open, and 3. after we have done the request
+      // handshape with the peer (and the peer has completed the TCP connection
+      // to the remote site).
       this.onceReady = this.doAuthHandshake_()
           .then(() => { return onceChannelOpenned; })
-          .then(() => { return this.doRequestHandshake_(); })
-          .then(() => { return this.startSessionProxying_(); })
+          .then(this.doRequestHandshake_);
+      // Only after all that can we simply pass data back and forth.
+      this.onceReady.then(() => { this.linkTcpAndPeerConnectionData_(); });
     }
 
     // Close the session.
@@ -251,6 +252,20 @@ module SocksToRtc {
       });
     }
 
+    // Receive a socks connection and send the initial Auth messages.
+    // Assumes: no packet fragmentation.
+    // TODO: handle packet fragmentation:
+    //   https://github.com/uProxy/uproxy/issues/323
+    private doAuthHandshake_ = ()
+        : Promise<void> => {
+      return this.tcpConnection.receive()
+        .then(Socks.interpretAuthHandshakeBuffer)
+        .then((auths:Socks.Auth[]) => {
+          this.tcpConnection.send(
+              Socks.composeAuthResponse(Socks.Auth.NOAUTH));
+        });
+    }
+
     // Sets the next data hanlder to get next data from peer, assuming it's
     // stringified version of the destination.
     private receiveEndpointFromPeer_ = () : Promise<Net.Endpoint> => {
@@ -276,20 +291,6 @@ module SocksToRtc {
       });
     }
 
-    // Receive a socks connection and send the initial Auth messages.
-    // Assumes: no packet fragmentation.
-    // TODO: handle packet fragmentation:
-    //   https://github.com/uProxy/uproxy/issues/323
-    private doAuthHandshake_ = ()
-        : Promise<void> => {
-      return this.tcpConnection.receive()
-        .then(Socks.interpretAuthHandshakeBuffer)
-        .then((auths:Socks.Auth[]) => {
-          this.tcpConnection.send(
-              Socks.composeAuthResponse(Socks.Auth.NOAUTH));
-        });
-    }
-
     // Assumes that |doAuthHandshake_| has completed and that a peer-conneciton
     // has been established. Promise returns the destination site connected to.
     private doRequestHandshake_ = ()
@@ -308,8 +309,9 @@ module SocksToRtc {
         });
     }
 
-    // Assumes that |doRequestHandshake_| has completed.
-    private startSessionProxying_ = () : void => {
+    // Assumes that |doRequestHandshake_| has completed (and in particular,
+    // that tcpConnection is defined.)
+    private linkTcpAndPeerConnectionData_ = () : void => {
       // Any further data just goes to the target site.
       this.tcpConnection.dataFromSocketQueue.setSyncHandler(
           (data:ArrayBuffer) => {

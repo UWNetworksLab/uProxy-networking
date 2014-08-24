@@ -13,6 +13,14 @@ module Tcp {
   import TcpLib = freedom_TcpSocket;
   var log :Freedom_UproxyLogging.Log = freedom['core.log']('Tcp');
 
+  // Code for how a Tcp Connection is closed.
+  export enum SocketCloseKind {
+    WE_CLOSED_IT,
+    REMOTELY_CLOSED,
+    NEVER_CONNECTED,
+    UNKOWN
+  }
+
   // Helper function.
   function endpointOfSocketInfo(info:TcpLib.SocketInfo) : Net.Endpoint {
      return { address: info.peerAddress, port: info.peerPort }
@@ -138,7 +146,7 @@ module Tcp {
 
     // Closes all active connections.
     public closeAll = () : Promise<void> => {
-      var allPromises :Promise<void>[] = [];
+      var allPromises :Promise<SocketCloseKind>[] = [];
 
       // Close all Tcp connections.
       for (var i in this.conns) {
@@ -171,7 +179,7 @@ module Tcp {
 
     // Promise for when this connection is closed.
     public onceConnected :Promise<Net.Endpoint>;
-    public onceClosed :Promise<void>;
+    public onceClosed :Promise<SocketCloseKind>;
     // Queue of data to be handled, and the capacity to set a handler and
     // handle the data.
     public dataFromSocketQueue :Handler.Queue<ArrayBuffer,void>;
@@ -186,10 +194,8 @@ module Tcp {
     private state_ :Connection.State;
     // The underlying Freedom TCP socket.
     private connectionSocket_ :TcpLib.Socket;
-    // Private functions called to invoke fullfil/reject onceClosed.
-    private fulfillClosed_ :()=>void;
-    // reeject is used for Bad disconnections (errors)
-    private rejectClosed_ :(e:Error)=>void;
+    // A private function called to invoke fullfil onceClosed.
+    private fulfillClosed_ :(reason:SocketCloseKind)=>void;
 
     // A TCP connection for a given socket.
     constructor(connectionKind:Connection.Kind) {
@@ -207,10 +213,7 @@ module Tcp {
             Promise.reject(new Error(
                 'Badly formed New Tcp Connection Kind:' +
                 JSON.stringify(connectionKind)));
-        this.onceClosed =
-            Promise.reject(new Error(
-                'Badly formed New Tcp Connection Kind:' +
-                JSON.stringify(connectionKind)));
+        this.onceClosed = Promise.resolve(SocketCloseKind.NEVER_CONNECTED);
         return;
       }
 
@@ -254,11 +257,8 @@ module Tcp {
         this.dataToSocketQueue.setHandler(this.connectionSocket_.write);
       });
 
-      // TODO: change to only fullfiling, but give data on the way we were
-      // disconnected.
-      this.onceClosed = new Promise<void>((F, R) => {
-        this.fulfillClosed_ = F;  // To be fired on good disconnect.
-        this.rejectClosed_ = R;  // To be fired on bad disconnect.
+      this.onceClosed = new Promise<SocketCloseKind>((F, R) => {
+        this.fulfillClosed_ = F;
       });
       this.connectionSocket_.on('onDisconnect', this.onDisconnectHandler_);
     }
@@ -283,32 +283,32 @@ module Tcp {
             '; msg=' + info.message);
         return;
       }
-
       this.state_ = Connection.State.CLOSED;
 
-      if(info.errcode !== 'SUCCESS') {
+      log.debug('Socket closed correctly (conn-id: ' + this.connectionId + ')');
+      if (info.errcode === 'SUCCESS') {
+        this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
+      } else if (info.errcode === 'CONNECTION_CLOSED') {
+        this.fulfillClosed_(SocketCloseKind.REMOTELY_CLOSED);
+      } else {
         var e = 'Socket ' + this.connectionId + ' disconnected with errcode '
           + info.errcode + ': ' + info.message;
         log.error(e);
-        this.rejectClosed_(new Error(e));
-        return;
+        this.fulfillClosed_(SocketCloseKind.UNKOWN);
       }
-
-      log.debug('Socket closed correctly (conn-id: ' + this.connectionId + ')');
-      this.fulfillClosed_();
     }
 
     // This is called to close the underlying socket. This fulfills the
     // disconnect Promise `onceDisconnected`.
-    public close = () : Promise<void> => {
+    public close = () : Promise<SocketCloseKind> => {
       if (this.state_ === Connection.State.CLOSED) {
         log.warn('Conn  ' + this.connectionId + ' was attempted to be closed ' +
           'after it was already closed.');
         return;
       }
       this.dataToSocketQueue.stopHandling();
-      return this.connectionSocket_.close().then(this.fulfillClosed_,
-                                                 this.fulfillClosed_)
+      this.connectionSocket_.close();
+      return this.onceClosed;
     }
 
     // Boolean function to check if this connection is closed;
