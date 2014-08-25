@@ -66,12 +66,16 @@ module RtcToNet {
           log.debug('control channel openned.');
           return;
         }
+        // TODO: This can be removed once https://github.com/uProxy/uproxy/issues/347 is fixed.
+        if(channelLabel === '') {
+          log.debug('dummy init channel.');
+          return;
+        }
         var session = new Session(this.peerConnection_, channelLabel);
         this.sessions_[channelLabel] = session;
         session.onceClosed.then(() => {
           delete this.sessions_[channelLabel];
         });
-        // TODO: add close handler.
       });
       this.peerConnection_.on('signalForPeer', this.signalsForPeer.handle);
       this.onceReady = this.peerConnection_.onceConnected().then(() => {});
@@ -177,13 +181,27 @@ module RtcToNet {
           .onceDataChannelClosed(this.channelLabel_);
       this.onceClosed.then(() => {
         this.isClosed_ = true;
-        log.debug('onceClosed for: ' + this.channelLabel_);
+        log.debug(this.longId() + ': onceClosed.');
       });
     }
 
+    public longId = () : string => {
+      var tcp :string = '?';
+      if(this.tcpConnection) {
+        tcp = this.tcpConnection.connectionId + (this.tcpConnection.isClosed() ? '.c' : '.o');
+      }
+      return this.channelLabel_ + (this.isClosed_ ? '.c' : '.o') + '-' + tcp;
+    }
+
     public close = () : void => {
-      this.isClosed_ = true;
-      this.peerConnection_.closeDataChannel(this.channelLabel_);
+      if(!this.isClosed_) {
+        // CONSIDER: remove this once we're using a version of chrome that
+        // correctly propegates close messages (
+        // https://code.google.com/p/webrtc/issues/detail?id=2513)
+        this.peerConnection_.send(this.channelLabel_, { str: 'close' });
+        this.peerConnection_.closeDataChannel(this.channelLabel_);
+        this.isClosed_ = true;
+      }
     }
 
     public handleWebRtcDataFromPeer = (webrtcData:WebRtc.Data) : void => {
@@ -191,39 +209,55 @@ module RtcToNet {
       if(webrtcData.str) {
         this.handleWebRtcControlMessage_(webrtcData.str);
       } else if (webrtcData.buffer && this.tcpConnection) {
-        log.debug('passing on data from pc connection to tcp (' +
+        log.debug(this.longId() + ': passing on data from pc connection to tcp (' +
             webrtcData.buffer.byteLength + ' bytes)');
         // Note: tcpConnection is smart: it buffers and only sends when it is
         // ready.
         this.tcpConnection.dataToSocketQueue.handle(webrtcData.buffer);
       } else {
-        log.error('handleWebRtcDataFromPeer: Bad rtcData: ' +
+        log.error(this.longId() + ': handleWebRtcDataFromPeer: Bad rtcData: ' +
             JSON.stringify(webrtcData));
       }
     }
 
     private handleWebRtcControlMessage_ = (controlMessage:string) : void => {
+      // CONSIDER: remove this once we're using a version of chrome that
+      // correctly propegates close messages (
+      // https://code.google.com/p/webrtc/issues/detail?id=2513)
+      if (controlMessage === 'close') {
+        this.close();
+        return;
+      }
+
+      // TODO: rather than doing checks like this, we should use a handler
+      // queue and receieve exactly what we want.
+      if(this.tcpConnection) {
+        log.error(this.longId() + ': Unsupported control message: ' +
+            controlMessage + '; after tcp connection is established; state: ' +
+            this.toString());
+        return;
+      }
+
       var request :Socks.Request;
       try {
         request = JSON.parse(controlMessage);
       } catch (e) {
-        log.error('Unsupported control message: ' +
+        log.error(this.longId() + ': Unsupported control message: ' +
             controlMessage + '; in state: ' +
             this.toString());
         return;
       }
 
-      if(request.command === Socks.Command.TCP_CONNECT
-         && !this.tcpConnection) {
+      if(request.command === Socks.Command.TCP_CONNECT) {
         this.startTcpConnection_(request.destination.endpoint)
           .then((connectedToEndpoint:Net.Endpoint) => {
             // TODO: send back to peer.
             this.peerConnection_.send(
               this.channelLabel_, {str: JSON.stringify(connectedToEndpoint)});
-            log.info('Connected to ' + JSON.stringify(connectedToEndpoint));
+            log.info(this.longId() + ': Connected to ' + JSON.stringify(connectedToEndpoint));
           });
       } else {
-        log.error('Unsupported control message: ' +
+        log.error(this.longId() + ': Unsupported control message: ' +
             controlMessage + '; in state: ' +
             this.toString());
         return;
@@ -235,7 +269,7 @@ module RtcToNet {
       this.tcpConnection = new Tcp.Connection({endpoint: endpoint});
       // All data from the tcp-connection should go to the peer connection.
       this.tcpConnection.dataFromSocketQueue.setSyncHandler((buffer) => {
-        log.debug('passing on data from tcp connection to pc (' +
+        log.debug(this.longId() + ': passing on data from tcp connection to pc (' +
             buffer.byteLength + ' bytes)');
         this.peerConnection_.send(this.channelLabel_, {buffer: buffer});
       });
@@ -243,15 +277,10 @@ module RtcToNet {
       // and visa-versa. CONSIDER: should we send a message on the data channel
       // to say it should be closed? (For Chrome < 37, where close messages
       // don't propegate properly).
-      this.tcpConnection.onceClosed.then(() => {
-        if(!this.isClosed_) {
-          this.peerConnection_.closeDataChannel(this.channelLabel_);
-          this.isClosed_ = true;
-        }
-      });
+      this.tcpConnection.onceClosed.then(this.close);
       // Note: onceClosed is fulfilled once the data channel is closed.
       this.onceClosed.then(() => {
-        if(!this.tcpConnection.isClosed()) {
+        if(this.tcpConnection && !this.tcpConnection.isClosed()) {
           this.tcpConnection.close();
         }
       });

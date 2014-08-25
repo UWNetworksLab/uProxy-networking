@@ -174,7 +174,8 @@ module SocksToRtc {
 
     // We push data from the peer into this queue so that we can write the
     // receive function to get just the next bit of data from the peer. This
-    // makes protocol writing much simpler.
+    // makes protocol writing much simpler. ArrayBuffers are used for data
+    // being proxied, and strings are used for control information.
     private dataFromPeer_ :Handler.Queue<WebRtc.Data,void>;
 
     constructor(public tcpConnection:Tcp.Connection,
@@ -193,20 +194,9 @@ module SocksToRtc {
       // results in the session being closed down appropriately.
       onceChannelClosed = this.peerConnection_
           .onceDataChannelClosed(this.channelLabel_);
-      onceChannelClosed.then(() => {
-        if(!this.tcpConnection.isClosed()) {
-          this.tcpConnection.close();
-        }
-      });
-      this.tcpConnection.onceClosed.then(() => {
-        if(!this.dataChannelIsClosed_) {
-          this.peerConnection_.closeDataChannel(this.channelLabel_);
-          this.dataChannelIsClosed_ = true;
-        }
-        // CONSIDER: should we send a message on the data channel to say it
-        // should be closed? (For Chrome < 37, where close messages don't
-        // propegate properly).
-      });
+      onceChannelClosed.then(this.close);
+      this.tcpConnection.onceClosed.then(this.close);
+
       this.onceClosed = Promise.all<any>(
           [this.tcpConnection.onceClosed, onceChannelClosed]).then(() => {});
 
@@ -221,8 +211,18 @@ module SocksToRtc {
       this.onceReady.then(() => { this.linkTcpAndPeerConnectionData_(); });
     }
 
+    public longId = () : string => {
+      var tcp :string = '?';
+      if(this.tcpConnection) {
+        tcp = this.tcpConnection.connectionId + (this.tcpConnection.isClosed() ? '.c' : '.o');
+      }
+      return tcp + '-' + this.channelLabel_ +
+          (this.dataChannelIsClosed_ ? '.c' : '.o') ;
+    }
+
     // Close the session.
     public close = () : Promise<void> => {
+      log.debug(this.longId() + ': close');
       if(!this.tcpConnection.isClosed()) {
         this.tcpConnection.close();
       }
@@ -230,6 +230,10 @@ module SocksToRtc {
       // data channel. But we can start closing it down now anyway (faster,
       // more readable code).
       if(!this.dataChannelIsClosed_) {
+        // CONSIDER: remove this once we're using a version of chrome that
+        // correctly propegates close messages (
+        // https://code.google.com/p/webrtc/issues/detail?id=2513)
+        this.peerConnection_.send(this.channelLabel_, { str: 'close' });
         this.peerConnection_.closeDataChannel(this.channelLabel_);
         this.dataChannelIsClosed_ = true;
       }
@@ -237,6 +241,14 @@ module SocksToRtc {
     }
 
     public handleDataFromPeer(data:WebRtc.Data) {
+      // CONSIDER: remove this once we're using a version of chrome that
+      // correctly propegates close messages (
+      // https://code.google.com/p/webrtc/issues/detail?id=2513)
+      if (data.str && data.str === 'close') {
+        log.debug('peer sent close control message.');
+        this.close();
+        return;
+      }
       this.dataFromPeer_.handle(data);
     }
 
@@ -272,15 +284,14 @@ module SocksToRtc {
       return new Promise((F,R) => {
         this.dataFromPeer_.setSyncNextHandler((data:WebRtc.Data) => {
           if (!data.str) {
-            R(new Error('DataChannel(' + this.channelLabel_ +
-                ') passDataToTcp: got non-string data: ' +
-                JSON.stringify(data)));
+            R(new Error(this.longId() + ': receiveEndpointFromPeer_: ' +
+                'got non-string data: ' + JSON.stringify(data)));
             return;
           }
           var endpoint :Net.Endpoint;
           try { endpoint = JSON.parse(data.str); }
           catch(e) {
-            R(new Error('DataChannel(' + this.channelLabel_ +
+            R(new Error(this.longId() + ': receiveEndpointFromPeer_: ' +
                 ') passDataToTcp: got bad JSON data: ' + data.str));
             return;
           }
@@ -315,17 +326,18 @@ module SocksToRtc {
       // Any further data just goes to the target site.
       this.tcpConnection.dataFromSocketQueue.setSyncHandler(
           (data:ArrayBuffer) => {
-        log.debug('dataFromSocketQueue: ' + data.byteLength + ' bytes.');
+        log.debug(this.longId() + ': dataFromSocketQueue: ' + data.byteLength + ' bytes.');
         this.peerConnection_.send(this.channelLabel_, { buffer: data });
       });
       // Any data from the peer goes to the TCP connection
       this.dataFromPeer_.setSyncHandler((data:WebRtc.Data) => {
         if (!data.buffer) {
-          log.error('DataChannel(' + this.channelLabel_ +
-              ') passDataToTcp: got non-buffer data: ' + JSON.stringify(data));
+          log.error(this.longId() + ': dataFromPeer: ' +
+              'got non-buffer data: ' + JSON.stringify(data));
           return;
         }
-        log.debug('dataFromPeer_: ' + data.buffer.byteLength + ' bytes.');
+        log.debug(this.longId() + ': dataFromPeer: ' + data.buffer.byteLength +
+            ' bytes.');
         this.tcpConnection.send(data.buffer);
       });
     }

@@ -206,12 +206,12 @@ module Tcp {
           new Handler.Queue<ArrayBuffer,TcpLib.WriteInfo>();
 
       if(Object.keys(connectionKind).length !== 1) {
-        log.error('Badly formed New Tcp Connection Kind:' +
+        log.error(this.connectionId + ': Bad New Tcp Connection Kind:' +
                JSON.stringify(connectionKind));
         this.state_ = Connection.State.ERROR;
         this.onceConnected =
             Promise.reject(new Error(
-                'Badly formed New Tcp Connection Kind:' +
+                this.connectionId + 'Bad New Tcp Connection Kind:' +
                 JSON.stringify(connectionKind)));
         this.onceClosed = Promise.resolve(SocketCloseKind.NEVER_CONNECTED);
         return;
@@ -238,9 +238,17 @@ module Tcp {
                 .then(endpointOfSocketInfo)
         this.state_ = Connection.State.CONNECTING;
         this.onceConnected
-            .then(() => { this.state_ = Connection.State.CONNECTED; });
+            .then(() => {
+              // We need this guard because the getInfo call is async and a
+              // close may happen affter the freedom socket connects and the
+              // getInfo completes.
+              if(this.state_ !== Connection.State.CLOSED) {
+                this.state_ = Connection.State.CONNECTED;
+              }
+            });
       } else {
-        throw(new Error('Should be impossible connectionKind' +
+        throw(new Error(this.connectionId +
+            ': Should be impossible connectionKind' +
             JSON.stringify(connectionKind)));
       }
 
@@ -275,25 +283,22 @@ module Tcp {
     // fullfilled.  If there's an error, onceDisconnected is rejected with the
     // error.
     private onDisconnectHandler_ = (info:TcpLib.DisconnectInfo) : void => {
-      log.debug('onDisconnectHandler_ (conn-id: ' + this.connectionId + ')');
+      log.debug(this.connectionId + ': onDisconnectHandler_');
 
       if(this.state_ === Connection.State.CLOSED) {
-        log.warn('Got onDisconnect in state closed (connId=' +
-            this.connectionId + '): errcode=' + info.errcode +
-            '; msg=' + info.message);
+        log.warn(this.connectionId + ': Got onDisconnect in closed state' +
+            '(errcode=' + info.errcode + '; msg=' + info.message + ')');
         return;
       }
       this.state_ = Connection.State.CLOSED;
 
-      log.debug('Socket closed correctly (conn-id: ' + this.connectionId + ')');
       if (info.errcode === 'SUCCESS') {
         this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
       } else if (info.errcode === 'CONNECTION_CLOSED') {
         this.fulfillClosed_(SocketCloseKind.REMOTELY_CLOSED);
       } else {
-        var e = 'Socket ' + this.connectionId + ' disconnected with errcode '
-          + info.errcode + ': ' + info.message;
-        log.error(e);
+        log.warn(this.connectionId + 'Disconnected with errcode '
+          + info.errcode + ': ' + info.message);
         this.fulfillClosed_(SocketCloseKind.UNKOWN);
       }
     }
@@ -301,9 +306,9 @@ module Tcp {
     // This is called to close the underlying socket. This fulfills the
     // disconnect Promise `onceDisconnected`.
     public close = () : Promise<SocketCloseKind> => {
+      log.debug(this.connectionId + ': close');
       if (this.state_ === Connection.State.CLOSED) {
-        log.warn('Conn  ' + this.connectionId + ' was attempted to be closed ' +
-          'after it was already closed.');
+        log.warn(this.connectionId + ': close: called when already closed');
         return;
       }
       this.dataToSocketQueue.stopHandling();
