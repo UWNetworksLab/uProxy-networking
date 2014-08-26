@@ -29,7 +29,7 @@
     "grunt-jasmine-node": "~0.2.1",
     "grunt-typescript": "~0.3.0",
     "tsd": "~0.5.7",
-    "uproxy-lib": "^10.0.1",
+    "uproxy-lib": "^10.0.2",
     "webdriverjs": "^1.6.1"
   },
   "scripts": {
