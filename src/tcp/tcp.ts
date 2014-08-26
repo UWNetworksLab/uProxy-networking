@@ -272,7 +272,7 @@ module Tcp {
     }
 
     // Receive returns a promise for exactly the next |ArrayBuffer| of data.
-    public receive = () : Promise<ArrayBuffer> => {
+    public receiveNext = () : Promise<ArrayBuffer> => {
       return new Promise((F,R) => {
         this.dataFromSocketQueue.setSyncNextHandler(F).catch(R);
       });

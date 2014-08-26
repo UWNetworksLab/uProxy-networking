@@ -34,9 +34,9 @@ class TcpEchoServer {
     conn.onceConnected.then((endpoint) => {
       log.info(' Connection resolved to: ' + JSON.stringify(endpoint));
     });
-    // This use of |receive| is contrived, but shows you how to use it to get
+    // This use of |receiveNext| here is to shows you can how to use it to get
     // the first ArrayBuffer of data and treat handling it differently.
-    conn.receive().then((data :ArrayBuffer) => {
+    conn.receiveNext().then((data :ArrayBuffer) => {
       log.info('Received first data!');
       this.onData_(conn, data);
       // Now handle further data as we get it using |this.onData_|.

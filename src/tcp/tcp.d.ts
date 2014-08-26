@@ -48,13 +48,13 @@ declare module Tcp {
 
     public onceConnected :Promise<Net.Endpoint>;
     public onceClosed :Promise<SocketCloseKind>;
-    // `close` will cause onceClosed to be fulfilled.
+    // The |close| method will cause onceClosed to be fulfilled.
     public close :() => Promise<SocketCloseKind>;
 
     // Send writes data to the tcp socket = dataToSocketQueue.handle
     public send :(msg: ArrayBuffer) => Promise<freedom_TcpSocket.WriteInfo>;
-    // `receive` sets the handler for dataFromSocketQueue.
-    public receive :() => Promise<ArrayBuffer>;
+    // The |receiveNext| method sets the handler for dataFromSocketQueue.
+    public receiveNext :() => Promise<ArrayBuffer>;
     // Handler function for dataToSocketQueue is set when onceConnected is
     // fulfilled, once that happens, any data on this queue is sent on the
     // underlying tcp-socket. TODO: test and check that TCP can handle

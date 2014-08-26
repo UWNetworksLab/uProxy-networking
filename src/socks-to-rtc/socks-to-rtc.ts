@@ -270,7 +270,7 @@ module SocksToRtc {
     //   https://github.com/uProxy/uproxy/issues/323
     private doAuthHandshake_ = ()
         : Promise<void> => {
-      return this.tcpConnection.receive()
+      return this.tcpConnection.receiveNext()
         .then(Socks.interpretAuthHandshakeBuffer)
         .then((auths:Socks.Auth[]) => {
           this.tcpConnection.send(
@@ -306,7 +306,7 @@ module SocksToRtc {
     // has been established. Promise returns the destination site connected to.
     private doRequestHandshake_ = ()
         : Promise<Net.Endpoint> => {
-      return this.tcpConnection.receive()
+      return this.tcpConnection.receiveNext()
         .then(Socks.interpretRequestBuffer)
         .then((request:Socks.Request) => {
           this.peerConnection_.send(this.channelLabel_,

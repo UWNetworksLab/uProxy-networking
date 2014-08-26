@@ -43,7 +43,7 @@ module Net {
               return Promise.reject(new Error('listen failed with result code '
                   + resultCode));
             }
-            return Promise.resolve(resultCode);
+            return resultCode;
           })
           .then(this.socket.getInfo)
           .then((socketInfo:UdpLib.SocketInfo) => {
@@ -51,23 +51,9 @@ module Net {
             this.address_ = socketInfo.localAddress;
             this.port_ = socketInfo.localPort;
             dbg('listening on ' + this.address_ + ':' + this.port_);
-          })
-          .then(this.attachSocketHandler)
-          .then(() => {
-            return {
-              // TODO: return the real address from which we are connected
-              address: '127.0.0.1',
-              port: 0
-            };
+            this.socket.on('onData', this.onSocksClientData);
+            return { address: this.address_, port: this.port_ };
           });
-    }
-
-    /**
-     * Listens for onData events.
-     * The socket must be bound.
-     */
-    private attachSocketHandler = () => {
-      this.socket.on('onData', this.onSocksClientData);
     }
 
     private onSocksClientData = (recvFromInfo:UdpLib.RecvFromInfo) => {
