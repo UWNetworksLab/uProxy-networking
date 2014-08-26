@@ -17,18 +17,6 @@ TaskManager = require 'uproxy-lib/tools/taskmanager'
 # build directory.
 Rule = require 'uproxy-lib/tools/common-grunt-rules'
 
-# HACK: this overrides Rule's |noImplicitAny=false| to deal with inability to
-# refer to `core.XXX` providers as members in JavaScript. See:
-# https://github.com/freedomjs/freedom/issues/57
-Rule.typescriptSrc = (name) ->
-  src: ['build/typescript-src/' + name + '/**/*.ts', '!**/*.d.ts']
-  dest: 'build/'
-  options:
-    basePath: 'build/typescript-src/'
-    ignoreError: false
-    noImplicitAny: false
-    sourceMap: true
-
 #-------------------------------------------------------------------------
 module.exports = (grunt) ->
   path = require('path');

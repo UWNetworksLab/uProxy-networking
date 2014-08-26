@@ -1,6 +1,8 @@
-/// <reference path='socks-to-rtc.ts' />
+// TODO: provide a freedom implementation for rtc-to-net.
 
 /*
+
+/// <reference path='socks-to-rtc.ts' />
 
     // TODO: these should be parameterized/editable from the uProxy UI/consumer
     // of this class.

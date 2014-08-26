@@ -1,6 +1,5 @@
-/*
-  For testing just the TCP server portion (see src/client/tcp.ts)
-*/
+// For testing just the TCP server portion (see src/client/tcp.ts)
+
 /// <reference path='../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />

@@ -1,3 +1,6 @@
+// TODO: provide a freedom declaration in this file.
+
+/*
 // This file provides the freedom interface that is available to a freedom
 // module created via a call to `freedom.['moduleName']()`. Note: this is the
 // inverse of what you see at the bottom of the main module file (socks-to-rtc
@@ -24,7 +27,6 @@ declare module freedom {
 }
 
 
-/*
 declare module freedom {
   // Once the socks-rtc module is ready, it emits 'ready'.
   function emit(t:'ready') : void;

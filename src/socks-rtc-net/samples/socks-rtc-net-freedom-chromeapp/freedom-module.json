@@ -13,13 +13,11 @@
     ]
   },
   "dependencies": {
-    "TcpEchoServer": { "url": "lib/echo-server/freedom-module.json" }
   },
   "permissions": [
+    "core.log",
     "core.tcpsocket",
     "core.udpsocket",
-    "core.uproxypeerconnection",
-    "core.log",
-    "core.logmanager"
+    "core.uproxypeerconnection"
   ]
 }

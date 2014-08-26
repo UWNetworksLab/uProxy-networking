@@ -127,7 +127,7 @@ module RtcToNet {
 
     public toString = () : string => {
       var ret :string;
-      var sessionsAsStrings = [];
+      var sessionsAsStrings :string[] = [];
       var label :string;
       for (label in this.sessions_) {
         sessionsAsStrings.push(this.sessions_[label].toString());

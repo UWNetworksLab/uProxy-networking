@@ -4,22 +4,17 @@
   "app": {
     "script": [
       "../tcp/tcp.js",
-      "../udp/udprelay.js",
       "../handler/queue.js",
       "../arraybuffers/arraybuffers.js",
-      "socks-headers.js",
-      "socks.js",
+      "../socks/socks-headers.js",
       "socks-to-rtc.js",
     ]
   },
   "dependencies": {
-    "transport": {
-      "url": "../freedom-providers/transport.webrtc.json",
-      "api": "transport"
-    }
   },
   "permissions": [
     "core.tcpsocket",
-    "core.udpsocket"
+    "core.udpsocket",
+    "core.uproxypeerconnection"
   ]
 }

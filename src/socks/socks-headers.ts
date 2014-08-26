@@ -139,7 +139,6 @@ module Socks {
   export function interpretRequest(byteArray:Uint8Array) : Request {
     var version     :number;
     var command     :Command;
-    var protocol    :Net.Protocol;
     var destination :Destination;
 
     // Fail if the request is too short to be valid.
@@ -257,7 +256,7 @@ module Socks {
   // Heler function for parsing an IPv6 address from an Uint16Array portion of
   // a socks address in an arraybuffer.
   export function interpretIpv6Address(uint16View:Uint16Array) : string {
-    return Array.prototype.map.call(uint16View, (i) => {
+    return Array.prototype.map.call(uint16View, (i:number) => {
         return (((i & 0xFF) << 8) | ((i >> 8) & 0xFF)).toString(16);
       }).join(':');
   }

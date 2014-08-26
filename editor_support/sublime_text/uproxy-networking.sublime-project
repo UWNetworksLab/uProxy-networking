@@ -13,9 +13,7 @@
     "wrap_width": 80,
 
     "typescript": {
-      "roots":[
-        "root.ts",
-      ],
+      "roots":[ "root.ts", "src/socks-to-rtc/socks-to-rtc.ts" ],
       "settings": {
         "auto_complete":true,
         "node_path":"none",

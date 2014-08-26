@@ -1,3 +1,5 @@
+// TODO: Write an implementation of whatever we want here, if anything.
+
 /*
   Runs the socksToRtc and rtcToNet peers (in separate webworkers) and tests that
   they can signal and set up a proxy connection.

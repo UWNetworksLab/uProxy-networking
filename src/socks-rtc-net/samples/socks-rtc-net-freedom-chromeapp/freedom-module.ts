@@ -2,7 +2,6 @@
 /// <reference path='../../../rtc-to-net/rtc-to-net.ts' />
 
 /// <reference path='../../../webrtc/peerconnection.d.ts' />
-/// <reference path='../../../echo-server/tcp-echo-server.ts' />
 /// <reference path='../../../freedom/coreproviders/uproxylogging.d.ts' />
 /// <reference path='../../../freedom/typings/freedom.d.ts' />
 /// <reference path='../../../networking-typings/communications.d.ts' />

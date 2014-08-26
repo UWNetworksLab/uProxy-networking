@@ -142,7 +142,7 @@ module SocksToRtc {
 
     public toString = () : string => {
       var ret :string;
-      var sessionsAsStrings = [];
+      var sessionsAsStrings :string[] = [];
       var label :string;
       for (label in this.sessions_) {
         sessionsAsStrings.push(this.sessions_[label].toString());
@@ -170,7 +170,7 @@ module SocksToRtc {
     // These are used to avoid double-closure of data channels. We don't need
     // this for tcp connections because that class already holds the open/
     // closed state.
-    private dataChannelIsClosed_;
+    private dataChannelIsClosed_ :boolean;
 
     // We push data from the peer into this queue so that we can write the
     // receive function to get just the next bit of data from the peer. This

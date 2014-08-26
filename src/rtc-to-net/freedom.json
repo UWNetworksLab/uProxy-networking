@@ -5,19 +5,15 @@
     "script": [
       "../handler/queue.js",
       "../tcp/tcp.js",
-      "../udp/udpclient.js",
       "../arraybuffers/arraybuffers.js",
       "rtc-to-net.js"
     ]
   },
   "dependencies": {
-    "transport": {
-      "url": "../freedom-providers/transport.webrtc.json",
-      "api": "transport"
-    }
   },
   "permissions": [
     "core.tcpsocket",
-    "core.udpsocket"
+    "core.udpsocket",
+    "core.uproxypeerconnection"
   ]
 }
