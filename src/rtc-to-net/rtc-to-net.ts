@@ -7,6 +7,7 @@
 /// <reference path='../freedom/coreproviders/uproxypeerconnection.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../handler/queue.d.ts' />
+/// <reference path='../ipaddrjs/ipaddrjs.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
 /// <reference path='../webrtc/datachannel.d.ts' />
 /// <reference path='../webrtc/peerconnection.d.ts' />
@@ -167,6 +168,11 @@ module RtcToNet {
     // https://code.google.com/p/webrtc/issues/detail?id=2513)
     private onCloseSendCloseMessageToPeer_ :boolean;
 
+    // This variable starts false, and becomes true after the socket to the
+    // remote endpoint is open (and the endpoint is confirmed to be at an
+    // allowed address).
+    private hasConnectedToEndpoint_ :boolean;
+
     // Getters.
     public channelLabel = () : string => { return this.channelLabel_; }
     public isClosed = () : boolean => { return this.isClosed_; }
@@ -177,6 +183,7 @@ module RtcToNet {
         private channelLabel_:string) {
       this.isClosed_ = false;
       this.onCloseSendCloseMessageToPeer_ = true;
+      this.hasConnectedToEndpoint_ = false;
       // Open a data channel to the peer. The session is ready when the channel
       // is open.
       this.onceReady = this.peerConnection_.onceDataChannelOpened(
@@ -220,6 +227,11 @@ module RtcToNet {
       if(webrtcData.str) {
         this.handleWebRtcControlMessage_(webrtcData.str);
       } else if (webrtcData.buffer && this.tcpConnection) {
+        if (!this.hasConnectedToEndpoint_) {
+          log.error(this.longId() + ': Client attempted to send data to ' +
+              'tcp connection before it was opened');
+          return;
+        }
         log.debug(this.longId() + ': passing on data from pc connection to tcp (' +
             webrtcData.buffer.byteLength + ' bytes)');
         // Note: tcpConnection is smart: it buffers and only sends when it is
@@ -263,6 +275,12 @@ module RtcToNet {
       if(request.command === Socks.Command.TCP_CONNECT) {
         this.startTcpConnection_(request.destination.endpoint)
           .then((connectedToEndpoint:Net.Endpoint) => {
+            if (!this.isAllowedAddress_(connectedToEndpoint.address)) {
+              log.error(this.longId() + ': Blocked attempt to access ' +
+                  connectedToEndpoint.address + ', not an allowed address');
+              return;
+            }
+            this.hasConnectedToEndpoint_ = true;
             // TODO: send back to peer.
             this.peerConnection_.send(
               this.channelLabel_, {str: JSON.stringify(connectedToEndpoint)});
@@ -297,6 +315,20 @@ module RtcToNet {
         }
       });
       return this.tcpConnection.onceConnected;
+    }
+
+    private isAllowedAddress_ = (addressString:string) : boolean => {
+      // ipaddr.process automatically converts IPv4-mapped IPv6 addresses into
+      // IPv4 Address objects.  This ensure that an attacker cannot reach a
+      // restricted IPv4 endpoint that is identified by its IPv6-mapped address.
+      try {
+        var address = ipaddr.process(addressString);
+        return address.range() == 'unicast';
+      } catch (e) {
+        // This likely indicates a malformed IP address, which will be logged by
+        // the caller.
+        return false;
+      }
     }
 
     // For logging/debugging.

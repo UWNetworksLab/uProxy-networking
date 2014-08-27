@@ -74,6 +74,14 @@ module.exports = (grunt) ->
           onlyIf: 'modified'
         } ] }
 
+      # Copy the ipaddr.js library into the build directory
+      ipAddrJavaScript: { files: [ {
+          expand: true, cwd: 'node_modules/ipaddr.js'
+          src: ['ipaddr.min.js']
+          dest: 'build/ipaddr/'
+          onlyIf: 'modified'
+        } ] }
+
       # Individual modules.
       tcp: Rule.copyModule 'udp'
       udp: Rule.copyModule 'tcp'
@@ -179,6 +187,7 @@ module.exports = (grunt) ->
   taskManager.add 'base', [
     # copy modules from uproxyLibBuild to build/
     'copy:uproxyLibBuild'
+    'copy:ipAddrJavaScript'
     # symlink all modules with typescript src to build/typescript-src
     'symlink:uproxyLibTypescriptSrc'
     'symlink:uproxyLibThirdPartyTypescriptSrc'
