@@ -172,6 +172,14 @@ module SocksToRtc {
     // closed state.
     private dataChannelIsClosed_ :boolean;
 
+    // A boolean control variable that defines whether a close message is sent
+    // on a data channel to the peer when a data channel/session is closed.
+    //
+    // CONSIDER: remove this once we're using a version of chrome that
+    // correctly propegates close messages (
+    // https://code.google.com/p/webrtc/issues/detail?id=2513)
+    private onCloseSendCloseMessageToPeer_ :boolean;
+
     // We push data from the peer into this queue so that we can write the
     // receive function to get just the next bit of data from the peer. This
     // makes protocol writing much simpler. ArrayBuffers are used for data
@@ -182,6 +190,7 @@ module SocksToRtc {
                 private peerConnection_:WebrtcLib.Pc) {
       this.channelLabel_ = obtainTag();
       this.dataChannelIsClosed_ = false;
+      this.onCloseSendCloseMessageToPeer_ = true;
       var onceChannelOpenned :Promise<void>;
       var onceChannelClosed :Promise<void>;
       this.dataFromPeer_ = new Handler.Queue<WebRtc.Data,void>();
@@ -233,7 +242,9 @@ module SocksToRtc {
         // CONSIDER: remove this once we're using a version of chrome that
         // correctly propegates close messages (
         // https://code.google.com/p/webrtc/issues/detail?id=2513)
-        this.peerConnection_.send(this.channelLabel_, { str: 'close' });
+        if(this.onCloseSendCloseMessageToPeer_) {
+          this.peerConnection_.send(this.channelLabel_, { str: 'close' });
+        }
         this.peerConnection_.closeDataChannel(this.channelLabel_);
         this.dataChannelIsClosed_ = true;
       }
@@ -246,6 +257,7 @@ module SocksToRtc {
       // https://code.google.com/p/webrtc/issues/detail?id=2513)
       if (data.str && data.str === 'close') {
         log.debug('peer sent close control message.');
+        this.onCloseSendCloseMessageToPeer_ = false;
         this.close();
         return;
       }

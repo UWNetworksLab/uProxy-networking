@@ -159,6 +159,14 @@ module RtcToNet {
     // low-level WebRtc provider), then refer to dataChannel.isClosed directly.
     private isClosed_ :boolean;
 
+    // A boolean control variable that defines whether a close message is sent
+    // on a data channel to the peer when a data channel/session is closed.
+    //
+    // CONSIDER: remove this once we're using a version of chrome that
+    // correctly propegates close messages (
+    // https://code.google.com/p/webrtc/issues/detail?id=2513)
+    private onCloseSendCloseMessageToPeer_ :boolean;
+
     // Getters.
     public channelLabel = () : string => { return this.channelLabel_; }
     public isClosed = () : boolean => { return this.isClosed_; }
@@ -168,6 +176,7 @@ module RtcToNet {
         // The channel Label is a unique id for this data channel and session.
         private channelLabel_:string) {
       this.isClosed_ = false;
+      this.onCloseSendCloseMessageToPeer_ = true;
       // Open a data channel to the peer. The session is ready when the channel
       // is open.
       this.onceReady = this.peerConnection_.onceDataChannelOpened(
@@ -198,7 +207,9 @@ module RtcToNet {
         // CONSIDER: remove this once we're using a version of chrome that
         // correctly propegates close messages (
         // https://code.google.com/p/webrtc/issues/detail?id=2513)
-        this.peerConnection_.send(this.channelLabel_, { str: 'close' });
+        if(this.onCloseSendCloseMessageToPeer_) {
+          this.peerConnection_.send(this.channelLabel_, { str: 'close' });
+        }
         this.peerConnection_.closeDataChannel(this.channelLabel_);
         this.isClosed_ = true;
       }
@@ -225,6 +236,7 @@ module RtcToNet {
       // correctly propegates close messages (
       // https://code.google.com/p/webrtc/issues/detail?id=2513)
       if (controlMessage === 'close') {
+        this.onCloseSendCloseMessageToPeer_ = false;
         this.close();
         return;
       }
