@@ -1,0 +1,17 @@
+{
+  "name": "TCP Echo Server",
+  "description": "Listen for incoming requests, and echo them back.",
+  "app": {
+    "script": [
+      "../arraybuffers/arraybuffers.js",
+      "../handler/queue.js",
+      "../tcp/tcp.js",
+      "../echo-server/tcp-echo-server.js",
+      "freedom-module.js"
+    ]
+  },
+  "permissions": [
+    "core.tcpsocket",
+    "core.log"
+  ]
+}

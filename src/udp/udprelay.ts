@@ -1,7 +1,8 @@
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/udp-socket.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
+/// <reference path='../freedom/typings/udp-socket.d.ts' />
+/// <reference path="../third_party/typings/es6-promise/es6-promise.d.ts" />
+
 module Socks {
-  import UdpSocket = freedom.UdpSocket;
+  import UdpLib = freedom_UdpSocket;
 
   /**
    * A UDP-based "relay" server intended for use as part of a SOCKS5 proxy:
@@ -26,7 +27,7 @@ module Socks {
    *    the UDP_ASSOCIATE was negotiated is terminated
    *
    * One relay should be created in response to each UDP_ASSOCIATE command.
-   * 
+   *
    * Other notes:
    *  - while the RFC states that the relay MUST drop any message originating
    *    from an IP other than that which requested the association, this
@@ -47,7 +48,7 @@ module Socks {
 
     // The Socks client sends datagrams to this socket.
     // Eventually, it will also receive replies on this socket.
-    private socket_:UdpSocket;
+    private socket_:UdpLib.Socket;
 
     // Address and port to which the "client-side" socket is bound.
     private address_:string;
@@ -85,7 +86,7 @@ module Socks {
             return Promise.resolve(resultCode);
           })
           .then(this.socket_.getInfo)
-          .then((socketInfo:UdpSocket.SocketInfo) => {
+          .then((socketInfo:UdpLib.SocketInfo) => {
             // Record the address and port on which our socket is listening.
             this.address_ = socketInfo.localAddress;
             this.port_ = socketInfo.localPort;
@@ -102,7 +103,7 @@ module Socks {
       this.socket_.on('onData', this.onSocksClientData_);
     }
 
-    private onSocksClientData_ = (recvFromInfo:UdpSocket.RecvFromInfo) => {
+    private onSocksClientData_ = (recvFromInfo:UdpLib.RecvFromInfo) => {
       // Record the host:port from which the client is sending us datagrams.
       // This is where we'll relay any replies from remote servers.
       // TODO: check if these change over the liftime of the relay

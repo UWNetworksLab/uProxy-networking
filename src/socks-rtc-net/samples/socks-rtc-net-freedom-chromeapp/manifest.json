@@ -1,0 +1,24 @@
+{
+  "manifest_version": 2,
+  "name": "SocksRtcNet Sample App",
+  "description": "Sample app for proxying SOCKS5 over WebRTC",
+  "version": "0.0.2",
+  "app": {
+    "background": {
+      "scripts": [
+        "lib/logging/logging.js",
+        "lib/handler/queue.js",
+        "lib/webrtc/third_party/adapter.js",
+        "lib/arraybuffers/arraybuffers.js",
+        "lib/webrtc/datachannel.js",
+        "lib/webrtc/peerconnection.js",
+        "background.js"
+      ]
+    }
+  },
+  "permissions": [],
+  "sockets": {
+    "tcp": { "connect" : "" },
+    "tcpServer": { "listen": "" }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "RTC to Net peer",
+  "description": "Proxy remote connections to their destination.",
+  "app": {
+    "script": [
+      "../handler/queue.js",
+      "../tcp/tcp.js",
+      "../arraybuffers/arraybuffers.js",
+      "rtc-to-net.js"
+    ]
+  },
+  "dependencies": {
+  },
+  "permissions": [
+    "core.tcpsocket",
+    "core.udpsocket",
+    "core.uproxypeerconnection"
+  ]
+}

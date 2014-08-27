@@ -1,119 +1,128 @@
-TaskManager = require './node_modules/uproxy-build-tools/build/taskmanager/taskmanager'
+# How to build socks-rtc and its various demos.
 
+# TODO: work out an automatic way to only the src we need rather than the whole
+# library. Maybe have a separate Gruntfile in each subdirectory with some common
+# rules for building a project accoridng to using a standard dir layout.
+
+# Also: provide a way to specify needed modules, and when they are not there to
+# give a sensible error.
+
+TaskManager = require 'uproxy-lib/tools/taskmanager'
+
+#-------------------------------------------------------------------------
+# Rule-making helper function that assume expected directory layout.
+#
+# Function to make a copy rule for a module directory, assuming standard
+# layout. Copies all non (ts/sass) compiled files into the corresponding
+# build directory.
+Rule = require 'uproxy-lib/tools/common-grunt-rules'
+
+#-------------------------------------------------------------------------
 module.exports = (grunt) ->
-
   path = require('path');
 
+  #-------------------------------------------------------------------------
   grunt.initConfig {
     pkg: grunt.file.readJSON('package.json')
 
+    symlink:
+      # Symlink all module directories in `src` into typescript-src
+      typescriptSrc: { files: [ {
+        expand: true,
+        overwrite: true,
+        cwd: 'src',
+        src: ['*'],
+        dest: 'build/typescript-src/' } ] }
+      # Symlink third_party into typescript-src
+      thirdPartyTypescriptSrc: { files: [ {
+        expand: true,
+        overwrite: true,
+        cwd: '.',
+        src: ['third_party'],
+        dest: 'build/typescript-src/' } ] }
+      # Symlink third_party into typescript-src
+      uproxyLibThirdPartyTypescriptSrc: { files: [ {
+        expand: true,
+        overwrite: true,
+        cwd: 'node_modules/uproxy-lib',
+        src: ['third_party'],
+        dest: 'build/typescript-src/' } ] }
+      uproxyLibTypescriptSrc: { files: [ {
+        expand: true,
+        overwrite: true,
+        cwd: 'node_modules/uproxy-lib/src/',
+        src: ['*'],
+        dest: 'build/typescript-src/' } ] }
+
+    #-------------------------------------------------------------------------
     copy: {
-      freedomChrome: { files: [ {
-        expand: true, cwd: 'node_modules/freedom-for-chrome/'
-        src: ['freedom-for-chrome.js']
-        dest: 'build/chrome-app/' } ] }
-      freedomFirefox: { files: [ {
-        expand: true, cwd: 'node_modules/freedom-for-firefox/build/'
-        src: ['freedom-for-firefox.jsm', 'freedom.map']
-        dest: 'build/firefox-app/data' } ] }
-      freedomProvidersBuild: { files: [ {
-        expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
-        src: ['*']
-        dest: 'build/freedom-providers' } ] }
-      freedomProvidersChrome: { files: [ {
-        expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
-        src: ['*']
-        dest: 'build/chrome-app/freedom-providers' } ] }
-      freedomProvidersFirefox: { files: [ {
-        expand: true, cwd: 'node_modules/freedom/providers/transport/webrtc/'
-        src: ['*']
-        dest: 'build/firefox-app/data/freedom-providers' } ] }
-      buildUtil: { files: [ {
-          expand: true, cwd: 'node_modules/uproxy-build-tools/build/util',
-          src: ['**/*.js'],
-          dest: 'build/util'
+      # TODO: provide a warning if local project overrides directory?
+      #
+      # Copy all the built stuff from uproxy-lib
+      uproxyLibBuild: { files: [ {
+          expand: true, cwd: 'node_modules/uproxy-lib/build'
+          src: ['**', '!**/typescript-src/**']
+          dest: 'build'
+          onlyIf: 'modified'
         } ] }
 
-      # User should include the compiled source directly from:
-      #   - build/socks-to-rtc
-      #   - build/rtc-to-net
-      socks2rtc: { files: [ {
-        expand: true, cwd: 'src/'
-        src: ['socks-to-rtc/**/*.json']
-        dest: 'build/' } ] }
-      rtc2net: { files: [ {
-        expand: true, cwd: 'src/'
-        src: ['rtc-to-net/**/*.json']
-        dest: 'build/' } ] }
-      echoChrome: { files: [ {
-        expand: true, cwd: 'test/'
-        src: ['**']
-        dest: 'build/chrome-app/test/' } ] }
-      echoFirefox: { files: [ {
-        expand: true, cwd: 'test/'
-        src: ['**']
-        dest: 'build/firefox-app/data/test/' } ] }
-      firefoxApp: { files: [ {
-          expand: true, cwd: 'src/firefox-app'
-          src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
-          dest: 'build/firefox-app/'
-        }, {
-          expand: true, cwd: 'src/chrome-app'
-          src: ['socks_rtc.json', 'socks_to_rtc_to_net.js']
-          dest: 'build/firefox-app/data' 
-        }, {
-          expand: true, cwd: 'build/socks-to-rtc',
-          src: ['**/*.js', '**/*.json'],
-          dest: 'build/firefox-app/data/socks-to-rtc'
-        }, {
-          expand: true, cwd: 'build/rtc-to-net',
-          src: ['**/*.js', '**/*.json'],
-          dest: 'build/firefox-app/data/rtc-to-net'
-        }, {
-          expand: true, cwd: 'node_modules/uproxy-build-tools/build/util',
-          src: ['**/*.js'],
-          dest: 'build/firefox-app/data/util'
+      # Copy any JavaScript from the third_party directory
+      thirdPartyJavaScript: { files: [ {
+          expand: true,
+          src: ['third_party/**/*.js']
+          dest: 'build/'
+          onlyIf: 'modified'
         } ] }
-      chromeApp: { files: [ {
-          expand: true, cwd: 'src/chrome-app'
-          src: ['**/*.json', '**/*.js', '**/*.html', '**/*.css']
-          dest: 'build/chrome-app/'
-        }, {
-          expand: true, cwd: 'build/socks-to-rtc',
-          src: ['**/*.js', '**/*.json'],
-          dest: 'build/chrome-app/socks-to-rtc'
-        }, {
-          expand: true, cwd: 'build/rtc-to-net',
-          src: ['**/*.js', '**/*.json'],
-          dest: 'build/chrome-app/rtc-to-net'
-        }, {
-          expand: true, cwd: 'node_modules/uproxy-build-tools/build/util',
-          src: ['**/*.js'],
-          dest: 'build/chrome-app/util'
-        } ] }
+
+      # Individual modules.
+      tcp: Rule.copyModule 'udp'
+      udp: Rule.copyModule 'tcp'
+      socks: Rule.copyModule 'socks'
+      socksToRtc: Rule.copyModule 'socks-to-rtc'
+      rtcToNet: Rule.copyModule 'rtc-to-net'
+
+      socksRtcNet: Rule.copyModule 'socks-rtc-net'
+      socksRtcNetChromeApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp', 'lib'
+      socksRtcNetFirefoxApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-freedom-firefoxapp/data/', 'lib'
+
+      # Sample Apps
+      #
+      # Echo server Chrome App
+      echoServer: Rule.copyModule 'echo-server'
+      echoServerChromeApp: Rule.copySampleFiles 'echo-server/samples/echo-server-chromeapp', 'lib'
+
+      # ? what more... ?
+    }  # copy
+
+    #-------------------------------------------------------------------------
+    # All typescript compiles to locations in `build/`
+    typescript: {
+      # From build-tools
+      arraybuffers: Rule.typescriptSrc 'arraybuffers'
+      handler: Rule.typescriptSrc 'handler'
+      # Modules
+      tcp: Rule.typescriptSrc 'tcp'
+      udp: Rule.typescriptSrc 'udp'
+      socks: Rule.typescriptSrc 'socks'
+      socksToRtc: Rule.typescriptSrc 'socks-to-rtc'
+      rtcToNet: Rule.typescriptSrc 'rtc-to-net'
+      # Echo server sample app
+      echoServer: Rule.typescriptSrc 'echo-server'
+      echoServerChromeApp: Rule.typescriptSrc 'echo-server/samples/echo-server-chromeapp'
+      # Socks-rtc-net sample app
+      socksRtcNet: Rule.typescriptSrc 'socks-rtc-net'
+      socksRtcNetChromeApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp'
+      socksRtcNetFirefoxApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-freedom-firefoxapp'
     }
 
     #-------------------------------------------------------------------------
-    # All typescript compiles to build/ initially.
-    typescript: {
-      socks2rtc:
-        src: ['src/socks-to-rtc/**/*.ts']
-        dest: 'build/'
-        options: { basePath: 'src', ignoreError: false }
-      rtc2net:
-        src: ['src/rtc-to-net/**/*.ts']
-        dest: 'build/'
-        options: { basePath: 'src', ignoreError: false }
-      chromeApp:
-        src: ['src/chrome-app/**/*.ts']
-        dest: 'build/'
-        options: { basePath: 'src/', ignoreError: false }
-    }
-
     jasmine: {
-      socksToRtc:
-        src: ['build/chrome-app/socks-to-rtc/socks-headers.js']
-        options : { specs : 'build/socks-to-rtc/**/*.spec.js' }
+      socks:
+        src: ['build/socks/socks-headers.js']
+        options:
+          specs: 'build/socks/socks-headers.spec.js'
+          outfile: 'build/socks/_SpecRunner.html'
+          keepRunner: true
     }
 
     env: {
@@ -131,7 +140,7 @@ module.exports = (grunt) ->
       projectRoot: 'build/chrome-app'
 
     clean: ['build/**']
-    
+
     ccaPath: 'node_modules/cca/src/cca.js'
     ccaCwd: 'build/cca-app'
     exec: {
@@ -154,30 +163,128 @@ module.exports = (grunt) ->
   }  # grunt.initConfig
 
   #-------------------------------------------------------------------------
-  grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-clean'
+  grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
-  grunt.loadNpmTasks 'grunt-typescript'
-  grunt.loadNpmTasks 'grunt-jasmine-node'
+  grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-env'
   grunt.loadNpmTasks 'grunt-exec'
+  grunt.loadNpmTasks 'grunt-jasmine-node'
+  grunt.loadNpmTasks 'grunt-typescript'
 
   #-------------------------------------------------------------------------
   # Define the tasks
   taskManager = new TaskManager.Manager();
 
-  # TODO: create separate build commands for just the socks-to-rtc and rtc-to-net
-  # libaries, chrome app, and firefox app.
+  taskManager.add 'base', [
+    # copy modules from uproxyLibBuild to build/
+    'copy:uproxyLibBuild'
+    # symlink all modules with typescript src to build/typescript-src
+    'symlink:uproxyLibTypescriptSrc'
+    'symlink:uproxyLibThirdPartyTypescriptSrc'
+    'symlink:thirdPartyTypescriptSrc'
+    'symlink:typescriptSrc'
+  ]
+
+  taskManager.add 'tcp', [
+    'base'
+    'copy:tcp'
+    'typescript:tcp'
+  ]
+
+  taskManager.add 'udp', [
+    'base'
+    'copy:udp'
+    'typescript:udp'
+  ]
+
+  taskManager.add 'socks', [
+    'base'
+    'copy:socks'
+    'typescript:socks'
+    'jasmine:socks'
+  ]
+
+  taskManager.add 'socksToRtc', [
+    'base'
+    'copy:socksToRtc'
+    'typescript:socksToRtc'
+  ]
+
+  taskManager.add 'rtcToNet', [
+    'base'
+    'copy:rtcToNet'
+    'typescript:rtcToNet'
+  ]
+
+  #-------------------------------------------------------------------------
+  # tasks for sample apps
+  taskManager.add 'echoServer', [
+    'base'
+    'tcp'
+    'udp'
+    'typescript:echoServer'
+    'copy:echoServer'
+    'typescript:echoServerChromeApp'
+    'copy:echoServerChromeApp'
+  ]
+
+  #-------------------------------------------------------------------------
+  # tasks for sample apps
+  taskManager.add 'socksRtcNet', [
+    'base'
+    'tcp'
+    'udp'
+    'socksToRtc'
+    'rtcToNet'
+    'echoServer'
+    'typescript:socksRtcNet'
+    'copy:socksRtcNet'
+    'typescript:socksRtcNetChromeApp'
+    'copy:socksRtcNetChromeApp'
+  ]
+
+
+  taskManager.add 'sample-chromeApp', [
+    'base'
+    'tcp'
+    'udp'
+    'socksToRtc'
+    'rtcToNet'
+    'typescript:chromeApp'
+    'copy:chromeApp'
+    'copy:libForChromeApp'
+  ]
+
+  taskManager.add 'sample-firefoxApp', [
+    'base'
+    'tcp'
+    'udp'
+    'socksToRtc'
+    'rtcToNet'
+    'typescript:firefoxApp'
+    'copy:firefoxApp'
+    'copy:libForFirefoxApp'
+  ]
+
+  #-------------------------------------------------------------------------
   taskManager.add 'build', [
-    'typescript'
-    'copy'
+    'base'
+    # Modules
+    'tcp'
+    'udp'
+    'echoServer'
+    'socks'
+    'socksToRtc'
+    'rtcToNet'
+    'socksRtcNet'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
   # and on Travis/Sauce Labs.
   taskManager.add 'test', [
     'build'
-    'jasmine:socksToRtc'
+    'jasmine:socks'
   ]
 
   # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and
@@ -204,3 +311,5 @@ module.exports = (grunt) ->
   taskManager.list().forEach((taskName) =>
     grunt.registerTask taskName, (taskManager.get taskName)
   );
+
+module.exports.Rule = Rule;

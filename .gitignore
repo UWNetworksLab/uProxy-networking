@@ -7,3 +7,5 @@ npm-debug.log
 *.bak
 tmp/*
 build/*
+.grunt
+*.sublime-workspace

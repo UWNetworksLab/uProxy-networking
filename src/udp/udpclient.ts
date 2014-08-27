@@ -1,9 +1,10 @@
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/udp-socket.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/promise.d.ts' />
+/// <reference path='../freedom/typings/freedom.d.ts' />
+/// <reference path='../freedom/typings/udp-socket.d.ts' />
+/// <reference path='../networking-typings/communications.d.ts' />
+/// <reference path="../third_party/typings/es6-promise/es6-promise.d.ts" />
 
 module Net {
-  import UdpSocket = freedom.UdpSocket;
+  import UdpLib = freedom_UdpSocket;
 
   /**
    * Represents a UDP socket.
@@ -15,7 +16,7 @@ module Net {
     /**
      * Socket on which we are sending and receiving messages.
      */
-    private socket:UdpSocket;
+    private socket:UdpLib.Socket;
 
     // Address and port to which the "client-side" socket is bound.
     private address_:string;
@@ -36,40 +37,17 @@ module Net {
     public bind() : Promise<Net.Endpoint> {
       // TODO: not sure what else this should be?
       return this.socket.bind('127.0.0.1', 0)
-          .then((resultCode:number) => {
-            // Ensure the listen was successful.
-            if (resultCode != 0) {
-              return Promise.reject(new Error('listen failed with result code '
-                  + resultCode));
-            }
-            return Promise.resolve(resultCode);
-          })
-          .then(this.socket.getInfo)
-          .then((socketInfo:UdpSocket.SocketInfo) => {
+          .then((endpoint:Net.Endpoint) => {
             // Record the address and port on which our socket is listening.
-            this.address_ = socketInfo.localAddress;
-            this.port_ = socketInfo.localPort;
-            dbg('listening on ' + this.address_ + ':' + this.port_);
-          })
-          .then(this.attachSocketHandler)
-          .then(() => {
-            return {
-              // TODO: return the real address from which we are connected
-              address: '127.0.0.1',
-              port: 0
-            };
+            this.address_ = endpoint.address;
+            this.port_ = endpoint.port;
+            dbg('listening on : ' + JSON.stringify(endpoint));
+            this.socket.on('onData', this.onSocksClientData);
+            return endpoint;
           });
     }
 
-    /**
-     * Listens for onData events.
-     * The socket must be bound.
-     */
-    private attachSocketHandler = () => {
-      this.socket.on('onData', this.onSocksClientData);
-    }
-
-    private onSocksClientData = (recvFromInfo:UdpSocket.RecvFromInfo) => {
+    private onSocksClientData = (recvFromInfo:UdpLib.RecvFromInfo) => {
       this.onData_(recvFromInfo.data);
     }
 

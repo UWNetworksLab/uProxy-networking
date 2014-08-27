@@ -3,22 +3,18 @@
   "description": "Listen for incoming requests, and relay them through a transport.",
   "app": {
     "script": [
-      "tcp.js",
-      "socks.js",
-      "socks-headers.js",
+      "../tcp/tcp.js",
+      "../handler/queue.js",
+      "../arraybuffers/arraybuffers.js",
+      "../socks/socks-headers.js",
       "socks-to-rtc.js",
-      "udprelay.js",
-      "../util/arraybuffers.js"
     ]
   },
   "dependencies": {
-    "transport": {
-      "url": "../freedom-providers/transport.webrtc.json",
-      "api": "transport"
-    }
   },
   "permissions": [
     "core.tcpsocket",
-    "core.udpsocket"
+    "core.udpsocket",
+    "core.uproxypeerconnection"
   ]
 }

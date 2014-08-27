@@ -1,416 +1,358 @@
-/*
-  SocksToRTC.Peer passes socks requests over WebRTC datachannels.
-*/
-/// <reference path='socks.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/freedom.d.ts' />
-/// <reference path='../../node_modules/freedom-typescript-api/interfaces/transport.d.ts' />
-/// <reference path='../../node_modules/uproxy-build-tools/src/util/arraybuffers.d.ts' />
-/// <reference path='../interfaces/communications.d.ts' />
+// SocksToRtc.Peer passes socks requests over WebRTC datachannels.
 
-// TODO replace with a reference to freedom ts interface once it exists.
-console.log('WEBWORKER SocksToRtc: ' + self.location.href);
+/// <reference path='../socks/socks-headers.d.ts' />
+/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
+/// <reference path='../freedom/coreproviders/uproxypeerconnection.d.ts' />
+/// <reference path='../freedom/typings/freedom.d.ts' />
+/// <reference path='../handler/queue.d.ts' />
+/// <reference path='../networking-typings/communications.d.ts' />
+/// <reference path='../webrtc/datachannel.d.ts' />
+/// <reference path='../webrtc/peerconnection.d.ts' />
+/// <reference path='../tcp/tcp.d.ts' />
+/// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 
-module SocksToRTC {
+console.log('WEBWORKER - SocksToRtc: ' + self.location.href);
 
-  var fCore = freedom.core();
+module SocksToRtc {
+  import WebrtcLib = freedom_UproxyPeerConnection;
 
-  /**
-   * SocksToRTC.Peer
-   *
-   * Contains a local SOCKS server which passes requests remotely through
-   * WebRTC peer connections.
-   */
-  export class Peer {
+  var log :Freedom_UproxyLogging.Log = freedom['core.log']('SocksToRtc');
 
-    private socksServer_:Socks.Server = null;  // Local SOCKS server.
-    private signallingChannel_:any = null;     // NAT piercing route.
-    private transport_:freedom.Transport = null;     // For actual proxying.
+  var tagNumber_ = 0;
+  function obtainTag() {
+    return 'c' + (tagNumber_++);
+  }
 
-    /**
-     * Currently open data channels, indexed by data channel tag name.
-     */
-    private channels_:{[tag:string]:Channel.EndpointInfo} = {};
-    private peerId_:string = null;         // Of the remote rtc-to-net peer.
-    private remotePeer_:PeerInfo = null;
+  // The |SocksToRtc| class runs a SOCKS5 proxy server which passes requests
+  // remotely through WebRTC peer connections.
+  export class SocksToRtc {
+    // Holds the IP/port that the localhost socks server is listeneing to.
+    public onceReady : Promise<Net.Endpoint>;
+    // Message handler queues to/from the peer.
+    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
 
-    // Private state kept for ping-pong (heartbeat and ack).
-    private pingPongSendIntervalId_ :number = null;
-    private pingPongCheckIntervalId_ :number = null;
-    private lastPingPongReceiveDate_ :Date = null;
+    // Tcp server that is listening for SOCKS connections.
+    private tcpServer_       :Tcp.Server = null;
+    // The connection to the peer that is acting as the endpoint for the proxy
+    // connection.
+    private peerConnection_  :WebrtcLib.Pc = null;
+    // From WebRTC data-channel labels to their TCP connections. Most of the
+    // wiring to manage this relationship happens via promises of the
+    // TcpConnection. We need this only for data being received from a peer-
+    // connection data channel get raised with data channel label.  TODO:
+    // https://github.com/uProxy/uproxy/issues/315 when closed allows
+    // DataChannel and PeerConnection to be used directly and not via a freedom
+    // interface. Then all work can be done by promise binding and this can be
+    // removed.
+    private sessions_ :{ [channelLabel:string] : Session }
 
-    // Connection callbacks, by datachannel tag name.
-    // TODO: figure out a more elegant way to store these callbacks
-    private static connectCallbacks:{[tag:string]:(response:Channel.NetConnectResponse) => void} = {};
+    // SocsToRtc server is given a localhost transport address (endpoint) to
+    // start a socks server listening to, and a config for setting up a peer-
+    // connection. The constructor will immidiately start negotiating the
+    // connection. TODO: If the given port is zero, platform chooses a port and
+    // this listening port is returned by the |onceReady| promise.
+    constructor(endpoint:Net.Endpoint, pcConfig:WebRtc.PeerConnectionConfig) {
+      this.sessions_ = {};
+      this.signalsForPeer = new Handler.Queue<WebRtc.SignallingMessage,void>();
 
-    /**
-     * Start the Peer, based on the remote peer's info.
-     * This will emit a socksToRtcSuccess signal when the peer connection is esablished,
-     * or a socksToRtcFailure signal if there is an error openeing the peer connection.
-     * TODO: update this to return a promise that fulfills/rejects, after freedom v0.5
-     * is ready.
-     */
-    public start = (remotePeer:PeerInfo) => {
-      this.reset_();  // Begin with fresh components.
-      dbg('starting - target peer: ' + JSON.stringify(remotePeer));
-      // Bind peerID to scope so promise can work.
-      this.remotePeer_ = remotePeer;
-      var peerId = this.peerId_ = remotePeer.peerId;
-      if (!peerId) {
-        dbgErr('no Peer ID provided! cannot connect.');
-        return false;
-      }
-      // SOCKS sessions biject to peerconnection datachannels.
-      this.transport_ = freedom['transport']();
-      this.transport_.on('onData', this.onDataFromPeer_);
-      this.transport_.on('onClose', this.onCloseHandler_);
-      // Messages received via signalling channel must reach the remote peer
-      // through something other than the peerconnection. (e.g. XMPP)
-      fCore.createChannel().then((chan) => {
-        this.transport_.setup('SocksToRtc-' + peerId, chan.identifier).then(
-          () => {
-            dbg('SocksToRtc transport_.setup succeeded');
-            freedom.emit('socksToRtcSuccess', remotePeer);
-            this.startPingPong_();
-          }
-        ).catch(
-          (e) => {
-            dbgErr('SocksToRtc transport_.setup failed ' + e);
-            freedom.emit('socksToRtcFailure', remotePeer);
-          }
-        );
-
-        // Signalling channel messages are batched and dispatched each second.
-        // TODO: kill this loop!
-        // TODO: size limit on batched message
-        // TODO: this code is completely common to rtc-to-net (growing need for shared lib)
-        var queuedMessages = [];
-        setInterval(() => {
-          if (queuedMessages.length > 0) {
-            dbg('dispatching signalling channel messages...');
-            freedom.emit('sendSignalToPeer', {
-              peerId: peerId,
-              data: JSON.stringify({
-                version: 1,
-                messages: queuedMessages
-              })
-            });
-            queuedMessages = [];
-          }
-        }, 1000);
-
-        this.signallingChannel_ = chan.channel;
-        this.signallingChannel_.on('message', function(msg) {
-          dbg('signalling channel message: ' + msg);
-          queuedMessages.push(msg);
-        });
-        dbg('signalling channel to SCTP peer connection ready.');
-        // Send hello command to initiate communication, which will cause
-        // the promise returned this.transport_.setup to fulfill.
-        // TODO: remove hello command once freedom.transport.setup
-        // is changed to automatically negotiate the connection.
-        dbg('sending hello command.');
-        var command :Channel.Command = {type: Channel.COMMANDS.HELLO};
-        this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
-            JSON.stringify(command)));
-      });  // fCore.createChannel
+      // The |onceTcpServerReady| promise holds the address and port that the
+      // tcp-server is listening on.
+      var onceTcpServerReady :Promise<Net.Endpoint>;
+      // The |oncePeerConnectionReady| holds the IP/PORT of the peer once a
+      // connection to them has been established.
+      var oncePeerConnectionReady :Promise<WebRtc.ConnectionAddresses>;
 
       // Create SOCKS server and start listening.
-      this.socksServer_ = new Socks.Server(remotePeer.host, remotePeer.port,
-                                          this.createChannel_);
-      this.socksServer_.listen();
+      this.tcpServer_ = new Tcp.Server(endpoint, this.makeTcpToRtcSession_);
+      onceTcpServerReady = this.tcpServer_.listen();
+      oncePeerConnectionReady = this.setupPeerConnection_(pcConfig);
+
+      // Return promise for then we have the tcp-server endpoint & we have a
+      // peer connection.
+      this.onceReady = oncePeerConnectionReady
+        .then(() => { return onceTcpServerReady; });
     }
 
-    public close = () => {
-      if (this.transport_) {
-        // Close transport, then onCloseHandler_ will take care of resetting
-        // state.
-        this.transport_.close();
-      } else {
-        // Transport already closed, just call reset.
-        this.reset_();
-      }
+    // Stop SOCKS server and close peer-connection (and hence all data
+    // channels).
+    private stop = () : void => {
+      this.signalsForPeer.clear();
+      this.tcpServer_.shutdown();
+      this.peerConnection_.close();
+      this.sessions_ = {};
     }
 
-    private onCloseHandler_ = () => {
-      dbg('onCloseHandler_ invoked for transport.')
-      // Set this.transport to null so reset_ doesn't attempt to close it again.
-      this.transport_ = null;
-      this.reset_();
+    private setupPeerConnection_ = (pcConfig:WebRtc.PeerConnectionConfig)
+        : Promise<WebRtc.ConnectionAddresses> => {
+      // SOCKS sessions biject to peerconnection datachannels.
+      this.peerConnection_ = freedom['core.uproxypeerconnection'](pcConfig);
+      this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
+      this.peerConnection_.on('peerOpenedChannel', (channelLabel:string) => {
+        log.error('unexpected peerOpenedChannel event: ' +
+            JSON.stringify(channelLabel));
+      });
+      this.peerConnection_.on('signalForPeer',
+          this.signalsForPeer.handle);
+
+      var onceConnected = this.peerConnection_.onceConnected()
+      this.peerConnection_.negotiateConnection();
+      // Give back onceConnected endpoint, but only after a control channel has
+      // been setupp.
+      return onceConnected.then(() => {
+          return this.peerConnection_.openDataChannel('_control_')
+        })
+        .then(() => {
+          this.peerConnection_.send('_control_', { str: 'hello?' });
+          return onceConnected;
+        });
     }
 
-    /**
-     * Stop SOCKS server and close data channels and peer connections.
-     */
-    private reset_ = () => {
-      dbg('resetting peer...');
-      this.stopPingPong_();
-      if (this.socksServer_) {
-        this.socksServer_.disconnect();  // Disconnects internal TCP server.
-        this.socksServer_ = null;
-      }
-      for (var tag in this.channels_) {
-        this.closeConnectionToPeer(tag);
-      }
-      this.channels_ = {};
-      if (this.transport_) {
-        this.transport_.close();
-        this.transport_ = null;
-      }
-      if (this.signallingChannel_) {  // TODO: is this actually right?
-        this.signallingChannel_.emit('close');
-      }
-      this.signallingChannel_ = null;
-      this.peerId_ = null;
-      this.remotePeer_ = null;
-    }
-
-    /**
-     * Setup a new data channel.
-     */
-    private createChannel_ = (params:Channel.EndpointInfo) : Promise<Channel.EndpointInfo> => {
-      if (!this.transport_) {
-        dbgWarn('transport not ready');
-        return;
-      }
-
-      // Generate a name for this connection and associate it with the SOCKS session.
-      var tag = obtainTag();
-      this.channels_[tag] = params;
-
-      // This gets a little funky: ask the peer to establish a connection to
-      // the remote host and register a callback for when it gets back to us
-      // on the control channel.
-      // TODO: how to add a timeout, in case the remote end never replies?
-      return new Promise((F,R) => {
-        Peer.connectCallbacks[tag] = (response:Channel.NetConnectResponse) => {
-          if (response.address) {
-            var endpointInfo:Channel.EndpointInfo = {
-              protocol: params.protocol,
-              address: response.address,
-              port: response.port,
-              send: (buf:ArrayBuffer) => { this.sendToPeer_(tag, buf); },
-              terminate: () => { this.terminate_(tag); }
-            };
-            F(endpointInfo);
-          } else {
-            R(new Error('could not create datachannel'));
-          }
-        };
-        var request:Channel.NetConnectRequest = {
-          protocol: params.protocol,
-          address: params.address,
-          port: params.port
-        };
-        var command:Channel.Command = {
-          type: Channel.COMMANDS.NET_CONNECT_REQUEST,
-          tag: tag,
-          data: JSON.stringify(request)
-        };
-        this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
-            JSON.stringify(command)));
+    // Setup a SOCKS5 TCP-to-rtc session from a tcp connection.
+    private makeTcpToRtcSession_ = (tcpConnection:Tcp.Connection) : void => {
+      var session = new Session(tcpConnection, this.peerConnection_);
+      this.sessions_[session.channelLabel()] = session;
+      session.onceClosed.then(() => {
+        delete this.sessions_[session.channelLabel()];
       });
     }
 
-    /**
-     * Signals to the remote side that it should forget about this datachannel
-     * and discards our referece to the datachannel. Intended for use by the
-     * SOCKS server when the SOCKS client disconnects.
-     */
-    private terminate_ = (tag:string) => {
-      if (!(tag in this.channels_)) {
-        dbgWarn('tried to terminate unknown datachannel ' + tag);
-        return;
-      }
-      dbg('terminating datachannel ' + tag);
-      var command:Channel.Command = {
-          type: Channel.COMMANDS.SOCKS_DISCONNECTED,
-          tag: tag
-      };
-      this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
-          JSON.stringify(command)));
-      delete this.channels_[tag];
+    public handleSignalFromPeer = (signal:WebRtc.SignallingMessage)
+        : void => {
+      this.peerConnection_.handleSignalMessage(signal);
     }
 
-    /**
-     * Receive replies proxied back from the remote RtcToNet.Peer and pass them
-     * back across underlying SOCKS session / TCP socket.
-     */
-    private onDataFromPeer_ = (msg:freedom.Transport.IncomingMessage) => {
-      dbg(msg.tag + ' <--- received ' + msg.data.byteLength);
-      if (!msg.tag) {
-        dbgErr('received message without datachannel tag!: ' + JSON.stringify(msg));
+    // Data from the remote peer over WebRtc gets sent to the
+    // socket that corresponds to the channel label.
+    private onDataFromPeer_ = (rtcData:WebrtcLib.LabelledDataChannelMessage)
+        : void => {
+      log.debug('onDataFromPeer_: ' + JSON.stringify(rtcData));
+
+      if(rtcData.channelLabel === '_control_') {
+        log.debug('onDataFromPeer_: to _control_: ' + rtcData.message.str);
         return;
       }
 
-      if (msg.tag == 'control') {
-        var command:Channel.Command = JSON.parse(
-            ArrayBuffers.arrayBufferToString(msg.data));
-
-        if (command.type === Channel.COMMANDS.NET_CONNECT_RESPONSE) {
-          // Call the associated callback and forget about it.
-          // The callback should fulfill or reject the promise on
-          // which the client is waiting, completing the connection flow.
-          var response:Channel.NetConnectResponse = JSON.parse(command.data);
-          if (command.tag in Peer.connectCallbacks) {
-            var callback = Peer.connectCallbacks[command.tag];
-            callback(response);
-            delete Peer.connectCallbacks[command.tag];
-          } else {
-            dbgWarn('received connect callback for unknown datachannel: ' +
-                command.tag);
-          }
-        } else if (command.type === Channel.COMMANDS.NET_DISCONNECTED) {
-          // Receiving a disconnect on the remote peer should close SOCKS.
-          dbg(command.tag + ' <--- received NET-DISCONNECTED');
-          this.closeConnectionToPeer(command.tag);
-        } else if (command.type === Channel.COMMANDS.PONG) {
-          this.lastPingPongReceiveDate_ = new Date(); 
-        } else {
-          dbgWarn('unsupported control command: ' + command.type);
-        }
-      } else {
-        if (!(msg.tag in this.channels_)) {
-          dbgErr('unknown datachannel ' + msg.tag);
-          return;
-        }
-        var session = this.channels_[msg.tag];
-        session.send(msg.data);
-      }
-    }
-
-    /**
-     * Calls the endpoint's terminate() method and discards our reference
-     * to the channel. Intended for use when the remote side has been
-     * disconnected.
-     */
-    private closeConnectionToPeer = (tag:string) => {
-      if (!(tag in this.channels_)) {
-        dbgWarn('unknown datachannel ' + tag + ' has closed');
+      if(!(rtcData.channelLabel in this.sessions_)) {
+        log.error('onDataFromPeer_: no such channel: ' + rtcData.channelLabel);
         return;
       }
-      dbg('datachannel ' + tag + ' has closed. ending SOCKS session for channel.');
-      this.channels_[tag].terminate();
-      delete this.channels_[tag];
+
+      this.sessions_[rtcData.channelLabel].handleDataFromPeer(rtcData.message);
     }
 
-    /**
-     * Send data over SCTP to peer, via data channel |tag|.
-     *
-     * Side note: When transport_ encounters a 'new' |tag|, it
-     * implicitly creates a new data channel.
-     */
-    private sendToPeer_ = (tag:string, buffer:ArrayBuffer) => {
-      if (!this.transport_) {
-        dbgWarn('transport_ not ready');
-        return;
+    public toString = () : string => {
+      var ret :string;
+      var sessionsAsStrings :string[] = [];
+      var label :string;
+      for (label in this.sessions_) {
+        sessionsAsStrings.push(this.sessions_[label].toString());
       }
-      dbg('send ' + buffer.byteLength + ' bytes on datachannel ' + tag);
-      this.transport_.send(tag, buffer);
-    }
-
-    /**
-     * Pass any messages coming from remote peer through the signalling channel
-     * handled by freedom, which goes to the signalling channel input of the
-     * peer connection.
-     */
-    public handlePeerSignal = (msg:PeerSignal) => {
-      // dbg('client handleSignalFromPeer: ' + JSON.stringify(msg) +
-                  // ' with state ' + this.toString());
-      if (!this.signallingChannel_) {
-        dbgErr('signalling channel missing!');
-        return;
-      }
-      // TODO: this code is completely common to rtc-to-net (growing need for shared lib)
-      try {
-        var batchedMessages :any = JSON.parse(msg.data);
-        if (batchedMessages.version != 1) {
-          throw new Error('only version 1 batched messages supported');
-        }
-        for (var i = 0; i < batchedMessages.messages.length; i++) {
-          var message = batchedMessages.messages[i];
-          dbg('received signalling channel message: ' + message);
-          this.signallingChannel_.emit('message', message);
-        }
-      } catch (e) {
-        dbgErr('could not parse batched messages: ' + e.message);
-      }
-    }
-
-    public toString = () => {
-      var ret ='<SocksToRTC.Peer: failed toString()>';
-      try {
-        ret = JSON.stringify({ socksServer: this.socksServer_,
-                               transport: this.transport_,
-                               peerId: this.peerId_,
-                               signallingChannel: this.signallingChannel_,
-                               channels: this.channels_ });
-      } catch (e) {}
+      ret = JSON.stringify({ tcpServer_: this.tcpServer_.toString(),
+                             sessions_: sessionsAsStrings });
       return ret;
     }
+  }  // class SocksToRtc
 
-    /**
-     * Sets up ping-pong (heartbearts and acks) with socks-to-rtc client.
-     * This is necessary to detect disconnects from the other peer, since
-     * WebRtc does not yet notify us if the peer disconnects (to be fixed
-     * Chrome version 37), at which point we should be able to remove this code.
-     */
-    private startPingPong_ = () => {
-      this.pingPongSendIntervalId_ = setInterval(() => {
-        var command :Channel.Command = {type: Channel.COMMANDS.PING};
-        this.transport_.send('control', ArrayBuffers.stringToArrayBuffer(
-            JSON.stringify(command)));
-      }, 1000);
 
-      var PING_PONG_CHECK_INTERVAL_MS :number = 10000;
-      this.pingPongCheckIntervalId_ = setInterval(() => {
-        var nowDate = new Date();
-        if (!this.lastPingPongReceiveDate_ ||
-            (nowDate.getTime() - this.lastPingPongReceiveDate_.getTime()) >
-             PING_PONG_CHECK_INTERVAL_MS) {
-          dbgWarn('no ping-pong detected, closing peer');
-          // Save remotePeer before closing because it will be reset.
-          var remotePeer = this.remotePeer_;
-          this.close();
-          freedom.emit('socksToRtcTimeout', remotePeer);
+  // A Socks sesson links a Tcp connection to a particular data channel on the
+  // peer connection. CONSIDER: when we have a lightweight webrtc provider, we
+  // can use the DataChannel class directly here instead of the awkward pairing
+  // of peerConnection with chanelLabel.
+  export class Session {
+    // The channel Label is a unique id for this data channel and session.
+    private channelLabel_ :string;
+
+    // The |onceReady| promise is fulfilled when the peer sends back the
+    // destination reached, and this endpoint is the fulfill value.
+    public onceReady :Promise<Net.Endpoint>;
+    public onceClosed :Promise<void>;
+
+    // These are used to avoid double-closure of data channels. We don't need
+    // this for tcp connections because that class already holds the open/
+    // closed state.
+    private dataChannelIsClosed_ :boolean;
+
+    // A boolean control variable that defines whether a close message is sent
+    // on a data channel to the peer when a data channel/session is closed.
+    //
+    // CONSIDER: remove this once we're using a version of chrome that
+    // correctly propegates close messages (
+    // https://code.google.com/p/webrtc/issues/detail?id=2513)
+    private onCloseSendCloseMessageToPeer_ :boolean;
+
+    // We push data from the peer into this queue so that we can write the
+    // receive function to get just the next bit of data from the peer. This
+    // makes protocol writing much simpler. ArrayBuffers are used for data
+    // being proxied, and strings are used for control information.
+    private dataFromPeer_ :Handler.Queue<WebRtc.Data,void>;
+
+    constructor(public tcpConnection:Tcp.Connection,
+                private peerConnection_:WebrtcLib.Pc) {
+      this.channelLabel_ = obtainTag();
+      this.dataChannelIsClosed_ = false;
+      this.onCloseSendCloseMessageToPeer_ = true;
+      var onceChannelOpenned :Promise<void>;
+      var onceChannelClosed :Promise<void>;
+      this.dataFromPeer_ = new Handler.Queue<WebRtc.Data,void>();
+
+      // Open a data channel to the peer.
+      onceChannelOpenned = this.peerConnection_.openDataChannel(
+          this.channelLabel_);
+
+      // Make sure that closing down a peer connection or a tcp connection
+      // results in the session being closed down appropriately.
+      onceChannelClosed = this.peerConnection_
+          .onceDataChannelClosed(this.channelLabel_);
+      onceChannelClosed.then(this.close);
+      this.tcpConnection.onceClosed.then(this.close);
+
+      this.onceClosed = Promise.all<any>(
+          [this.tcpConnection.onceClosed, onceChannelClosed]).then(() => {});
+
+      // The session is ready after: 1. the auth handskhape, 2. after the peer-
+      // to-peer data channel is open, and 3. after we have done the request
+      // handshape with the peer (and the peer has completed the TCP connection
+      // to the remote site).
+      this.onceReady = this.doAuthHandshake_()
+          .then(() => { return onceChannelOpenned; })
+          .then(this.doRequestHandshake_);
+      // Only after all that can we simply pass data back and forth.
+      this.onceReady.then(() => { this.linkTcpAndPeerConnectionData_(); });
+    }
+
+    public longId = () : string => {
+      var tcp :string = '?';
+      if(this.tcpConnection) {
+        tcp = this.tcpConnection.connectionId + (this.tcpConnection.isClosed() ? '.c' : '.o');
+      }
+      return tcp + '-' + this.channelLabel_ +
+          (this.dataChannelIsClosed_ ? '.c' : '.o') ;
+    }
+
+    // Close the session.
+    public close = () : Promise<void> => {
+      log.debug(this.longId() + ': close');
+      if(!this.tcpConnection.isClosed()) {
+        this.tcpConnection.close();
+      }
+      // Note: closing the tcp connection should raise an event to close the
+      // data channel. But we can start closing it down now anyway (faster,
+      // more readable code).
+      if(!this.dataChannelIsClosed_) {
+        // CONSIDER: remove this once we're using a version of chrome that
+        // correctly propegates close messages (
+        // https://code.google.com/p/webrtc/issues/detail?id=2513)
+        if(this.onCloseSendCloseMessageToPeer_) {
+          this.peerConnection_.send(this.channelLabel_, { str: 'close' });
         }
-      }, PING_PONG_CHECK_INTERVAL_MS);
+        this.peerConnection_.closeDataChannel(this.channelLabel_);
+        this.dataChannelIsClosed_ = true;
+      }
+      return this.onceClosed;
     }
 
-    private stopPingPong_ = () => {
-      // Stop setInterval functions.
-      if (this.pingPongSendIntervalId_ !== null) {
-        clearInterval(this.pingPongSendIntervalId_);
-        this.pingPongSendIntervalId_ = null;
+    public handleDataFromPeer(data:WebRtc.Data) {
+      // CONSIDER: remove this once we're using a version of chrome that
+      // correctly propegates close messages (
+      // https://code.google.com/p/webrtc/issues/detail?id=2513)
+      if (data.str && data.str === 'close') {
+        log.debug('peer sent close control message.');
+        this.onCloseSendCloseMessageToPeer_ = false;
+        this.close();
+        return;
       }
-      if (this.pingPongCheckIntervalId_ !== null) {
-        clearInterval(this.pingPongCheckIntervalId_);
-        this.pingPongCheckIntervalId_ = null;
-      }
-      this.lastPingPongReceiveDate_ = null;
+      this.dataFromPeer_.handle(data);
     }
 
-  }  // SocksToRTC.Peer
+    public channelLabel = () : string => {
+      return this.channelLabel_;
+    }
 
-  // TODO: reuse tag names from a pool.
-  function obtainTag() {
-    return 'c' + Math.random();
-  }
+    public toString = () : string => {
+      return JSON.stringify({
+        channelLabel_: this.channelLabel_,
+        dataChannelIsClosed_: this.dataChannelIsClosed_,
+        tcpConnection: this.tcpConnection.toString()
+      });
+    }
 
-  var modulePrefix_ = '[SocksToRtc] ';
-  function dbg(msg:string) { console.log(modulePrefix_ + msg); }
-  function dbgWarn(msg:string) { console.warn(modulePrefix_ + msg); }
-  function dbgErr(msg:string) { console.error(modulePrefix_ + msg); }
+    // Receive a socks connection and send the initial Auth messages.
+    // Assumes: no packet fragmentation.
+    // TODO: handle packet fragmentation:
+    //   https://github.com/uProxy/uproxy/issues/323
+    private doAuthHandshake_ = ()
+        : Promise<void> => {
+      return this.tcpConnection.receiveNext()
+        .then(Socks.interpretAuthHandshakeBuffer)
+        .then((auths:Socks.Auth[]) => {
+          this.tcpConnection.send(
+              Socks.composeAuthResponse(Socks.Auth.NOAUTH));
+        });
+    }
 
-}  // module SocksToRTC
+    // Sets the next data hanlder to get next data from peer, assuming it's
+    // stringified version of the destination.
+    private receiveEndpointFromPeer_ = () : Promise<Net.Endpoint> => {
+      return new Promise((F,R) => {
+        this.dataFromPeer_.setSyncNextHandler((data:WebRtc.Data) => {
+          if (!data.str) {
+            R(new Error(this.longId() + ': receiveEndpointFromPeer_: ' +
+                'got non-string data: ' + JSON.stringify(data)));
+            return;
+          }
+          var endpoint :Net.Endpoint;
+          try { endpoint = JSON.parse(data.str); }
+          catch(e) {
+            R(new Error(this.longId() + ': receiveEndpointFromPeer_: ' +
+                ') passDataToTcp: got bad JSON data: ' + data.str));
+            return;
+          }
+          // CONSIDER: do more sanitization of the data passed back?
+          F(endpoint);
+          return;
+        });
+      });
+    }
 
-function initClient() {
-  // Create local peer and attach freedom message handlers, then emit |ready|.
-  var peer = new SocksToRTC.Peer();
-  freedom.on('handleSignalFromPeer', peer.handlePeerSignal);
-  freedom.on('start', peer.start);
-  freedom.on('stop', peer.close);
-  freedom.emit('ready', {});
-}
+    // Assumes that |doAuthHandshake_| has completed and that a peer-conneciton
+    // has been established. Promise returns the destination site connected to.
+    private doRequestHandshake_ = ()
+        : Promise<Net.Endpoint> => {
+      return this.tcpConnection.receiveNext()
+        .then(Socks.interpretRequestBuffer)
+        .then((request:Socks.Request) => {
+          this.peerConnection_.send(this.channelLabel_,
+                                    { str: JSON.stringify(request) });
+          return this.receiveEndpointFromPeer_();
+        })
+        .then((endpoint:Net.Endpoint) => {
+          // TODO: test and close: https://github.com/uProxy/uproxy/issues/324
+          this.tcpConnection.send(Socks.composeRequestResponse(endpoint));
+          return endpoint;
+        });
+    }
 
+    // Assumes that |doRequestHandshake_| has completed (and in particular,
+    // that tcpConnection is defined.)
+    private linkTcpAndPeerConnectionData_ = () : void => {
+      // Any further data just goes to the target site.
+      this.tcpConnection.dataFromSocketQueue.setSyncHandler(
+          (data:ArrayBuffer) => {
+        log.debug(this.longId() + ': dataFromSocketQueue: ' + data.byteLength + ' bytes.');
+        this.peerConnection_.send(this.channelLabel_, { buffer: data });
+      });
+      // Any data from the peer goes to the TCP connection
+      this.dataFromPeer_.setSyncHandler((data:WebRtc.Data) => {
+        if (!data.buffer) {
+          log.error(this.longId() + ': dataFromPeer: ' +
+              'got non-buffer data: ' + JSON.stringify(data));
+          return;
+        }
+        log.debug(this.longId() + ': dataFromPeer: ' + data.buffer.byteLength +
+            ' bytes.');
+        this.tcpConnection.send(data.buffer);
+      });
+    }
+  }  // Session
 
-initClient();
+}  // module SocksToRtc
