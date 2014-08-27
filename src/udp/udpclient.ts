@@ -37,22 +37,13 @@ module Net {
     public bind() : Promise<Net.Endpoint> {
       // TODO: not sure what else this should be?
       return this.socket.bind('127.0.0.1', 0)
-          .then((resultCode:number) => {
-            // Ensure the listen was successful.
-            if (resultCode != 0) {
-              return Promise.reject(new Error('listen failed with result code '
-                  + resultCode));
-            }
-            return resultCode;
-          })
-          .then(this.socket.getInfo)
-          .then((socketInfo:UdpLib.SocketInfo) => {
+          .then((endpoint:Net.Endpoint) => {
             // Record the address and port on which our socket is listening.
-            this.address_ = socketInfo.localAddress;
-            this.port_ = socketInfo.localPort;
-            dbg('listening on ' + this.address_ + ':' + this.port_);
+            this.address_ = endpoint.address;
+            this.port_ = endpoint.port;
+            dbg('listening on : ' + JSON.stringify(endpoint));
             this.socket.on('onData', this.onSocksClientData);
-            return { address: this.address_, port: this.port_ };
+            return endpoint;
           });
     }
 
