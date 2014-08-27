@@ -325,8 +325,8 @@ module RtcToNet {
         var address = ipaddr.process(addressString);
         return address.range() == 'unicast';
       } catch (e) {
-        log.error(this.longId() + ': error in isAllowedAddress_(' +
-            addressString + '), ' + e.name + ':' + e.message);
+        // This likely indicates a malformed IP address, which will be logged by
+        // the caller.
         return false;
       }
     }
