@@ -133,20 +133,6 @@ module.exports = (grunt) ->
           keepRunner: true
     }
 
-    env: {
-      jasmine_node: {
-        # Will be available to tests as process.env['CHROME_EXTENSION_PATH'].
-        CHROME_EXTENSION_PATH: path.resolve('build/chrome-app')
-      }
-    }
-
-    jasmine_node:
-      # Match only specs whose filenames begin with endtoend.
-      options: {
-        match: 'endtoend.*'
-      }
-      projectRoot: 'build/chrome-app'
-
     clean: ['build/**']
 
     ccaPath: 'node_modules/cca/src/cca.js'
@@ -160,7 +146,7 @@ module.exports = (grunt) ->
         exitCode: [0,1]
       }
       ccaCreate: {
-        command: '<%= ccaPath %> create build/cca-app --link-to=build/chrome-app/manifest.json'
+        command: '<%= ccaPath %> create build/cca-app --link-to=socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp/manifest.json'
         exitCode: [0,1]
       }
       ccaEmulate: {
