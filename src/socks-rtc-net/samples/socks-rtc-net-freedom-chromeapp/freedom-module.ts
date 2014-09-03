@@ -25,7 +25,7 @@ var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
     },
     peerName: 'rtcNet'
   };
-var rtcNet = new RtcToNet.RtcToNet(rtcNetPcConfig);
+var rtcNet = new RtcToNet.RtcToNet(rtcNetPcConfig, {alloNonUnicast:true});
 
 //-----------------------------------------------------------------------------
 var socksRtcPcConfig :WebRtc.PeerConnectionConfig = {

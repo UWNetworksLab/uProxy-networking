@@ -21,9 +21,19 @@ module RtcToNet {
 
   var log :Freedom_UproxyLogging.Log = freedom['core.log']('RtcToNet');
 
+  export interface ProxyConfig {
+    // If |alloNonUnicast === false| then any proxy attempt that results
+    // in a non-unicast (e.g. local network) address will fail.
+    alloNonUnicast :boolean;
+  }
+
   // The |RtcToNet| class holds a peer-connection and all its associated
   // proxied connections.
   export class RtcToNet {
+    // Configuration for the proxy endpoint. Note: all sessions share the same
+    // (externally provided) proxyconfig.
+    public proxyConfig :ProxyConfig;
+
     // Message handler queues to/from the peer.
     public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void> =
         new Handler.Queue<WebRtc.SignallingMessage,void>();
@@ -54,12 +64,13 @@ module RtcToNet {
     // listening port is returned by the promise.
     //
     // TODO: add checking of fingerprints.
-    constructor(pcConfig:WebRtc.PeerConnectionConfig) {
+    constructor(pcConfig:WebRtc.PeerConnectionConfig, proxyConfig:ProxyConfig) {
       // Messages received via signalling channel must reach the remote peer
       // through something other than the peerconnection. (e.g. XMPP). This is
       // the Freedom channel object to sends signalling messages to the peer.
       // SOCKS sessions biject to peerconnection datachannels.
       this.sessions_ = {};
+      this.proxyConfig = proxyConfig;
       this.peerConnection_ = freedom['core.uproxypeerconnection'](pcConfig);
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('peerOpenedChannel', (channelLabel:string) => {
@@ -72,7 +83,7 @@ module RtcToNet {
           log.debug('dummy init channel.');
           return;
         }
-        var session = new Session(this.peerConnection_, channelLabel);
+        var session = new Session(this.peerConnection_, channelLabel, proxyConfig);
         this.sessions_[channelLabel] = session;
         session.onceClosed.then(() => {
           delete this.sessions_[channelLabel];
@@ -131,7 +142,7 @@ module RtcToNet {
       var sessionsAsStrings :string[] = [];
       var label :string;
       for (label in this.sessions_) {
-        sessionsAsStrings.push(this.sessions_[label].toString());
+        sessionsAsStrings.push(this.sessions_[label].longId());
       }
       ret = JSON.stringify({ sessions_: sessionsAsStrings });
       return ret;
@@ -160,14 +171,6 @@ module RtcToNet {
     // low-level WebRtc provider), then refer to dataChannel.isClosed directly.
     private isClosed_ :boolean;
 
-    // A boolean control variable that defines whether a close message is sent
-    // on a data channel to the peer when a data channel/session is closed.
-    //
-    // CONSIDER: remove this once we're using a version of chrome that
-    // correctly propegates close messages (
-    // https://code.google.com/p/webrtc/issues/detail?id=2513)
-    private onCloseSendCloseMessageToPeer_ :boolean;
-
     // This variable starts false, and becomes true after the socket to the
     // remote endpoint is open (and the endpoint is confirmed to be at an
     // allowed address).
@@ -180,9 +183,10 @@ module RtcToNet {
     constructor(
         private peerConnection_:WebrtcLib.Pc,
         // The channel Label is a unique id for this data channel and session.
-        private channelLabel_:string) {
+        private channelLabel_:string,
+        public proxyConfig :ProxyConfig) {
+      this.proxyConfig = proxyConfig;
       this.isClosed_ = false;
-      this.onCloseSendCloseMessageToPeer_ = true;
       this.hasConnectedToEndpoint_ = false;
       // Open a data channel to the peer. The session is ready when the channel
       // is open.
@@ -211,12 +215,6 @@ module RtcToNet {
 
     public close = () : void => {
       if(!this.isClosed_) {
-        // CONSIDER: remove this once we're using a version of chrome that
-        // correctly propegates close messages (
-        // https://code.google.com/p/webrtc/issues/detail?id=2513)
-        if(this.onCloseSendCloseMessageToPeer_) {
-          this.peerConnection_.send(this.channelLabel_, { str: 'close' });
-        }
         this.peerConnection_.closeDataChannel(this.channelLabel_);
         this.isClosed_ = true;
       }
@@ -244,15 +242,6 @@ module RtcToNet {
     }
 
     private handleWebRtcControlMessage_ = (controlMessage:string) : void => {
-      // CONSIDER: remove this once we're using a version of chrome that
-      // correctly propegates close messages (
-      // https://code.google.com/p/webrtc/issues/detail?id=2513)
-      if (controlMessage === 'close') {
-        this.onCloseSendCloseMessageToPeer_ = false;
-        this.close();
-        return;
-      }
-
       // TODO: rather than doing checks like this, we should use a handler
       // queue and receieve exactly what we want.
       if(this.tcpConnection) {
@@ -278,6 +267,10 @@ module RtcToNet {
             if (!this.isAllowedAddress_(connectedToEndpoint.address)) {
               log.error(this.longId() + ': Blocked attempt to access ' +
                   connectedToEndpoint.address + ', not an allowed address');
+              // TODO: handle failure properly: tell the requester an
+              // appropriate SOCKS error.
+              // TODO: close the TCP connection and the peer-connection.
+              this.close();
               return;
             }
             this.hasConnectedToEndpoint_ = true;
@@ -318,6 +311,12 @@ module RtcToNet {
     }
 
     private isAllowedAddress_ = (addressString:string) : boolean => {
+      // default is to disallow non-unicast addresses; i.e. only proxy for
+      // public internet addresses.
+      if (this.proxyConfig.alloNonUnicast) {
+        return true
+      }
+
       // ipaddr.process automatically converts IPv4-mapped IPv6 addresses into
       // IPv4 Address objects.  This ensure that an attacker cannot reach a
       // restricted IPv4 endpoint that is identified by its IPv6-mapped address.

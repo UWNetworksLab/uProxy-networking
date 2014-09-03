@@ -297,7 +297,7 @@ module Tcp {
       } else if (info.errcode === 'CONNECTION_CLOSED') {
         this.fulfillClosed_(SocketCloseKind.REMOTELY_CLOSED);
       } else {
-        log.warn(this.connectionId + 'Disconnected with errcode '
+        log.warn(this.connectionId + ': Disconnected with errcode '
           + info.errcode + ': ' + info.message);
         this.fulfillClosed_(SocketCloseKind.UNKOWN);
       }
