@@ -22,9 +22,9 @@ module RtcToNet {
   var log :Freedom_UproxyLogging.Log = freedom['core.log']('RtcToNet');
 
   export interface ProxyConfig {
-    // If |alloNonUnicast === false| then any proxy attempt that results
+    // If |allowNonUnicast === false| then any proxy attempt that results
     // in a non-unicast (e.g. local network) address will fail.
-    alloNonUnicast :boolean;
+    allowNonUnicast :boolean;
   }
 
   // The |RtcToNet| class holds a peer-connection and all its associated
@@ -313,7 +313,7 @@ module RtcToNet {
     private isAllowedAddress_ = (addressString:string) : boolean => {
       // default is to disallow non-unicast addresses; i.e. only proxy for
       // public internet addresses.
-      if (this.proxyConfig.alloNonUnicast) {
+      if (this.proxyConfig.allowNonUnicast) {
         return true
       }
 
