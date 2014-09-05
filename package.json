@@ -37,6 +37,8 @@
   },
   "scripts": {
     "test": "grunt test",
-    "prepublish": "grunt test"
+    "prepublish": "grunt test",
+    "postinstall": "grunt exec:postInstallFromDev",
+    "postupdate": "grunt exec:postInstallFromDev"
   }
 }
