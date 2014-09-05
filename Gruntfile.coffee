@@ -240,28 +240,6 @@ module.exports = (grunt) ->
   ]
 
 
-  taskManager.add 'sample-chromeApp', [
-    'base'
-    'tcp'
-    'udp'
-    'socksToRtc'
-    'rtcToNet'
-    'typescript:chromeApp'
-    'copy:chromeApp'
-    'copy:libForChromeApp'
-  ]
-
-  taskManager.add 'sample-firefoxApp', [
-    'base'
-    'tcp'
-    'udp'
-    'socksToRtc'
-    'rtcToNet'
-    'typescript:firefoxApp'
-    'copy:firefoxApp'
-    'copy:libForFirefoxApp'
-  ]
-
   #-------------------------------------------------------------------------
   taskManager.add 'build', [
     'base'
