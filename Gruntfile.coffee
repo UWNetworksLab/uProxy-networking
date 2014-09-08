@@ -142,10 +142,6 @@ module.exports = (grunt) ->
     ccaJsPath: Path.join(ccaPath, 'src/cca.js')
     ccaCwd: 'build/cca-app'
     exec: {
-      postInstallFromDev: {
-        cwd: uproxyLibPath
-        command: 'npm install'
-      }
       adbLog: {
         command: 'adb logcat *:I | grep CONSOLE'
       }
