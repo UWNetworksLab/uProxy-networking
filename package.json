@@ -1,5 +1,5 @@
 {
-  "name": "upoxy-networking",
+  "name": "uproxy-networking",
   "description": "uProxy's networking library: SOCKS5 over WebRTC",
   "version": "1.0.1",
   "repository": {
@@ -37,6 +37,8 @@
   },
   "scripts": {
     "test": "grunt test",
-    "prepublish": "grunt test"
+    "prepublish": "grunt test",
+    "postinstall": "grunt exec:postInstallFromDev",
+    "postupdate": "grunt exec:postInstallFromDev"
   }
 }
