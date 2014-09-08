@@ -232,8 +232,6 @@ module.exports = (grunt) ->
     'copy:echoServerChromeApp'
   ]
 
-  #-------------------------------------------------------------------------
-  # tasks for sample apps
   taskManager.add 'socksRtcNet', [
     'base'
     'tcp'
@@ -246,7 +244,6 @@ module.exports = (grunt) ->
     'typescript:socksRtcNetChromeApp'
     'copy:socksRtcNetChromeApp'
   ]
-
 
   #-------------------------------------------------------------------------
   taskManager.add 'build', [
