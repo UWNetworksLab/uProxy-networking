@@ -142,11 +142,11 @@ module.exports = (grunt) ->
         command: 'adb logcat *:I | grep CONSOLE'
       }
       adbPortForward: {
-        command: 'adb forward tcp:10000 tcp:9998'
+        command: 'adb forward tcp:10000 tcp:9999'
         exitCode: [0,1]
       }
       ccaCreate: {
-        command: '<%= ccaPath %> create build/cca-app --link-to=socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp/manifest.json'
+        command: '<%= ccaPath %> create build/cca-app --link-to=build/socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp/manifest.json'
         exitCode: [0,1]
       }
       ccaEmulate: {
