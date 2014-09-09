@@ -90,8 +90,7 @@ module.exports = (grunt) ->
       rtcToNet: Rule.copyModule 'rtc-to-net'
 
       # Sample Apps
-      echoServer: Rule.copyModule 'echo-server'
-      echoServerChromeApp: Rule.copySampleFiles 'echo-server/samples/echo-server-chromeapp', 'lib'
+      echoServerChromeApp: Rule.copySampleFiles 'tcp/samples/echo-server-chromeapp', 'lib'
 
       socksSamples: Rule.copyModule 'socks-server'
       simpleSocksChromeApp: Rule.copySampleFiles 'socks-server/samples/simple-socks-chromeapp', 'lib'
@@ -112,8 +111,7 @@ module.exports = (grunt) ->
       socksToRtc: Rule.typescriptSrc 'socks-to-rtc'
       rtcToNet: Rule.typescriptSrc 'rtc-to-net'
       # Echo server sample app.
-      echoServer: Rule.typescriptSrc 'echo-server'
-      echoServerChromeApp: Rule.typescriptSrc 'echo-server/samples/echo-server-chromeapp'
+      echoServerChromeApp: Rule.typescriptSrc 'tcp/samples/echo-server-chromeapp'
       # SOCKS server sample apps.
       socksSamples: Rule.typescriptSrc 'socks-server'
       simpleSocksChromeApp: Rule.typescriptSrc 'socks-server/samples/simple-socks-chromeapp'
@@ -216,9 +214,6 @@ module.exports = (grunt) ->
   taskManager.add 'echoServer', [
     'base'
     'tcp'
-    'udp'
-    'typescript:echoServer'
-    'copy:echoServer'
     'typescript:echoServerChromeApp'
     'copy:echoServerChromeApp'
   ]

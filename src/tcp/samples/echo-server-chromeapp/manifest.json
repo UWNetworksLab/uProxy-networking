@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "echo",
+  "description": "Echo server.",
+  "version": "0.1",
+  "app": {
+    "background": {
+      "scripts": [
+        "lib/freedom/uproxy-core-env.js",
+        "background.js"
+      ]
+    }
+  },
+  "permissions": [],
+  "sockets": {
+    "tcpServer": {
+      "listen": ""
+    }
+  }
+}
