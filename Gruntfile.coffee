@@ -89,17 +89,14 @@ module.exports = (grunt) ->
       socksToRtc: Rule.copyModule 'socks-to-rtc'
       rtcToNet: Rule.copyModule 'rtc-to-net'
 
-      socksRtcNet: Rule.copyModule 'socks-rtc-net'
-      socksRtcNetChromeApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp', 'lib'
-      socksRtcNetFirefoxApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-freedom-firefoxapp/data/', 'lib'
-
       # Sample Apps
-      #
-      # Echo server Chrome App
       echoServer: Rule.copyModule 'echo-server'
       echoServerChromeApp: Rule.copySampleFiles 'echo-server/samples/echo-server-chromeapp', 'lib'
 
-      # ? what more... ?
+      socksSamples: Rule.copyModule 'socks-server'
+      simpleSocksChromeApp: Rule.copySampleFiles 'socks-server/samples/simple-socks-chromeapp', 'lib'
+      simpleSocksFirefoxApp: Rule.copySampleFiles 'socks-server/samples/simple-socks-firefoxapp/data/', 'lib'
+      copypasteSocksChromeApp: Rule.copySampleFiles 'socks-server/samples/copypaste-socks-chromeapp', 'lib'
     }  # copy
 
     #-------------------------------------------------------------------------
@@ -114,13 +111,14 @@ module.exports = (grunt) ->
       socks: Rule.typescriptSrc 'socks'
       socksToRtc: Rule.typescriptSrc 'socks-to-rtc'
       rtcToNet: Rule.typescriptSrc 'rtc-to-net'
-      # Echo server sample app
+      # Echo server sample app.
       echoServer: Rule.typescriptSrc 'echo-server'
       echoServerChromeApp: Rule.typescriptSrc 'echo-server/samples/echo-server-chromeapp'
-      # Socks-rtc-net sample app
-      socksRtcNet: Rule.typescriptSrc 'socks-rtc-net'
-      socksRtcNetChromeApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp'
-      socksRtcNetFirefoxApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-freedom-firefoxapp'
+      # SOCKS server sample apps.
+      socksSamples: Rule.typescriptSrc 'socks-server'
+      simpleSocksChromeApp: Rule.typescriptSrc 'socks-server/samples/simple-socks-chromeapp'
+      simpleSocksFirefoxApp: Rule.typescriptSrc 'socks-server/samples/simple-socks-firefoxapp'
+      copypasteSocksChromeApp: Rule.typescriptSrc 'socks-server/samples/copypaste-socks-chromeapp'
     }
 
     #-------------------------------------------------------------------------
@@ -202,6 +200,7 @@ module.exports = (grunt) ->
 
   taskManager.add 'socksToRtc', [
     'base'
+    'socks'
     'copy:socksToRtc'
     'typescript:socksToRtc'
   ]
@@ -224,33 +223,31 @@ module.exports = (grunt) ->
     'copy:echoServerChromeApp'
   ]
 
-  #-------------------------------------------------------------------------
-  # tasks for sample apps
-  taskManager.add 'socksRtcNet', [
+  taskManager.add 'socksSamples', [
     'base'
     'tcp'
     'udp'
     'socksToRtc'
     'rtcToNet'
-    'echoServer'
-    'typescript:socksRtcNet'
-    'copy:socksRtcNet'
-    'typescript:socksRtcNetChromeApp'
-    'copy:socksRtcNetChromeApp'
+    'typescript:socksSamples'
+    'copy:socksSamples'
+    'typescript:simpleSocksChromeApp'
+    'copy:simpleSocksChromeApp'
+    'typescript:copypasteSocksChromeApp'
+    'copy:copypasteSocksChromeApp'
   ]
-
 
   #-------------------------------------------------------------------------
   taskManager.add 'build', [
     'base'
-    # Modules
     'tcp'
     'udp'
     'echoServer'
     'socks'
     'socksToRtc'
     'rtcToNet'
-    'socksRtcNet'
+    'echoServer'
+    'socksSamples'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
