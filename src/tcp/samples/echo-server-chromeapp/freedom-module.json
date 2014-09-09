@@ -3,10 +3,10 @@
   "description": "Listen for incoming requests, and echo them back.",
   "app": {
     "script": [
-      "../arraybuffers/arraybuffers.js",
-      "../handler/queue.js",
-      "../tcp/tcp.js",
-      "../echo-server/tcp-echo-server.js",
+      "lib/arraybuffers/arraybuffers.js",
+      "lib/handler/queue.js",
+      "lib/tcp/tcp.js",
+      "tcp-echo-server.js",
       "freedom-module.js"
     ]
   },
