@@ -89,21 +89,18 @@ module.exports = (grunt) ->
       # Individual modules.
       tcp: Rule.copyModule 'udp'
       udp: Rule.copyModule 'tcp'
-      socks: Rule.copyModule 'socks'
+      socksCommon: Rule.copyModule 'socks-common'
       socksToRtc: Rule.copyModule 'socks-to-rtc'
       rtcToNet: Rule.copyModule 'rtc-to-net'
 
-      socksRtcNet: Rule.copyModule 'socks-rtc-net'
-      socksRtcNetChromeApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp', 'lib'
-      socksRtcNetFirefoxApp: Rule.copySampleFiles 'socks-rtc-net/samples/socks-rtc-net-freedom-firefoxapp/data/', 'lib'
-
       # Sample Apps
-      #
-      # Echo server Chrome App
       echoServer: Rule.copyModule 'echo-server'
       echoServerChromeApp: Rule.copySampleFiles 'echo-server/samples/echo-server-chromeapp', 'lib'
 
-      # ? what more... ?
+      socksSamples: Rule.copyModule 'socks-server'
+      simpleSocksChromeApp: Rule.copySampleFiles 'socks-server/samples/simple-socks-chromeapp', 'lib'
+      simpleSocksFirefoxApp: Rule.copySampleFiles 'socks-server/samples/simple-socks-firefoxapp/data/', 'lib'
+      copypasteSocksChromeApp: Rule.copySampleFiles 'socks-server/samples/copypaste-socks-chromeapp', 'lib'
     }  # copy
 
     #-------------------------------------------------------------------------
@@ -115,25 +112,26 @@ module.exports = (grunt) ->
       # Modules
       tcp: Rule.typescriptSrc 'tcp'
       udp: Rule.typescriptSrc 'udp'
-      socks: Rule.typescriptSrc 'socks'
+      socksCommon: Rule.typescriptSrc 'socks-common'
       socksToRtc: Rule.typescriptSrc 'socks-to-rtc'
       rtcToNet: Rule.typescriptSrc 'rtc-to-net'
-      # Echo server sample app
+      # Echo server sample app.
       echoServer: Rule.typescriptSrc 'echo-server'
       echoServerChromeApp: Rule.typescriptSrc 'echo-server/samples/echo-server-chromeapp'
-      # Socks-rtc-net sample app
-      socksRtcNet: Rule.typescriptSrc 'socks-rtc-net'
-      socksRtcNetChromeApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp'
-      socksRtcNetFirefoxApp: Rule.typescriptSrc 'socks-rtc-net/samples/socks-rtc-net-freedom-firefoxapp'
+      # SOCKS server sample apps.
+      socksSamples: Rule.typescriptSrc 'socks-server'
+      simpleSocksChromeApp: Rule.typescriptSrc 'socks-server/samples/simple-socks-chromeapp'
+      simpleSocksFirefoxApp: Rule.typescriptSrc 'socks-server/samples/simple-socks-firefoxapp'
+      copypasteSocksChromeApp: Rule.typescriptSrc 'socks-server/samples/copypaste-socks-chromeapp'
     }
 
     #-------------------------------------------------------------------------
     jasmine: {
-      socks:
-        src: ['build/socks/socks-headers.js']
+      socksCommon:
+        src: ['build/socks-common/socks-headers.js']
         options:
-          specs: 'build/socks/socks-headers.spec.js'
-          outfile: 'build/socks/_SpecRunner.html'
+          specs: 'build/socks-common/socks-headers.spec.js'
+          outfile: 'build/socks-common/_SpecRunner.html'
           keepRunner: true
     }
 
@@ -197,21 +195,23 @@ module.exports = (grunt) ->
     'typescript:udp'
   ]
 
-  taskManager.add 'socks', [
+  taskManager.add 'socksCommon', [
     'base'
-    'copy:socks'
-    'typescript:socks'
-    'jasmine:socks'
+    'copy:socksCommon'
+    'typescript:socksCommon'
+    'jasmine:socksCommon'
   ]
 
   taskManager.add 'socksToRtc', [
     'base'
+    'socksCommon'
     'copy:socksToRtc'
     'typescript:socksToRtc'
   ]
 
   taskManager.add 'rtcToNet', [
     'base'
+    'socksCommon'
     'copy:rtcToNet'
     'typescript:rtcToNet'
   ]
@@ -228,37 +228,38 @@ module.exports = (grunt) ->
     'copy:echoServerChromeApp'
   ]
 
-  taskManager.add 'socksRtcNet', [
+  taskManager.add 'socksSamples', [
     'base'
     'tcp'
     'udp'
+    'socksCommon'
     'socksToRtc'
     'rtcToNet'
-    'echoServer'
-    'typescript:socksRtcNet'
-    'copy:socksRtcNet'
-    'typescript:socksRtcNetChromeApp'
-    'copy:socksRtcNetChromeApp'
+    'typescript:socksSamples'
+    'copy:socksSamples'
+    'typescript:simpleSocksChromeApp'
+    'copy:simpleSocksChromeApp'
+    'typescript:copypasteSocksChromeApp'
+    'copy:copypasteSocksChromeApp'
   ]
 
   #-------------------------------------------------------------------------
   taskManager.add 'build', [
     'base'
-    # Modules
     'tcp'
     'udp'
     'echoServer'
-    'socks'
+    'socksCommon'
     'socksToRtc'
     'rtcToNet'
-    'socksRtcNet'
+    'socksSamples'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
   # and on Travis/Sauce Labs.
   taskManager.add 'test', [
     'build'
-    'jasmine:socks'
+    'jasmine:socksCommon'
   ]
 
   # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and
