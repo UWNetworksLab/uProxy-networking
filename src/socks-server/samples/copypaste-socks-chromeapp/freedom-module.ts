@@ -36,6 +36,17 @@ var socksRtcPcConfig :WebRtc.PeerConnectionConfig = {
   peerName: 'socksRtc'
 };
 
+// These two modules together comprise a SOCKS server:
+//  - socks-to-rtc is the frontend, which speaks the SOCKS protocol
+//  - rtc-to-net creates sockets on behalf of socks-to-rtc
+//
+// The two modules communicate via a peer-to-peer connection.
+//
+// If we receive the 'start' signal from the UI then we create a
+// socks-to-rtc module and this app will run the SOCKS frontend.
+// If we receive signalling channel messages without having received
+// the 'start' signal then we create an rtc-to-net instance and
+// will act as the SOCKS backend.
 var socksRtc:SocksToRtc.SocksToRtc;
 var rtcNet:RtcToNet.RtcToNet;
 
@@ -43,10 +54,12 @@ freedom.on('start', () => {
   var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port:9999 };
   socksRtc = new SocksToRtc.SocksToRtc(localhostEndpoint, socksRtcPcConfig);
   log.info('created socks-to-rtc');
+
   // Forward signalling channel messages to the UI.
   socksRtc.signalsForPeer.setSyncHandler((signal:WebRtc.SignallingMessage) => {
     freedom.emit('signalForPeer', signal);
   });
+
   socksRtc.onceReady
     .then((endpoint:Net.Endpoint) => {
       log.info('socksRtc ready. listening to SOCKS5 on: ' + JSON.stringify(endpoint));
@@ -58,6 +71,9 @@ freedom.on('start', () => {
 });
 
 // Receive signalling channel messages from the UI.
+// Messages are dispatched to either the socks-to-rtc or rtc-to-net
+// modules depending on whether we're acting as the frontend or backend,
+// respectively.
 freedom.on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
   if (socksRtc !== undefined) {
     socksRtc.handleSignalFromPeer(signal);
@@ -65,10 +81,12 @@ freedom.on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
     if (rtcNet === undefined) {
       rtcNet = new RtcToNet.RtcToNet(rtcNetPcConfig, {allowNonUnicast:true});
       log.info('created rtc-to-net');
+
       // Forward signalling channel messages to the UI.
       rtcNet.signalsForPeer.setSyncHandler((signal:WebRtc.SignallingMessage) => {
         freedom.emit('signalForPeer', signal);
       });
+
       rtcNet.onceReady.then(() => {
         log.info('rtcNet ready.');
       });
