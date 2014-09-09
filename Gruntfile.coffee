@@ -17,10 +17,14 @@ TaskManager = require 'uproxy-lib/tools/taskmanager'
 # build directory.
 Rule = require 'uproxy-lib/tools/common-grunt-rules'
 
+Path = require('path');
+
+uproxyLibPath = Path.dirname(require.resolve('uproxy-lib/package.json'))
+ipaddrPath = Path.dirname(require.resolve('ipaddr.js/package.json'))
+ccaPath = Path.dirname(require.resolve('cca/package.json'))
+
 #-------------------------------------------------------------------------
 module.exports = (grunt) ->
-  path = require('path');
-
   #-------------------------------------------------------------------------
   grunt.initConfig {
     pkg: grunt.file.readJSON('package.json')
@@ -44,13 +48,13 @@ module.exports = (grunt) ->
       uproxyLibThirdPartyTypescriptSrc: { files: [ {
         expand: true,
         overwrite: true,
-        cwd: 'node_modules/uproxy-lib',
+        cwd: uproxyLibPath,
         src: ['third_party'],
         dest: 'build/typescript-src/' } ] }
       uproxyLibTypescriptSrc: { files: [ {
         expand: true,
         overwrite: true,
-        cwd: 'node_modules/uproxy-lib/src/',
+        cwd: Path.join(uproxyLibPath, 'src'),
         src: ['*'],
         dest: 'build/typescript-src/' } ] }
 
@@ -60,7 +64,7 @@ module.exports = (grunt) ->
       #
       # Copy all the built stuff from uproxy-lib
       uproxyLibBuild: { files: [ {
-          expand: true, cwd: 'node_modules/uproxy-lib/build'
+          expand: true, cwd: Path.join(uproxyLibPath, 'build')
           src: ['**', '!**/typescript-src/**']
           dest: 'build'
           onlyIf: 'modified'
@@ -76,7 +80,7 @@ module.exports = (grunt) ->
 
       # Copy the ipaddr.js library into the build directory
       ipAddrJavaScript: { files: [ {
-          expand: true, cwd: 'node_modules/ipaddr.js'
+          expand: true, cwd: ipaddrPath
           src: ['ipaddr.min.js']
           dest: 'build/ipaddr/'
           onlyIf: 'modified'
@@ -131,23 +135,23 @@ module.exports = (grunt) ->
 
     clean: ['build/**']
 
-    ccaPath: 'node_modules/cca/src/cca.js'
+    ccaJsPath: Path.join(ccaPath, 'src/cca.js')
     ccaCwd: 'build/cca-app'
     exec: {
       adbLog: {
         command: 'adb logcat *:I | grep CONSOLE'
       }
       adbPortForward: {
-        command: 'adb forward tcp:10000 tcp:9998'
+        command: 'adb forward tcp:10000 tcp:9999'
         exitCode: [0,1]
       }
       ccaCreate: {
-        command: '<%= ccaPath %> create build/cca-app --link-to=socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp/manifest.json'
+        command: '<%= ccaJsPath %> create build/cca-app --link-to=build/socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp/manifest.json'
         exitCode: [0,1]
       }
       ccaEmulate: {
-        command: '../../<%= ccaPath %> emulate android'
         cwd: '<%= ccaCwd %>'
+        command: '../../<%= ccaJsPath %> emulate android'
       }
     }
   }  # grunt.initConfig
