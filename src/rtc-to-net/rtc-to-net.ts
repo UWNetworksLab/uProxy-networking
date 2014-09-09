@@ -1,8 +1,6 @@
-/*
-  Server which handles socks connections over WebRTC datachannels.
-*/
+// Server which handles SOCKS connections over WebRTC datachannels.
 
-/// <reference path='../socks/socks-headers.d.ts' />
+/// <reference path='../socks-common/socks-headers.d.ts' />
 /// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
 /// <reference path='../freedom/coreproviders/uproxypeerconnection.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />

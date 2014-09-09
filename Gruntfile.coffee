@@ -85,7 +85,7 @@ module.exports = (grunt) ->
       # Individual modules.
       tcp: Rule.copyModule 'udp'
       udp: Rule.copyModule 'tcp'
-      socks: Rule.copyModule 'socks'
+      socksCommon: Rule.copyModule 'socks-common'
       socksToRtc: Rule.copyModule 'socks-to-rtc'
       rtcToNet: Rule.copyModule 'rtc-to-net'
 
@@ -107,7 +107,7 @@ module.exports = (grunt) ->
       # Modules
       tcp: Rule.typescriptSrc 'tcp'
       udp: Rule.typescriptSrc 'udp'
-      socks: Rule.typescriptSrc 'socks'
+      socksCommon: Rule.typescriptSrc 'socks-common'
       socksToRtc: Rule.typescriptSrc 'socks-to-rtc'
       rtcToNet: Rule.typescriptSrc 'rtc-to-net'
       # Echo server sample app.
@@ -121,11 +121,11 @@ module.exports = (grunt) ->
 
     #-------------------------------------------------------------------------
     jasmine: {
-      socks:
-        src: ['build/socks/socks-headers.js']
+      socksCommon:
+        src: ['build/socks-common/socks-headers.js']
         options:
-          specs: 'build/socks/socks-headers.spec.js'
-          outfile: 'build/socks/_SpecRunner.html'
+          specs: 'build/socks-common/socks-headers.spec.js'
+          outfile: 'build/socks-common/_SpecRunner.html'
           keepRunner: true
     }
 
@@ -189,22 +189,23 @@ module.exports = (grunt) ->
     'typescript:udp'
   ]
 
-  taskManager.add 'socks', [
+  taskManager.add 'socksCommon', [
     'base'
-    'copy:socks'
-    'typescript:socks'
-    'jasmine:socks'
+    'copy:socksCommon'
+    'typescript:socksCommon'
+    'jasmine:socksCommon'
   ]
 
   taskManager.add 'socksToRtc', [
     'base'
-    'socks'
+    'socksCommon'
     'copy:socksToRtc'
     'typescript:socksToRtc'
   ]
 
   taskManager.add 'rtcToNet', [
     'base'
+    'socksCommon'
     'copy:rtcToNet'
     'typescript:rtcToNet'
   ]
@@ -222,6 +223,7 @@ module.exports = (grunt) ->
     'base'
     'tcp'
     'udp'
+    'socksCommon'
     'socksToRtc'
     'rtcToNet'
     'typescript:socksSamples'
@@ -238,10 +240,9 @@ module.exports = (grunt) ->
     'tcp'
     'udp'
     'echoServer'
-    'socks'
+    'socksCommon'
     'socksToRtc'
     'rtcToNet'
-    'echoServer'
     'socksSamples'
   ]
 
@@ -249,7 +250,7 @@ module.exports = (grunt) ->
   # and on Travis/Sauce Labs.
   taskManager.add 'test', [
     'build'
-    'jasmine:socks'
+    'jasmine:socksCommon'
   ]
 
   # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and
