@@ -1,5 +1,10 @@
-spec/*
-test/*
+node_modules/*
+*.swp
+*.swo
+*.swm
+*.swn
+*.bak
+.DS_Store
+.grunt
 tmp/*
-build/chrome-app/*
-build/firefox-app/*
+*.sublime-workspace
