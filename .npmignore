@@ -1,10 +1,1 @@
-node_modules/*
-*.swp
-*.swo
-*.swm
-*.swn
-*.bak
-.DS_Store
-.grunt
-tmp/*
 *.sublime-workspace
