@@ -146,12 +146,12 @@ module.exports = (grunt) ->
         exitCode: [0,1]
       }
       ccaCreate: {
-        command: '<%= ccaJsPath %> create build/cca-app --link-to=build/socks-rtc-net/samples/socks-rtc-net-freedom-chromeapp/manifest.json'
+        command: '<%= ccaJsPath %> create build/cca-app --link-to=build/socks-server/samples/simple-socks-chromeapp/manifest.json'
         exitCode: [0,1]
       }
       ccaEmulate: {
         cwd: '<%= ccaCwd %>'
-        command: '../../<%= ccaJsPath %> emulate android'
+        command: '<%= ccaJsPath %> emulate android'
       }
     }
   }  # grunt.initConfig
