@@ -8,18 +8,20 @@
       "lib/ipaddr/ipaddr.min.js",
       "lib/logging/logging.js",
       "lib/tcp/tcp.js",
-      "lib/socks/socks-headers.js",
+      "lib/socks-common/socks-headers.js",
       "lib/socks-to-rtc/socks-to-rtc.js",
       "lib/rtc-to-net/rtc-to-net.js",
       "freedom-module.js"
     ]
   },
   "dependencies": {
+    "churn": {
+      "url": "lib/churn/freedom.json",
+      "api": "churn"
+    }
   },
   "permissions": [
     "core.log",
-    "core.tcpsocket",
-    "core.udpsocket",
-    "core.uproxypeerconnection"
+    "core.tcpsocket"
   ]
 }

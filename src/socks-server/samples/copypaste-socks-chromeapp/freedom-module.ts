@@ -6,7 +6,7 @@
 /// <reference path='../../../freedom/typings/freedom.d.ts' />
 /// <reference path='../../../networking-typings/communications.d.ts' />
 
-var log :Freedom_UproxyLogging.Log = freedom['core.log']('socks-rtc-net');
+var log :Freedom_UproxyLogging.Log = freedom['core.log']('copypaste-socks');
 
 var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
   webrtcPcConfig: {

@@ -21,6 +21,7 @@ Path = require('path');
 
 uproxyLibPath = Path.dirname(require.resolve('uproxy-lib/package.json'))
 ipaddrPath = Path.dirname(require.resolve('ipaddr.js/package.json'))
+churnPath = Path.dirname(require.resolve('uproxy-churn/package.json'))
 ccaPath = Path.dirname(require.resolve('cca/package.json'))
 
 #-------------------------------------------------------------------------
@@ -57,6 +58,12 @@ module.exports = (grunt) ->
         cwd: Path.join(uproxyLibPath, 'src'),
         src: ['*'],
         dest: 'build/typescript-src/' } ] }
+      churnTypescriptSrc: { files: [ {
+        expand: true,
+        overwrite: true,
+        cwd: Path.join(churnPath, 'src'),
+        src: ['*'],
+        dest: 'build/typescript-src/' } ] }
 
     #-------------------------------------------------------------------------
     copy: {
@@ -83,6 +90,13 @@ module.exports = (grunt) ->
           expand: true, cwd: ipaddrPath
           src: ['ipaddr.min.js']
           dest: 'build/ipaddr/'
+          onlyIf: 'modified'
+        } ] }
+
+      churnBuild: { files: [ {
+          expand: true, cwd: Path.join(churnPath, 'build')
+          src: ['**', '!**/typescript-src/**']
+          dest: 'build'
           onlyIf: 'modified'
         } ] }
 
@@ -174,11 +188,13 @@ module.exports = (grunt) ->
     # copy modules from uproxyLibBuild to build/
     'copy:uproxyLibBuild'
     'copy:ipAddrJavaScript'
+    'copy:churnBuild'
     # symlink all modules with typescript src to build/typescript-src
     'symlink:uproxyLibTypescriptSrc'
     'symlink:uproxyLibThirdPartyTypescriptSrc'
     'symlink:thirdPartyTypescriptSrc'
     'symlink:typescriptSrc'
+    'symlink:churnTypescriptSrc'
   ]
 
   taskManager.add 'tcp', [

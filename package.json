@@ -33,7 +33,8 @@
     "grunt-typescript": "~0.3.0",
     "tsd": "~0.5.7",
     "uproxy-lib": "^11.0.1",
-    "webdriverjs": "^1.6.1"
+    "webdriverjs": "^1.6.1",
+    "uproxy-churn": "0.0.4"
   },
   "scripts": {
     "test": "grunt test",

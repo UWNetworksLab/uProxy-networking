@@ -6,7 +6,7 @@
 /// <reference path='../../../freedom/typings/freedom.d.ts' />
 /// <reference path='../../../networking-typings/communications.d.ts' />
 
-var log :Freedom_UproxyLogging.Log = freedom['core.log']('socks-rtc-net');
+var log :Freedom_UproxyLogging.Log = freedom['core.log']('simple-socks');
 
 //-----------------------------------------------------------------------------
 var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port:9999 };
@@ -46,8 +46,6 @@ var socksRtc = new SocksToRtc.SocksToRtc(localhostEndpoint, socksRtcPcConfig);
 //-----------------------------------------------------------------------------
 socksRtc.signalsForPeer.setSyncHandler(rtcNet.handleSignalFromPeer);
 rtcNet.signalsForPeer.setSyncHandler(socksRtc.handleSignalFromPeer);
-
-log.info('socks-rtc-net started up.');
 
 socksRtc.onceReady
   .then((endpoint:Net.Endpoint) => {

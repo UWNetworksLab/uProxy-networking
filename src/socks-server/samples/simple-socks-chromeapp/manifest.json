@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "name": "SocksRtcNet Sample App",
+  "name": "Simple SOCKS",
   "description": "Sample app for proxying SOCKS5 over WebRTC",
   "version": "0.0.2",
   "app": {
@@ -13,7 +13,15 @@
   },
   "permissions": [],
   "sockets": {
-    "tcp": { "connect" : "" },
-    "tcpServer": { "listen": "" }
+    "tcp": {
+      "connect" : ""
+    },
+    "tcpServer": {
+      "listen": ""
+    },
+    "udp": {
+      "bind": "*",
+      "send": "*"
+    }
   }
 }
