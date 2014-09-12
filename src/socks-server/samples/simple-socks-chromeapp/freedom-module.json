@@ -1,6 +1,6 @@
 {
-  "name": "socks-rtc-net",
-  "description": "Sample socks over rtc to net Freedom manifest",
+  "name": "simple-socks",
+  "description": "Single-page SOCKS server.",
   "app": {
     "script": [
       "lib/arraybuffers/arraybuffers.js",
@@ -14,11 +14,13 @@
     ]
   },
   "dependencies": {
+    "churn": {
+      "url": "lib/churn/freedom.json",
+      "api": "churn"
+    }
   },
   "permissions": [
     "core.log",
-    "core.tcpsocket",
-    "core.udpsocket",
-    "core.uproxypeerconnection"
+    "core.tcpsocket"
   ]
 }

@@ -6,6 +6,7 @@
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../handler/queue.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
+/// <reference path="../churn/churn.d.ts" />
 /// <reference path='../webrtc/datachannel.d.ts' />
 /// <reference path='../webrtc/peerconnection.d.ts' />
 /// <reference path='../tcp/tcp.d.ts' />
@@ -85,7 +86,7 @@ module SocksToRtc {
     private setupPeerConnection_ = (pcConfig:WebRtc.PeerConnectionConfig)
         : Promise<WebRtc.ConnectionAddresses> => {
       // SOCKS sessions biject to peerconnection datachannels.
-      this.peerConnection_ = freedom['core.uproxypeerconnection'](pcConfig);
+      this.peerConnection_ = freedom.churn(pcConfig);
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('peerOpenedChannel', (channelLabel:string) => {
         log.error('unexpected peerOpenedChannel event: ' +

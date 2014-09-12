@@ -7,6 +7,7 @@
 /// <reference path='../handler/queue.d.ts' />
 /// <reference path='../ipaddrjs/ipaddrjs.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
+/// <reference path="../churn/churn.d.ts" />
 /// <reference path='../webrtc/datachannel.d.ts' />
 /// <reference path='../webrtc/peerconnection.d.ts' />
 /// <reference path='../tcp/tcp.d.ts' />
@@ -69,7 +70,7 @@ module RtcToNet {
       // SOCKS sessions biject to peerconnection datachannels.
       this.sessions_ = {};
       this.proxyConfig = proxyConfig;
-      this.peerConnection_ = freedom['core.uproxypeerconnection'](pcConfig);
+      this.peerConnection_ = freedom.churn(pcConfig);
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('peerOpenedChannel', (channelLabel:string) => {
         if(channelLabel === '_control_') {
