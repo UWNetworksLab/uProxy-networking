@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "description": "Single page SOCKS server.",
+  "description": "Single-page SOCKS server.",
   "app": {
     "script": [
       "lib/arraybuffers/arraybuffers.js",

@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Simple SOCKS",
-  "description": "Sample app for proxying SOCKS5 over WebRTC",
+  "description": "Single-page SOCKS server.",
   "version": "0.0.2",
   "app": {
     "background": {
