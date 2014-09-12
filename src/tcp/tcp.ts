@@ -163,11 +163,13 @@ module Tcp {
     public stopListening = () : Promise<void> => {
       // Close the server socket.
       return this.serverSocket_.close().then(() => {
-        log.debug('successfully stopped listening for more connections.');
-      });
+          log.debug('successfully stopped listening for more connections.');
+        });
     }
 
     public shutdown = () : Promise<void> => {
+      // This order is important: make sure no new connections happen while
+      // we're trying to close all the connections.
       return this.stopListening().then(this.closeAll);
     }
   }  // class Tcp.Server
