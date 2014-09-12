@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "copypaste SOCKS",
-  "description": "SOCKS with copy/paste-based signalling channel.",
+  "description": "SOCKS with copy/paste-based signalling channel",
   "version": "0.1",
   "app": {
     "background": {
