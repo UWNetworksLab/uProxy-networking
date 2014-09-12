@@ -8,7 +8,7 @@
       "lib/ipaddr/ipaddr.min.js",
       "lib/logging/logging.js",
       "lib/tcp/tcp.js",
-      "lib/socks/socks-headers.js",
+      "lib/socks-common/socks-headers.js",
       "lib/socks-to-rtc/socks-to-rtc.js",
       "lib/rtc-to-net/rtc-to-net.js",
       "freedom-module.js"
