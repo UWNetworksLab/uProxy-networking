@@ -1,5 +1,1 @@
-spec/*
-test/*
-tmp/*
-build/chrome-app/*
-build/firefox-app/*
+*.sublime-workspace
