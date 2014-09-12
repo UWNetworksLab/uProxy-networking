@@ -25,7 +25,12 @@ var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
     },
     peerName: 'rtcNet'
   };
-var rtcNet = new RtcToNet.RtcToNet(rtcNetPcConfig, {allowNonUnicast:true});
+var rtcNet = new RtcToNet.RtcToNet(
+    rtcNetPcConfig,
+    {
+      allowNonUnicast: true
+    },
+    true); // obfuscate
 
 //-----------------------------------------------------------------------------
 var socksRtcPcConfig :WebRtc.PeerConnectionConfig = {
@@ -41,7 +46,10 @@ var socksRtcPcConfig :WebRtc.PeerConnectionConfig = {
     },
     peerName: 'socksRtc'
   };
-var socksRtc = new SocksToRtc.SocksToRtc(localhostEndpoint, socksRtcPcConfig);
+var socksRtc = new SocksToRtc.SocksToRtc(
+    localhostEndpoint,
+    socksRtcPcConfig,
+    true); // obfuscate
 
 //-----------------------------------------------------------------------------
 socksRtc.signalsForPeer.setSyncHandler(rtcNet.handleSignalFromPeer);

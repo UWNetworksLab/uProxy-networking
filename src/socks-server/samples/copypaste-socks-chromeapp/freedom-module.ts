@@ -51,8 +51,11 @@ var socksRtc:SocksToRtc.SocksToRtc;
 var rtcNet:RtcToNet.RtcToNet;
 
 freedom.on('start', () => {
-  var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port:9999 };
-  socksRtc = new SocksToRtc.SocksToRtc(localhostEndpoint, socksRtcPcConfig);
+  var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port: 9999 };
+  socksRtc = new SocksToRtc.SocksToRtc(
+      localhostEndpoint,
+      socksRtcPcConfig,
+      false); // obfuscate
   log.info('created socks-to-rtc');
 
   // Forward signalling channel messages to the UI.
@@ -79,7 +82,12 @@ freedom.on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
     socksRtc.handleSignalFromPeer(signal);
   } else {
     if (rtcNet === undefined) {
-      rtcNet = new RtcToNet.RtcToNet(rtcNetPcConfig, {allowNonUnicast:true});
+      rtcNet = new RtcToNet.RtcToNet(
+          rtcNetPcConfig,
+          {
+            allowNonUnicast:true
+          },
+          false); // obfuscate
       log.info('created rtc-to-net');
 
       // Forward signalling channel messages to the UI.
