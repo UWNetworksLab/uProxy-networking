@@ -63,14 +63,19 @@ module RtcToNet {
     // listening port is returned by the promise.
     //
     // TODO: add checking of fingerprints.
-    constructor(pcConfig:WebRtc.PeerConnectionConfig, proxyConfig:ProxyConfig) {
+    constructor(
+        pcConfig:WebRtc.PeerConnectionConfig,
+        proxyConfig:ProxyConfig,
+        obfuscate?:boolean) {
       // Messages received via signalling channel must reach the remote peer
       // through something other than the peerconnection. (e.g. XMPP). This is
       // the Freedom channel object to sends signalling messages to the peer.
       // SOCKS sessions biject to peerconnection datachannels.
       this.sessions_ = {};
       this.proxyConfig = proxyConfig;
-      this.peerConnection_ = freedom.churn(pcConfig);
+      this.peerConnection_ = obfuscate ?
+          freedom.churn(pcConfig) :
+          freedom['core.uproxypeerconnection'](pcConfig);
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('peerOpenedChannel', (channelLabel:string) => {
         if(channelLabel === '_control_') {
