@@ -10,30 +10,28 @@ declare module RtcToNet {
     allowNonUnicast: boolean;
   }
   class RtcToNet {
+    constructor(pcConfig: WebRtc.PeerConnectionConfig,
+                proxyConfig: ProxyConfig);
     public proxyConfig: ProxyConfig;
     public signalsForPeer: Handler.Queue<WebRtc.SignallingMessage, void>;
     public onceReady: Promise<void>;
     public onceClosed: Promise<void>;
-    constructor(pcConfig: WebRtc.PeerConnectionConfig,
-                proxyConfig: ProxyConfig);
-    private close;
+    public close: () => void;
     public handleSignalFromPeer: (signal: WebRtc.SignallingMessage) => void;
-    private onDataFromPeer_;
-    private handleControlMessage_;
     public toString: () => string;
   }
   class Session {
+    constructor(peerConnection_: freedom_UproxyPeerConnection.Pc,
+                channelLabel_: string,
+                proxyConfig: ProxyConfig);
+    public close: () => void;
     public proxyConfig: ProxyConfig;
     public tcpConnection: Tcp.Connection;
     public onceReady: Promise<void>;
     public onceClosed: Promise<void>;
     public channelLabel: () => string;
     public isClosed: () => boolean;
-    constructor(peerConnection_: freedom_UproxyPeerConnection.Pc,
-                channelLabel_: string,
-                proxyConfig: ProxyConfig);
     public longId: () => string;
-    public close: () => void;
     public handleWebRtcDataFromPeer: (webrtcData: WebRtc.Data) => void;
     public toString: () => string;
   }

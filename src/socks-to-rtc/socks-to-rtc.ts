@@ -33,7 +33,7 @@ module SocksToRtc {
 
     private isStopped_ :boolean;
     public isStopped = () : boolean => { return this.isStopped_; }
-    public onceStopped_ :Promise<void>;
+    private onceStopped_ :Promise<void>;
     public onceStopped = () : Promise<void> => { return this.onceStopped_; }
 
     // Message handler queues to/from the peer.
@@ -89,7 +89,7 @@ module SocksToRtc {
 
     // Stop SOCKS server and close peer-connection (and hence all data
     // channels).
-    private stop = () : Promise<void> => {
+    public stop = () : Promise<void> => {
       if (this.isStopped_) {
         return Promise.resolve<void>();
       }
