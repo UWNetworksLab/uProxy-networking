@@ -33,7 +33,8 @@ module SocksToRtc {
 
     private isStopped_ :boolean;
     public isStopped = () : boolean => { return this.isStopped_; }
-    public onceStopped :Promise<void>;
+    public onceStopped_ :Promise<void>;
+    public onceStopped = () : Promise<void> => { return this.onceStopped_; }
 
     // Message handler queues to/from the peer.
     public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
@@ -77,7 +78,7 @@ module SocksToRtc {
       // The socks to rtc session is over when the peer connection
       // disconnection is disconnected, at which point we call close to stop
       // the tcpo server too, and do any needed cleanup.
-      this.onceStopped = this.peerConnection_.onceDisconnected()
+      this.onceStopped_ = this.peerConnection_.onceDisconnected()
           .then(this.stop);
 
       // Return promise for then we have the tcp-server endpoint & we have a
