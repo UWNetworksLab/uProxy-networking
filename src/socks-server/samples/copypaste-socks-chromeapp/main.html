@@ -1,32 +1,119 @@
+<!DOCTYPE html>
 <html>
-<head>
-  <title>SOCKS with copy/paste-based signalling channel</title>
-</head>
+  <head>
+    <title>uProxy sample - copy/paste-based SOCKS proxy</title>
 
-<body>
-  <div>
-    <button id="startButton">Start</button>
-  </div>
-  <div>
-    Copy this into the other browser window:
-  </div>
-  <textarea id="copy" disabled></textarea>
+    <link rel="stylesheet" href="main.css">
+  </head>
 
-  <div>
-    Paste text from the other window and click Receive:
-  </div>
-  <textarea id="paste"></textarea>
-  <div>
-    <button id="receiveButton">Receive</button>
-  </div>
+  <body>
 
-  <script src='lib/freedom/uproxy-core-env.js'></script>
-  <script src='lib/freedom/freedom-for-chrome-for-uproxy.js'
-          data-manifest='freedom-module.json'>
-    {
-      "debug": "warn"
-    }
-  </script>
-  <script src='main.js'></script>
-</body>
+    <!-- ========================== 'Start' panel ========================== -->
+
+    <div id="startPanel">
+      <p>
+        This sample app establishes SOCKS proxying between two users.  The
+        intial exchange of signalling messages occurs manually (e.g., via email
+        or chat), while the subsequent proxying uses WebRTC.
+      </p>
+
+      <br><br>
+
+      <p class="centered">
+        <a id="startPanel_giveAccessLink" class="button">Give access</a>
+      </p>
+      <p class="centered">
+        Allow someone to share your internet connection.
+      </p>
+
+      <br><br>
+
+      <p class="centered">
+        <a id="startPanel_getAccessLink" class="button">Get access</a>
+      </p>
+      <p class="centered">
+        Bypass blocking by using someone else's internet connection.
+      </p>
+    </div>
+
+    <!-- ======================= 'Give access' panel ======================= -->
+
+    <div id="giveAccessPanel" style="display: none;">
+      <div id="giveAccessPanel_step1">
+        <h1>Give Access</h1>
+
+        <p>
+          Paste the text received from the other party below and click
+          'Generate reply'.
+        </p>
+        <textarea id="giveAccessPanel_inboundMessage"></textarea>
+        <p>
+          <button id="giveAccessPanel_consumeInboundMessageButton" disabled>Generate reply</button>
+        </p>
+      </div>
+
+      <br>
+      <div id="giveAccessPanel_step2Container" style="display: none;">
+        <textarea id="giveAccessPanel_outboundMessage" disabled></textarea>
+        <p>
+          Copy/paste the complete text above and send it to the other party.
+        </p>
+        <p class="warning">
+          WARNING:  An observer who sees this message may be able to determine
+          that you are using uProxy, so send it via a private channel you trust.
+        </p>
+      </div>
+    </div>
+
+    <!-- ======================== 'Get access' panel ======================= -->
+
+    <div id="getAccessPanel" style="display: none;">
+      <div id="getAccessPanel_step1">
+        <h1>Get Access</h1>
+
+        <p>
+          Click the button below to generate a handshake message to send to the
+          other party.  This message tells the other party how to locate you on
+          the network.  This information can expire quickly, so proceed only
+          when you and the other party are ready.
+        </p>
+        <p>
+          <button id="getAccessPanel_generateIceCandidatesButton">Generate</button>
+        </p>
+      </div>
+
+      <div id="getAccessPanel_step2Container" style="display: none;">
+        <textarea id="getAccessPanel_outboundMessage" disabled></textarea>
+        <p>
+          Copy/paste the complete text above and send it to the other party.
+        </p>
+        <p class="warning">
+          WARNING:  An observer who sees this message may be able to determine
+          that you are using uProxy, so send it via a private channel you trust.
+        </p>
+
+        <br>
+        <p>
+          Paste the text received from the other party below and click 'Start
+          proxying'.
+        </p>
+        <textarea id="getAccessPanel_inboundMessage"></textarea>
+        <p>
+          <button id="getAccessPanel_consumeInboundMessageButton" disabled>Start proxying</button>
+        </p>
+      </div>
+    </div>
+
+    <!-- ============================= Scripts ============================= -->
+
+    <script src='lib/freedom/uproxy-core-env.js'></script>
+    <script src='lib/freedom/freedom-for-chrome-for-uproxy.js'
+            data-manifest='freedom-module.json'>
+      {
+        "debug": "warn"
+      }
+    </script>
+    <script src='main.js'></script>
+
+  </body>
 </html>

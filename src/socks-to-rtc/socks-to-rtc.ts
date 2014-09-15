@@ -59,7 +59,10 @@ module SocksToRtc {
     // connection. The constructor will immidiately start negotiating the
     // connection. TODO: If the given port is zero, platform chooses a port and
     // this listening port is returned by the |onceReady| promise.
-    constructor(endpoint:Net.Endpoint, pcConfig:WebRtc.PeerConnectionConfig) {
+    constructor(
+        endpoint:Net.Endpoint,
+        pcConfig:WebRtc.PeerConnectionConfig,
+        obfuscate?:boolean) {
       this.sessions_ = {};
       this.signalsForPeer = new Handler.Queue<WebRtc.SignallingMessage,void>();
 
@@ -73,7 +76,7 @@ module SocksToRtc {
       // Create SOCKS server and start listening.
       this.tcpServer_ = new Tcp.Server(endpoint, this.makeTcpToRtcSession_);
       onceTcpServerReady = this.tcpServer_.listen();
-      oncePeerConnectionReady = this.setupPeerConnection_(pcConfig);
+      oncePeerConnectionReady = this.setupPeerConnection_(pcConfig, obfuscate);
 
       // The socks to rtc session is over when the peer connection
       // disconnection is disconnected, at which point we call close to stop
@@ -100,10 +103,14 @@ module SocksToRtc {
       return this.tcpServer_.shutdown();
     }
 
-    private setupPeerConnection_ = (pcConfig:WebRtc.PeerConnectionConfig)
+    private setupPeerConnection_ = (
+        pcConfig:WebRtc.PeerConnectionConfig,
+        obfuscate?:boolean)
         : Promise<WebRtc.ConnectionAddresses> => {
       // SOCKS sessions biject to peerconnection datachannels.
-      this.peerConnection_ = freedom.churn(pcConfig);
+      this.peerConnection_ = obfuscate ?
+          freedom.churn(pcConfig) :
+          freedom['core.uproxypeerconnection'](pcConfig);
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('peerOpenedChannel', (channelLabel:string) => {
         log.error('unexpected peerOpenedChannel event: ' +

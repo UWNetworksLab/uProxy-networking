@@ -21,6 +21,8 @@
   },
   "permissions": [
     "core.log",
-    "core.tcpsocket"
+    "core.tcpsocket",
+    "core.udpsocket",
+    "core.uproxypeerconnection"
   ]
 }

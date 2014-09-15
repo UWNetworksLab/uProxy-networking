@@ -1,10 +1,10 @@
-/// <reference path='../../../socks-to-rtc/socks-to-rtc.d.ts' />
 /// <reference path='../../../rtc-to-net/rtc-to-net.d.ts' />
+/// <reference path='../../../socks-to-rtc/socks-to-rtc.d.ts' />
 
-/// <reference path='../../../webrtc/peerconnection.d.ts' />
 /// <reference path='../../../freedom/coreproviders/uproxylogging.d.ts' />
 /// <reference path='../../../freedom/typings/freedom.d.ts' />
 /// <reference path='../../../networking-typings/communications.d.ts' />
+/// <reference path='../../../webrtc/peerconnection.d.ts' />
 
 var log :Freedom_UproxyLogging.Log = freedom['core.log']('copypaste-socks');
 
@@ -51,8 +51,11 @@ var socksRtc:SocksToRtc.SocksToRtc;
 var rtcNet:RtcToNet.RtcToNet;
 
 freedom.on('start', () => {
-  var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port:9999 };
-  socksRtc = new SocksToRtc.SocksToRtc(localhostEndpoint, socksRtcPcConfig);
+  var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port: 9999 };
+  socksRtc = new SocksToRtc.SocksToRtc(
+      localhostEndpoint,
+      socksRtcPcConfig,
+      false); // obfuscate
   log.info('created socks-to-rtc');
 
   // Forward signalling channel messages to the UI.
@@ -79,7 +82,12 @@ freedom.on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
     socksRtc.handleSignalFromPeer(signal);
   } else {
     if (rtcNet === undefined) {
-      rtcNet = new RtcToNet.RtcToNet(rtcNetPcConfig, {allowNonUnicast:true});
+      rtcNet = new RtcToNet.RtcToNet(
+          rtcNetPcConfig,
+          {
+            allowNonUnicast:true
+          },
+          false); // obfuscate
       log.info('created rtc-to-net');
 
       // Forward signalling channel messages to the UI.
