@@ -261,7 +261,7 @@ module SocksToRtc {
       return this.onceClosed;
     }
 
-    public handleDataFromPeer(data:WebRtc.Data) {
+    public handleDataFromPeer = (data:WebRtc.Data) : void => {
       this.dataFromPeer_.handle(data);
     }
 
