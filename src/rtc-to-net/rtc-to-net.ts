@@ -102,7 +102,7 @@ module RtcToNet {
 
     // Close the peer-connection (and hence all data channels) and all
     // associated TCP connections. Note: once closed, cannot be openned again.
-    private close = () => {
+    public close = () => {
       this.peerConnection_.close();
       // CONSIDER: will peerConnection's closing of channels make this un-
       // needed? is it better to include this anyway?

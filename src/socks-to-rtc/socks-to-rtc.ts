@@ -26,9 +26,16 @@ module SocksToRtc {
 
   // The |SocksToRtc| class runs a SOCKS5 proxy server which passes requests
   // remotely through WebRTC peer connections.
+  // TODO: rename this 'Server'.
   export class SocksToRtc {
     // Holds the IP/port that the localhost socks server is listeneing to.
     public onceReady : Promise<Net.Endpoint>;
+
+    private isStopped_ :boolean;
+    public isStopped = () : boolean => { return this.isStopped_; }
+    private onceStopped_ :Promise<void>;
+    public onceStopped = () : Promise<void> => { return this.onceStopped_; }
+
     // Message handler queues to/from the peer.
     public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
 
@@ -71,6 +78,12 @@ module SocksToRtc {
       onceTcpServerReady = this.tcpServer_.listen();
       oncePeerConnectionReady = this.setupPeerConnection_(pcConfig, obfuscate);
 
+      // The socks to rtc session is over when the peer connection
+      // disconnection is disconnected, at which point we call close to stop
+      // the tcpo server too, and do any needed cleanup.
+      this.onceStopped_ = this.peerConnection_.onceDisconnected()
+          .then(this.stop);
+
       // Return promise for then we have the tcp-server endpoint & we have a
       // peer connection.
       this.onceReady = oncePeerConnectionReady
@@ -79,11 +92,15 @@ module SocksToRtc {
 
     // Stop SOCKS server and close peer-connection (and hence all data
     // channels).
-    private stop = () : void => {
+    public stop = () : Promise<void> => {
+      if (this.isStopped_) {
+        return Promise.resolve<void>();
+      }
+      this.isStopped_ = true;
       this.signalsForPeer.clear();
-      this.tcpServer_.shutdown();
       this.peerConnection_.close();
       this.sessions_ = {};
+      return this.tcpServer_.shutdown();
     }
 
     private setupPeerConnection_ = (
@@ -244,7 +261,7 @@ module SocksToRtc {
       return this.onceClosed;
     }
 
-    public handleDataFromPeer(data:WebRtc.Data) {
+    public handleDataFromPeer = (data:WebRtc.Data) : void => {
       this.dataFromPeer_.handle(data);
     }
 

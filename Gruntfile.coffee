@@ -31,38 +31,39 @@ module.exports = (grunt) ->
     pkg: grunt.file.readJSON('package.json')
 
     symlink:
+      options:
+        # We should have overwirte set to true, but there is a bug:
+        # https://github.com/gruntjs/grunt-contrib-symlink/issues/12 This stops
+        # us from being able to sym-link into node_modules and have building
+        # work correctly.
+        overwrite: false
       # Symlink all module directories in `src` into typescript-src
       typescriptSrc: { files: [ {
         expand: true,
-        overwrite: true,
         cwd: 'src',
-        src: ['*'],
+        src: ['**/*.ts'],
         dest: 'build/typescript-src/' } ] }
       # Symlink third_party into typescript-src
       thirdPartyTypescriptSrc: { files: [ {
         expand: true,
-        overwrite: true,
-        cwd: '.',
-        src: ['third_party'],
-        dest: 'build/typescript-src/' } ] }
+        cwd: 'third_party',
+        src: ['**/*.ts'],
+        dest: 'build/typescript-src/third_party/' } ] }
       # Symlink third_party into typescript-src
       uproxyLibThirdPartyTypescriptSrc: { files: [ {
         expand: true,
-        overwrite: true,
-        cwd: uproxyLibPath,
-        src: ['third_party'],
-        dest: 'build/typescript-src/' } ] }
+        cwd: Path.join(uproxyLibPath, 'third_party'),
+        src: ['**/*.ts'],
+        dest: 'build/typescript-src/third_party/' } ] }
       uproxyLibTypescriptSrc: { files: [ {
         expand: true,
-        overwrite: true,
         cwd: Path.join(uproxyLibPath, 'src'),
-        src: ['*'],
+        src: ['**/*.ts'],
         dest: 'build/typescript-src/' } ] }
       churnTypescriptSrc: { files: [ {
         expand: true,
-        overwrite: true,
         cwd: Path.join(churnPath, 'src'),
-        src: ['*'],
+        src: ['**/*.ts'],
         dest: 'build/typescript-src/' } ] }
 
     #-------------------------------------------------------------------------

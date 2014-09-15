@@ -168,6 +168,8 @@ module Tcp {
     }
 
     public shutdown = () : Promise<void> => {
+      // This order is important: make sure no new connections happen while
+      // we're trying to close all the connections.
       return this.stopListening().then(this.closeAll);
     }
   }  // class Tcp.Server
