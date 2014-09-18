@@ -30,7 +30,7 @@ var rtcNet = new RtcToNet.RtcToNet(
     {
       allowNonUnicast: true
     },
-    true); // obfuscate
+    false); // obfuscate
 
 //-----------------------------------------------------------------------------
 var socksRtcPcConfig :WebRtc.PeerConnectionConfig = {
@@ -49,7 +49,7 @@ var socksRtcPcConfig :WebRtc.PeerConnectionConfig = {
 var socksRtc = new SocksToRtc.SocksToRtc(
     localhostEndpoint,
     socksRtcPcConfig,
-    true); // obfuscate
+    false); // obfuscate
 
 //-----------------------------------------------------------------------------
 socksRtc.signalsForPeer.setSyncHandler(rtcNet.handleSignalFromPeer);
