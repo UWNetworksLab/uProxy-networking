@@ -115,6 +115,9 @@ module.exports = (grunt) ->
       simpleSocksChromeApp: Rule.copySampleFiles 'socks-server/samples/simple-socks-chromeapp', 'lib'
       simpleSocksFirefoxApp: Rule.copySampleFiles 'socks-server/samples/simple-socks-firefoxapp/data/', 'lib'
       copypasteSocksChromeApp: Rule.copySampleFiles 'socks-server/samples/copypaste-socks-chromeapp', 'lib'
+
+      # Tools
+      benchmark: Rule.copyModule 'benchmark'
     }  # copy
 
     #-------------------------------------------------------------------------
@@ -136,6 +139,13 @@ module.exports = (grunt) ->
       simpleSocksChromeApp: Rule.typescriptSrc 'socks-server/samples/simple-socks-chromeapp'
       simpleSocksFirefoxApp: Rule.typescriptSrc 'socks-server/samples/simple-socks-firefoxapp'
       copypasteSocksChromeApp: Rule.typescriptSrc 'socks-server/samples/copypaste-socks-chromeapp'
+      # Benchmark
+      benchmark: Rule.typescriptSrc 'benchmark'
+      options: {
+          module: 'commonjs',
+          sourceMap: true,
+          declaration: true
+      }
     }
 
     #-------------------------------------------------------------------------
@@ -253,6 +263,14 @@ module.exports = (grunt) ->
     'copy:simpleSocksChromeApp'
     'typescript:copypasteSocksChromeApp'
     'copy:copypasteSocksChromeApp'
+  ]
+
+  #-------------------------------------------------------------------------
+  # Tasks for Tools
+  taskManager.add 'benchmark', [
+    'base'
+    'copy:benchmark'
+    'typescript:benchmark'
   ]
 
   #-------------------------------------------------------------------------
