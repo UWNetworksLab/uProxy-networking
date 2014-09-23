@@ -4,7 +4,6 @@
 import request = require('request');
 // import shhtp = require('socks5-http-client');
 import shttpagent = require('socks5-http-client/lib/Agent');
-
 // declare var bootbox: any;
 
 console.log("BENCHMARK Loading");
@@ -66,8 +65,7 @@ export module Benchmark {
 
         public addValue(num : number) : void {
             // This isn't fast.
-            var i = 0;
-            while (i < this.buckets_.length) {
+            for (var i = 0;i < this.buckets_.length; i++) {
                 if (num < this.buckets_[i].upperLimit) {
                     this.buckets_[i].count++;
                     return;
@@ -84,6 +82,16 @@ export module Benchmark {
 
         public getValues() : Bucket[] {
             return this.buckets_;
+        }
+
+        public getPoints() : number[][] {
+            var buckets = new Array<number[]>();
+            for (var i = 0; i < this.buckets_.length; i++) {
+                var prev = 0;
+                if (i > 0) { prev = this.buckets_[i-1].upperLimit; }
+                buckets.push([prev, this.buckets_[i].count]);
+            }
+            return buckets;
         }
     };
 
@@ -118,13 +126,16 @@ export module Benchmark {
     };
 
     export class TestResult {
+        public requestSize : number;
         public raw : DataVector;
         public histogram : Histogram[];
-        constructor(successes: number[],
+        constructor(size: number,
+                    successes: number[],
                     failures: number[],
                     timeouts: number[],
                     nbuckets: number,
                     max: number) {
+            this.requestSize = size;
             this.raw = new DataVector();
             this.histogram = new Array<Histogram>();
             var suc_hist = new Histogram(nbuckets, max);
@@ -187,7 +198,7 @@ export module Benchmark {
             }, function (err, response, body) {
                 var request_in_error : boolean;
                 var result_time = Date.now();
-                request_in_error = err != 0;
+                request_in_error = err != null;
                 var latency_ms = result_time - request_time;
 
                 // first verify that the body is fully-formed
@@ -198,32 +209,40 @@ export module Benchmark {
                 // TODO(lally): Look up error codes for this.
                 if (request_in_error) {
                     self.latencies_[sizeIndex].addValue(latency_ms, Result.RES_FAILURE);
-                    console.log("--> startRequst: got err: " + err );
+                    console.log("--> startRequst: got err: " + err + ", body length was "
+                                + body.length + ", wanted size: " + size );
                 } else {
                     self.latencies_[sizeIndex].addValue(latency_ms, Result.RES_SUCCESS);
-                    console.log("--> startRequst: latency: " + latency_ms + " (ms)");
+                    console.log("[" + latency_ms + " ms]");
                 }
                 self.runATest();
             });
         }
 
         public runATest() : void {
+            console.log("\t<" + this.request_queue_.length + ">");
             if (this.request_queue_.length > 0) {
+                // TODO(lally): Put in a watchdog timer, fail out if
+                // no response from last request in XX seconds.
                 var queue_head = this.request_queue_[0];
                 this.request_queue_.shift();
                 this.startRequest(queue_head);
-            } else if (this.resultCallback_ != null) {
+            } else {
+                console.log("test run complete.  Generating results");
                 var results = new Array<TestResult>();
                 for (var sz = 0; sz < this.sizes_.length; sz++) {
-                   results.push(new TestResult(this.latencies_[sz].values[0],
-                                               this.latencies_[sz].values[1],
-                                               this.latencies_[sz].values[2],
-                                               this.histoNumBuckets,
-                                               this.histoMax));
+                    results.push(new TestResult(this.sizes_[sz],
+                                                this.latencies_[sz].values[0],
+                                                this.latencies_[sz].values[1],
+                                                this.latencies_[sz].values[2],
+                                                this.histoNumBuckets,
+                                                this.histoMax));
                 }
-                var cb = this.resultCallback_;
-                this.resultCallback_ = null;
-                cb(results);
+                if (this.resultCallback_ != null) {
+                    var cb = this.resultCallback_;
+                    this.resultCallback_ = null;
+                    cb(results);
+                }
             }
         }
 
@@ -237,7 +256,6 @@ export module Benchmark {
                     this.request_queue_.push(sz);
                 }
             }
-
 
             // Start them.
             for (var c = 0; c < this.concurrency; c++) {

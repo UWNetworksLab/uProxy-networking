@@ -7,6 +7,7 @@ npm-debug.log
 *.bak
 tmp/*
 build/*
+data/*
 .grunt
 *.sublime-workspace
 .DS_Store
