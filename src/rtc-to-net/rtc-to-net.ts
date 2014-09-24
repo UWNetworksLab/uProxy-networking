@@ -37,6 +37,16 @@ module RtcToNet {
     public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void> =
         new Handler.Queue<WebRtc.SignallingMessage,void>();
 
+    // For the two Queues below, only bytes sent and received via ArrayBuffers
+    // are considered. Bytes in strings are not considered because of potential
+    // variations in their character to byte translation. (This includes channel
+    // labels, which are sent as strings.)
+    // Queue of the number of bytes received from the peer. Handler is typically
+    // defined in the class that creates an instance of SocksToRtc.
+    public bytesReceivedFromPeer :Handler.Queue<number, void>;
+    // Queue of the number of bytes sent to the peer. Handler is typically
+    // defined in the class that creates an instance of SocktsToRtc.
+    public bytesSentToPeer :Handler.Queue<number,void>;
     // This promise is fulfilled once the peer connection is stablished and
     // this module is ready to start making tcp connections.
     public onceReady :Promise<void>;
@@ -71,6 +81,8 @@ module RtcToNet {
       // through something other than the peerconnection. (e.g. XMPP). This is
       // the Freedom channel object to sends signalling messages to the peer.
       // SOCKS sessions biject to peerconnection datachannels.
+      this.bytesReceivedFromPeer = new Handler.Queue<number, void>();
+      this.bytesSentToPeer = new Handler.Queue<number, void>();
       this.sessions_ = {};
       this.proxyConfig = proxyConfig;
       this.peerConnection_ = obfuscate ?
@@ -87,7 +99,7 @@ module RtcToNet {
           log.debug('dummy init channel.');
           return;
         }
-        var session = new Session(this.peerConnection_, channelLabel, proxyConfig);
+        var session = new Session(this.peerConnection_, channelLabel, proxyConfig, this.bytesReceivedFromPeer, this.bytesSentToPeer);
         this.sessions_[channelLabel] = session;
         session.onceClosed.then(() => {
           delete this.sessions_[channelLabel];
@@ -104,6 +116,8 @@ module RtcToNet {
     // associated TCP connections. Note: once closed, cannot be openned again.
     public close = () => {
       this.peerConnection_.close();
+      this.bytesReceivedFromPeer.clear();
+      this.bytesSentToPeer.clear();
       // CONSIDER: will peerConnection's closing of channels make this un-
       // needed? is it better to include this anyway?
       var channelLabel :string;
@@ -131,6 +145,12 @@ module RtcToNet {
       if(!(rtcData.channelLabel in this.sessions_)) {
         log.error('onDataFromPeer_: no such channel to send data to: ' +
             rtcData.channelLabel);
+        // We only log data sent via ArrayBuffer, so just check .data (and not
+        // .str).
+        if(rtcData.message.buffer) {
+          this.bytesReceivedFromPeer
+            .handle(rtcData.message.buffer.byteLength);
+        }
         return;
       }
       this.sessions_[rtcData.channelLabel].handleWebRtcDataFromPeer(
@@ -188,7 +208,9 @@ module RtcToNet {
         private peerConnection_:WebrtcLib.Pc,
         // The channel Label is a unique id for this data channel and session.
         private channelLabel_:string,
-        public proxyConfig :ProxyConfig) {
+        public proxyConfig :ProxyConfig,
+        private bytesReceivedFromPeer:Handler.Queue<number,void>,
+        private bytesSentToPeer:Handler.Queue<number,void>) {
       this.proxyConfig = proxyConfig;
       this.isClosed_ = false;
       this.hasConnectedToEndpoint_ = false;
@@ -232,6 +254,7 @@ module RtcToNet {
         if (!this.hasConnectedToEndpoint_) {
           log.error(this.longId() + ': Client attempted to send data to ' +
               'tcp connection before it was opened');
+          this.bytesReceivedFromPeer.handle(webrtcData.buffer.byteLength);
           return;
         }
         log.debug(this.longId() + ': passing on data from pc connection to tcp (' +
@@ -239,6 +262,7 @@ module RtcToNet {
         // Note: tcpConnection is smart: it buffers and only sends when it is
         // ready.
         this.tcpConnection.dataToSocketQueue.handle(webrtcData.buffer);
+        this.bytesReceivedFromPeer.handle(webrtcData.buffer.byteLength);
       } else {
         log.error(this.longId() + ': handleWebRtcDataFromPeer: Bad rtcData: ' +
             JSON.stringify(webrtcData));
@@ -299,6 +323,7 @@ module RtcToNet {
         log.debug(this.longId() + ': passing on data from tcp connection to pc (' +
             buffer.byteLength + ' bytes)');
         this.peerConnection_.send(this.channelLabel_, {buffer: buffer});
+        this.bytesSentToPeer.handle(buffer.byteLength);
       });
       // Make sure that closing the TCP connection closes the peer connection
       // and visa-versa. CONSIDER: should we send a message on the data channel

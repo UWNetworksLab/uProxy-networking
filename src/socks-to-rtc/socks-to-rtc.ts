@@ -39,6 +39,16 @@ module SocksToRtc {
     // Message handler queues to/from the peer.
     public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
 
+    // For the two Queues below, only bytes sent and received via ArrayBuffers
+    // are considered. Bytes in strings are not considered because of potential
+    // variations in their character to byte translation. (This includes channel
+    // labels, which are sent as strings.)
+    // Queue of the number of bytes received from the peer. Handler is typically
+    // defined in the class that creates an instance of SocksToRtc.
+    public bytesReceivedFromPeer :Handler.Queue<number, void>;
+    // Queue of the number of bytes sent to the peer. Handler is typically
+    // defined in the class that creates an instance of SocktsToRtc.
+    public bytesSentToPeer :Handler.Queue<number,void>;
     // Tcp server that is listening for SOCKS connections.
     private tcpServer_       :Tcp.Server = null;
     // The connection to the peer that is acting as the endpoint for the proxy
@@ -65,6 +75,8 @@ module SocksToRtc {
         obfuscate?:boolean) {
       this.sessions_ = {};
       this.signalsForPeer = new Handler.Queue<WebRtc.SignallingMessage,void>();
+      this.bytesReceivedFromPeer = new Handler.Queue<number, void>();
+      this.bytesSentToPeer = new Handler.Queue<number, void>();
 
       // The |onceTcpServerReady| promise holds the address and port that the
       // tcp-server is listening on.
@@ -98,6 +110,8 @@ module SocksToRtc {
       }
       this.isStopped_ = true;
       this.signalsForPeer.clear();
+      this.bytesReceivedFromPeer.clear();
+      this.bytesSentToPeer.clear();
       this.peerConnection_.close();
       this.sessions_ = {};
       return this.tcpServer_.shutdown();
@@ -134,7 +148,8 @@ module SocksToRtc {
 
     // Setup a SOCKS5 TCP-to-rtc session from a tcp connection.
     private makeTcpToRtcSession_ = (tcpConnection:Tcp.Connection) : void => {
-      var session = new Session(tcpConnection, this.peerConnection_);
+      var session = new Session(tcpConnection, this.peerConnection_,
+        this.bytesReceivedFromPeer, this.bytesSentToPeer);
       this.sessions_[session.channelLabel()] = session;
       session.onceClosed.then(() => {
         delete this.sessions_[session.channelLabel()];
@@ -159,6 +174,12 @@ module SocksToRtc {
 
       if(!(rtcData.channelLabel in this.sessions_)) {
         log.error('onDataFromPeer_: no such channel: ' + rtcData.channelLabel);
+        // We only log data sent via ArrayBuffer, so just check .data (and not
+        // .str).
+        if(rtcData.message.buffer) {
+          this.bytesReceivedFromPeer
+            .handle(rtcData.message.buffer.byteLength);
+        }
         return;
       }
 
@@ -204,7 +225,9 @@ module SocksToRtc {
     private dataFromPeer_ :Handler.Queue<WebRtc.Data,void>;
 
     constructor(public tcpConnection:Tcp.Connection,
-                private peerConnection_:WebrtcLib.Pc) {
+                private peerConnection_:WebrtcLib.Pc,
+                private bytesReceivedFromPeer:Handler.Queue<number,void>,
+                private bytesSentToPeer:Handler.Queue<number,void>) {
       this.channelLabel_ = obtainTag();
       this.dataChannelIsClosed_ = false;
       var onceChannelOpenned :Promise<void>;
@@ -341,6 +364,7 @@ module SocksToRtc {
           (data:ArrayBuffer) => {
         log.debug(this.longId() + ': dataFromSocketQueue: ' + data.byteLength + ' bytes.');
         this.peerConnection_.send(this.channelLabel_, { buffer: data });
+        this.bytesSentToPeer.handle(data.byteLength);
       });
       // Any data from the peer goes to the TCP connection
       this.dataFromPeer_.setSyncHandler((data:WebRtc.Data) => {
@@ -352,6 +376,7 @@ module SocksToRtc {
         log.debug(this.longId() + ': dataFromPeer: ' + data.buffer.byteLength +
             ' bytes.');
         this.tcpConnection.send(data.buffer);
+        this.bytesReceivedFromPeer.handle(data.buffer.byteLength);
       });
     }
   }  // Session
