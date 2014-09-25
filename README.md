@@ -57,6 +57,15 @@ The `addon-sdk` is required for firefox. You can find it at https://developer.mo
  - `cd build/socks-server/samples/simple-socks-firefoxapp/` and then run the command `cfx run`.
  - Run `telnet 127.0.0.1 9998` and type some stuff to verify that echo server echoes what you send it (`Ctrl-]` then `quit` to exit telnet).
 
+## Benchmarking
+ * Build everything: 'grunt'
+ * Load 'build/socks-server/samples/simple-socks-chromeapp' in chrome (it's an app) and run it.
+ * Do these once:
+   * 'bin/make-data.sh' (probably works for linux only)
+   * 'npm install -g wup'
+ * Run wup in data/: '(cd data ; wup) &'
+ * Then, run the benchmark with 'npm run benchmark'
+
 ## Building for Android
 
 ### Prerequisites:

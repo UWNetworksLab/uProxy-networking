@@ -255,11 +255,11 @@ export module Benchmark {
                 request_in_error = true;
             }
 
-            // TODO: Look up error codes for this.
             if (req.requestTime < 0) {
                 this.latencies_[req.requestSizeIndex].addValue(this.kTimeoutMS,
                                                                Result.RES_TIMEOUT);
             } else if (request_in_error) {
+                // TODO: Look up error codes for this.
                 this.latencies_[req.requestSizeIndex].addValue(latency_ms,
                                                                Result.RES_FAILURE);
                 console.log("--> finishRequest: got err: " + err + ", body length was "
