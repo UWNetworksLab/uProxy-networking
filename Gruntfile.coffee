@@ -37,6 +37,10 @@ module.exports = (grunt) ->
         # us from being able to sym-link into node_modules and have building
         # work correctly.
         overwrite: false
+      # Fix-up a 'typings' link
+      thirdPartyTypings: {  # an explicit symlink.
+        src: 'build/typescript-src/typings',
+        dest: 'build/typescript-src/third_party/typings' }
       # Symlink all module directories in `src` into typescript-src
       typescriptSrc: { files: [ {
         expand: true,
@@ -205,6 +209,7 @@ module.exports = (grunt) ->
     'symlink:uproxyLibTypescriptSrc'
     'symlink:uproxyLibThirdPartyTypescriptSrc'
     'symlink:thirdPartyTypescriptSrc'
+    'symlink:thirdPartyTypings'
     'symlink:typescriptSrc'
     'symlink:churnTypescriptSrc'
   ]
@@ -283,7 +288,8 @@ module.exports = (grunt) ->
     'socksCommon'
     'socksToRtc'
     'rtcToNet'
-    'socksSamples'
+    'socksSamples',
+    'benchmark'
   ]
 
   # This is the target run by Travis. Targets in here should run locally
