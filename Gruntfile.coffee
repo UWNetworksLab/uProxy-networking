@@ -46,15 +46,16 @@ module.exports = (grunt) ->
       # Symlink third_party into typescript-src
       thirdPartyTypescriptSrc: { files: [ {
         expand: true,
-        cwd: 'third_party',
+        cwd: 'src/third_party',
         src: ['**/*.ts'],
-        dest: 'build/typescript-src/third_party/' } ] }
-      # Symlink third_party into typescript-src
+        dest: 'build/typescript-src/' } ] }
+      # Symlink uproxy-lib's third_party into typescript-src
       uproxyLibThirdPartyTypescriptSrc: { files: [ {
         expand: true,
         cwd: Path.join(uproxyLibPath, 'third_party'),
         src: ['**/*.ts'],
-        dest: 'build/typescript-src/third_party/' } ] }
+        dest: 'build/typescript-src/' } ] }
+      # Symlink uproxy-lib's typescript src.
       uproxyLibTypescriptSrc: { files: [ {
         expand: true,
         cwd: Path.join(uproxyLibPath, 'src'),

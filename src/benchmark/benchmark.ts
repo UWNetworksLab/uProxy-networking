@@ -1,6 +1,7 @@
 // benchmark.ts benchmarks the proxy
 
-/// <reference path="../third_party/typings/tsd.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
+/// <reference path="../uproxy-networking.all.d.ts" />
 import request = require('request');
 // import shhtp = require('socks5-http-client');
 import shttpagent = require('socks5-http-client/lib/Agent');
@@ -42,7 +43,8 @@ export module Benchmark {
         }
 
         public summary () : string {
-            return "[total: " + this.count + ", min:" + this.min + ", median:" + this.median + ", mean:" +
+            return "[total: " + this.count + ", min:" + this.min + ", median:" +
+                this.median + ", mean:" +
                 this.mean + ", max:" + this.max + "]";
         }
     };
