@@ -39,10 +39,13 @@ module SocksToRtc {
     // Message handler queues to/from the peer.
     public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
 
-    // For the two Queues below, only bytes sent and received via ArrayBuffers
-    // are considered. Bytes in strings are not considered because of potential
-    // variations in their character to byte translation. (This includes channel
-    // labels, which are sent as strings.)
+    // The two Queues below only count bytes transferred between the SOCKS
+    // client and the remote host(s) the client wants to connect to. WebRTC
+    // overhead (DTLS headers, ICE initiation, etc.) is not included (because
+    // WebRTC does not provide easy access to that data) nor is SOCKS
+    // protocol-related data (because it's sent via string messages).
+    // All Sessions created in one instance of SocksToRtc will share and
+    // push numbers to the same queues (belonging to that instance of SocksToRtc).
     // Queue of the number of bytes received from the peer. Handler is typically
     // defined in the class that creates an instance of SocksToRtc.
     public bytesReceivedFromPeer :Handler.Queue<number, void>;
@@ -171,18 +174,14 @@ module SocksToRtc {
         log.debug('onDataFromPeer_: to _control_: ' + rtcData.message.str);
         return;
       }
-
+      if(rtcData.message.buffer) {
+        // We only count bytes sent in .buffer, not .str.
+        this.bytesReceivedFromPeer.handle(rtcData.message.buffer.byteLength);
+      }
       if(!(rtcData.channelLabel in this.sessions_)) {
         log.error('onDataFromPeer_: no such channel: ' + rtcData.channelLabel);
-        // We only log data sent via ArrayBuffer, so just check .data (and not
-        // .str).
-        if(rtcData.message.buffer) {
-          this.bytesReceivedFromPeer
-            .handle(rtcData.message.buffer.byteLength);
-        }
         return;
       }
-
       this.sessions_[rtcData.channelLabel].handleDataFromPeer(rtcData.message);
     }
 
@@ -376,7 +375,6 @@ module SocksToRtc {
         log.debug(this.longId() + ': dataFromPeer: ' + data.buffer.byteLength +
             ' bytes.');
         this.tcpConnection.send(data.buffer);
-        this.bytesReceivedFromPeer.handle(data.buffer.byteLength);
       });
     }
   }  // Session
