@@ -21,23 +21,33 @@ var giveAccessPanel_step2ContainerNode = <HTMLElement>document.getElementById('g
 var startPanelNode = <HTMLElement>document.getElementById('startPanel');
 var startPanel_getAccessLinkNode = <HTMLElement>document.getElementById('startPanel_getAccessLink');
 var startPanel_giveAccessLinkNode = <HTMLElement>document.getElementById('startPanel_giveAccessLink');
+var getAccessPanel_bytesReceived = <HTMLElement>document.getElementById('getAccessPanel_bytesReceived');
+var getAccessPanel_bytesSent = <HTMLElement>document.getElementById('getAccessPanel_bytesSent');
+var giveAccessPanel_bytesReceived = <HTMLElement>document.getElementById('giveAccessPanel_bytesReceived');
+var giveAccessPanel_bytesSent = <HTMLElement>document.getElementById('giveAccessPanel_bytesSent');
 
 // DOM nodes that we will choose from either the 'give access' panel or the
 // 'get access' panel once the user chooses whether to give/get.
 var step2ContainerNode :HTMLElement;
 var outboundMessageNode :HTMLInputElement;
 var inboundMessageNode :HTMLInputElement;
+var receivedBytesNode :HTMLElement;
+var sentBytesNode :HTMLElement;
 
 // Stores the parsed messages for use later, if & when the user clicks the
 // button for consuming the messages.
 var parsedInboundMessages :WebRtc.SignallingMessage[];
 
+var totalBytesReceived = 0;
+var totalBytesSent = 0;
 
 startPanel_giveAccessLinkNode.onclick =
     function(event:MouseEvent) : any {
       step2ContainerNode = giveAccessPanel_step2ContainerNode;
       outboundMessageNode = giveAccessPanel_outboundMessageNode;
       inboundMessageNode = giveAccessPanel_inboundMessageNode;
+      receivedBytesNode = giveAccessPanel_bytesReceived;
+      sentBytesNode = giveAccessPanel_bytesSent;
 
       startPanelNode.style.display = 'none';
       giveAccessPanelNode.style.display = 'block';
@@ -48,6 +58,8 @@ startPanel_getAccessLinkNode.onclick =
       step2ContainerNode = getAccessPanel_step2ContainerNode;
       outboundMessageNode = getAccessPanel_outboundMessageNode;
       inboundMessageNode = getAccessPanel_inboundMessageNode;
+      receivedBytesNode = getAccessPanel_bytesReceived;
+      sentBytesNode = getAccessPanel_bytesSent;
 
       startPanelNode.style.display = 'none';
       getAccessPanelNode.style.display = 'block';
@@ -151,4 +163,14 @@ freedom.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
 
   outboundMessageNode.value =
       outboundMessageNode.value.trim() + '\n' + JSON.stringify(signal);
+});
+
+freedom.on('bytesReceived', (numNewBytesReceived:number) => {
+  totalBytesReceived += numNewBytesReceived;
+  receivedBytesNode.innerHTML = totalBytesReceived.toString();
+});
+
+freedom.on('bytesSent', (numNewBytesSent:number) => {
+  totalBytesSent += numNewBytesSent;
+  sentBytesNode.innerHTML = totalBytesSent.toString();
 });
