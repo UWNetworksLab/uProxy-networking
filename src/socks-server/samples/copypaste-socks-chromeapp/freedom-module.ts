@@ -67,11 +67,11 @@ freedom.on('start', () => {
   // queue as it proxies. When new numbers (of bytes) are added to these queues,
   // emit the number to the UI (look for corresponding freedom.on in main.html).
   socksRtc.bytesReceivedFromPeer.setSyncHandler((numBytes:number) => {
-    freedom.emit('newBytesReceived', numBytes);
+    freedom.emit('bytesReceived', numBytes);
   });
 
   socksRtc.bytesSentToPeer.setSyncHandler((numBytes:number) => {
-    freedom.emit('newBytesSent', numBytes);
+    freedom.emit('bytesSent', numBytes);
   });
 
   socksRtc.onceReady
@@ -109,11 +109,11 @@ freedom.on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
       // Similarly to with SocksToRtc, emit the number of bytes sent/received
       // in RtcToNet to the UI.
       rtcNet.bytesReceivedFromPeer.setSyncHandler((numBytes:number) => {
-        freedom.emit('newBytesReceived', numBytes);
+        freedom.emit('bytesReceived', numBytes);
       });
 
       rtcNet.bytesSentToPeer.setSyncHandler((numBytes:number) => {
-        freedom.emit('newBytesSent', numBytes);
+        freedom.emit('bytesSent', numBytes);
       });
 
       rtcNet.onceReady.then(() => {

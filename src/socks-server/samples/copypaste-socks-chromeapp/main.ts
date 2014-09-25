@@ -165,12 +165,12 @@ freedom.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
       outboundMessageNode.value.trim() + '\n' + JSON.stringify(signal);
 });
 
-freedom.on('newBytesReceived', (numNewBytesReceived:number) => {
+freedom.on('bytesReceived', (numNewBytesReceived:number) => {
   totalBytesReceived += numNewBytesReceived;
   receivedBytesNode.innerHTML = totalBytesReceived.toString();
 });
 
-freedom.on('newBytesSent', (numNewBytesSent:number) => {
+freedom.on('bytesSent', (numNewBytesSent:number) => {
   totalBytesSent += numNewBytesSent;
   sentBytesNode.innerHTML = totalBytesSent.toString();
 });
