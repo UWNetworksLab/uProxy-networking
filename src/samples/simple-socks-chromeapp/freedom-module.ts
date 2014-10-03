@@ -52,8 +52,38 @@ var socksRtc = new SocksToRtc.SocksToRtc(
     false); // obfuscate
 
 //-----------------------------------------------------------------------------
+
+var getterBytesReceived :number = 0;
+var getterBytesSent :number = 0;
+var giverBytesReceived :number = 0;
+var giverBytesSent :number = 0;
+
 socksRtc.signalsForPeer.setSyncHandler(rtcNet.handleSignalFromPeer);
 rtcNet.signalsForPeer.setSyncHandler(socksRtc.handleSignalFromPeer);
+
+socksRtc.bytesReceivedFromPeer.setSyncHandler((numBytes:number) => {
+  getterBytesReceived += numBytes;
+  log.debug('Getter received ' + numBytes + ' bytes. (Total received: '
+    + getterBytesReceived + ' bytes)');
+});
+
+socksRtc.bytesSentToPeer.setSyncHandler((numBytes:number) => {
+  getterBytesSent += numBytes;
+  log.debug('Getter sent ' + numBytes + ' bytes. (Total sent: '
+    + getterBytesSent + ' bytes)');
+});
+
+rtcNet.bytesReceivedFromPeer.setSyncHandler((numBytes:number) => {
+  giverBytesReceived += numBytes;
+  log.debug('Giver received ' + numBytes + ' bytes. (Total received: '
+    + giverBytesReceived + ' bytes)');
+});
+
+rtcNet.bytesSentToPeer.setSyncHandler((numBytes:number) => {
+  giverBytesSent += numBytes;
+  log.debug('Giver sent ' + numBytes + ' bytes. (Total sent: '
+    + giverBytesSent + ' bytes)');
+});
 
 socksRtc.onceReady
   .then((endpoint:Net.Endpoint) => {
