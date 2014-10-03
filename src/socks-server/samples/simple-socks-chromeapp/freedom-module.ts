@@ -63,25 +63,25 @@ rtcNet.signalsForPeer.setSyncHandler(socksRtc.handleSignalFromPeer);
 
 socksRtc.bytesReceivedFromPeer.setSyncHandler((numBytes:number) => {
   getterBytesReceived += numBytes;
-  console.log('Getter received ' + numBytes + ' bytes. (Total received: '
+  log.debug('Getter received ' + numBytes + ' bytes. (Total received: '
     + getterBytesReceived + ' bytes)');
 });
 
 socksRtc.bytesSentToPeer.setSyncHandler((numBytes:number) => {
   getterBytesSent += numBytes;
-  console.log('Getter sent ' + numBytes + ' bytes. (Total sent: '
+  log.debug('Getter sent ' + numBytes + ' bytes. (Total sent: '
     + getterBytesSent + ' bytes)');
 });
 
 rtcNet.bytesReceivedFromPeer.setSyncHandler((numBytes:number) => {
   giverBytesReceived += numBytes;
-  console.log('Giver received ' + numBytes + ' bytes. (Total received: '
+  log.debug('Giver received ' + numBytes + ' bytes. (Total received: '
     + giverBytesReceived + ' bytes)');
 });
 
 rtcNet.bytesSentToPeer.setSyncHandler((numBytes:number) => {
   giverBytesSent += numBytes;
-  console.log('Giver sent ' + numBytes + ' bytes. (Total sent: '
+  log.debug('Giver sent ' + numBytes + ' bytes. (Total sent: '
     + giverBytesSent + ' bytes)');
 });
 
