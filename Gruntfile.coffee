@@ -1,156 +1,112 @@
-# How to build socks-rtc and its various demos.
-
-# TODO: work out an automatic way to only the src we need rather than the whole
-# library. Maybe have a separate Gruntfile in each subdirectory with some common
-# rules for building a project accoridng to using a standard dir layout.
-
-# Also: provide a way to specify needed modules, and when they are not there to
-# give a sensible error.
-
 TaskManager = require 'uproxy-lib/tools/taskmanager'
-
-#-------------------------------------------------------------------------
-# Rule-making helper function that assume expected directory layout.
-#
-# Function to make a copy rule for a module directory, assuming standard
-# layout. Copies all non (ts/sass) compiled files into the corresponding
-# build directory.
 Rule = require 'uproxy-lib/tools/common-grunt-rules'
 
-Path = require('path');
+path = require('path');
 
-uproxyLibPath = Path.dirname(require.resolve('uproxy-lib/package.json'))
-ipaddrPath = Path.dirname(require.resolve('ipaddr.js/package.json'))
-churnPath = Path.dirname(require.resolve('uproxy-churn/package.json'))
-ccaPath = Path.dirname(require.resolve('cca/package.json'))
+uproxyLibPath = path.dirname(require.resolve('uproxy-lib/package.json'))
+ipaddrjsPath = path.dirname(require.resolve('ipaddr.js/package.json'))
+churnPath = path.dirname(require.resolve('uproxy-churn/package.json'))
+ccaPath = path.dirname(require.resolve('cca/package.json'))
 
 #-------------------------------------------------------------------------
 module.exports = (grunt) ->
-  #-------------------------------------------------------------------------
   grunt.initConfig {
-    pkg: grunt.file.readJSON('package.json')
+    pkg: grunt.file.readJSON 'package.json'
 
+    # TODO: Replace a common-grunt-rules function, when available.
     symlink:
-      options:
-        # We should have overwirte set to true, but there is a bug:
-        # https://github.com/gruntjs/grunt-contrib-symlink/issues/12 This stops
-        # us from being able to sym-link into node_modules and have building
-        # work correctly.
-        overwrite: false
-      # Symlink all module directories in `src` into typescript-src
-      typescriptSrc: { files: [ {
-        expand: true,
-        cwd: 'src',
-        src: ['**/*.ts'],
-        dest: 'build/typescript-src/' } ] }
-      # Symlink third_party into typescript-src
-      thirdPartyTypescriptSrc: { files: [ {
-        expand: true,
-        cwd: 'third_party',
-        src: ['**/*.ts'],
-        dest: 'build/typescript-src/third_party/' } ] }
-      # Symlink third_party into typescript-src
-      uproxyLibThirdPartyTypescriptSrc: { files: [ {
-        expand: true,
-        cwd: Path.join(uproxyLibPath, 'third_party'),
-        src: ['**/*.ts'],
-        dest: 'build/typescript-src/third_party/' } ] }
-      uproxyLibTypescriptSrc: { files: [ {
-        expand: true,
-        cwd: Path.join(uproxyLibPath, 'src'),
-        src: ['**/*.ts'],
-        dest: 'build/typescript-src/' } ] }
-      churnTypescriptSrc: { files: [ {
-        expand: true,
-        cwd: Path.join(churnPath, 'src'),
-        src: ['**/*.ts'],
-        dest: 'build/typescript-src/' } ] }
-
-    #-------------------------------------------------------------------------
-    copy: {
-      # TODO: provide a warning if local project overrides directory?
-      #
-      # Copy all the built stuff from uproxy-lib
-      uproxyLibBuild: { files: [ {
-          expand: true, cwd: Path.join(uproxyLibPath, 'build')
-          src: ['**', '!**/typescript-src/**']
-          dest: 'build'
-          onlyIf: 'modified'
-        } ] }
-
-      # Copy any JavaScript from the third_party directory
-      thirdPartyJavaScript: { files: [ {
-          expand: true,
-          src: ['third_party/**/*.js']
+      # Symlink each source file under src/ under build/.
+      build:
+        files: [
+          expand: true
+          cwd: 'src/'
+          src: ['**/*']
+          filter: 'isFile'
           dest: 'build/'
-          onlyIf: 'modified'
-        } ] }
+        ]
 
-      # Copy the ipaddr.js library into the build directory
-      ipAddrJavaScript: { files: [ {
-          expand: true, cwd: ipaddrPath
+      # Symlink each file under uproxy-lib's dist/ under build/.
+      # Exclude the samples/ directory.
+      uproxyLibBuild:
+        files: [
+          expand: true
+          cwd: path.join(uproxyLibPath, 'dist/')
+          src: ['**/*', '!samples/**']
+          filter: 'isFile'
+          dest: 'build/'
+        ]
+
+      # Symlink each directory under uproxy-lib's third_party/ under build/third_party/.
+      uproxyLibThirdParty:
+        files: [
+          expand: true
+          cwd: path.join(uproxyLibPath, 'third_party/')
+          src: ['*']
+          filter: 'isDirectory'
+          dest: 'build/third_party/'
+        ]
+
+      # Symlink each file under churn's dist/ under build/.
+      # Exclude the samples/ directory.
+      churnLib:
+        files: [
+          expand: true
+          cwd: path.join(churnPath, 'dist/')
+          src: ['**/*', '!samples/**']
+          filter: 'isFile'
+          dest: 'build/'
+        ]
+
+      # There's only one relevant file in this repo: ipaddr.min.js.
+      ipaddrjs:
+        files: [
+          expand: true
+          cwd: ipaddrjsPath
           src: ['ipaddr.min.js']
-          dest: 'build/ipaddr/'
-          onlyIf: 'modified'
-        } ] }
+          dest: 'build/ipaddrjs/'
+        ]
 
-      churnBuild: { files: [ {
-          expand: true, cwd: Path.join(churnPath, 'build')
-          src: ['**', '!**/typescript-src/**']
-          dest: 'build'
-          onlyIf: 'modified'
-        } ] }
-
-      # Individual modules.
+    copy:
       tcp: Rule.copyModule 'udp'
       udp: Rule.copyModule 'tcp'
       socksCommon: Rule.copyModule 'socks-common'
       socksToRtc: Rule.copyModule 'socks-to-rtc'
+      ipaddrjs: Rule.copyModule 'ipaddrjs'
       rtcToNet: Rule.copyModule 'rtc-to-net'
 
-      # Sample Apps
-      echoServerChromeApp: Rule.copySampleFiles 'tcp/samples/echo-server-chromeapp', 'lib'
+      echoServerChromeApp: Rule.copyModule 'samples/echo-server-chromeapp'
+      echoServerChromeAppLib: Rule.copySampleFiles 'samples/echo-server-chromeapp'
 
-      socksSamples: Rule.copyModule 'socks-server'
-      simpleSocksChromeApp: Rule.copySampleFiles 'socks-server/samples/simple-socks-chromeapp', 'lib'
-      simpleSocksFirefoxApp: Rule.copySampleFiles 'socks-server/samples/simple-socks-firefoxapp/data/', 'lib'
-      copypasteSocksChromeApp: Rule.copySampleFiles 'socks-server/samples/copypaste-socks-chromeapp', 'lib'
-    }  # copy
+      simpleSocksChromeApp: Rule.copyModule 'samples/simple-socks-chromeapp'
+      simpleSocksChromeAppLib: Rule.copySampleFiles 'samples/simple-socks-chromeapp'
 
-    #-------------------------------------------------------------------------
-    # All typescript compiles to locations in `build/`
-    typescript: {
-      # From build-tools
-      arraybuffers: Rule.typescriptSrc 'arraybuffers'
-      handler: Rule.typescriptSrc 'handler'
-      # Modules
+      simpleSocksFirefoxApp: Rule.copyModule 'samples/simple-socks-firefoxapp'
+      simpleSocksFirefoxAppLib: Rule.copySampleFiles 'samples/simple-socks-firefoxapp'
+
+      copypasteSocksChromeApp: Rule.copyModule 'samples/copypaste-socks-chromeapp'
+      copypasteSocksChromeAppLib: Rule.copySampleFiles 'samples/copypaste-socks-chromeapp'
+
+    ts:
       tcp: Rule.typescriptSrc 'tcp'
       udp: Rule.typescriptSrc 'udp'
+
       socksCommon: Rule.typescriptSrc 'socks-common'
+      socksCommonSpecDecl: Rule.typescriptSpecDecl 'socks-common'
+
       socksToRtc: Rule.typescriptSrc 'socks-to-rtc'
       rtcToNet: Rule.typescriptSrc 'rtc-to-net'
-      # Echo server sample app.
-      echoServerChromeApp: Rule.typescriptSrc 'tcp/samples/echo-server-chromeapp'
-      # SOCKS server sample apps.
-      socksSamples: Rule.typescriptSrc 'socks-server'
-      simpleSocksChromeApp: Rule.typescriptSrc 'socks-server/samples/simple-socks-chromeapp'
-      simpleSocksFirefoxApp: Rule.typescriptSrc 'socks-server/samples/simple-socks-firefoxapp'
-      copypasteSocksChromeApp: Rule.typescriptSrc 'socks-server/samples/copypaste-socks-chromeapp'
-    }
 
-    #-------------------------------------------------------------------------
-    jasmine: {
-      socksCommon:
-        src: ['build/socks-common/socks-headers.js']
-        options:
-          specs: 'build/socks-common/socks-headers.spec.js'
-          outfile: 'build/socks-common/_SpecRunner.html'
-          keepRunner: true
-    }
+      echoServerChromeApp: Rule.typescriptSrc 'samples/echo-server-chromeapp/'
+      simpleSocksChromeApp: Rule.typescriptSrc 'samples/simple-socks-chromeapp'
+      simpleSocksFirefoxApp: Rule.typescriptSrc 'samples/simple-socks-firefoxapp'
+      copypasteSocksChromeApp: Rule.typescriptSrc 'samples/copypaste-socks-chromeapp'
 
-    clean: ['build/**']
+    jasmine:
+      socksCommon: Rule.jasmineSpec 'socks-common'
 
-    ccaJsPath: Path.join(ccaPath, 'src/cca.js')
+    clean: ['build/', 'dist/', '.tscache/']
+
+    ccaJsPath: path.join(ccaPath, 'src/cca.js')
     ccaCwd: 'build/cca-app'
     exec: {
       adbLog: {
@@ -161,7 +117,7 @@ module.exports = (grunt) ->
         exitCode: [0,1]
       }
       ccaCreate: {
-        command: '<%= ccaJsPath %> create build/cca-app --link-to=build/socks-server/samples/simple-socks-chromeapp/manifest.json'
+        command: '<%= ccaJsPath %> create build/cca-app --link-to=build/samples/simple-socks-chromeapp/manifest.json'
         exitCode: [0,1]
       }
       ccaEmulate: {
@@ -176,111 +132,114 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-contrib-symlink'
-  grunt.loadNpmTasks 'grunt-env'
-  grunt.loadNpmTasks 'grunt-exec'
-  grunt.loadNpmTasks 'grunt-jasmine-node'
-  grunt.loadNpmTasks 'grunt-typescript'
+  grunt.loadNpmTasks 'grunt-ts'
 
   #-------------------------------------------------------------------------
   # Define the tasks
   taskManager = new TaskManager.Manager();
 
   taskManager.add 'base', [
-    # copy modules from uproxyLibBuild to build/
-    'copy:uproxyLibBuild'
-    'copy:ipAddrJavaScript'
-    'copy:churnBuild'
-    # symlink all modules with typescript src to build/typescript-src
-    'symlink:uproxyLibTypescriptSrc'
-    'symlink:uproxyLibThirdPartyTypescriptSrc'
-    'symlink:thirdPartyTypescriptSrc'
-    'symlink:typescriptSrc'
-    'symlink:churnTypescriptSrc'
+    'symlink:build'
+    'symlink:uproxyLibBuild'
+    'symlink:uproxyLibThirdParty'
+    'symlink:churnLib'
   ]
 
   taskManager.add 'tcp', [
     'base'
+    'ts:tcp'
     'copy:tcp'
-    'typescript:tcp'
   ]
 
   taskManager.add 'udp', [
     'base'
+    'ts:udp'
     'copy:udp'
-    'typescript:udp'
   ]
 
   taskManager.add 'socksCommon', [
     'base'
+    'ts:socksCommon'
+    'ts:socksCommonSpecDecl'
     'copy:socksCommon'
-    'typescript:socksCommon'
-    'jasmine:socksCommon'
   ]
 
   taskManager.add 'socksToRtc', [
     'base'
     'socksCommon'
+    'ts:socksToRtc'
     'copy:socksToRtc'
-    'typescript:socksToRtc'
+  ]
+
+  taskManager.add 'ipaddrjs', [
+    'base'
+    'symlink:ipaddrjs'
+    'copy:ipaddrjs'
   ]
 
   taskManager.add 'rtcToNet', [
     'base'
     'socksCommon'
+    'ipaddrjs'
+    'ts:rtcToNet'
     'copy:rtcToNet'
-    'typescript:rtcToNet'
   ]
 
-  #-------------------------------------------------------------------------
-  # tasks for sample apps
-  taskManager.add 'echoServer', [
+  taskManager.add 'socks', [
+    'socksCommon'
+    'socksToRtc'
+    'rtcToNet'
+  ]
+
+  taskManager.add 'echoServerChromeApp', [
     'base'
     'tcp'
-    'typescript:echoServerChromeApp'
+    'ts:echoServerChromeApp'
     'copy:echoServerChromeApp'
+    'copy:echoServerChromeAppLib'
   ]
 
-  taskManager.add 'socksSamples', [
+  taskManager.add 'simpleSocksChromeApp', [
     'base'
-    'tcp'
-    'udp'
-    'socksCommon'
-    'socksToRtc'
-    'rtcToNet'
-    'typescript:socksSamples'
-    'copy:socksSamples'
-    'typescript:simpleSocksChromeApp'
+    'socks'
+    'ts:simpleSocksChromeApp'
     'copy:simpleSocksChromeApp'
-    'typescript:copypasteSocksChromeApp'
-    'copy:copypasteSocksChromeApp'
+    'copy:simpleSocksChromeAppLib'
   ]
 
-  #-------------------------------------------------------------------------
-  taskManager.add 'build', [
+  taskManager.add 'simpleSocksFirefoxApp', [
     'base'
+    'socks'
+    'ts:simpleSocksFirefoxApp'
+    'copy:simpleSocksFirefoxApp'
+    'copy:simpleSocksFirefoxAppLib'
+  ]
+
+  taskManager.add 'copypasteSocksChromeApp', [
+    'base'
+    'socks'
+    'ts:copypasteSocksChromeApp'
+    'copy:copypasteSocksChromeApp'
+    'copy:copypasteSocksChromeAppLib'
+  ]
+
+  taskManager.add 'samples', [
+    'echoServerChromeApp'
+    'simpleSocksChromeApp'
+    'simpleSocksFirefoxApp'
+    'copypasteSocksChromeApp'
+  ]
+
+  taskManager.add 'build', [
     'tcp'
     'udp'
-    'echoServer'
-    'socksCommon'
-    'socksToRtc'
-    'rtcToNet'
-    'socksSamples'
+    'socks'
+    'samples'
   ]
 
-  # This is the target run by Travis. Targets in here should run locally
-  # and on Travis/Sauce Labs.
   taskManager.add 'test', [
     'build'
-    'jasmine:socksCommon'
-  ]
-
-  # TODO(yangoon): Figure out how to run our Selenium tests on Sauce Labs and
-  #                move this to the test target.
-  # TODO(yangoon): Figure out how to spin up Selenium server automatically.
-  taskManager.add 'endtoend', [
-    'build'
-    'env'
-    'jasmine_node'
+    'jasmine'
   ]
 
   taskManager.add 'default', [
@@ -298,5 +257,3 @@ module.exports = (grunt) ->
   taskManager.list().forEach((taskName) =>
     grunt.registerTask taskName, (taskManager.get taskName)
   );
-
-module.exports.Rule = Rule;
