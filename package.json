@@ -26,8 +26,8 @@
     "grunt-contrib-jasmine": "~0.7.0",
     "grunt-contrib-symlink": "~0.3.0",
     "grunt-ts": "^1.11",
-    "uproxy-lib": "^12.0.2",
-    "uproxy-churn": "^1.0.0"
+    "uproxy-lib": "^13",
+    "uproxy-churn": "^2.1"
   },
   "scripts": {
     "test": "grunt test",
