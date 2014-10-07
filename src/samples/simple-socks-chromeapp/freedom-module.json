@@ -1,12 +1,11 @@
 {
-  "name": "socks-rtc-net",
-  "description": "Sample socks over rtc to net Freedom manifest",
+  "name": "simple-socks",
+  "description": "Single-page SOCKS server.",
   "app": {
     "script": [
       "lib/arraybuffers/arraybuffers.js",
       "lib/handler/queue.js",
-      "lib/ipaddr/ipaddr.min.js",
-      "lib/logging/logging.js",
+      "lib/ipaddrjs/ipaddr.min.js",
       "lib/tcp/tcp.js",
       "lib/socks-common/socks-headers.js",
       "lib/socks-to-rtc/socks-to-rtc.js",

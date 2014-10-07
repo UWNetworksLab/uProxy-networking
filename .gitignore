@@ -10,3 +10,5 @@ build/*
 .grunt
 *.sublime-workspace
 .DS_Store
+.tscache
+dist

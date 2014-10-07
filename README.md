@@ -19,7 +19,7 @@ There are two main components: `socks-to-rtc` and `rtc-to-net`.
 ## Building for Chrome and Firefox
 
  - Run `npm install` from the base directory to obtain all prerequisites.
- - Running `grunt` compiles all the TypeScript into JavaScript which goes into the `build/` directory.
+ - Running `grunt` compiles all the TypeScript into JavaScript in the `dist/` directory.
 
 ## Usage
 
@@ -31,8 +31,8 @@ To see an example of using this for proxying, look at the `build/socks-server/sa
 
 2. `copypaste-socks-chromeapp/` starts a SOCKS proxy on port 9999. One peer runs `socks-to-rtc` and the other runs `rtc-to-net`. The two peers may run on separate machines which may be located on separate private networks. Communication takes place via WebRTC datachannels and the peer-to-peer connection is established by exchanging signalling messages over some medium, e.g. email or, if the peers are on the same machine, copy and paste.
 
- - For Chrome, go to `chrome://extensions`, ensure developer mode is enabled, and load unpacked extension from the `build/socks-server/samples/simple-socks-chromeapp/` directory.
- - For Firefox, activate cfx, and run the command `cfx run` from the `build/socks-server/samples/simple-socks-firefoxapp/` directory.
+ - For Chrome, go to `chrome://extensions`, ensure developer mode is enabled, and load unpacked extension from the `dist/samples/simple-socks-chromeapp/` directory.
+ - For Firefox, activate cfx, and run the command `cfx run` from the `dist/samples/simple-socks-firefoxapp/` directory.
  - Run this command to test the proxy: `curl -x socks5h://localhost:9999 www.example.com` (the `h` indicates that DNS requests are made through the proxy too, i.e. not resolved locally)
 
 To see debugging output, open the background page.
@@ -43,21 +43,15 @@ You can also use an extension like [SwitchyProxySharp](https://chrome.google.com
 
  - run Jasmine tests with `grunt test`
 
-### End-to-End Test with Chrome
-
- - `chromedriver` must be in your path. You can download it from https://sites.google.com/a/chromium.org/chromedriver/downloads
- - `chrome` must be in your path (see https://code.google.com/p/selenium/wiki/ChromeDriver#Requirements)
- - run `grunt endtoend`
-
-### End-to-End Echo-server Test with Firefox
+### End-to-end echo server test for Firefox
 
 The `addon-sdk` is required for firefox. You can find it at https://developer.mozilla.org/en-US/Add-ons/SDK/Tutorials/Installation
 
  - Build using the `grunt` command.
- - `cd build/socks-server/samples/simple-socks-firefoxapp/` and then run the command `cfx run`.
- - Run `telnet 127.0.0.1 9998` and type some stuff to verify that echo server echoes what you send it (`Ctrl-]` then `quit` to exit telnet).
+ - `cd dist/samples/echo-server-firefoxapp/` and then run the command `cfx run`.
+ - Run `telnet 127.0.0.1 9998` and type some stuff to verify that echo server echoes what you send it (press `Ctrl-]` then type `quit` to exit telnet).
 
-## Building for Android
+## Android
 
 ### Prerequisites:
 
