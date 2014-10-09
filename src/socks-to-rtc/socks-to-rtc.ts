@@ -33,11 +33,13 @@ module SocksToRtc {
 
     private isStopped_ :boolean;
     public isStopped = () : boolean => { return this.isStopped_; }
+
     private onceStopped_ :Promise<void>;
     public onceStopped = () : Promise<void> => { return this.onceStopped_; }
 
     // Message handler queues to/from the peer.
-    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
+    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void> =
+        new Handler.Queue<WebRtc.SignallingMessage,void>();
 
     // The two Queues below only count bytes transferred between the SOCKS
     // client and the remote host(s) the client wants to connect to. WebRTC
@@ -48,15 +50,21 @@ module SocksToRtc {
     // push numbers to the same queues (belonging to that instance of SocksToRtc).
     // Queue of the number of bytes received from the peer. Handler is typically
     // defined in the class that creates an instance of SocksToRtc.
-    public bytesReceivedFromPeer :Handler.Queue<number, void>;
+    public bytesReceivedFromPeer :Handler.Queue<number, void> =
+        new Handler.Queue<number, void>();
+
     // Queue of the number of bytes sent to the peer. Handler is typically
     // defined in the class that creates an instance of SocktsToRtc.
-    public bytesSentToPeer :Handler.Queue<number,void>;
+    public bytesSentToPeer :Handler.Queue<number,void> =
+        new Handler.Queue<number, void>();
+
     // Tcp server that is listening for SOCKS connections.
     private tcpServer_       :Tcp.Server = null;
+
     // The connection to the peer that is acting as the endpoint for the proxy
     // connection.
     private peerConnection_  :WebrtcLib.Pc = null;
+
     // From WebRTC data-channel labels to their TCP connections. Most of the
     // wiring to manage this relationship happens via promises of the
     // TcpConnection. We need this only for data being received from a peer-
@@ -65,7 +73,7 @@ module SocksToRtc {
     // DataChannel and PeerConnection to be used directly and not via a freedom
     // interface. Then all work can be done by promise binding and this can be
     // removed.
-    private sessions_ :{ [channelLabel:string] : Session }
+    private sessions_ :{ [channelLabel:string] : Session } = {};
 
     // SocsToRtc server is given a localhost transport address (endpoint) to
     // start a socks server listening to, and a config for setting up a peer-
@@ -76,11 +84,6 @@ module SocksToRtc {
         endpoint:Net.Endpoint,
         pcConfig:WebRtc.PeerConnectionConfig,
         obfuscate?:boolean) {
-      this.sessions_ = {};
-      this.signalsForPeer = new Handler.Queue<WebRtc.SignallingMessage,void>();
-      this.bytesReceivedFromPeer = new Handler.Queue<number, void>();
-      this.bytesSentToPeer = new Handler.Queue<number, void>();
-
       // The |onceTcpServerReady| promise holds the address and port that the
       // tcp-server is listening on.
       var onceTcpServerReady :Promise<Net.Endpoint>;
