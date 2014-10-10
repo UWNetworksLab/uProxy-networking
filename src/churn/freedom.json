@@ -109,9 +109,9 @@
     "core.log"
   ],
   "dependencies": {
-    "pipe": {
-      "url": "../pipe/freedom.json",
-      "api": "pipe"
+    "churnPipe": {
+      "url": "../churn-pipe/freedom.json",
+      "api": "churnPipe"
     }
   }
 }

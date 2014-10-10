@@ -1,9 +1,9 @@
 {
-  "name": "pipe",
+  "name": "Churn pipe",
   "description": "Obfuscating network pipe.",
   "app": {
     "script": [
-      "pipe.js",
+      "churn-pipe.js",
       "../logging/logging.js",
       "../arraybuffers/arraybuffers.js",
       "../transformers/caesar.js",
@@ -14,10 +14,10 @@
     ]
   },
   "provides": [
-    "pipe"
+    "churnPipe"
   ],
   "api": {
-    "pipe": {
+    "churnPipe": {
       "bind": {
         "type": "method",
         "value": [

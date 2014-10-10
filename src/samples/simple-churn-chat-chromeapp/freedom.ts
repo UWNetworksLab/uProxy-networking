@@ -12,7 +12,7 @@
 
 import PcLib = freedom_UproxyPeerConnection;
 
-var log :Freedom_UproxyLogging.Log = freedom['core.log']('top');
+var log :Freedom_UproxyLogging.Log = freedom['core.log']('top-level freedom module');
 
 var config :WebRtc.PeerConnectionConfig = {
   webrtcPcConfig: {

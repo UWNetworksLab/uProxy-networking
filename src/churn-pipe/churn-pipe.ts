@@ -1,4 +1,4 @@
-/// <reference path='pipe.d.ts' />
+/// <reference path='churn-pipe.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
@@ -10,9 +10,9 @@
 /// <reference path='../transformers/passthrough.ts' />
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 
-module Pipe {
+module Churn {
 
-  var log :Freedom_UproxyLogging.Log = freedom['core.log']('pipe');
+  var log :Freedom_UproxyLogging.Log = freedom['core.log']('churn pipe');
 
   /**
    * Listens on a port for UDP datagrams -- emitting a Freedom message for each
@@ -24,7 +24,7 @@ module Pipe {
    * message passing owing to the inelegance of receiving a response *back*
    * from a Freedom module.
    */
-  export class Server {
+  export class Pipe {
 
     // Socket on which the server is listening.
     private socket_ :freedom_UdpSocket.Socket;
@@ -117,7 +117,7 @@ module Pipe {
         });
     }
 
-    public getLocalEndpoint = () : Promise<freedom_Pipe.Endpoint> => {
+    public getLocalEndpoint = () : Promise<freedom_ChurnPipe.Endpoint> => {
       return this.socket_.getInfo().then((socketInfo:freedom_UdpSocket.SocketInfo) => {
         return {
           address: socketInfo.localAddress,
@@ -140,6 +140,6 @@ module Pipe {
   }
 
   if (typeof freedom !== 'undefined') {
-    freedom.pipe().providePromises(Pipe.Server);
+    freedom.churnPipe().providePromises(Churn.Pipe);
   }
 }

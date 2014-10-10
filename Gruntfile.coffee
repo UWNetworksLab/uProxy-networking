@@ -111,8 +111,8 @@ module.exports = (grunt) ->
       utransformers: Rule.copyModule 'utransformers'
       regex2dfa: Rule.copyModule 'regex2dfa'
       transformers: Rule.copyModule 'transformers'
-      pipe: Rule.copyModule 'pipe'
       churn: Rule.copyModule 'churn'
+      churnPipe: Rule.copyModule 'churn-pipe'
 
       simpleTurnChromeApp: Rule.copyModule 'samples/simple-turn-chromeapp'
       simpleTurnChromeAppLib: Rule.copySampleFiles 'samples/simple-turn-chromeapp'
@@ -148,10 +148,10 @@ module.exports = (grunt) ->
       transformers: Rule.typescriptSrc 'transformers'
       transformersSpecDecl: Rule.typescriptSpecDecl 'transformers'
 
-      pipe: Rule.typescriptSrc 'pipe'
-
       churn: Rule.typescriptSrc 'churn'
       churnSpecDecl: Rule.typescriptSpecDecl 'churn'
+
+      churnPipe: Rule.typescriptSrc 'churn-pipe'
 
       simpleTurnChromeApp: Rule.typescriptSrc 'samples/simple-turn-chromeapp'
       simpleChurnChatChromeApp: Rule.typescriptSrc 'samples/simple-churn-chat-chromeapp'
@@ -353,17 +353,17 @@ module.exports = (grunt) ->
     'copy:transformers'
   ]
 
-  taskManager.add 'pipe', [
+  taskManager.add 'churnPipe', [
     'base'
     'transformers'
-    'ts:pipe'
-    'copy:pipe'
+    'ts:churnPipe'
+    'copy:churnPipe'
   ]
 
   taskManager.add 'churn', [
     'base'
     'turn'
-    'pipe'
+    'churnPipe'
     'ts:churn'
     'ts:churnSpecDecl'
     'copy:churn'
@@ -408,10 +408,8 @@ module.exports = (grunt) ->
     'udp'
     'socks'
     'samples'
-    'turn',
-    'transformers',
-    'pipe',
-    'churn',
+    'turn'
+    'churn'
   ]
 
   taskManager.add 'test', [

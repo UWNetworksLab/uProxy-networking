@@ -1,6 +1,6 @@
 /// <reference path='churn.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.d.ts' />
-/// <reference path='../pipe/pipe.d.ts' />
+/// <reference path='../churn-pipe/churn-pipe.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
 /// <reference path='../freedom/coreproviders/uproxypeerconnection.d.ts' />
@@ -47,7 +47,7 @@ module Churn {
 
     // Fulfills once we know on which port the RTCPeerConnection used to
     // establish the obfuscated peerconnection is listening.
-    private haveWebRtcEndpoint_ :(endpoint:freedom_Pipe.Endpoint) => void;
+    private haveWebRtcEndpoint_ :(endpoint:freedom_ChurnPipe.Endpoint) => void;
     private onceHaveWebRtcEndpoint_ = new Promise((F, R) => {
       this.haveWebRtcEndpoint_ = F;
     });
@@ -61,7 +61,7 @@ module Churn {
     // Fulfills once we've successfully allocated the forwarding socket.
     // At that point, we can inject its address into candidate messages destined
     // for the local RTCPeerConnection.
-    private haveForwardingSocketEndpoint_ :(endpoint:freedom_Pipe.Endpoint) => void;
+    private haveForwardingSocketEndpoint_ :(endpoint:freedom_ChurnPipe.Endpoint) => void;
     private onceHaveForwardingSocketEndpoint_ = new Promise((F, R) => {
       this.haveForwardingSocketEndpoint_ = F;
     });
@@ -114,10 +114,10 @@ module Churn {
     //    automatically allocated, port
     //  - remote, obfuscated, port
     private configurePipes_ = (
-        webRtcEndpoint:freedom_Pipe.Endpoint,
+        webRtcEndpoint:freedom_ChurnPipe.Endpoint,
         publicEndpoints:WebRtc.ConnectionAddresses) : void => {
       log.debug('configuring pipes...');
-      var localPipe = freedom.pipe();
+      var localPipe = freedom.churnPipe();
       localPipe.bind(
           '127.0.0.1',
           0,
@@ -130,14 +130,14 @@ module Churn {
         log.error('error setting up local pipe: ' + e.message);
       })
       .then(localPipe.getLocalEndpoint)
-      .then((forwardingSocketEndpoint:freedom_Pipe.Endpoint) => {
+      .then((forwardingSocketEndpoint:freedom_ChurnPipe.Endpoint) => {
         this.haveForwardingSocketEndpoint_(forwardingSocketEndpoint);
         log.info('configured local pipe between forwarding socket at ' +
             forwardingSocketEndpoint.address + ':' +
             forwardingSocketEndpoint.port + ' and webrtc at ' +
             webRtcEndpoint.address + ':' + webRtcEndpoint.port);
 
-        var publicPipe = freedom.pipe();
+        var publicPipe = freedom.churnPipe();
         publicPipe.bind(
             publicEndpoints.local.address,
             publicEndpoints.local.port,
@@ -162,10 +162,10 @@ module Churn {
               publicEndpoints.remote.port);
 
           // Connect the local pipe to the remote, obfuscating, pipe.
-          localPipe.on('message', (m:freedom_Pipe.Message) => {
+          localPipe.on('message', (m:freedom_ChurnPipe.Message) => {
             publicPipe.send(m.data);
           });
-          publicPipe.on('message', (m:freedom_Pipe.Message) => {
+          publicPipe.on('message', (m:freedom_ChurnPipe.Message) => {
             localPipe.send(m.data);
           });
         })
@@ -250,7 +250,7 @@ module Churn {
       } else if (signal.churnStage == 2) {
         if (signal.type === WebRtc.SignalType.CANDIDATE) {
           return this.onceHaveForwardingSocketEndpoint_.then(
-              (forwardingSocketEndpoint:freedom_Pipe.Endpoint) => {
+              (forwardingSocketEndpoint:freedom_ChurnPipe.Endpoint) => {
             signal.candidate.candidate =
               Churn.Provider.setCandidateLineEndpoint(
                 signal.candidate.candidate, forwardingSocketEndpoint);
@@ -347,7 +347,7 @@ module Churn {
     // For more information on candidate lines, see section 15.1 of the RFC:
     //   http://tools.ietf.org/html/rfc5245#section-15.1
     public static extractEndpointFromCandidateLine = (
-        candidate:string) : freedom_Pipe.Endpoint => {
+        candidate:string) : freedom_ChurnPipe.Endpoint => {
       var lines = Churn.Provider.isHostCandidateLine_(candidate);
       var address = lines[4];
       var port = parseInt(lines[5]);
@@ -367,7 +367,7 @@ module Churn {
     //
     // See #extractEndpointFromCandidateLine.
     public static setCandidateLineEndpoint = (
-        candidate:string, endpoint:freedom_Pipe.Endpoint) : string => {
+        candidate:string, endpoint:freedom_ChurnPipe.Endpoint) : string => {
       var lines = Churn.Provider.isHostCandidateLine_(candidate);
       lines[4] = endpoint.address;
       lines[5] = endpoint.port.toString();

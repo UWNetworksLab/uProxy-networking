@@ -2,7 +2,7 @@
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 
 // TODO: rename once https://github.com/Microsoft/TypeScript/issues/52 is fixed
-declare module freedom_Pipe {
+declare module freedom_ChurnPipe {
   interface Message {
     data: ArrayBuffer
   }
@@ -15,7 +15,7 @@ declare module freedom_Pipe {
 
 // TODO: uncomment once https://github.com/Microsoft/TypeScript/issues/52 is fixed
 // declare module freedom {
-  interface freedom_Pipe {
+  interface freedom_ChurnPipe {
     bind(
         localAddress :string,
         localPort :number,
@@ -26,15 +26,15 @@ declare module freedom_Pipe {
         config ?:string) : Promise<void>;
     send(buffer :ArrayBuffer) : Promise<void>;
 
-    getLocalEndpoint() : Promise<freedom_Pipe.Endpoint>;
+    getLocalEndpoint() : Promise<freedom_ChurnPipe.Endpoint>;
 
     on(t:string, f:Function) : void;
-    on(t:'message', f:(message:freedom_Pipe.Message) => any) : void;
+    on(t:'message', f:(message:freedom_ChurnPipe.Message) => any) : void;
 
     providePromises(provider:any) : void;
   }
 // }
 
 interface Freedom {
-  pipe() : freedom_Pipe;
+  churnPipe() : freedom_ChurnPipe;
 }

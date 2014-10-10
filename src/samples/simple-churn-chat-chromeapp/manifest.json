@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
-  "name": "churnchat",
-  "description": "Single page PeerConnection chat client.",
+  "name": "churn chat",
+  "description": "Single-page obfuscated chat.",
   "version": "0.1",
   "app": {
     "background": {

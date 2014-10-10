@@ -1,5 +1,5 @@
 /// <reference path='churn.ts' />
-/// <reference path='../pipe/pipe.d.ts' />
+/// <reference path='../churn-pipe/churn-pipe.d.ts' />
 /// <reference path='../webrtc/peerconnection.d.ts' />
 /// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
 
@@ -49,13 +49,13 @@ describe("extractEndpointFromCandidateLine", function() {
 });
 
 describe("setCandidateLineEndpoint", function() {
-  var endpoint :freedom_Pipe.Endpoint = {
+  var endpoint :freedom_ChurnPipe.Endpoint = {
     address: '127.0.0.1',
     port: 5000
   };
 
   it('garbage test', () => {
-    var endpoint :freedom_Pipe.Endpoint = {
+    var endpoint :freedom_ChurnPipe.Endpoint = {
       address: '127.0.0.1',
       port: 5000
     };
