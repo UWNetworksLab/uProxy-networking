@@ -1,0 +1,33 @@
+{
+  "name": "net",
+  "description": "Remote endpoints for the TURN relay.",
+  "app": {
+    "script": [
+      "net.js",
+      "../logging/logging.js",
+      "../turn/messages.js",
+      "../arraybuffers/arraybuffers.js"
+    ]
+  },
+  "provides": [
+    "net"
+  ],
+  "api": {
+    "net": {
+      "handleIpc": {
+        "type": "method",
+        "value": [ "buffer" ]
+      },
+      "ipc": {
+        "type": "event",
+        "value": {
+          "data": "buffer"
+        }
+      }
+    }
+  },
+  "permissions": [
+    "core.udpsocket",
+    "core.log"
+  ]
+}

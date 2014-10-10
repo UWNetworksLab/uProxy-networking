@@ -5,8 +5,17 @@ path = require('path');
 
 uproxyLibPath = path.dirname(require.resolve('uproxy-lib/package.json'))
 ipaddrjsPath = path.dirname(require.resolve('ipaddr.js/package.json'))
-churnPath = path.dirname(require.resolve('uproxy-churn/package.json'))
+utransformersPath = path.dirname(require.resolve('utransformers/package.json'))
+regex2dfaPath = path.dirname(require.resolve('regex2dfa/package.json'))
 ccaPath = path.dirname(require.resolve('cca/package.json'))
+
+FILES =
+  # Help Jasmine's PhantomJS understand promises.
+  jasmine_helpers: [
+    'node_modules/es6-promise/dist/promise-*.js',
+    '!node_modules/es6-promise/dist/promise-*amd.js',
+    '!node_modules/es6-promise/dist/promise-*.min.js'
+  ]
 
 #-------------------------------------------------------------------------
 module.exports = (grunt) ->
@@ -46,15 +55,23 @@ module.exports = (grunt) ->
           dest: 'build/third_party/'
         ]
 
-      # Symlink each file under churn's dist/ under build/.
-      # Exclude the samples/ directory.
-      churnLib:
+      # Symlink each .d.ts and .js file under utransformers' src/ directory
+      # under build/utransformers/.
+      utransformers:
         files: [
           expand: true
-          cwd: path.join(churnPath, 'dist/')
-          src: ['**/*', '!samples/**']
-          filter: 'isFile'
-          dest: 'build/'
+          cwd: path.join(utransformersPath, 'src/')
+          src: ['**/*.d.ts', '**/*.js']
+          dest: 'build/utransformers/'
+        ]
+
+      # There's only one relevant file in this repo: regex2dfa.js.
+      regex2dfa:
+        files: [
+          expand: true
+          cwd: regex2dfaPath
+          src: ['**/*.js']
+          dest: 'build/regex2dfa/'
         ]
 
       # There's only one relevant file in this repo: ipaddr.min.js.
@@ -67,6 +84,7 @@ module.exports = (grunt) ->
         ]
 
     copy:
+      # SOCKS.
       tcp: Rule.copyModule 'udp'
       udp: Rule.copyModule 'tcp'
       socksCommon: Rule.copyModule 'socks-common'
@@ -86,7 +104,27 @@ module.exports = (grunt) ->
       copypasteSocksChromeApp: Rule.copyModule 'samples/copypaste-socks-chromeapp'
       copypasteSocksChromeAppLib: Rule.copySampleFiles 'samples/copypaste-socks-chromeapp'
 
+      # Churn.
+      sha1: Rule.copyModule 'sha1'
+      turn: Rule.copyModule 'turn'
+      net: Rule.copyModule 'net'
+      utransformers: Rule.copyModule 'utransformers'
+      regex2dfa: Rule.copyModule 'regex2dfa'
+      transformers: Rule.copyModule 'transformers'
+      pipe: Rule.copyModule 'pipe'
+      churn: Rule.copyModule 'churn'
+
+      simpleTurnChromeApp: Rule.copyModule 'samples/simple-turn-chromeapp'
+      simpleTurnChromeAppLib: Rule.copySampleFiles 'samples/simple-turn-chromeapp'
+
+      simpleChurnChatChromeApp: Rule.copyModule 'samples/simple-churn-chat-chromeapp'
+      simpleChurnChatChromeAppLib: Rule.copySampleFiles 'samples/simple-churn-chat-chromeapp'
+
+      copypasteChurnChatChromeApp: Rule.copyModule 'samples/copypaste-churn-chat-chromeapp'
+      copypasteChurnChatChromeAppLib: Rule.copySampleFiles 'samples/copypaste-churn-chat-chromeapp'
+
     ts:
+      # SOCKS.
       tcp: Rule.typescriptSrc 'tcp'
       udp: Rule.typescriptSrc 'udp'
 
@@ -101,8 +139,59 @@ module.exports = (grunt) ->
       simpleSocksFirefoxApp: Rule.typescriptSrc 'samples/simple-socks-firefoxapp'
       copypasteSocksChromeApp: Rule.typescriptSrc 'samples/copypaste-socks-chromeapp'
 
+      # Churn.
+      turn: Rule.typescriptSrc 'turn'
+      turnSpecDecl: Rule.typescriptSpecDecl 'turn'
+
+      net: Rule.typescriptSrc 'net'
+
+      transformers: Rule.typescriptSrc 'transformers'
+      transformersSpecDecl: Rule.typescriptSpecDecl 'transformers'
+
+      pipe: Rule.typescriptSrc 'pipe'
+
+      churn: Rule.typescriptSrc 'churn'
+      churnSpecDecl: Rule.typescriptSpecDecl 'churn'
+
+      simpleTurnChromeApp: Rule.typescriptSrc 'samples/simple-turn-chromeapp'
+      simpleChurnChatChromeApp: Rule.typescriptSrc 'samples/simple-churn-chat-chromeapp'
+
+      copypasteTurnChromeApp: Rule.typescriptSrc 'samples/copypaste-turn-chromeapp'
+      copypasteChurnChatChromeApp: Rule.typescriptSrc 'samples/copypaste-churn-chat-chromeapp'
+
+    browserify:
+      sha1:
+        src: [require.resolve('crypto/sha1')]
+        dest: 'build/sha1/sha1.js'
+        options:
+          browserifyOptions:
+            standalone: 'sha1'
+
     jasmine:
       socksCommon: Rule.jasmineSpec 'socks-common'
+      # TODO: turn tests require arraybuffers
+      #       https://github.com/uProxy/uproxy/issues/430
+      turn:
+        src: FILES.jasmine_helpers.concat([
+          'build/turn/mocks.js'
+          'build/turn/messages.js'
+          'build/turn/turn.js'
+          'build/arraybuffers/arraybuffers.js'
+          'build/sha1/sha1.js'
+        ])
+        options:
+          specs: 'build/turn/*.spec.js'
+      # TODO: churn tests require peerconnection
+      #       https://github.com/uProxy/uproxy/issues/430
+      churn:
+        src: FILES.jasmine_helpers.concat([
+          'build/churn/mocks.js'
+          'build/churn/churn.js'
+          'build/peerconnection/*.js'
+        ]),
+        options:
+          specs: 'build/churn/*.spec.js'
+      transformers: Rule.jasmineSpec 'transformers'
 
     clean: ['build/', 'dist/', '.tscache/']
 
@@ -133,6 +222,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-ts'
+  grunt.loadNpmTasks('grunt-browserify');
 
   #-------------------------------------------------------------------------
   # Define the tasks
@@ -142,7 +232,8 @@ module.exports = (grunt) ->
     'symlink:build'
     'symlink:uproxyLibBuild'
     'symlink:uproxyLibThirdParty'
-    'symlink:churnLib'
+    'symlink:utransformers'
+    'symlink:regex2dfa'
   ]
 
   taskManager.add 'tcp', [
@@ -223,11 +314,92 @@ module.exports = (grunt) ->
     'copy:copypasteSocksChromeAppLib'
   ]
 
+  taskManager.add 'sha1', [
+    'base'
+    'browserify:sha1'
+    'copy:sha1'
+  ]
+
+  taskManager.add 'turn', [
+    'base'
+    'sha1'
+    'ts:turn'
+    'ts:turnSpecDecl'
+    'copy:turn'
+  ]
+
+  taskManager.add 'net', [
+    'base'
+    'ts:net'
+    'copy:net'
+  ]
+
+  taskManager.add 'utransformers', [
+    'base'
+    'copy:utransformers'
+    'copy:regex2dfa'
+  ]
+
+  taskManager.add 'transformers', [
+    'base'
+    'utransformers'
+    'ts:transformers'
+    'ts:transformersSpecDecl'
+    'copy:transformers'
+  ]
+
+  taskManager.add 'pipe', [
+    'base'
+    'transformers'
+    'ts:pipe'
+    'copy:pipe'
+  ]
+
+  taskManager.add 'churn', [
+    'base'
+    'turn'
+    'net'
+    'pipe'
+    'ts:churn'
+    'ts:churnSpecDecl'
+    'copy:churn'
+  ]
+
+  taskManager.add 'simpleTurnChromeApp', [
+    'base'
+    'turn'
+    'net'
+    'ts:simpleTurnChromeApp'
+    'copy:simpleTurnChromeApp'
+    'copy:simpleTurnChromeAppLib'
+  ]
+
+  taskManager.add 'simpleChurnChatChromeApp', [
+    'base'
+    'turn'
+    'net'
+    'ts:simpleChurnChatChromeApp'
+    'copy:simpleChurnChatChromeApp'
+    'copy:simpleChurnChatChromeAppLib'
+  ]
+
+  taskManager.add 'copypasteChurnChatChromeApp', [
+    'base'
+    'turn'
+    'net'
+    'ts:copypasteChurnChatChromeApp'
+    'copy:copypasteChurnChatChromeApp'
+    'copy:copypasteChurnChatChromeAppLib'
+  ]
+
   taskManager.add 'samples', [
     'echoServerChromeApp'
     'simpleSocksChromeApp'
     'simpleSocksFirefoxApp'
     'copypasteSocksChromeApp'
+    'simpleTurnChromeApp'
+    'simpleChurnChatChromeApp'
+    'copypasteChurnChatChromeApp'
   ]
 
   taskManager.add 'build', [
@@ -235,6 +407,11 @@ module.exports = (grunt) ->
     'udp'
     'socks'
     'samples'
+    'turn',
+    'net',
+    'transformers',
+    'pipe',
+    'churn',
   ]
 
   taskManager.add 'test', [

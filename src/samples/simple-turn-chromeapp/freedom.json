@@ -1,0 +1,22 @@
+{
+  "name": "turn",
+  "description": "top-level freedom manifest",
+  "app": {
+    "script": [
+      "freedom.js"
+    ]
+  },
+  "dependencies": {
+    "turn": {
+      "url": "lib/turn/freedom.json",
+      "api": "turn"
+    },
+    "net": {
+      "url": "lib/net/freedom.json",
+      "api": "net"
+    }
+  },
+  "permissions": [
+    "core.log"
+  ]
+}

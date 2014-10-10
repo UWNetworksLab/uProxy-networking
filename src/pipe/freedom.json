@@ -1,0 +1,58 @@
+{
+  "name": "pipe",
+  "description": "Obfuscating network pipe.",
+  "app": {
+    "script": [
+      "pipe.js",
+      "../logging/logging.js",
+      "../arraybuffers/arraybuffers.js",
+      "../transformers/caesar.js",
+      "../transformers/passthrough.js",
+      "../regex2dfa/regex2dfa.js",
+      "../utransformers/transformers/uTransformers.rabbit.js",
+      "../utransformers/transformers/uTransformers.fte.js"
+    ]
+  },
+  "provides": [
+    "pipe"
+  ],
+  "api": {
+    "pipe": {
+      "bind": {
+        "type": "method",
+        "value": [
+          "string",
+          "number",
+          "string",
+          "number",
+          "string",
+          "buffer",
+          "string"
+        ]
+      },
+      "send": {
+        "type": "method",
+        "value": [
+          "buffer"
+        ]
+      },
+      "getLocalEndpoint": {
+        "type": "method",
+        "ret": {
+          "address": "string",
+          "port": "number"
+        }
+      },
+      "message": {
+        "type": "event",
+        "value": {
+          "data": "buffer"
+        }
+      }
+    }
+  },
+  "permissions": [
+    "core.udpsocket",
+    "core.log"
+  ]
+}

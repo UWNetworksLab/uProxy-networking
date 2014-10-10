@@ -1,0 +1,19 @@
+{
+  "manifest_version": 2,
+  "name": "churnchat",
+  "description": "Single page PeerConnection chat client.",
+  "version": "0.1",
+  "app": {
+    "background": {
+      "scripts": [
+        "background.js"
+      ]
+    }
+  },
+  "sockets": {
+    "udp": {
+      "bind": "*",
+      "send": "*"
+    }
+  }
+}
