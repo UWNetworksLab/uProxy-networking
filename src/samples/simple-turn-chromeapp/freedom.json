@@ -1,5 +1,5 @@
 {
-  "name": "turn",
+  "name": "Simple TURN",
   "description": "top-level freedom manifest",
   "app": {
     "script": [
@@ -7,13 +7,13 @@
     ]
   },
   "dependencies": {
-    "turn": {
-      "url": "lib/turn/freedom.json",
-      "api": "turn"
+    "turnFrontend": {
+      "url": "lib/turn-frontend/freedom.json",
+      "api": "turnFrontend"
     },
-    "net": {
-      "url": "lib/net/freedom.json",
-      "api": "net"
+    "turnBackend": {
+      "url": "lib/turn-backend/freedom.json",
+      "api": "turnBackend"
     }
   },
   "permissions": [

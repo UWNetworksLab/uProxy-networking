@@ -106,8 +106,8 @@ module.exports = (grunt) ->
 
       # Churn.
       sha1: Rule.copyModule 'sha1'
-      turn: Rule.copyModule 'turn'
-      net: Rule.copyModule 'net'
+      turnFrontend: Rule.copyModule 'turn-frontend'
+      turnBackend: Rule.copyModule 'turn-backend'
       utransformers: Rule.copyModule 'utransformers'
       regex2dfa: Rule.copyModule 'regex2dfa'
       transformers: Rule.copyModule 'transformers'
@@ -140,10 +140,10 @@ module.exports = (grunt) ->
       copypasteSocksChromeApp: Rule.typescriptSrc 'samples/copypaste-socks-chromeapp'
 
       # Churn.
-      turn: Rule.typescriptSrc 'turn'
-      turnSpecDecl: Rule.typescriptSpecDecl 'turn'
+      turnFrontend: Rule.typescriptSrc 'turn-frontend'
+      turnFrontendSpecDecl: Rule.typescriptSpecDecl 'turn-frontend'
 
-      net: Rule.typescriptSrc 'net'
+      turnBackend: Rule.typescriptSrc 'turn-backend'
 
       transformers: Rule.typescriptSrc 'transformers'
       transformersSpecDecl: Rule.typescriptSpecDecl 'transformers'
@@ -171,16 +171,16 @@ module.exports = (grunt) ->
       socksCommon: Rule.jasmineSpec 'socks-common'
       # TODO: turn tests require arraybuffers
       #       https://github.com/uProxy/uproxy/issues/430
-      turn:
+      turnFrontend:
         src: FILES.jasmine_helpers.concat([
-          'build/turn/mocks.js'
-          'build/turn/messages.js'
-          'build/turn/turn.js'
+          'build/turn-frontend/mocks.js'
+          'build/turn-frontend/messages.js'
+          'build/turn-frontend/turn-frontend.js'
           'build/arraybuffers/arraybuffers.js'
           'build/sha1/sha1.js'
         ])
         options:
-          specs: 'build/turn/*.spec.js'
+          specs: 'build/turn-frontend/*.spec.js'
       # TODO: churn tests require peerconnection
       #       https://github.com/uProxy/uproxy/issues/430
       churn:
@@ -320,18 +320,23 @@ module.exports = (grunt) ->
     'copy:sha1'
   ]
 
-  taskManager.add 'turn', [
+  taskManager.add 'turnFrontend', [
     'base'
     'sha1'
-    'ts:turn'
-    'ts:turnSpecDecl'
-    'copy:turn'
+    'ts:turnFrontend'
+    'ts:turnFrontendSpecDecl'
+    'copy:turnFrontend'
   ]
 
-  taskManager.add 'net', [
+  taskManager.add 'turnBackend', [
     'base'
-    'ts:net'
-    'copy:net'
+    'ts:turnBackend'
+    'copy:turnBackend'
+  ]
+
+  taskManager.add 'turn', [
+    'turnFrontend'
+    'turnBackend'
   ]
 
   taskManager.add 'utransformers', [
@@ -358,7 +363,6 @@ module.exports = (grunt) ->
   taskManager.add 'churn', [
     'base'
     'turn'
-    'net'
     'pipe'
     'ts:churn'
     'ts:churnSpecDecl'
@@ -368,7 +372,6 @@ module.exports = (grunt) ->
   taskManager.add 'simpleTurnChromeApp', [
     'base'
     'turn'
-    'net'
     'ts:simpleTurnChromeApp'
     'copy:simpleTurnChromeApp'
     'copy:simpleTurnChromeAppLib'
@@ -376,8 +379,7 @@ module.exports = (grunt) ->
 
   taskManager.add 'simpleChurnChatChromeApp', [
     'base'
-    'turn'
-    'net'
+    'churn'
     'ts:simpleChurnChatChromeApp'
     'copy:simpleChurnChatChromeApp'
     'copy:simpleChurnChatChromeAppLib'
@@ -385,8 +387,7 @@ module.exports = (grunt) ->
 
   taskManager.add 'copypasteChurnChatChromeApp', [
     'base'
-    'turn'
-    'net'
+    'churn'
     'ts:copypasteChurnChatChromeApp'
     'copy:copypasteChurnChatChromeApp'
     'copy:copypasteChurnChatChromeAppLib'
@@ -408,7 +409,6 @@ module.exports = (grunt) ->
     'socks'
     'samples'
     'turn',
-    'net',
     'transformers',
     'pipe',
     'churn',

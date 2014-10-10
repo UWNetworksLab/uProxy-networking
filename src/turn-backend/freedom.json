@@ -1,19 +1,19 @@
 {
-  "name": "net",
+  "name": "TURN backend",
   "description": "Remote endpoints for the TURN relay.",
   "app": {
     "script": [
-      "net.js",
+      "turn-backend.js",
       "../logging/logging.js",
-      "../turn/messages.js",
+      "../turn-frontend/messages.js",
       "../arraybuffers/arraybuffers.js"
     ]
   },
   "provides": [
-    "net"
+    "turnBackend"
   ],
   "api": {
-    "net": {
+    "turnBackend": {
       "handleIpc": {
         "type": "method",
         "value": [ "buffer" ]

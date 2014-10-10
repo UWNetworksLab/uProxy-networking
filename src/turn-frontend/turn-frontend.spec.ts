@@ -1,9 +1,9 @@
-/// <reference path='turn.ts' />
+/// <reference path='turn-frontend.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
 
-describe("turn relay", function() {
+describe("turn frontend", function() {
 
   // Returns an array of 12 bytes, suuitable for use as a STUN/TURN
   // transaction ID.
@@ -13,11 +13,11 @@ describe("turn relay", function() {
           0x31, 0x54, 0x46, 0x32, 0x36, 0x57]);
   }
 
-  var relay:Turn.Server;
+  var frontend:Turn.Frontend;
   var endpoint:Turn.Endpoint;
 
   beforeEach(function() {
-    relay = new Turn.Server();
+    frontend = new Turn.Frontend();
     endpoint = {
       address: '127.0.0.1',
       port: 10000
@@ -32,7 +32,7 @@ describe("turn relay", function() {
       transactionId: getTransactionIdBytes(),
       attributes: <Turn.StunAttribute[]>[]
     };
-    relay.handleStunMessage(request, endpoint).catch(done);
+    frontend.handleStunMessage(request, endpoint).catch(done);
   });
 
   // Treat any ALLOCATE requests without a USERNAME attribute
@@ -47,7 +47,7 @@ describe("turn relay", function() {
         type: Turn.MessageAttribute.REQUESTED_TRANSPORT
       }]
     };
-    relay.handleStunMessage(request, endpoint).then((response) => {
+    frontend.handleStunMessage(request, endpoint).then((response) => {
       expect(response.method).toEqual(Turn.MessageMethod.ALLOCATE);
       expect(response.clazz).toEqual(Turn.MessageClass.FAILURE_RESPONSE);
       // TODO: inspect these attributes

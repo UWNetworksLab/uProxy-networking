@@ -1,5 +1,5 @@
-/// <reference path='net.d.ts' />
-/// <reference path='../turn/messages.ts' />
+/// <reference path='turn-backend.d.ts' />
+/// <reference path='../turn-frontend/messages.ts' />
 /// <reference path='../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
@@ -8,7 +8,7 @@
 
 module Turn {
 
-  var log :Freedom_UproxyLogging.Log = freedom['core.log']('net');
+  var log :Freedom_UproxyLogging.Log = freedom['core.log']('TURN backend');
 
   /**
    * Represents a client known to the server. One of these objects is created
@@ -22,7 +22,7 @@ module Turn {
   /**
    * Freedom module which handles relay sockets for the TURN server.
    */
-  export class Net {
+  export class Backend {
     /**
      * All clients currently known to the server, indexed by tag.
      * Note that this map is essentially the (extremely inaccurately) named
@@ -33,7 +33,7 @@ module Turn {
 
     // TODO: define a type for event dispatcher in freedom-typescript-api
     constructor (private dispatchEvent_ ?:(name:string, args:any) => void) {
-      log.debug('NET module created');
+      log.debug('TURN backend module created');
     }
 
     public handleIpc = (data :ArrayBuffer) : Promise<void> => {
@@ -119,7 +119,7 @@ module Turn {
 
         var remoteEndpoint = Turn.parseXorMappedAddressAttribute(
             destinationAttribute.value);
-        var payload = Turn.Net.bytesToArrayBuffer_(dataAttribute.value);
+        var payload = Turn.Backend.bytesToArrayBuffer_(dataAttribute.value);
 
         if (!(tag in this.allocations_)) {
           return Promise.reject(new Error(
@@ -186,7 +186,7 @@ module Turn {
           this.emitIpc_({
             method: Turn.MessageMethod.DATA,
             clazz: Turn.MessageClass.INDICATION,
-            transactionId: Turn.Net.getRandomTransactionId_(),
+            transactionId: Turn.Backend.getRandomTransactionId_(),
             attributes: [{
               type: Turn.MessageAttribute.XOR_PEER_ADDRESS,
               value: Turn.formatXorMappedAddressAttribute(
@@ -228,6 +228,6 @@ module Turn {
   }
 
   if (typeof freedom !== 'undefined') {
-    freedom.net().providePromises(Turn.Net);
+    freedom.turnBackend().providePromises(Turn.Backend);
   }
 }

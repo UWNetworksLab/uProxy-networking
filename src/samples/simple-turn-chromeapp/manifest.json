@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
-  "name": "turn",
-  "description": "TURN demo.",
+  "name": "Simple TURN",
+  "description": "Single-page TURN server.",
   "version": "0.1",
   "app": {
     "background": {

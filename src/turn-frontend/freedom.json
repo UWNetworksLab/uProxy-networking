@@ -1,9 +1,9 @@
 {
-  "name": "TURN relay",
+  "name": "TURN frontend",
   "description": "Listen for incoming requests, and relay them through a transport.",
   "app": {
     "script": [
-      "turn.js",
+      "turn-frontend.js",
       "messages.js",
       "../logging/logging.js",
       "../arraybuffers/arraybuffers.js",
@@ -11,10 +11,10 @@
     ]
   },
   "provides": [
-    "turn"
+    "turnFrontend"
   ],
   "api": {
-    "turn": {
+    "turnFrontend": {
       "bind": {
         "type": "method",
         "value": [

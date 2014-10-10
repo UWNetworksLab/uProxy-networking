@@ -1,4 +1,4 @@
-/// <reference path='turn.d.ts' />
+/// <reference path='turn-frontend.d.ts' />
 /// <reference path='messages.ts' />
 /// <reference path='../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
@@ -8,7 +8,7 @@
 
 module Turn {
 
-  var log :Freedom_UproxyLogging.Log = freedom['core.log']('turn');
+  var log :Freedom_UproxyLogging.Log = freedom['core.log']('TURN frontend');
 
   /**
    * A TURN server which delegates the creation and operation of relay sockets
@@ -36,7 +36,7 @@ module Turn {
    *    attribute, it does not verify the client's signature
    *  - only the long-term credential mechanism is supported
    */
-  export class Server {
+  export class Frontend {
     /** Socket on which the server is listening. */
     private socket_ :freedom_UdpSocket.Socket;
 
@@ -63,7 +63,7 @@ module Turn {
      * start listening for datagrams. Specify port zero to have the system
      * choose a free port.
      */
-    public bind(address:string, port:number) : Promise<freedom_Turn.EndpointInfo> {
+    public bind(address:string, port:number) : Promise<freedom_TurnFrontend.EndpointInfo> {
       return this.socket_.bind(address, port)
           .then((resultCode:number) => {
             if (resultCode != 0) {
@@ -332,6 +332,6 @@ module Turn {
   }
 
   if (typeof freedom !== 'undefined') {
-    freedom.turn().providePromises(Turn.Server);
+    freedom.turnFrontend().providePromises(Turn.Frontend);
   }
 }
