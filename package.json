@@ -10,10 +10,12 @@
     "url": "https://github.com/uProxy/uproxy/issues",
     "email": "info@uproxy.org"
   },
-  "licenses": [ {
-    "type": "Apache-2.0",
-    "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-  } ],
+  "licenses": [
+    {
+      "type": "Apache-2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  ],
   "dependencies": {
     "es6-promise": "^1.0.0",
     "ipaddr.js": "~0.1.3"
@@ -28,7 +30,11 @@
     "grunt-ts": "^1.11",
     "typescript": "^1.1.0-1",
     "uproxy-lib": "^13",
-    "uproxy-churn": "^2.1"
+    "uproxy-churn": "^2.1",
+    "grunt-browserify": "~3.0.1",
+    "crypto": "0.0.3",
+    "utransformers": "~0.2.1",
+    "regex2dfa": "~0.1.6"
   },
   "scripts": {
     "test": "grunt test",
