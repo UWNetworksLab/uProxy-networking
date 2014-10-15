@@ -29,8 +29,8 @@ module SocksToRtc {
 
     // Fulfills once the TCP socket is listening for connections and a
     // peerconnection has been successfully established. Rejects if either
-    // socket or peerconnection setup fails. On rejection, both TCP socket
-    // and peerconnection will be closed.
+    // socket or peerconnection setup fails. On rejection, stop() will be
+    // called.
     private onceStarted_ :Promise<void>;
     public onceStarted = () : Promise<void> => { return this.onceStarted_; }
 
@@ -98,18 +98,19 @@ module SocksToRtc {
         pcConfig?:WebRtc.PeerConnectionConfig,
         obfuscate?:boolean) {
       if (endpoint) {
-        this.configure(
+        this.setResources(
             new Tcp.Server(endpoint, this.makeTcpToRtcSession),
             obfuscate ?
               freedom.churn(pcConfig) :
               freedom['core.uproxypeerconnection'](pcConfig));
+        this.configure();
       }
     }
 
-    // Same as the constructor, except creation of TCP server
-    // and peerconnection objects is delegated to the caller.
+    // Sets the TCP server and peerconnection to be used by this SOCKS server.
+    // After setting these, configure() should be called.
     // This method is intended for use by unit tests.
-    public configure(
+    public setResources(
         tcpServer:Tcp.Server,
         peerconnection:freedom_UproxyPeerConnection.Pc)
         : void {
@@ -118,6 +119,16 @@ module SocksToRtc {
       }
       this.tcpServer_ = tcpServer;
       this.peerConnection_ = peerconnection;
+    }
+
+    // Configures the SOCKS server to use the TCP server and peerconnection.
+    // setResources() should have been called first.
+    // This method is intended for use by unit tests.
+    public configure() : void {
+      if (this.tcpServer_ === undefined) {
+        throw new Error('must set resources before configuring');
+      }
+      this.setResources(this.tcpServer_, this.peerConnection_);
 
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('signalForPeer', this.signalsForPeer.handle);

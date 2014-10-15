@@ -4,14 +4,13 @@
 
 describe("socksToRtc", function() {
   var server :SocksToRtc.SocksToRtc;
-  var stop :jasmine.Spy;
 
   beforeEach(function() {
     server = new SocksToRtc.SocksToRtc();
-    stop = spyOn(server, 'stop');
   });
 
   it('onceStarted fulfills on socket and peerconnection success and does not clean up', (done) => {
+    var stop = spyOn(server, 'stop');
     server.makeOnceStarted(
         Promise.resolve(),  // socket setup
         Promise.resolve()); // peerconnection setup
@@ -23,6 +22,7 @@ describe("socksToRtc", function() {
   });
 
   it('onceStarted rejects and cleans up on socket setup failure', (done) => {
+    var stop = spyOn(server, 'stop');
     server.makeOnceStarted(
         Promise.reject(new Error('failed to listen')), // socket
         new Promise((F, R) => {}));                    // peerconnection
@@ -34,6 +34,7 @@ describe("socksToRtc", function() {
   });
 
   it('onceStarted rejects and cleans up on peerconnection setup failure', (done) => {
+    var stop = spyOn(server, 'stop');
     server.makeOnceStarted(
         new Promise((F, R) => {}),                         // socket
         Promise.reject(new Error('failed to negotiate'))); // peerconnection
@@ -45,6 +46,7 @@ describe("socksToRtc", function() {
   });
 
   it('onceStopped fulfills and cleans up on socket termination fulfillment', (done) => {
+    var stop = spyOn(server, 'stop');
     server.makeOnceStopped(
         Promise.resolve(),          // socket
         new Promise((F, R) => {})); // peerconnection
@@ -56,6 +58,7 @@ describe("socksToRtc", function() {
   });
 
   it('onceStopped fulfills and cleans up on peerconnection fulfillment', (done) => {
+    var stop = spyOn(server, 'stop');
     server.makeOnceStopped(
         new Promise((F, R) => {}), // socket
         Promise.resolve());        // peerconnection
@@ -67,7 +70,8 @@ describe("socksToRtc", function() {
   });
 
   it('onceStopped rejects if stop fails', (done) => {
-    stop.and.returnValue(Promise.reject('shutdown failed'));
+    var stop = spyOn(server, 'stop').and.returnValue(
+        Promise.reject('shutdown failed'));
     server.makeOnceStopped(
         Promise.resolve(),  // socket
         Promise.resolve()); // peerconnection
@@ -76,5 +80,23 @@ describe("socksToRtc", function() {
         expect(stop).toHaveBeenCalled();
       })
       .then(done);
+  });
+
+  it('stop fulfills on socket and peerconnection shutdown success', (done) => {
+    var mockTcpServer = jasmine.createSpyObj('tcp server', ['shutdown']);
+    var mockPeerconnection = jasmine.createSpyObj('peerconnection', ['close']);
+
+    server.setResources(mockTcpServer, mockPeerconnection);
+    server.stop().then(done);
+  });
+
+  it('stop rejects if socket shutdown rejects', (done) => {
+    var mockTcpServer = jasmine.createSpyObj('tcp server', ['shutdown']);
+    mockTcpServer.shutdown.and.returnValue(
+        Promise.reject(new Error('shutdown failed')));
+    var mockPeerconnection = jasmine.createSpyObj('peerconnection', ['close']);
+
+    server.setResources(mockTcpServer, mockPeerconnection);
+    server.stop().catch(done);
   });
 });
