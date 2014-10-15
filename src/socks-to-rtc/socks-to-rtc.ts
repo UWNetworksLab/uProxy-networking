@@ -128,7 +128,6 @@ module SocksToRtc {
       if (this.tcpServer_ === undefined) {
         throw new Error('must set resources before configuring');
       }
-      this.setResources(this.tcpServer_, this.peerConnection_);
 
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('signalForPeer', this.signalsForPeer.handle);
