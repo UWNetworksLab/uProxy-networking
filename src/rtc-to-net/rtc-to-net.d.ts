@@ -15,6 +15,8 @@ declare module RtcToNet {
                 obfuscate?:boolean);
     public proxyConfig :ProxyConfig;
     public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
+    public bytesReceivedFromPeer :Handler.Queue<number, void>;
+    public bytesSentToPeer :Handler.Queue<number, void>;
     public onceReady :Promise<void>;
     public onceClosed :Promise<void>;
     public close :() => void;

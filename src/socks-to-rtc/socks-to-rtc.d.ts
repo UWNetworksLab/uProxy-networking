@@ -15,6 +15,8 @@ declare module SocksToRtc {
     public isStopped :() => boolean;
     public onceStopped :() => Promise<void>;
     public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
+    public bytesReceivedFromPeer :Handler.Queue<number, void>;
+    public bytesSentToPeer :Handler.Queue<number, void>;
     public handleSignalFromPeer :(signal: WebRtc.SignallingMessage) => void;
     public toString :() => string;
   }

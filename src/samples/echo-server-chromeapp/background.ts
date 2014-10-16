@@ -1,4 +1,4 @@
-/// <reference path='../../../freedom/typings/freedom.d.ts' />
+/// <reference path='../../freedom/typings/freedom.d.ts' />
 
 var script = document.createElement('script');
 script.setAttribute('data-manifest', 'freedom-module.json');

@@ -1,10 +1,10 @@
-/// <reference path='../../../rtc-to-net/rtc-to-net.d.ts' />
-/// <reference path='../../../socks-to-rtc/socks-to-rtc.d.ts' />
+/// <reference path='../../rtc-to-net/rtc-to-net.d.ts' />
+/// <reference path='../../socks-to-rtc/socks-to-rtc.d.ts' />
 
-/// <reference path='../../../freedom/coreproviders/uproxylogging.d.ts' />
-/// <reference path='../../../freedom/typings/freedom.d.ts' />
-/// <reference path='../../../networking-typings/communications.d.ts' />
-/// <reference path='../../../webrtc/peerconnection.d.ts' />
+/// <reference path='../../freedom/coreproviders/uproxylogging.d.ts' />
+/// <reference path='../../freedom/typings/freedom.d.ts' />
+/// <reference path='../../networking-typings/communications.d.ts' />
+/// <reference path='../../webrtc/peerconnection.d.ts' />
 
 var log :Freedom_UproxyLogging.Log = freedom['core.log']('copypaste-socks');
 
@@ -63,6 +63,17 @@ freedom.on('start', () => {
     freedom.emit('signalForPeer', signal);
   });
 
+  // SocksToRtc adds the number of bytes it sends/receives to its respective
+  // queue as it proxies. When new numbers (of bytes) are added to these queues,
+  // emit the number to the UI (look for corresponding freedom.on in main.html).
+  socksRtc.bytesReceivedFromPeer.setSyncHandler((numBytes:number) => {
+    freedom.emit('bytesReceived', numBytes);
+  });
+
+  socksRtc.bytesSentToPeer.setSyncHandler((numBytes:number) => {
+    freedom.emit('bytesSent', numBytes);
+  });
+
   socksRtc.onceReady
     .then((endpoint:Net.Endpoint) => {
       log.info('socksRtc ready. listening to SOCKS5 on: ' + JSON.stringify(endpoint));
@@ -93,6 +104,16 @@ freedom.on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
       // Forward signalling channel messages to the UI.
       rtcNet.signalsForPeer.setSyncHandler((signal:WebRtc.SignallingMessage) => {
         freedom.emit('signalForPeer', signal);
+      });
+
+      // Similarly to with SocksToRtc, emit the number of bytes sent/received
+      // in RtcToNet to the UI.
+      rtcNet.bytesReceivedFromPeer.setSyncHandler((numBytes:number) => {
+        freedom.emit('bytesReceived', numBytes);
+      });
+
+      rtcNet.bytesSentToPeer.setSyncHandler((numBytes:number) => {
+        freedom.emit('bytesSent', numBytes);
       });
 
       rtcNet.onceReady.then(() => {

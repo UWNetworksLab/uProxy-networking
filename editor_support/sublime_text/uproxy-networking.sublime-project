@@ -1,9 +1,15 @@
 {
   "folders": [
     {
-      "path": "../../",
-      "name": "uproxy-networking project",
+      "path": "../..",
+      "name": "uproxy-networking",
       "follow_symlinks": true
+    },
+    {
+      "path": "../../build/",
+      "name": "typescript",
+      "follow_symlinks": true,
+      "file_exclude_patterns": ["*.js", "*.js.map"]
     }
   ],
   "settings": {
