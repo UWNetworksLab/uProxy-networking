@@ -1,10 +1,11 @@
 // benchmark.ts benchmarks the proxy.  It should be running on localhost:9999
 
 /// <reference path="../typings/tsd.d.ts" />
-/// <reference path="../uproxy-networking.all.d.ts" />
+/// <reference path="./agent.d.ts" />
+
 import request = require('request');
 import util = require('util');
-import shttpagent = require('socks5-http-client/lib/Agent');
+var shttpagent : Agent.Socks5ClientHttpAgent = require('socks5-http-client/lib/Agent');
 
 export module Benchmark {
     export class Bucket {
@@ -251,9 +252,9 @@ export module Benchmark {
             var latency_ms = result_time - req.requestTime;
 
             // first verify that the body is fully-formed
-            if (!request_in_error && (!body || body.length != req.requestSize)) {
-                request_in_error = true;
-            }
+            //if (!request_in_error && (!body || body.length != req.requestSize)) {
+            //    request_in_error = true;
+            // }
 
             if (req.requestTime < 0) {
                 this.latencies_[req.requestSizeIndex].addValue(this.kTimeoutMS,

@@ -6,13 +6,20 @@ var argv = require('yargs')
     .default('n', 10)
     .count('verbose')
     .alias('v', 'verbose')
+    .default('concurrency', 1)
+    .alias('c', 'concurrency')
+    .default('speed', 1)
+    .alias('s', 'speed')
     .argv;
 
 var should_sleep = true;
 var num_tests = argv.n;
 var verbosity = argv.verbose;
+var concurrency = argv.concurrency
+var tail_lat = 1000 / argv.speed;
 
-runner.configureDefaults(1, 64, 200, verbosity);
+// 500ms window for the histogram, broken into 64 buckets.
+runner.configureDefaults(concurrency, 64, tail_lat, verbosity);
 runner.runTests(num_tests, function (results) {
     console.log("-------------------------------------------------------");
     console.log("  BENCHMARK COMPLETE");
