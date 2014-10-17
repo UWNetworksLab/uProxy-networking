@@ -2,101 +2,72 @@
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
 
+/// <reference path='../tcp/tcp.d.ts' />
+/// <reference path='../webrtc/datachannel.d.ts' />
+/// <reference path='../webrtc/peerconnection.d.ts' />
+
 describe("socksToRtc", function() {
   var server :SocksToRtc.SocksToRtc;
 
+  var mockTcpServer :Tcp.Server;
+  var mockPeerconnection :freedom_UproxyPeerConnection.Pc;
+
   beforeEach(function() {
     server = new SocksToRtc.SocksToRtc();
+
+    mockTcpServer = jasmine.createSpyObj('tcp server',
+          ['on', 'listen', 'shutdown']);
+    mockTcpServer.endpoint = {
+      address: 'localhost',
+      port: 9999
+    };
+    mockPeerconnection = jasmine.createSpyObj('peerconnection',
+          ['on', 'negotiateConnection', 'close']);
   });
 
-  it('onceStarted fulfills on socket and peerconnection success and does not clean up', (done) => {
-    var stop = spyOn(server, 'stop');
-    server.makeOnceStarted(
-        Promise.resolve(),  // socket setup
-        Promise.resolve()); // peerconnection setup
-    server.onceStarted()
-      .then(() => {
-        expect(stop).not.toHaveBeenCalled();
-      })
-      .then(done);
+  it('onceReady fulfills on socket and peerconnection success', (done) => {
+    // Both TCP server and peerconnection start successfully.
+    // They do not terminate in this test.
+    spyOn(server, 'getOnceTcpServerStarted').and.returnValue(Promise.resolve());
+    spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
+    spyOn(server, 'getOnceTcpServerStopped').and.returnValue(new Promise<void>((F, R) => {}));
+    spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(new Promise<void>((F, R) => {}));
+    server.configure(mockTcpServer, mockPeerconnection);
+
+    server.onceReady.then(done);
   });
 
-  it('onceStarted rejects and cleans up on socket setup failure', (done) => {
-    var stop = spyOn(server, 'stop');
-    server.makeOnceStarted(
-        Promise.reject(new Error('failed to listen')), // socket
-        new Promise((F, R) => {}));                    // peerconnection
-    server.onceStarted()
-      .catch((e:Error) => {
-        expect(stop).toHaveBeenCalled();
-      })
-      .then(done);
+  it('onceReady and onceStopped fulfill on socket and peerconnection setup and termination success', (done) => {
+    // Both TCP server and peerconnection start and terminate successfully.
+    spyOn(server, 'getOnceTcpServerStarted').and.returnValue(Promise.resolve());
+    spyOn(server, 'getOnceTcpServerStopped').and.returnValue(Promise.resolve());
+    spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
+    spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(Promise.resolve());
+    server.configure(mockTcpServer, mockPeerconnection);
+
+    server.onceReady.then(server.onceStopped).then(done);
   });
 
-  it('onceStarted rejects and cleans up on peerconnection setup failure', (done) => {
-    var stop = spyOn(server, 'stop');
-    server.makeOnceStarted(
-        new Promise((F, R) => {}),                         // socket
-        Promise.reject(new Error('failed to negotiate'))); // peerconnection
-    server.onceStarted()
-      .catch((e:Error) => {
-        expect(stop).toHaveBeenCalled();
-      })
-      .then(done);
+  it('stop sufficient to fulfill onceStopped', (done) => {
+    // Both TCP server and peerconnection start terminate successfully.
+    spyOn(server, 'getOnceTcpServerStarted').and.returnValue(Promise.resolve());
+    spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
+    spyOn(server, 'getOnceTcpServerStopped').and.returnValue(new Promise<void>((F, R) => {}));
+    spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(new Promise<void>((F, R) => {}));
+    server.configure(mockTcpServer, mockPeerconnection);
+
+    server.stop();
+    server.onceStopped().then(done);
   });
 
-  it('onceStopped fulfills and cleans up on socket termination fulfillment', (done) => {
-    var stop = spyOn(server, 'stop');
-    server.makeOnceStopped(
-        Promise.resolve(),          // socket
-        new Promise((F, R) => {})); // peerconnection
-    server.onceStopped()
-      .then(() => {
-        expect(stop).toHaveBeenCalled();
-      })
-      .then(done);
-  });
+  it('socket setup failure sufficient to fulfill onceStopped', (done) => {
+    // TCP server fails to start.
+    spyOn(server, 'getOnceTcpServerStarted').and.returnValue(Promise.reject(new Error('failed to listen')));
+    spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
+    spyOn(server, 'getOnceTcpServerStopped').and.returnValue(new Promise<void>((F, R) => {}));
+    spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(new Promise<void>((F, R) => {}));
+    server.configure(mockTcpServer, mockPeerconnection);
 
-  it('onceStopped fulfills and cleans up on peerconnection fulfillment', (done) => {
-    var stop = spyOn(server, 'stop');
-    server.makeOnceStopped(
-        new Promise((F, R) => {}), // socket
-        Promise.resolve());        // peerconnection
-    server.onceStopped()
-      .then(() => {
-        expect(stop).toHaveBeenCalled();
-      })
-      .then(done);
-  });
-
-  it('onceStopped rejects if stop fails', (done) => {
-    var stop = spyOn(server, 'stop').and.returnValue(
-        Promise.reject('shutdown failed'));
-    server.makeOnceStopped(
-        Promise.resolve(),  // socket
-        Promise.resolve()); // peerconnection
-    server.onceStopped()
-      .catch((e:Error) => {
-        expect(stop).toHaveBeenCalled();
-      })
-      .then(done);
-  });
-
-  it('stop fulfills on socket and peerconnection shutdown success', (done) => {
-    var mockTcpServer = jasmine.createSpyObj('tcp server', ['shutdown']);
-    var mockPeerconnection = jasmine.createSpyObj('peerconnection', ['close']);
-
-    server.setResources(mockTcpServer, mockPeerconnection);
-    server.stop().then(done);
-  });
-
-  it('stop rejects if socket shutdown rejects', (done) => {
-    var mockTcpServer = jasmine.createSpyObj('tcp server', ['shutdown']);
-    mockTcpServer.shutdown.and.returnValue(
-        Promise.reject(new Error('shutdown failed')));
-    var mockPeerconnection = jasmine.createSpyObj('peerconnection', ['close']);
-
-    server.setResources(mockTcpServer, mockPeerconnection);
-    server.stop().catch(done);
+    server.onceReady.catch(server.onceStopped).then(done);
   });
 });

@@ -20,18 +20,10 @@ declare module SocksToRtc {
     public bytesSentToPeer :Handler.Queue<number, void>;
     public handleSignalFromPeer :(signal: WebRtc.SignallingMessage) => void;
     public toString :() => string;
-    public setResources :(
+
+    public configure :(
         tcpServer:Tcp.Server,
         peerconnection:freedom_UproxyPeerConnection.Pc)
-        => void;
-    public configure :() => void;
-    public makeOnceStarted :(
-        serverReady:Promise<any>,
-        peerconnectionReady:Promise<any>)
-        => void;
-    public makeOnceStopped :(
-        serverTerminated:Promise<any>,
-        peerconnectionTerminated:Promise<any>)
         => void;
   }
   class Session {
