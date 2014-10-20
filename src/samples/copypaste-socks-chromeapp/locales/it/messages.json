@@ -33,10 +33,10 @@
 		"message" : "ATTENZIONE: Un osservatore che vede questo messaggio può essere in grado di determinare che si sta utilizzando uProxy, quindi inviarlo tramite un canale privato di fiducia."
 	},
 	"bytesSentMsg" : {
-		"message" : "byte inviati al partecipante remoto."
+		"message" : " byte inviati al partecipante remoto."
 	},
 	"bytesReceivedMsg" : {
-		"message" : "byte ricevuti dal partecipante remoto."
+		"message" : " byte ricevuti dal partecipante remoto."
 	},
 	"generateHandshakeAndSendMsg" : {
 		"message" : "Fare clic sul pulsante qui sotto per generare un messaggio di handshake per inviare all'altra parte. Questo messaggio indica l'altra parte come individuare voi sulla rete. Queste informazioni possono scadere rapidamente, in modo da procedere solo quando si e l'altra parte è pronti."

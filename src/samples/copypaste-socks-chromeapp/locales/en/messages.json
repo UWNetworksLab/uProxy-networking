@@ -33,10 +33,10 @@
 		"message" : "WARNING:  An observer who sees this message may be able to determine that you are using uProxy, so send it via a private channel you trust."
 	},
 	"bytesSentMsg" : {
-		"message" : "bytes sent to remote party."
+		"message" : " bytes sent to remote party."
 	},
 	"bytesReceivedMsg" : {
-		"message" : "bytes received from remote party."
+		"message" : " bytes received from remote party."
 	},
 	"generateHandshakeAndSendMsg" : {
 		"message" : "Click the button below to generate a handshake message to send to the other party.  This message tells the other party how to locate you on the network.  This information can expire quickly, so proceed only when you and the other party are ready."
