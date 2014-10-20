@@ -203,7 +203,7 @@ function changeLanguage(language:string) : void {
 }
 
 // Listen for events indicating the language has changed.
-getLanguageInputNode.onchange = function(event:Event) : any {
+getLanguageInputNode.onchange = function(event:Event) : void {
   var selectedLanguage = getLanguageInputNode
       .options[getLanguageInputNode.selectedIndex].value;
   changeLanguage(selectedLanguage);
