@@ -189,6 +189,7 @@ module.exports = (grunt) ->
     'socksCommon'
     'socksToRtc'
     'rtcToNet'
+    'tcp'
   ]
 
   taskManager.add 'echoServerChromeApp', [

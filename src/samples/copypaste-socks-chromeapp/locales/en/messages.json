@@ -1,0 +1,53 @@
+{
+	"introMsg" : {
+		"message" : "This sample app establishes SOCKS proxying between two users. The intial exchange of signalling messages occurs manually (e.g., via email or chat), while the subsequent proxying uses WebRTC."
+	},
+	"giveAccessMsg" : {
+		"message" : "Give access"
+	},
+	"giveDescriptionMsg" : {
+		"message" : "Allow someone to share your internet connection."
+	},
+	"getAccessMsg" : {
+		"message" : "Get access"
+	},
+	"getDescriptionMsg" : {
+		"message" : "Bypass blocking by using someone else's internet connection."
+	},
+	"italianMsg" : {
+		"message" : "Italiano"
+	},
+	"englishMsg" : {
+		"message" : "English"
+	},
+	"pasteAndGenerateReplyMsg" : {
+		"message" : "Paste the text received from the other party below and click 'Generate reply'."
+	},
+	"generateReplyMsg" : {
+		"message" : "Generate reply"
+	},
+	"copyPasteAndSendMsg" : {
+		"message" : "Copy/paste the complete text above and send it to the other party."
+	},
+	"warningMsg" : {
+		"message" : "WARNING:  An observer who sees this message may be able to determine that you are using uProxy, so send it via a private channel you trust."
+	},
+	"bytesSentMsg" : {
+		"message" : "bytes sent to remote party."
+	},
+	"bytesReceivedMsg" : {
+		"message" : "bytes received from remote party."
+	},
+	"generateHandshakeAndSendMsg" : {
+		"message" : "Click the button below to generate a handshake message to send to the other party.  This message tells the other party how to locate you on the network.  This information can expire quickly, so proceed only when you and the other party are ready."
+	},
+	"generateMsg" : {
+		"message" : "Generate"
+	},
+	"pasteAndStartProxyingMsg" : {
+		"message" : "Paste the text received from the other party below and click 'Start proxying'."
+	},
+	"startProxyingMsg" : {
+		"message" : "Start proxying"
+	}
+}
