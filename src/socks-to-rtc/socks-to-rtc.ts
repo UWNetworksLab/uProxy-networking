@@ -279,7 +279,11 @@ module SocksToRtc {
     // being proxied, and strings are used for control information.
     private dataFromPeer_ :Handler.Queue<WebRtc.Data,void>;
 
-    constructor(public tcpConnection:Tcp.Connection,
+    // TODO: Rather than passing a reference to the whole peerconnection, we
+    //       should only pass a reference to the datachannel. We only do this
+    //       because uproxypeerconnection doesn't have a dedicated datachannel
+    //       object.
+    constructor(private tcpConnection_:Tcp.Connection,
                 private peerConnection_:freedom_UproxyPeerConnection.Pc,
                 private bytesReceivedFromPeer:Handler.Queue<number,void>,
                 private bytesSentToPeer:Handler.Queue<number,void>) {
@@ -298,10 +302,10 @@ module SocksToRtc {
       onceChannelClosed = this.peerConnection_
           .onceDataChannelClosed(this.channelLabel_);
       onceChannelClosed.then(this.close);
-      this.tcpConnection.onceClosed.then(this.close);
+      this.tcpConnection_.onceClosed.then(this.close);
 
       this.onceClosed = Promise.all<any>(
-          [this.tcpConnection.onceClosed, onceChannelClosed]).then(() => {});
+          [this.tcpConnection_.onceClosed, onceChannelClosed]).then(() => {});
 
       // The session is ready after: 1. the auth handskhape, 2. after the peer-
       // to-peer data channel is open, and 3. after we have done the request
@@ -316,8 +320,8 @@ module SocksToRtc {
 
     public longId = () : string => {
       var tcp :string = '?';
-      if(this.tcpConnection) {
-        tcp = this.tcpConnection.connectionId + (this.tcpConnection.isClosed() ? '.c' : '.o');
+      if(this.tcpConnection_) {
+        tcp = this.tcpConnection_.connectionId + (this.tcpConnection_.isClosed() ? '.c' : '.o');
       }
       return tcp + '-' + this.channelLabel_ +
           (this.dataChannelIsClosed_ ? '.c' : '.o') ;
@@ -326,8 +330,8 @@ module SocksToRtc {
     // Close the session.
     public close = () : Promise<void> => {
       log.debug(this.longId() + ': close');
-      if(!this.tcpConnection.isClosed()) {
-        this.tcpConnection.close();
+      if(!this.tcpConnection_.isClosed()) {
+        this.tcpConnection_.close();
       }
       // Note: closing the tcp connection should raise an event to close the
       // data channel. But we can start closing it down now anyway (faster,
@@ -351,7 +355,7 @@ module SocksToRtc {
       return JSON.stringify({
         channelLabel_: this.channelLabel_,
         dataChannelIsClosed_: this.dataChannelIsClosed_,
-        tcpConnection: this.tcpConnection.toString()
+        tcpConnection: this.tcpConnection_.toString()
       });
     }
 
@@ -361,10 +365,10 @@ module SocksToRtc {
     //   https://github.com/uProxy/uproxy/issues/323
     private doAuthHandshake_ = ()
         : Promise<void> => {
-      return this.tcpConnection.receiveNext()
+      return this.tcpConnection_.receiveNext()
         .then(Socks.interpretAuthHandshakeBuffer)
         .then((auths:Socks.Auth[]) => {
-          this.tcpConnection.send(
+          this.tcpConnection_.send(
               Socks.composeAuthResponse(Socks.Auth.NOAUTH));
         });
     }
@@ -397,7 +401,7 @@ module SocksToRtc {
     // has been established. Promise returns the destination site connected to.
     private doRequestHandshake_ = ()
         : Promise<Net.Endpoint> => {
-      return this.tcpConnection.receiveNext()
+      return this.tcpConnection_.receiveNext()
         .then(Socks.interpretRequestBuffer)
         .then((request:Socks.Request) => {
           this.peerConnection_.send(this.channelLabel_,
@@ -406,7 +410,7 @@ module SocksToRtc {
         })
         .then((endpoint:Net.Endpoint) => {
           // TODO: test and close: https://github.com/uProxy/uproxy/issues/324
-          this.tcpConnection.send(Socks.composeRequestResponse(endpoint));
+          this.tcpConnection_.send(Socks.composeRequestResponse(endpoint));
           return endpoint;
         });
     }
@@ -415,7 +419,7 @@ module SocksToRtc {
     // that tcpConnection is defined.)
     private linkTcpAndPeerConnectionData_ = () : void => {
       // Any further data just goes to the target site.
-      this.tcpConnection.dataFromSocketQueue.setSyncHandler(
+      this.tcpConnection_.dataFromSocketQueue.setSyncHandler(
           (data:ArrayBuffer) => {
         log.debug(this.longId() + ': dataFromSocketQueue: ' + data.byteLength + ' bytes.');
         this.peerConnection_.send(this.channelLabel_, { buffer: data });
@@ -430,7 +434,7 @@ module SocksToRtc {
         }
         log.debug(this.longId() + ': dataFromPeer: ' + data.buffer.byteLength +
             ' bytes.');
-        this.tcpConnection.send(data.buffer);
+        this.tcpConnection_.send(data.buffer);
       });
     }
   }  // Session
