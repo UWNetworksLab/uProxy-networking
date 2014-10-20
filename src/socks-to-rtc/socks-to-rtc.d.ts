@@ -11,7 +11,6 @@ declare module SocksToRtc {
                 pcConfig?:WebRtc.PeerConnectionConfig,
                 obfuscate?:boolean);
     public stop :() => Promise<void>;
-    public onceStarted: () => Promise<void>;
     public onceReady :Promise<Net.Endpoint>;
     public isStopped :() => boolean;
     public onceStopped :() => Promise<void>;
@@ -20,11 +19,17 @@ declare module SocksToRtc {
     public bytesSentToPeer :Handler.Queue<number, void>;
     public handleSignalFromPeer :(signal: WebRtc.SignallingMessage) => void;
     public toString :() => string;
-
     public configure :(
         tcpServer:Tcp.Server,
         peerconnection:freedom_UproxyPeerConnection.Pc)
         => void;
+    public getOnceTcpServerStarted :(tcpServer:Tcp.Server) => Promise<void>;
+    public getOnceTcpServerStopped :(tcpServer:Tcp.Server) => Promise<void>;
+    public getOncePeerconnectionStarted :(
+        peerconnection:freedom_UproxyPeerConnection.Pc) => Promise<void>;
+    public getOncePeerconnectionStopped :(
+        peerconnection:freedom_UproxyPeerConnection.Pc) => Promise<void>;
+    public makeTcpToRtcSession :(tcpConnection:Tcp.Connection) => void;
   }
   class Session {
     constructor(tcpConnection:Tcp.Connection,
