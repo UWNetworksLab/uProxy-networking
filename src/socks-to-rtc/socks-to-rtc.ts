@@ -31,6 +31,12 @@ module SocksToRtc {
     // Rejects if either socket or peerconnection startup fails.
     public onceReady :Promise<Net.Endpoint>;
 
+    // Call this to initiate shutdown.
+    private initiateShutdown_ :() => void;
+    private onceStopping_ = new Promise((F, R) => {
+      this.initiateShutdown_ = F;
+    });
+
     // Fulfills once the SOCKS server has terminated.
     // This can happen in response to:
     //  - startup failure
@@ -95,10 +101,10 @@ module SocksToRtc {
 
     // Starts the SOCKS server with the supplied TCP server and peerconnection.
     // Returns this.onceReady.
-    public start(
+    public start = (
         tcpServer:Tcp.Server,
         peerconnection:freedom_UproxyPeerConnection.Pc)
-        : Promise<Net.Endpoint> {
+        : Promise<Net.Endpoint> => {
       if (this.tcpServer_) {
         throw new Error('already configured');
       }
@@ -124,13 +130,12 @@ module SocksToRtc {
         });
 
       // Shutdown if startup fails, or TCP server or peerconnection terminate.
-      var onceStopping = new Promise((F, R) => { this.stop = F; });
-      this.onceReady.catch(this.stop);
+      this.onceReady.catch(this.initiateShutdown_);
       Promise.race([
           this.getOnceTcpServerStopped(this.tcpServer_),
           this.getOncePeerconnectionStopped(this.peerConnection_)])
-        .then(this.stop);
-      this.onceStopped_ = onceStopping.then(this.doStop_);
+        .then(this.initiateShutdown_);
+      this.onceStopped_ = this.onceStopping_.then(this.shutdown_);
 
       return this.onceReady;
     }
@@ -139,7 +144,8 @@ module SocksToRtc {
     // connections and which rejects if the server fails to start listening
     // for any reason.
     // TODO: Integration tests for TCP server's startup behaviour.
-    public getOnceTcpServerStarted(tcpServer:Tcp.Server) : Promise<void> {
+    public getOnceTcpServerStarted = (
+        tcpServer:Tcp.Server) : Promise<void> => {
       return tcpServer.listen()
         .then((endpoint:Net.Endpoint) => {
           return Promise.resolve<void>();
@@ -149,7 +155,8 @@ module SocksToRtc {
     // Returns a promise which fulfills once the TCP server terminates for
     // any reason, e.g. its socket's network interface disappears
     // TODO: Integration tests for TCP server's shutdown behaviour.
-    public getOnceTcpServerStopped(tcpServer:Tcp.Server) : Promise<void> {
+    public getOnceTcpServerStopped = (
+        tcpServer:Tcp.Server) : Promise<void> => {
       // TCP server has no onceDisconnected()-type method! Oh dear.
       // Instead, supply a dummy promise that neither resolves nor rejects.
       return new Promise<void>((F, R) => {});
@@ -159,8 +166,9 @@ module SocksToRtc {
     // successfully connected with the remote peer and which rejects if
     // a connection cannot be established for any reason.
     // TODO: Integration tests for peerconnection's startup behaviour.
-    public getOncePeerconnectionStarted(
-        peerconnection:freedom_UproxyPeerConnection.Pc) : Promise<void> {
+    public getOncePeerconnectionStarted = (
+        peerconnection:freedom_UproxyPeerConnection.Pc)
+        : Promise<void> => {
       return peerconnection.onceConnected()
         .then((endpoints:WebRtc.ConnectionAddresses) => {
           return Promise.resolve<void>();
@@ -170,19 +178,22 @@ module SocksToRtc {
     // Returns a promise which fulfills once the peerconnection has been
     // terminated for any reason.
     // TODO: Integration tests for peerconnection's shutdown behaviour.
-    public getOncePeerconnectionStopped(
-        peerconnection:freedom_UproxyPeerConnection.Pc) : Promise<void> {
+    public getOncePeerconnectionStopped = (
+        peerconnection:freedom_UproxyPeerConnection.Pc) : Promise<void> => {
       return peerconnection.onceDisconnected();
     }
 
     // Shuts down the TCP server and peerconnection.
-    // onceStopped() may be used to listen for the result of this operation.
-    public stop :() => void;
+    // Returns onceStopped.
+    public stop = () : Promise<void> => {
+      this.initiateShutdown_();
+      return this.onceStopped_;
+    }
 
     // Actually shuts down the TCP server and peerconnection.
     // Gating this on the stop promise helps avoid multiple attempts
     // to shutdown.
-    private doStop_ = () : Promise<void> => {
+    private shutdown_ = () : Promise<void> => {
       // TODO: Integration tests for these objects' shutdown methods.
       return Promise.all([
           this.tcpServer_.shutdown(),

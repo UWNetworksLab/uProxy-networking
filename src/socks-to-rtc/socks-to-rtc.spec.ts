@@ -45,14 +45,15 @@ describe("socksToRtc", function() {
   });
 
   it('stop sufficient to fulfill onceStopped', (done) => {
-    // Both TCP server and peerconnection start terminate successfully.
+    // Both TCP server and peerconnection start successfully
+    // and neither terminates "naturally".
     spyOn(server, 'getOnceTcpServerStarted').and.returnValue(Promise.resolve());
     spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
     spyOn(server, 'getOnceTcpServerStopped').and.returnValue(new Promise<void>((F, R) => {}));
     spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(new Promise<void>((F, R) => {}));
-    server.start(mockTcpServer, mockPeerconnection);
-    server.stop();
-    server.onceStopped().then(done);
+
+    server.start(mockTcpServer, mockPeerconnection).then(
+          server.stop).then(server.onceStopped).then(done);
   });
 
   it('socket setup failure sufficient to fulfill onceStopped', (done) => {
