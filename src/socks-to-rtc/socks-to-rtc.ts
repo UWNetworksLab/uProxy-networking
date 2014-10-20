@@ -114,8 +114,8 @@ module SocksToRtc {
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('signalForPeer', this.signalsForPeer.handle);
 
-      // Start the peerconnection. TCP server doesn't have a start/onceReady
-      // separation so we let getOnceTcpServerStarted start the TCP server.
+      // Start the peerconnection (getOnceTcpServerStarted starts
+      // the TCP server).
       peerconnection.negotiateConnection();
 
       // Startup notifications.
