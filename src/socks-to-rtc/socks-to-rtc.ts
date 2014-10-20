@@ -85,7 +85,7 @@ module SocksToRtc {
         pcConfig?:WebRtc.PeerConnectionConfig,
         obfuscate?:boolean) {
       if (endpoint) {
-        this.configure(
+        this.start(
             new Tcp.Server(endpoint, this.makeTcpToRtcSession),
             obfuscate ?
               freedom.churn(pcConfig) :
@@ -93,12 +93,12 @@ module SocksToRtc {
       }
     }
 
-    // Sets the TCP server and peerconnection to be used by this SOCKS server.
-    // onceReady can be used to listen for startup success or failure.
-    public configure(
+    // Starts the SOCKS server with the supplied TCP server and peerconnection.
+    // Returns this.onceReady.
+    public start(
         tcpServer:Tcp.Server,
         peerconnection:freedom_UproxyPeerConnection.Pc)
-        : void {
+        : Promise<Net.Endpoint> {
       if (this.tcpServer_) {
         throw new Error('already configured');
       }
@@ -131,6 +131,8 @@ module SocksToRtc {
           this.getOncePeerconnectionStopped(this.peerConnection_)])
         .then(this.stop);
       this.onceStopped_ = onceStopping.then(this.doStop_);
+
+      return this.onceReady;
     }
 
     // Returns a promise which fulfills once the server is ready to accept

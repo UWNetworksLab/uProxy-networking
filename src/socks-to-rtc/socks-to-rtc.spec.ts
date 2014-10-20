@@ -32,9 +32,7 @@ describe("socksToRtc", function() {
     spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
     spyOn(server, 'getOnceTcpServerStopped').and.returnValue(new Promise<void>((F, R) => {}));
     spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(new Promise<void>((F, R) => {}));
-    server.configure(mockTcpServer, mockPeerconnection);
-
-    server.onceReady.then(done);
+    server.start(mockTcpServer, mockPeerconnection).then(done);
   });
 
   it('onceReady and onceStopped fulfill on socket and peerconnection setup and termination success', (done) => {
@@ -43,9 +41,7 @@ describe("socksToRtc", function() {
     spyOn(server, 'getOnceTcpServerStopped').and.returnValue(Promise.resolve());
     spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
     spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(Promise.resolve());
-    server.configure(mockTcpServer, mockPeerconnection);
-
-    server.onceReady.then(server.onceStopped).then(done);
+    server.start(mockTcpServer, mockPeerconnection).then(done);
   });
 
   it('stop sufficient to fulfill onceStopped', (done) => {
@@ -54,8 +50,7 @@ describe("socksToRtc", function() {
     spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
     spyOn(server, 'getOnceTcpServerStopped').and.returnValue(new Promise<void>((F, R) => {}));
     spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(new Promise<void>((F, R) => {}));
-    server.configure(mockTcpServer, mockPeerconnection);
-
+    server.start(mockTcpServer, mockPeerconnection);
     server.stop();
     server.onceStopped().then(done);
   });
@@ -66,8 +61,6 @@ describe("socksToRtc", function() {
     spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
     spyOn(server, 'getOnceTcpServerStopped').and.returnValue(new Promise<void>((F, R) => {}));
     spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(new Promise<void>((F, R) => {}));
-    server.configure(mockTcpServer, mockPeerconnection);
-
-    server.onceReady.catch(server.onceStopped).then(done);
+    server.start(mockTcpServer, mockPeerconnection).catch(server.onceStopped).then(done);
   });
 });
