@@ -1,4 +1,3 @@
-/// <reference path='messages.d.ts' />
 /// <reference path="../../churn/churn.d.ts" />
 /// <reference path="../../webrtc/peerconnection.d.ts" />
 /// <reference path='../../freedom/coreproviders/uproxylogging.d.ts' />
@@ -32,8 +31,8 @@ pc.onceConnecting().then(() => { log.info('connecting...'); });
 
 // Send messages over the datachannel, in response to events from the UI,
 // and forward messages received on the datachannel to the UI.
-freedom.on('send', (message:Chat.Message) => {
-  pc.send('text', { str: message.message }).catch((e) => {
+freedom.on('send', (message:string) => {
+  pc.send('text', { str: message }).catch((e) => {
     log.error('error sending message: ' + e.message);
   });
 });
@@ -42,7 +41,7 @@ pc.on('dataFromPeer', (d:freedom_UproxyPeerConnection.LabelledDataChannelMessage
     log.error('only text messages are supported');
     return;
   }
-  freedom.emit('receive', { message: d.message.str });
+  freedom.emit('receive', d.message.str);
 });
 
 // TODO: This is messy...would be great just to have both sides

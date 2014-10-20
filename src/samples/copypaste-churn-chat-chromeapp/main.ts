@@ -1,4 +1,3 @@
-/// <reference path='messages.d.ts' />
 /// <reference path='../../churn/churn.d.ts' />
 /// <reference path='../../freedom/typings/freedom.d.ts' />
 
@@ -47,13 +46,11 @@ freedom.on('error', function() {
 });
 
 sendButton.onclick = function() {
-  freedom.emit('send', {
-    // Currently, PeerConnection does not support empty text messages:
-    //   https://github.com/freedomjs/freedom/issues/67
-    message: sendArea.value || '(empty message)'
-  });
+  // Currently, PeerConnection does not support empty text messages:
+  //   https://github.com/freedomjs/freedom/issues/67
+  freedom.emit('send', sendArea.value || '(empty message)');
 }
 
-freedom.on('receive', function(msg:Chat.Message) {
-  receiveArea.value = msg.message;
+freedom.on('receive', function(message:string) {
+  receiveArea.value = message;
 });

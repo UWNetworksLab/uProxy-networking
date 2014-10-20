@@ -1,4 +1,3 @@
-/// <reference path='messages.d.ts' />
 /// <reference path='../../freedom/typings/freedom.d.ts' />
 
 var sendButtonA = document.getElementById("sendButtonA");
@@ -22,17 +21,15 @@ freedom.on('error', function() {
 });
 
 function send(suffix:string, textArea:HTMLInputElement) {
-  freedom.emit('send' + suffix, {
-    // Currently, PeerConnection does not support empty text messages:
-    //   https://github.com/freedomjs/freedom/issues/67
-    message: textArea.value || '(empty message)'
-  });
+  // Currently, PeerConnection does not support empty text messages:
+  //   https://github.com/freedomjs/freedom/issues/67
+  freedom.emit('send' + suffix, textArea.value || '(empty message)');
 }
 sendButtonA.onclick = send.bind(null, 'A', sendAreaA);
 sendButtonB.onclick = send.bind(null, 'B', sendAreaB);
 
-function receive(textArea:HTMLInputElement, msg:Chat.Message) {
-  textArea.value = msg.message;
+function receive(textArea:HTMLInputElement, message:string) {
+  textArea.value = message;
 }
 freedom.on('receiveA', receive.bind(null, receiveAreaA));
 freedom.on('receiveB', receive.bind(null, receiveAreaB));

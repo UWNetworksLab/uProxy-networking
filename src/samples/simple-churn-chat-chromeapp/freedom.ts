@@ -1,4 +1,3 @@
-/// <reference path='messages.d.ts' />
 /// <reference path="../../churn/churn.d.ts" />
 /// <reference path="../../webrtc/peerconnection.d.ts" />
 /// <reference path="../../freedom/typings/freedom.d.ts" />
@@ -60,8 +59,8 @@ b.onceConnected().then(logEndpoints.bind(null, 'b'));
 // Once negotiated, enable the UI and add send/receive handlers.
 a.negotiateConnection().then((endpoints:WebRtc.ConnectionAddresses) => {
   // Send messages over the datachannel, in response to events from the UI.
-  var sendMessage = (pc:PcLib.Pc, message:Chat.Message) => {
-    pc.send('text', { str: message.message }).catch((e) => {
+  var sendMessage = (pc:PcLib.Pc, message:string) => {
+    pc.send('text', { str: message }).catch((e) => {
       log.error('error sending message: ' + e.message);
     });
   };
@@ -75,9 +74,7 @@ a.negotiateConnection().then((endpoints:WebRtc.ConnectionAddresses) => {
       log.error('only text messages are supported');
       return;
     }
-    freedom.emit('receive' + name, {
-      message: d.message.str
-    });
+    freedom.emit('receive' + name, d.message.str);
   };
   a.on('dataFromPeer', receiveMessage.bind(null, 'A'));
   b.on('dataFromPeer', receiveMessage.bind(null, 'B'));
