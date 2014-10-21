@@ -115,13 +115,14 @@ module SocksToRtc {
       this.peerConnection_.on('signalForPeer', this.signalsForPeer.handle);
 
       // Start and listen for notifications.
+      // TODO: Use tcpServer.onceConnected once it's available.
       peerconnection.negotiateConnection();
       this.onceReady = Promise.all<any>([
           tcpServer.listen(),
           peerconnection.onceConnected()
         ])
         .then((answers:any[]) => {
-          return answers[0];
+          return tcpServer.endpoint;
         });
 
       // Shutdown if startup fails, or peerconnection terminates.

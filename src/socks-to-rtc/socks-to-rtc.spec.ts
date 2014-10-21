@@ -25,6 +25,7 @@ describe("socksToRtc", function() {
         'listen',
         'shutdown'
       ]);
+    mockTcpServer.endpoint = mockEndpoint;
     mockPeerconnection = jasmine.createSpyObj('peerconnection', [
         'on',
         'negotiateConnection',
