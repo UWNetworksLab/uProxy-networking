@@ -89,7 +89,9 @@ module SocksToRtc {
       var oncePeerConnectionReady :Promise<WebRtc.ConnectionAddresses>;
 
       // Create SOCKS server and start listening.
-      this.tcpServer_ = new Tcp.Server(endpoint, this.makeTcpToRtcSession_);
+      this.tcpServer_ = new Tcp.Server(endpoint);
+      this.tcpServer_.connectionsQueue.setSyncHandler(
+          this.makeTcpToRtcSession_);
       onceTcpServerReady = this.tcpServer_.listen();
       oncePeerConnectionReady = this.setupPeerConnection_(pcConfig, obfuscate);
 
