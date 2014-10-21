@@ -81,6 +81,7 @@ module.exports = (grunt) ->
       socksToRtc: Rule.copyModule 'socks-to-rtc'
       ipaddrjs: Rule.copyModule 'ipaddrjs'
       rtcToNet: Rule.copyModule 'rtc-to-net'
+      benchmark: Rule.copyModule 'benchmark'
 
       echoServerChromeApp: Rule.copyModule 'samples/echo-server-chromeapp'
       echoServerChromeAppLib: Rule.copySampleFiles 'samples/echo-server-chromeapp'
@@ -105,6 +106,13 @@ module.exports = (grunt) ->
       socksToRtcSpecDecl: Rule.typescriptSpecDecl 'socks-to-rtc'
 
       rtcToNet: Rule.typescriptSrc 'rtc-to-net'
+      # Benchmark
+      benchmark: Rule.typescriptSrc 'benchmark'
+      options: {
+          module: 'commonjs',
+          sourceMap: true,
+          declaration: true
+      }
 
       echoServerChromeApp: Rule.typescriptSrc 'samples/echo-server-chromeapp/'
       simpleSocksChromeApp: Rule.typescriptSrc 'samples/simple-socks-chromeapp'
@@ -254,9 +262,19 @@ module.exports = (grunt) ->
     'copypasteSocksChromeApp'
   ]
 
+  #-------------------------------------------------------------------------
+  # Tasks for Tools
+  taskManager.add 'benchmark', [
+    'base'
+    'copy:benchmark'
+    'ts:benchmark'
+  ]
+
+  #-------------------------------------------------------------------------
   taskManager.add 'build', [
     'tcp'
     'udp'
+    'benchmark'
     'socks'
     'samples'
   ]
