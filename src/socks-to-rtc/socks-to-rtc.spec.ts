@@ -7,6 +7,11 @@
 /// <reference path='../webrtc/peerconnection.d.ts' />
 
 describe("socksToRtc", function() {
+  var mockEndpoint :Net.Endpoint = {
+    address: '127.0.0.1',
+    port: 1234
+  };
+
   var server :SocksToRtc.SocksToRtc;
 
   var mockTcpServer :Tcp.Server;
@@ -15,53 +20,65 @@ describe("socksToRtc", function() {
   beforeEach(function() {
     server = new SocksToRtc.SocksToRtc();
 
-    mockTcpServer = jasmine.createSpyObj('tcp server',
-          ['on', 'listen', 'shutdown']);
-    mockTcpServer.endpoint = {
-      address: 'localhost',
-      port: 9999
-    };
-    mockPeerconnection = jasmine.createSpyObj('peerconnection',
-          ['on', 'negotiateConnection', 'close']);
+    mockTcpServer = jasmine.createSpyObj('tcp server', [
+        'on',
+        'listen',
+        'shutdown'
+      ]);
+    mockPeerconnection = jasmine.createSpyObj('peerconnection', [
+        'on',
+        'negotiateConnection',
+        'onceConnected',
+        'onceDisconnected',
+        'close'
+      ]);
   });
 
-  it('onceReady fulfills on socket and peerconnection success', (done) => {
-    // Both TCP server and peerconnection start successfully.
-    // They do not terminate in this test.
-    spyOn(server, 'getOnceTcpServerStarted').and.returnValue(Promise.resolve());
-    spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
-    spyOn(server, 'getOnceTcpServerStopped').and.returnValue(new Promise<void>((F, R) => {}));
-    spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(new Promise<void>((F, R) => {}));
-    server.start(mockTcpServer, mockPeerconnection).then(done);
+  it('onceReady fulfills with server endpoint on server and peerconnection success', (done) => {
+    (<any>mockTcpServer.listen).and.returnValue(Promise.resolve(mockEndpoint));
+    (<any>mockPeerconnection.onceConnected).and.returnValue(Promise.resolve());
+    (<any>mockPeerconnection.onceDisconnected).and.returnValue(new Promise<void>((F, R) => {}));
+
+    server.start(mockTcpServer, mockPeerconnection)
+      .then((result:Net.Endpoint) => {
+        expect(result.address).toEqual(mockEndpoint.address);
+        expect(result.port).toEqual(mockEndpoint.port);
+      })
+      .then(done);
   });
 
-  it('onceReady and onceStopped fulfill on socket and peerconnection setup and termination success', (done) => {
-    // Both TCP server and peerconnection start and terminate successfully.
-    spyOn(server, 'getOnceTcpServerStarted').and.returnValue(Promise.resolve());
-    spyOn(server, 'getOnceTcpServerStopped').and.returnValue(Promise.resolve());
-    spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
-    spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(Promise.resolve());
-    server.start(mockTcpServer, mockPeerconnection).then(done);
+  it('onceReady rejects and onceStopped fulfills on socket setup failure', (done) => {
+    (<any>mockTcpServer.listen).and.returnValue(Promise.reject(new Error('could not allocate port')));
+    (<any>mockPeerconnection.onceConnected).and.returnValue(new Promise<void>((F, R) => {}));
+    (<any>mockPeerconnection.onceDisconnected).and.returnValue(new Promise<void>((F, R) => {}));
+
+    server.start(mockTcpServer, mockPeerconnection).catch(server.onceStopped).then(done);
   });
 
-  it('stop sufficient to fulfill onceStopped', (done) => {
-    // Both TCP server and peerconnection start successfully
-    // and neither terminates "naturally".
-    spyOn(server, 'getOnceTcpServerStarted').and.returnValue(Promise.resolve());
-    spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
-    spyOn(server, 'getOnceTcpServerStopped').and.returnValue(new Promise<void>((F, R) => {}));
-    spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(new Promise<void>((F, R) => {}));
+  it('onceStopped fulfills on peerconnection termination', (done) => {
+    (<any>mockTcpServer.listen).and.returnValue(Promise.resolve(mockEndpoint));
+    (<any>mockPeerconnection.onceConnected).and.returnValue(Promise.resolve());
+    (<any>mockPeerconnection.onceDisconnected).and.returnValue(Promise.resolve());
+
+    server.start(mockTcpServer, mockPeerconnection).then(server.onceStopped).then(done);
+  });
+
+  it('onceStopped fulfills on call to stop', (done) => {
+    (<any>mockTcpServer.listen).and.returnValue(Promise.resolve(mockEndpoint));
+    (<any>mockPeerconnection.onceConnected).and.returnValue(Promise.resolve());
+    (<any>mockPeerconnection.onceDisconnected).and.returnValue(new Promise<void>((F, R) => {}));
 
     server.start(mockTcpServer, mockPeerconnection).then(
-          server.stop).then(server.onceStopped).then(done);
+        server.stop).then(server.onceStopped).then(done);
   });
 
-  it('socket setup failure sufficient to fulfill onceStopped', (done) => {
-    // TCP server fails to start.
-    spyOn(server, 'getOnceTcpServerStarted').and.returnValue(Promise.reject(new Error('failed to listen')));
-    spyOn(server, 'getOncePeerconnectionStarted').and.returnValue(Promise.resolve());
-    spyOn(server, 'getOnceTcpServerStopped').and.returnValue(new Promise<void>((F, R) => {}));
-    spyOn(server, 'getOncePeerconnectionStopped').and.returnValue(new Promise<void>((F, R) => {}));
-    server.start(mockTcpServer, mockPeerconnection).catch(server.onceStopped).then(done);
+  it('onceStopped rejects on peerconnection shutdown failure', (done) => {
+    (<any>mockTcpServer.listen).and.returnValue(Promise.resolve(mockEndpoint));
+    (<any>mockPeerconnection.onceConnected).and.returnValue(Promise.resolve());
+    (<any>mockPeerconnection.onceDisconnected).and.returnValue(new Promise<void>((F, R) => {}));
+    (<any>mockPeerconnection.close).and.returnValue(Promise.reject('could not cleanly shutdown'));
+
+    server.start(mockTcpServer, mockPeerconnection).then(
+        server.stop).then(server.onceStopped).catch(done);
   });
 });

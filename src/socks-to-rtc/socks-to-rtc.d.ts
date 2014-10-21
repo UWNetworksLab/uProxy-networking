@@ -23,12 +23,6 @@ declare module SocksToRtc {
         tcpServer:Tcp.Server,
         peerconnection:freedom_UproxyPeerConnection.Pc)
         => Promise<Net.Endpoint>;
-    public getOnceTcpServerStarted :(tcpServer:Tcp.Server) => Promise<void>;
-    public getOnceTcpServerStopped :(tcpServer:Tcp.Server) => Promise<void>;
-    public getOncePeerconnectionStarted :(
-        peerconnection:freedom_UproxyPeerConnection.Pc) => Promise<void>;
-    public getOncePeerconnectionStopped :(
-        peerconnection:freedom_UproxyPeerConnection.Pc) => Promise<void>;
     public makeTcpToRtcSession :(tcpConnection:Tcp.Connection) => void;
   }
   class Session {
