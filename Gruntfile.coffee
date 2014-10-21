@@ -8,6 +8,14 @@ ipaddrjsPath = path.dirname(require.resolve('ipaddr.js/package.json'))
 churnPath = path.dirname(require.resolve('uproxy-churn/package.json'))
 ccaPath = path.dirname(require.resolve('cca/package.json'))
 
+FILES =
+  # Help Jasmine's PhantomJS understand promises.
+  jasmine_helpers: [
+    'node_modules/es6-promise/dist/promise-*.js',
+    '!node_modules/es6-promise/dist/promise-*amd.js',
+    '!node_modules/es6-promise/dist/promise-*.min.js'
+  ]
+
 #-------------------------------------------------------------------------
 module.exports = (grunt) ->
   grunt.initConfig {
@@ -95,6 +103,8 @@ module.exports = (grunt) ->
       socksCommonSpecDecl: Rule.typescriptSpecDecl 'socks-common'
 
       socksToRtc: Rule.typescriptSrc 'socks-to-rtc'
+      socksToRtcSpecDecl: Rule.typescriptSpecDecl 'socks-to-rtc'
+
       rtcToNet: Rule.typescriptSrc 'rtc-to-net'
       # Benchmark
       benchmark: Rule.typescriptSrc 'benchmark'
@@ -111,6 +121,17 @@ module.exports = (grunt) ->
 
     jasmine:
       socksCommon: Rule.jasmineSpec 'socks-common'
+
+      # TODO: socksToRtc tests require a bunch of other modules
+      #       https://github.com/uProxy/uproxy/issues/430
+      socksToRtc:
+        src: FILES.jasmine_helpers.concat([
+          'build/handler/queue.js'
+          'build/socks-to-rtc/mocks.js'
+          'build/socks-to-rtc/socks-to-rtc.js'
+        ])
+        options:
+          specs: 'build/socks-to-rtc/*.spec.js'
 
     clean: ['build/', 'dist/', '.tscache/']
 
@@ -174,8 +195,10 @@ module.exports = (grunt) ->
 
   taskManager.add 'socksToRtc', [
     'base'
+    'tcp'
     'socksCommon'
     'ts:socksToRtc'
+    'ts:socksToRtcSpecDecl'
     'copy:socksToRtc'
   ]
 
@@ -187,6 +210,7 @@ module.exports = (grunt) ->
 
   taskManager.add 'rtcToNet', [
     'base'
+    'tcp'
     'socksCommon'
     'ipaddrjs'
     'ts:rtcToNet'
