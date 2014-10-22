@@ -32,20 +32,12 @@ module Tcp {
 
   // A static helper function to close a freedom socket object and then
   // appropriately deallocate it's interface object.
-  function closeFreedomSocket_(socket:freedom_TcpSocket.Socket,
+  function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket,
       idInfoString?:string) : Promise<void> {
     return socket.close().then(() => {
-      console.log('closing: ' + idInfoString);
       freedom['core.tcpsocket'].close(socket);
     });
   }
-
-  // TODO: support starting listening again after stopping
-  // TODO: support changing the connection handler.
-  // TODO: For dynamic port allocation, provide a way to get the post that we
-  // end up listening on.
-  // TODO: make endpoint into getter: we don't support changing it by
-  // assignment.
 
   // Tcp.Server: a TCP Server. This listens for connections when listen is
   // called, and handles the new connection as specified by the onConnection
@@ -152,7 +144,7 @@ module Tcp {
         // Stop too many connections.  We create a new socket here from the
         // incoming Id and immediately close it, because we don't yet have a
         // reference to the incomming socket.
-        closeFreedomSocket_(freedom['core.tcpsocket'](socketId),
+        destroyFreedomSocket_(freedom['core.tcpsocket'](socketId),
             'L:' + socketId);
         //log.error('Too many connections: ' + connectionsCount);
         return;
@@ -212,7 +204,7 @@ module Tcp {
       // Close the server socket. Note: freedom doesn't give a socket Id for a
       // listening socket, so we just pass 0 back here: it's only for
       // debugging/console logging, so it doesn't matter.
-      return closeFreedomSocket_(this.serverSocket_, 'listening').then(() => {
+      return destroyFreedomSocket_(this.serverSocket_, 'listening').then(() => {
         this.isListening_ = false;
       })
       //.then(() => {
@@ -339,8 +331,6 @@ module Tcp {
     // error.
     private onDisconnectHandler_ = (info:freedom_TcpSocket.DisconnectInfo) : void => {
       //log.debug(this.connectionId + ': onDisconnectHandler_');
-      console.log(this.connectionId + ': onDisconnectHandler_');
-
       if(this.state_ === Connection.State.CLOSED) {
         //log.warn(this.connectionId + ': Got onDisconnect in closed state' +
         //    '(errcode=' + info.errcode + '; msg=' + info.message + ')');
@@ -349,13 +339,8 @@ module Tcp {
 
       this.state_ = Connection.State.CLOSED;
 
-      // Needed to cleanup freedom channel memory. Ideally freedom would
-      // separate closing the socket from memory cleanup. Also: ideally we'd
-      // actually fulfill the this.onceClosed promise when freedom's socket
-      // provider close promise fulfills. Both these problems are tracker here:
-      // TODO: https://github.com/freedomjs/freedom/issues/121
       this.dataToSocketQueue.stopHandling();
-      closeFreedomSocket_(this.connectionSocket_, this.connectionId).then(
+      destroyFreedomSocket_(this.connectionSocket_, this.connectionId).then(
           () => {
         if (info.errcode === 'SUCCESS') {
           this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
@@ -372,7 +357,6 @@ module Tcp {
     // This is called to close the underlying socket. This fulfills the
     // disconnect Promise `onceDisconnected`.
     public close = () : Promise<SocketCloseKind> => {
-      console.log(this.connectionId + ': close');
       //log.debug(this.connectionId + ': close');
       if (this.state_ === Connection.State.CLOSED) {
         //log.warn(this.connectionId + ': close: called when already closed');

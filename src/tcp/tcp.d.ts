@@ -14,7 +14,8 @@ declare module Tcp {
     // will result in new connections being closed as soon as they connect.
     public maxConnections  :number;
 
-    // The endpoint this server is listening on.
+    // The handler queue of connections made to this server. By default no
+    // handler is set; the consumer of the server is expected to set one.
     public connectionsQueue :Handler.Queue<Connection, void>;
 
     // Gets all the current connections to this server.
@@ -24,11 +25,12 @@ declare module Tcp {
 
     // Start accepting new connections; returns the actual endpoint it ends up
     // listening on (e.g. when port 0 is specifed, a dynamic port number is
-    // chosen).
+    // chosen). Returns the same promise as calling `onceListening`.
     public listen :() => Promise<Net.Endpoint>;
     // Getter for the once listening promise. Use to write prettier code.
     public onceListening :() => Promise<Net.Endpoint>;
-    // The |isListening| variable is
+    // The |isListening| variable is true after |onceListening| and before
+    // |onceShutdown|
     public isListening :() => boolean;
     // Stop accepting new connections.
     public stopListening :() => Promise<void>;
@@ -36,7 +38,8 @@ declare module Tcp {
     // Calls close on all connections. Doesn't stop listening.
     public closeAll :() => Promise<void>;
 
-    // Stop listening and then close-all
+    // Stops accepting new connection (like |stopListening|) and then closes
+    // all connections (like |closeAll|).
     public shutdown :() => Promise<void>;
     // The |onceShutdown| promise can be fulfilled by either a call to
     // shutdown, or by something going wrong in the OS.
