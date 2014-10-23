@@ -1,0 +1,45 @@
+{
+  "name": "TURN frontend",
+  "description": "Listen for incoming requests, and relay them through a transport.",
+  "app": {
+    "script": [
+      "turn-frontend.js",
+      "messages.js",
+      "../logging/logging.js",
+      "../arraybuffers/arraybuffers.js",
+      "../sha1/sha1.js"
+    ]
+  },
+  "provides": [
+    "turnFrontend"
+  ],
+  "api": {
+    "turnFrontend": {
+      "bind": {
+        "type": "method",
+        "value": [
+          "string",
+          "number"
+        ],
+        "ret": {
+          "address": "string",
+          "port": "number"
+        }
+      },
+      "handleIpc": {
+        "type": "method",
+        "value": [ "buffer" ]
+      },
+      "ipc": {
+        "type": "event",
+        "value": {
+          "data": "buffer"
+        }
+      }
+    }
+  },
+  "permissions": [
+    "core.udpsocket",
+    "core.log"
+  ]
+}

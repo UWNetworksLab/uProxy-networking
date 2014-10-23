@@ -1,0 +1,22 @@
+{
+  "name": "Simple TURN",
+  "description": "top-level freedom manifest",
+  "app": {
+    "script": [
+      "freedom.js"
+    ]
+  },
+  "dependencies": {
+    "turnFrontend": {
+      "url": "lib/turn-frontend/freedom.json",
+      "api": "turnFrontend"
+    },
+    "turnBackend": {
+      "url": "lib/turn-backend/freedom.json",
+      "api": "turnBackend"
+    }
+  },
+  "permissions": [
+    "core.log"
+  ]
+}
