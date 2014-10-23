@@ -280,6 +280,7 @@ module.exports = (grunt) ->
     'base'
     'tcp'
     'socksCommon'
+    'churn'
     'ts:socksToRtc'
     'ts:socksToRtcSpecDecl'
     'copy:socksToRtc'
