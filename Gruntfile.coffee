@@ -45,14 +45,15 @@ module.exports = (grunt) ->
           filter: 'isDirectory'
           dest: 'build/third_party/'
         ]
-      
-      # Symlink i18n from the third_party directory
-      i18n: 
+
+      # Symlink each directory under third_party/ under build/third_party/.
+      thirdParty:
         files: [
           expand: true,
-          cwd: 'third_party'
-          src: ['lib/i18n/*']
-          dest: 'build/samples/copypaste-socks-chromeapp/'
+          cwd: 'third_party/'
+          src: ['*']
+          filter: 'isDirectory'
+          dest: 'build/third_party/'
         ]
 
       # Symlink each file under churn's dist/ under build/.
@@ -236,7 +237,7 @@ module.exports = (grunt) ->
   taskManager.add 'copypasteSocksChromeApp', [
     'base'
     'socks'
-    'symlink:i18n'
+    'symlink:thirdParty'
     'ts:copypasteSocksChromeApp'
     'copy:copypasteSocksChromeApp'
     'copy:copypasteSocksChromeAppLib'
