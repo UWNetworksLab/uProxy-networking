@@ -338,6 +338,8 @@ module.exports = (grunt) ->
     'copy:copypasteSocksChromeAppLib'
   ]
 
+  # TODO: Use end-to-end's sha1:
+  #         https://github.com/uProxy/uproxy/issues/507
   taskManager.add 'sha1', [
     'base'
     'browserify:sha1'
