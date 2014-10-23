@@ -95,6 +95,27 @@ examining the Javascript console.
 Demonstrates the simplest possible use of the `turn-frontend` and
 `turn-backend` modules.
 
+`turn-frontend` is the module with which TURN clients directly interact:
+
+```
+                                                    +-------------+
+                                                    |             |
+                                                    |          ++ +------->
+                    +-------------+                 |          ++ |
+                    |             |                 |             |
+TURN client +-----> | oo          | <-------------> |          ++ +------->
+                    | oo          |      webrtc     |          ++ |
+                    |             |                 |             |
+                    +---+---------+                 |          ++ +------->
+                    turn-frontend                   |          ++ |
+                                                    |             |
+                                                    +---+---------+
+                                                    turn-backend
+
+                      oo                              ++
+                      oo server socket                ++ relay socket
+```
+
 The server may be used with standard TURN clients, e.g. the command-line
 tools from the `rfc5766-turn-server` suite:
 
