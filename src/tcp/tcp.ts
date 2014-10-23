@@ -34,9 +34,14 @@ module Tcp {
   // appropriately deallocate it's interface object.
   function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket,
       idInfoString?:string) : Promise<void> {
-    return socket.close().then(() => {
-      freedom['core.tcpsocket'].close(socket);
-    });
+    // Note that :
+    // freedom['core.tcpsocket'].close =/= freedom['core.tcpsocket']().close
+    // The former destroys the freedom interface & communication channels.
+    // The latter is a method on the constructed interface object that is on
+    // the instance of the freedom tcp-socket's API.
+    return socket.close().then(
+      () => { freedom['core.tcpsocket'].close(socket); },
+      (e) => { freedom['core.tcpsocket'].close(socket); return e; });
   }
 
   // Tcp.Server: a TCP Server. This listens for connections when listen is

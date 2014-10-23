@@ -28,6 +28,8 @@ declare module Tcp {
     // chosen). Returns the same promise as calling `onceListening`.
     public listen :() => Promise<Net.Endpoint>;
     // Getter for the once listening promise. Use to write prettier code.
+    // Fulfills once the server has server has successfully bound to a port
+    // and is accepting connections. Rejects if there is any error.
     public onceListening :() => Promise<Net.Endpoint>;
     // The |isListening| variable is true after |onceListening| and before
     // |onceShutdown|
