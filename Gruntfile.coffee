@@ -111,7 +111,7 @@ module.exports = (grunt) ->
       turnBackend: Rule.copyModule 'turn-backend'
       utransformers: Rule.copyModule 'utransformers'
       regex2dfa: Rule.copyModule 'regex2dfa'
-      transformers: Rule.copyModule 'transformers'
+      simpleTransformers: Rule.copyModule 'simple-transformers'
       churn: Rule.copyModule 'churn'
       churnPipe: Rule.copyModule 'churn-pipe'
 
@@ -155,8 +155,8 @@ module.exports = (grunt) ->
 
       turnBackend: Rule.typescriptSrc 'turn-backend'
 
-      transformers: Rule.typescriptSrc 'transformers'
-      transformersSpecDecl: Rule.typescriptSpecDecl 'transformers'
+      simpleTransformers: Rule.typescriptSrc 'simple-transformers'
+      simpleTransformersSpecDecl: Rule.typescriptSpecDecl 'simple-transformers'
 
       churn: Rule.typescriptSrc 'churn'
       churnSpecDecl: Rule.typescriptSpecDecl 'churn'
@@ -371,12 +371,17 @@ module.exports = (grunt) ->
     'copy:regex2dfa'
   ]
 
-  taskManager.add 'transformers', [
+  taskManager.add 'simpleTransformers', [
     'base'
     'utransformers'
-    'ts:transformers'
-    'ts:transformersSpecDecl'
-    'copy:transformers'
+    'ts:simpleTransformers'
+    'ts:simpleTransformersSpecDecl'
+    'copy:simpleTransformers'
+  ]
+
+  taskManager.add 'transformers', [
+    'utransformers'
+    'simpleTransformers'
   ]
 
   taskManager.add 'churnPipe', [
