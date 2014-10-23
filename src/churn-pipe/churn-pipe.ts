@@ -6,8 +6,8 @@
 /// <reference path='../utransformers/interfaces/utransformer.d.ts' />
 /// <reference path='../utransformers/interfaces/utransformers.fte.d.ts' />
 /// <reference path='../utransformers/interfaces/utransformers.rabbit.d.ts' />
-/// <reference path='../transformers/caesar.ts' />
-/// <reference path='../transformers/passthrough.ts' />
+/// <reference path='../simple-transformers/caesar.ts' />
+/// <reference path='../simple-transformers/passthrough.ts' />
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 
 module Churn {

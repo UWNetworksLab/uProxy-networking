@@ -6,8 +6,8 @@
       "churn-pipe.js",
       "../logging/logging.js",
       "../arraybuffers/arraybuffers.js",
-      "../transformers/caesar.js",
-      "../transformers/passthrough.js",
+      "../simple-transformers/caesar.js",
+      "../simple-transformers/passthrough.js",
       "../regex2dfa/regex2dfa.js",
       "../utransformers/transformers/uTransformers.rabbit.js",
       "../utransformers/transformers/uTransformers.fte.js"
