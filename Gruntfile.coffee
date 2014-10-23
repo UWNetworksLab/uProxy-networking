@@ -25,6 +25,16 @@ module.exports = (grunt) ->
           dest: 'build/'
         ]
 
+      # Symlink each directory under third_party/ under build/third_party/.
+      thirdParty:
+        files: [
+          expand: true,
+          cwd: 'third_party/'
+          src: ['*']
+          filter: 'isDirectory'
+          dest: 'build/third_party/'
+        ]
+
       # Symlink each file under uproxy-lib's dist/ under build/.
       # Exclude the samples/ directory.
       uproxyLibBuild:
@@ -41,16 +51,6 @@ module.exports = (grunt) ->
         files: [
           expand: true
           cwd: path.join(uproxyLibPath, 'third_party/')
-          src: ['*']
-          filter: 'isDirectory'
-          dest: 'build/third_party/'
-        ]
-
-      # Symlink each directory under third_party/ under build/third_party/.
-      thirdParty:
-        files: [
-          expand: true,
-          cwd: 'third_party/'
           src: ['*']
           filter: 'isDirectory'
           dest: 'build/third_party/'
@@ -158,6 +158,7 @@ module.exports = (grunt) ->
 
   taskManager.add 'base', [
     'symlink:build'
+    'symlink:thirdParty'    
     'symlink:uproxyLibBuild'
     'symlink:uproxyLibThirdParty'
     'symlink:churnLib'
@@ -237,7 +238,6 @@ module.exports = (grunt) ->
   taskManager.add 'copypasteSocksChromeApp', [
     'base'
     'socks'
-    'symlink:thirdParty'
     'ts:copypasteSocksChromeApp'
     'copy:copypasteSocksChromeApp'
     'copy:copypasteSocksChromeAppLib'
