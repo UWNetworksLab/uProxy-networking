@@ -1,0 +1,49 @@
+<link rel="import" href="lib/polymer/polymer.html">
+<link rel="import" href='button.html'>
+<link rel="import" href='textarea.html'>
+
+<polymer-element name='copypaste-getter'>
+
+  <template>
+    <style>
+      :host {
+        position: absolute;
+        width: 450px; height: 525px;
+        border: none; margin: auto;
+        text-align: left;
+      }
+    </style>
+
+    <div id="getAccessPanel">
+      
+      <div id="getAccessPanel_step1">
+        <h1 i18n-content="getAccess"></h1>
+        <p i18n-content="generateHandshakeAndSend"></p>
+        <p>
+          <button id="getAccessPanel_generateIceCandidatesButton" i18n-content="generate"></button>
+        </p>
+      </div>
+
+      <div id="getAccessPanel_step2Container" style="display: none;">
+        <textarea id="getAccessPanel_outboundMessage" disabled></textarea>
+        <p i18n-content="copyPasteAndSend"></p>
+        <p class="warning" i18n-content="warning"></p><br>
+        <p i18n-content="pasteAndStartProxying"></p>
+        <textarea id="getAccessPanel_inboundMessage"></textarea>
+        <p>
+          <button id="getAccessPanel_consumeInboundMessageButton" disabled i18n-content="startProxying"></button>
+        </p>
+      </div>
+
+      <div>
+        <a id="getAccessPanel_bytesReceived">0</a><a i18n-content="bytesReceived"></a><br>
+        <a id="getAccessPanel_bytesSent">0</a><a i18n-content="bytesSent"></a><br>
+      </div>
+    </div>
+
+  </template>
+
+  <script src="getter.js">
+  </script>
+
+</polymer-element>

@@ -1,0 +1,3 @@
+Polymer({
+    //parsedInboundMessages :WebRtc.SignallingMessage[];
+  });

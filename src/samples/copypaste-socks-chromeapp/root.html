@@ -1,0 +1,25 @@
+<link rel="import" href="lib/polymer/polymer.html">
+<link rel="import" href='start.html'>
+<link rel="import" href='giver.html'>
+<link rel="import" href='getter.html'>
+
+<polymer-element name='copypaste-root'>
+
+  <template>
+    <style>
+      :host {
+        position: absolute;
+        width: 450px; height: 525px;
+        border: none; margin: auto;
+        text-align: left;
+      }
+    </style>
+    <copypaste-start id='start' giving="{{ isGiving }}" getting="{{ isGetting }}"  hidden?='{{ isGiving || isGetting }}'></copypaste-start>
+    <copypaste-giver id='giver' hidden?='{{ !isGiving }}'></copypaste-giver>
+    <copypaste-getter id='getter' hidden?='{{ !isGetting }}'></copypaste-getter>
+
+  </template>
+
+  <script src="root.js"></script>
+
+</polymer-element>

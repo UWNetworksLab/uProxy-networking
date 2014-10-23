@@ -1,0 +1,46 @@
+<link rel="import" href="lib/polymer/polymer.html">
+<link rel="import" href='button.html'>
+<link rel="import" href='textarea.html'>
+
+<polymer-element name='copypaste-giver'>
+
+  <template>
+    <style>
+      :host {
+        position: absolute;
+        width: 450px; height: 525px;
+        border: none; margin: auto;
+        text-align: left;
+      }
+    </style>
+
+    <div id="giveAccessPanel">
+      <div id="giveAccessPanel_step1">
+        <h1 i18n-content="giveAccess"></h1>
+
+        <p i18n-content="pasteAndGenerateReply"></p>
+        <copypaste-textarea id="inboundMessageNode" on-keyup="{{ parseInboundMessages(this) }}"></copypaste-textarea>
+        <p>
+        <copypaste-button id="consumeInboundMessageButton" disabled translationKey="generateReply"></copypaste-button>
+        </p>
+      </div>
+
+      <br>
+      <div id="giveAccessPanel_step2Container" style="display: none;">
+        <copypaste-textarea id="giveAccessPanel_outboundMessage" disabled></copypaste-textarea>
+        <p i18n-content="copyPasteAndSend"></p>
+        <p class="warning" i18n-content="warning"></p>
+      </div>
+
+      <div>
+        <a id="giveAccessPanel_bytesSent">0</a><a i18n-content="bytesSent"></a><br>
+        <a id="giveAccessPanel_bytesReceived">0</a><a i18n-content="bytesReceived"></a><br>
+      </div>
+    </div>
+
+  </template>
+
+  <script src="giver.js">
+  </script>
+
+</polymer-element>

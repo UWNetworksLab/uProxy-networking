@@ -1,0 +1,34 @@
+<html>
+
+  <head>
+    <title>copypaste</title>
+    <link rel='import' href='root.html'>
+    <style>
+    .centered /deep/ {
+        text-align: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div><p class="centered">
+      <select id="languageInput">
+        <option value="en" i18n-content="english"></option>
+        <option value="it" i18n-content="italian"></option>
+      </select>        
+    </p></div>
+
+    <copypaste-root></copypaste-root>
+  </body>
+  
+  <script src='lib/freedom/uproxy-core-env.js'></script>
+  <script src='lib/freedom/freedom-for-chrome-for-uproxy.js'
+          data-manifest='freedom-module.json'>
+    {
+      "debug": "warn"
+    }
+  </script>
+  <script src='lib/i18n/i18n_template.js'></script>
+  <script src="popup.js"></script>
+
+</html>

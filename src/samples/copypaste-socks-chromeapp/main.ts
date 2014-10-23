@@ -14,14 +14,17 @@ var getAccessPanel_generateIceCandidatesButton = <HTMLElement>document.getElemen
 var getAccessPanel_inboundMessageNode = <HTMLInputElement>document.getElementById('getAccessPanel_inboundMessage');
 var getAccessPanel_outboundMessageNode = <HTMLInputElement>document.getElementById('getAccessPanel_outboundMessage');
 var getAccessPanel_step2ContainerNode = <HTMLElement>document.getElementById('getAccessPanel_step2Container');
+
 var giveAccessPanelNode = <HTMLElement>document.getElementById('giveAccessPanel');
 var giveAccessPanel_consumeInboundMessageButtonNode = <HTMLElement>document.getElementById('giveAccessPanel_consumeInboundMessageButton');
 var giveAccessPanel_inboundMessageNode = <HTMLInputElement>document.getElementById('giveAccessPanel_inboundMessage');
 var giveAccessPanel_outboundMessageNode = <HTMLInputElement>document.getElementById('giveAccessPanel_outboundMessage');
 var giveAccessPanel_step2ContainerNode = <HTMLElement>document.getElementById('giveAccessPanel_step2Container');
+
 var startPanelNode = <HTMLElement>document.getElementById('startPanel');
 var startPanel_getAccessLinkNode = <HTMLElement>document.getElementById('startPanel_getAccessLink');
 var startPanel_giveAccessLinkNode = <HTMLElement>document.getElementById('startPanel_giveAccessLink');
+
 var getAccessPanel_bytesReceived = <HTMLElement>document.getElementById('getAccessPanel_bytesReceived');
 var getAccessPanel_bytesSent = <HTMLElement>document.getElementById('getAccessPanel_bytesSent');
 var giveAccessPanel_bytesReceived = <HTMLElement>document.getElementById('giveAccessPanel_bytesReceived');
@@ -96,7 +99,7 @@ getAccessPanel_consumeInboundMessageButtonNode.onclick =
       getAccessPanel_consumeInboundMessageButtonNode.disabled = true;
     };
 
-
+/*
 // Parses the contents of the form field 'inboundMessageField' as a sequence of
 // signalling messages. Enables/disables the corresponding form button, as
 // appropriate. Returns null if the field contents are malformed.
@@ -151,7 +154,7 @@ function consumeInboundMessage(inboundMessageField:HTMLInputElement) : void {
 
   // TODO: Report success/failure to the user.
 };
-
+*/
 
 // Add signalling-channel messages to the box from which the user should
 // copy/paste the outgoing message. We don't care whether the message came from
@@ -177,7 +180,7 @@ freedom.on('bytesSent', (numNewBytesSent:number) => {
 });
 
 // Translation.
-
+/*
 // Dropdown for selecting a language.
 var getLanguageInputNode = 
     <HTMLSelectElement>document.getElementById('languageInput');
@@ -210,4 +213,4 @@ getLanguageInputNode.onchange = function(event:Event) : void {
 }
 
 // Default is English.
-changeLanguage("en");
+changeLanguage("en");*/
