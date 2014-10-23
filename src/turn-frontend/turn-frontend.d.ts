@@ -1,5 +1,8 @@
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 
+// This module allocates a UDP socket which serves TURN clients.
+// It delegates creation of relay sockets to turn-backend.
+
 // TODO: rename once https://github.com/Microsoft/TypeScript/issues/52 is fixed
 declare module freedom_TurnFrontend {
   interface EndpointInfo {

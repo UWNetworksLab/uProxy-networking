@@ -1,5 +1,8 @@
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 
+// This module manages relay sockets on behalf of turn-frontend.
+// TURN clients do not interact directly with this module.
+
 // TODO: rename once https://github.com/Microsoft/TypeScript/issues/52 is fixed
 declare module freedom_TurnBackend {
   interface Ipc {
