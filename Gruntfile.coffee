@@ -201,7 +201,7 @@ module.exports = (grunt) ->
         ]),
         options:
           specs: 'build/churn/*.spec.js'
-      transformers: Rule.jasmineSpec 'transformers'
+      simpleTransformers: Rule.jasmineSpec 'simple-transformers'
 
       # TODO: socksToRtc tests require a bunch of other modules
       #       https://github.com/uProxy/uproxy/issues/430
