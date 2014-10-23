@@ -7,9 +7,9 @@
 /// <reference path="../third_party/typings/es6-promise/es6-promise.d.ts" />
 declare module SocksToRtc {
   class SocksToRtc {
-    constructor(endpoint:Net.Endpoint,
-                pcConfig:WebRtc.PeerConnectionConfig,
-                obfuscate:boolean);
+    constructor(endpoint?:Net.Endpoint,
+                pcConfig?:WebRtc.PeerConnectionConfig,
+                obfuscate?:boolean);
     public stop :() => Promise<void>;
     public onceReady :Promise<Net.Endpoint>;
     public isStopped :() => boolean;
@@ -19,6 +19,11 @@ declare module SocksToRtc {
     public bytesSentToPeer :Handler.Queue<number, void>;
     public handleSignalFromPeer :(signal: WebRtc.SignallingMessage) => void;
     public toString :() => string;
+    public start :(
+        tcpServer:Tcp.Server,
+        peerconnection:freedom_UproxyPeerConnection.Pc)
+        => Promise<Net.Endpoint>;
+    public makeTcpToRtcSession :(tcpConnection:Tcp.Connection) => void;
   }
   class Session {
     constructor(tcpConnection:Tcp.Connection,

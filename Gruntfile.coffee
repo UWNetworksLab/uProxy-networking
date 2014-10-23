@@ -91,6 +91,7 @@ module.exports = (grunt) ->
       socksToRtc: Rule.copyModule 'socks-to-rtc'
       ipaddrjs: Rule.copyModule 'ipaddrjs'
       rtcToNet: Rule.copyModule 'rtc-to-net'
+      benchmark: Rule.copyModule 'benchmark'
 
       echoServerChromeApp: Rule.copyModule 'samples/echo-server-chromeapp'
       echoServerChromeAppLib: Rule.copySampleFiles 'samples/echo-server-chromeapp'
@@ -132,7 +133,16 @@ module.exports = (grunt) ->
       socksCommonSpecDecl: Rule.typescriptSpecDecl 'socks-common'
 
       socksToRtc: Rule.typescriptSrc 'socks-to-rtc'
+      socksToRtcSpecDecl: Rule.typescriptSpecDecl 'socks-to-rtc'
+
       rtcToNet: Rule.typescriptSrc 'rtc-to-net'
+      # Benchmark
+      benchmark: Rule.typescriptSrc 'benchmark'
+      options: {
+          module: 'commonjs',
+          sourceMap: true,
+          declaration: true
+      }
 
       echoServerChromeApp: Rule.typescriptSrc 'samples/echo-server-chromeapp/'
       simpleSocksChromeApp: Rule.typescriptSrc 'samples/simple-socks-chromeapp'
@@ -192,6 +202,17 @@ module.exports = (grunt) ->
         options:
           specs: 'build/churn/*.spec.js'
       transformers: Rule.jasmineSpec 'transformers'
+
+      # TODO: socksToRtc tests require a bunch of other modules
+      #       https://github.com/uProxy/uproxy/issues/430
+      socksToRtc:
+        src: FILES.jasmine_helpers.concat([
+          'build/handler/queue.js'
+          'build/socks-to-rtc/mocks.js'
+          'build/socks-to-rtc/socks-to-rtc.js'
+        ])
+        options:
+          specs: 'build/socks-to-rtc/*.spec.js'
 
     clean: ['build/', 'dist/', '.tscache/']
 
@@ -257,8 +278,10 @@ module.exports = (grunt) ->
 
   taskManager.add 'socksToRtc', [
     'base'
+    'tcp'
     'socksCommon'
     'ts:socksToRtc'
+    'ts:socksToRtcSpecDecl'
     'copy:socksToRtc'
   ]
 
@@ -270,6 +293,7 @@ module.exports = (grunt) ->
 
   taskManager.add 'rtcToNet', [
     'base'
+    'tcp'
     'socksCommon'
     'ipaddrjs'
     'ts:rtcToNet'
@@ -403,9 +427,19 @@ module.exports = (grunt) ->
     'copypasteChurnChatChromeApp'
   ]
 
+  #-------------------------------------------------------------------------
+  # Tasks for Tools
+  taskManager.add 'benchmark', [
+    'base'
+    'copy:benchmark'
+    'ts:benchmark'
+  ]
+
+  #-------------------------------------------------------------------------
   taskManager.add 'build', [
     'tcp'
     'udp'
+    'benchmark'
     'socks'
     'samples'
     'turn'

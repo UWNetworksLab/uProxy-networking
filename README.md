@@ -110,6 +110,15 @@ any dropped packets. For more options, e.g. to open more channels or send
 larger datagrams, see the
 [turnutils_uclient documentation](https://code.google.com/p/rfc5766-turn-server/wiki/turnutils_uclient).
 
+## Benchmarking
+ * Build everything: 'grunt'
+ * Load 'build/socks-server/samples/simple-socks-chromeapp' in chrome (it's an app) and run it.
+ * Do these once:
+   * 'bin/make-data.sh' (probably works for linux only)
+   * 'npm install -g wup'
+ * Run wup in data/: '(cd data ; wup) &'
+ * Then, run the benchmark with 'npm run benchmark'
+
 ## Android
 
 ### Prerequisites
