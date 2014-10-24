@@ -92,7 +92,7 @@ module SocksToRtc {
         obfuscate?:boolean) {
       if (endpoint) {
         this.start(
-            new Tcp.Server(endpoint, this.makeTcpToRtcSession),
+            new Tcp.Server(endpoint),
             obfuscate ?
               freedom.churn(pcConfig) :
               freedom['core.uproxypeerconnection'](pcConfig));
@@ -109,6 +109,8 @@ module SocksToRtc {
         throw new Error('already configured');
       }
       this.tcpServer_ = tcpServer;
+      this.tcpServer_.connectionsQueue
+          .setSyncHandler(this.makeTcpToRtcSession);
       this.peerConnection_ = peerconnection;
 
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
@@ -129,7 +131,9 @@ module SocksToRtc {
       // TODO: Shutdown on TCP server termination:
       //         https://github.com/uProxy/uproxy/issues/485
       this.onceReady.catch(this.initiateShutdown_);
-      peerconnection.onceDisconnected()
+      this.tcpServer_.onceShutdown()
+          .then(this.initiateShutdown_, this.initiateShutdown_);
+      this.peerConnection_.onceDisconnected()
           .then(this.initiateShutdown_, this.initiateShutdown_);
       this.onceStopped_ = this.onceStopping_.then(this.shutdown_);
 
