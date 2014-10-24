@@ -1,6 +1,6 @@
 /// <reference path='../../freedom/typings/freedom.d.ts' />
 /// <reference path='../../webrtc/peerconnection.d.ts' />
-/// <reference path='lib/i18n/i18n.d.ts' />
+/// <reference path='../../third_party/i18n/i18n.d.ts' />
 
 // Freedom apps don't have direct access to the page so this
 // file mediates between the page's controls and the Freedom app.
