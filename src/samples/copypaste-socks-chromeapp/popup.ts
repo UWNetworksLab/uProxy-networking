@@ -55,6 +55,19 @@ getLanguageInputNode.onchange = function(event:Event) : void {
 
 // Message passing.
 
+// DOM nodes that we will choose from either the 'give access' panel or the
+// 'get access' panel once the user chooses whether to give/get.
+var step2ContainerNode :HTMLElement;
+var outboundMessageNode :HTMLInputElement;
+var inboundMessageNode :HTMLInputElement;
+var receivedBytesNode :HTMLElement;
+var sentBytesNode :HTMLElement;
+var consumeMessageButton :HTMLElement;
+
+var totalBytesReceived = 0;
+var totalBytesSent = 0;
+
+
 // Stores the parsed messages for use later, if & when the user clicks the
 // button for consuming the messages.
 var parsedInboundMessages :WebRtc.SignallingMessage[];
@@ -64,10 +77,9 @@ var parsedInboundMessages :WebRtc.SignallingMessage[];
 // Parses the contents of the form field 'inboundMessageField' as a sequence of
 // signalling messages. Enables/disables the corresponding form button, as
 // appropriate. Returns null if the field contents are malformed.
-function parseInboundMessages(inboundMessageField:HTMLInputElement,
-                              consumeMessageButton:HTMLElement)
+function parseInboundMessages(inboundMessageFieldValue:string)
     : WebRtc.SignallingMessage[] {
-  var signals :string[] = inboundMessageField.value.trim().split('\n');
+  var signals :string[] = inboundMessageFieldValue.trim().split('\n');
 
   // Each line should be a JSON representation of a WebRtc.SignallingMessage.
   // Parse the lines here.
@@ -91,6 +103,7 @@ function parseInboundMessages(inboundMessageField:HTMLInputElement,
   var inputIsWellFormed :boolean = false;
   if (null !== parsedSignals && parsedSignals.length > 0) {
     inputIsWellFormed = true;
+    consumeMessageButton.removeAttribute("disabled");
   } else {
     // TODO: Notify the user that the pasted text is malformed.
   }
@@ -99,11 +112,12 @@ function parseInboundMessages(inboundMessageField:HTMLInputElement,
   return parsedSignals;
 }
 
+
 // Forwards each line from the paste box to the Freedom app, which
 // interprets each as a signalling channel message. The Freedom app
 // knows whether this message should be sent to the socks-to-rtc
 // or rtc-to-net module. Disables the form field.
-function consumeInboundMessage(inboundMessageField:HTMLInputElement) : void {
+function consumeInboundMessage() : void {
   // Forward the signalling messages to the Freedom app.
   for (var i = 0; i < parsedInboundMessages.length; i++) {
     freedom.emit('handleSignalMessage', parsedInboundMessages[i]);
@@ -111,10 +125,25 @@ function consumeInboundMessage(inboundMessageField:HTMLInputElement) : void {
 
   // Disable the form field, since it no longer makes sense to accept further
   // input in it.
-  inboundMessageField.disabled = true;
+  inboundMessageNode.disabled = true;
 
   // TODO: Report success/failure to the user.
 };
 
 
+freedom.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
+  step2ContainerNode.style.display = 'block';
 
+  outboundMessageNode.value =
+      outboundMessageNode.value.trim() + '\n' + JSON.stringify(signal);
+});
+
+freedom.on('bytesReceived', (numNewBytesReceived:number) => {
+  totalBytesReceived += numNewBytesReceived;
+  receivedBytesNode.innerHTML = totalBytesReceived.toString();
+});
+
+freedom.on('bytesSent', (numNewBytesSent:number) => {
+  totalBytesSent += numNewBytesSent;
+  sentBytesNode.innerHTML = totalBytesSent.toString();
+});

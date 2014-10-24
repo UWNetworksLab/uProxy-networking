@@ -15,9 +15,12 @@
       }
     </style>
     <copypaste-start id='start' giving="{{ isGiving }}" getting="{{ isGetting }}"  hidden?='{{ isGiving || isGetting }}'></copypaste-start>
-    <copypaste-giver id='giver' hidden?='{{ !isGiving }}'></copypaste-giver>
-    <copypaste-getter id='getter' hidden?='{{ !isGetting }}'></copypaste-getter>
-
+    <template if='{{isGiving}}'>
+      <copypaste-giver id='giver' hidden?='{{ !isGiving }}'></copypaste-giver>
+    </template>  
+    <template if='{{isGetting}}'>
+      <copypaste-getter id='getter' hidden?='{{ !isGetting }}'></copypaste-getter>
+    </template>
   </template>
 
   <script src="root.js"></script>

@@ -30,6 +30,7 @@ var getAccessPanel_bytesSent = <HTMLElement>document.getElementById('getAccessPa
 var giveAccessPanel_bytesReceived = <HTMLElement>document.getElementById('giveAccessPanel_bytesReceived');
 var giveAccessPanel_bytesSent = <HTMLElement>document.getElementById('giveAccessPanel_bytesSent');
 
+/*
 // DOM nodes that we will choose from either the 'give access' panel or the
 // 'get access' panel once the user chooses whether to give/get.
 var step2ContainerNode :HTMLElement;
@@ -44,6 +45,7 @@ var parsedInboundMessages :WebRtc.SignallingMessage[];
 
 var totalBytesReceived = 0;
 var totalBytesSent = 0;
+*/
 
 startPanel_giveAccessLinkNode.onclick =
     function(event:MouseEvent) : any {
@@ -80,22 +82,23 @@ getAccessPanel_generateIceCandidatesButton.onclick =
 
 giveAccessPanel_inboundMessageNode.onkeyup =
     function(event:Event) : any {
-      parsedInboundMessages = parseInboundMessages(this, giveAccessPanel_consumeInboundMessageButtonNode);
+      //parsedInboundMessages = parseInboundMessages(this, giveAccessPanel_consumeInboundMessageButtonNode);
     };
 
 getAccessPanel_inboundMessageNode.onkeyup =
     function(event:Event) : any {
-      parsedInboundMessages = parseInboundMessages(this, getAccessPanel_consumeInboundMessageButtonNode);
+      //parsedInboundMessages = parseInboundMessages(this, getAccessPanel_consumeInboundMessageButtonNode);
     };
 
 giveAccessPanel_consumeInboundMessageButtonNode.onclick =
     function(event:MouseEvent) : any {
-      consumeInboundMessage(giveAccessPanel_inboundMessageNode);
+      //consumeInboundMessage(giveAccessPanel_inboundMessageNode);
     };
 
 getAccessPanel_consumeInboundMessageButtonNode.onclick =
     function(event:MouseEvent) : any {
-      consumeInboundMessage(getAccessPanel_inboundMessageNode);
+      //consumeInboundMessage(getAccessPanel_inboundMessageNode);
+      // start proxying button?
       getAccessPanel_consumeInboundMessageButtonNode.disabled = true;
     };
 

@@ -12,29 +12,32 @@
         border: none; margin: auto;
         text-align: left;
       }
+      textarea {
+        width: 30em;
+        height: 5em;
+      }
     </style>
 
     <div id="giveAccessPanel">
       <div id="giveAccessPanel_step1">
         <h1 i18n-content="giveAccess"></h1>
-
         <p i18n-content="pasteAndGenerateReply"></p>
-        <copypaste-textarea id="inboundMessageNode" on-keyup="{{ parseInboundMessages(this) }}"></copypaste-textarea>
+        <textarea id="inboundMessageNode" value="{{ inbound }}" on-keyup="{{ parseInboundText }}"></textarea>
         <p>
-        <copypaste-button id="consumeInboundMessageButton" disabled translationKey="generateReply"></copypaste-button>
+        <button id="consumeMessageButton" disabled i18n-content="generateReply" on-click="{{ consumeInboundText }}"></button>
         </p>
       </div>
 
       <br>
-      <div id="giveAccessPanel_step2Container" style="display: none;">
-        <copypaste-textarea id="giveAccessPanel_outboundMessage" disabled></copypaste-textarea>
+      <div id="step2ContainerNode" style="display: none;">
+        <textarea id="outboundMessageNode" disabled></textarea>
         <p i18n-content="copyPasteAndSend"></p>
         <p class="warning" i18n-content="warning"></p>
       </div>
 
       <div>
-        <a id="giveAccessPanel_bytesSent">0</a><a i18n-content="bytesSent"></a><br>
-        <a id="giveAccessPanel_bytesReceived">0</a><a i18n-content="bytesReceived"></a><br>
+        <a id="sentBytesNode">0</a><a i18n-content="bytesSent"></a><br>
+        <a id="receivedBytesNode">0</a><a i18n-content="bytesReceived"></a><br>
       </div>
     </div>
 

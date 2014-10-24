@@ -1,6 +1,6 @@
 <link rel="import" href="lib/third_party/polymer/polymer.html">
 
-<polymer-element name='copypaste-textarea'>
+<polymer-element name='copypaste-textarea' attributes="text">
 
   <template>
     <style>
@@ -10,7 +10,7 @@
     }
     </style>
 
-    <textarea></textarea>
+    <textarea value="{{ text }}"></textarea>
 
   </template>
 
