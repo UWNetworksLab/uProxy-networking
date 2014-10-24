@@ -1,5 +1,7 @@
-/// <reference path='ui-polymer.d.ts' />
-/// <reference path='lib/i18n/i18n.d.ts' />
+/// <reference path='../../freedom/typings/freedom.d.ts' />
+/// <reference path='../../webrtc/peerconnection.d.ts' />
+/// <reference path='../../interfaces/ui-polymer.d.ts' />
+/// <reference path='../../interfaces/i18n.d.ts' />
 
 // Translation.
 
@@ -46,6 +48,18 @@ getLanguageInputNode.onchange = function(event:Event) : void {
       .options[getLanguageInputNode.selectedIndex].value;
   changeLanguage(selectedLanguage);
 }
+
+
+
+
+
+// Message passing.
+
+// Stores the parsed messages for use later, if & when the user clicks the
+// button for consuming the messages.
+var parsedInboundMessages :WebRtc.SignallingMessage[];
+
+
 
 // Parses the contents of the form field 'inboundMessageField' as a sequence of
 // signalling messages. Enables/disables the corresponding form button, as
