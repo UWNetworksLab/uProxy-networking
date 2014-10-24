@@ -99,9 +99,6 @@ describe("SOCKS session", function() {
   });
 
   it('onceReady fulfills with listening endpoint on successful negotiation', (done) => {
-    mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
-    (<any>mockPeerconnection.onceDataChannelClosed).and.returnValue(new Promise<void>((F, R) => {}));
-
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
 
