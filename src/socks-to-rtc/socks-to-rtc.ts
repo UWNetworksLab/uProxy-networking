@@ -92,7 +92,7 @@ module SocksToRtc {
         obfuscate?:boolean) {
       if (endpoint) {
         this.start(
-            new Tcp.Server(endpoint, this.makeTcpToRtcSession),
+            new Tcp.Server(endpoint),
             obfuscate ?
               freedom.churn(pcConfig) :
               freedom['core.uproxypeerconnection'](pcConfig));
@@ -109,27 +109,32 @@ module SocksToRtc {
         throw new Error('already configured');
       }
       this.tcpServer_ = tcpServer;
+      this.tcpServer_.connectionsQueue
+          .setSyncHandler(this.makeTcpToRtcSession);
       this.peerConnection_ = peerconnection;
 
       this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
       this.peerConnection_.on('signalForPeer', this.signalsForPeer.handle);
 
       // Start and listen for notifications.
-      // TODO: Use tcpServer.onceConnected once it's available.
       peerconnection.negotiateConnection();
-      this.onceReady = Promise.all<any>([
+      this.onceReady =
+        Promise.all<any>([
           tcpServer.listen(),
           peerconnection.onceConnected()
         ])
         .then((answers:any[]) => {
-          return tcpServer.endpoint;
+          return tcpServer.onceListening();
         });
 
       // Shutdown if startup fails, or peerconnection terminates.
       // TODO: Shutdown on TCP server termination:
       //         https://github.com/uProxy/uproxy/issues/485
       this.onceReady.catch(this.initiateShutdown_);
-      peerconnection.onceDisconnected().then(this.initiateShutdown_, this.initiateShutdown_);
+      this.tcpServer_.onceShutdown()
+          .then(this.initiateShutdown_, this.initiateShutdown_);
+      this.peerConnection_.onceDisconnected()
+          .then(this.initiateShutdown_, this.initiateShutdown_);
       this.onceStopped_ = this.onceStopping_.then(this.shutdown_);
 
       return this.onceReady;
@@ -177,10 +182,6 @@ module SocksToRtc {
         : void => {
       log.debug('onDataFromPeer_: ' + JSON.stringify(rtcData));
 
-      if(rtcData.channelLabel === '_control_') {
-        log.debug('onDataFromPeer_: to _control_: ' + rtcData.message.str);
-        return;
-      }
       if(rtcData.message.buffer) {
         // We only count bytes sent in .buffer, not .str.
         this.bytesReceivedFromPeer.handle(rtcData.message.buffer.byteLength);
@@ -272,7 +273,8 @@ module SocksToRtc {
     public longId = () : string => {
       var tcp :string = '?';
       if(this.tcpConnection_) {
-        tcp = this.tcpConnection_.connectionId + (this.tcpConnection_.isClosed() ? '.c' : '.o');
+        tcp = this.tcpConnection_.connectionId +
+            (this.tcpConnection_.isClosed() ? '.c' : '.o');
       }
       return tcp + '-' + this.channelLabel_ +
           (this.dataChannelIsClosed_ ? '.c' : '.o') ;

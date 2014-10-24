@@ -8,29 +8,52 @@
 declare module Tcp {
   class Server {
     constructor(endpoint        :Net.Endpoint,
-                onConnection    :(c:Connection) => void,
                 maxConnections  ?:number);
 
-    public  endpoint        :Net.Endpoint;
+    // The max allowed number of connections. More than this many connections
+    // will result in new connections being closed as soon as they connect.
+    public maxConnections  :number;
 
-    public connections :() => Connection[];
-    public connectionsCount :() => number;  // equivalent to connections().length
-    public closeAll :() => Promise<void>;  // calls close on all connections.
+    // The handler queue of connections made to this server. By default no
+    // handler is set; the consumer of the server is expected to set one.
+    public connectionsQueue :Handler.Queue<Connection, void>;
 
-    // start accepting new connections; returns the actual endpoint it ends up
+    // Gets all the current connections to this server.
+    public currentConnections :() => Connection[];
+    // Equivalent to connections().length
+    public connectionsCount :() => number;
+
+    // Start accepting new connections; returns the actual endpoint it ends up
     // listening on (e.g. when port 0 is specifed, a dynamic port number is
-    // chosen).
+    // chosen). Returns the same promise as calling `onceListening`.
     public listen :() => Promise<Net.Endpoint>;
-    // stop accepting new connections.
+    // Getter for the once listening promise. Use to write prettier code.
+    // Fulfills once the server has server has successfully bound to a port
+    // and is accepting connections. Rejects if there is any error.
+    public onceListening :() => Promise<Net.Endpoint>;
+    // The |isListening| variable is true after |onceListening| and before
+    // |onceShutdown|
+    public isListening :() => boolean;
+    // Stop accepting new connections.
     public stopListening :() => Promise<void>;
 
-    public shutdown :() => Promise<void>; // stop listening and then close-all
+    // Calls close on all connections. Doesn't stop listening.
+    public closeAll :() => Promise<void>;
+
+    // Stops accepting new connection (like |stopListening|) and then closes
+    // all connections (like |closeAll|).
+    public shutdown :() => Promise<void>;
+    // The |onceShutdown| promise can be fulfilled by either a call to
+    // shutdown, or by something going wrong in the OS.
+    public onceShutdown :() => Promise<void>
+    // Synchronous access to is |onceShutdown| fulfilled.
+    public isShutdown :() => boolean
 
     // Mostly useful for debugging
     public toString :() => string;
   }
 
-  // Code for how a Tcp Connection is closed.
+  // Describes how a Tcp Connection got to the closed state.
   enum SocketCloseKind {
     WE_CLOSED_IT,
     REMOTELY_CLOSED,
@@ -38,11 +61,7 @@ declare module Tcp {
     UNKOWN
   }
 
-  /**
-  * Tcp.Connection - Wraps up a single TCP connection to a client
-  *
-  * @param {number} socketId The ID of the server<->client socket.
-  */
+  // Wraps up a single TCP connection to a client
   class Connection {
     constructor(connectionKind :Connection.Kind);
 
@@ -69,6 +88,7 @@ declare module Tcp {
     public connectionId: string;
     public getState :() => Connection.State;
     public isClosed :() => boolean;
+
     public toString :() => string;
   }
 
