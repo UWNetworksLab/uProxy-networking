@@ -24,7 +24,6 @@ module Tcp {
   // new ones.
   var DEFAULT_MAX_CONNECTIONS = 1048576;
 
-  // Helper function.
   function endpointOfSocketInfo(info:freedom_TcpSocket.SocketInfo)
       : Net.Endpoint {
      return { address: info.peerAddress, port: info.peerPort }
