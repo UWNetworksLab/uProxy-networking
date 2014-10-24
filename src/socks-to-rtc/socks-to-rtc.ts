@@ -355,6 +355,7 @@ module SocksToRtc {
     // Assumes: no packet fragmentation.
     // TODO: handle packet fragmentation:
     //   https://github.com/uProxy/uproxy/issues/323
+    // TODO: Needs unit tests badly since it's mocked by several other tests.
     private doAuthHandshake_ = ()
         : Promise<void> => {
       return this.tcpConnection_.receiveNext()
@@ -367,6 +368,7 @@ module SocksToRtc {
 
     // Sets the next data hanlder to get next data from peer, assuming it's
     // stringified version of the destination.
+    // TODO: Needs unit tests badly since it's mocked by several other tests.
     private receiveEndpointFromPeer_ = () : Promise<Net.Endpoint> => {
       return new Promise((F,R) => {
         this.dataFromPeer_.setSyncNextHandler((data:WebRtc.Data) => {
