@@ -86,7 +86,8 @@ describe("SOCKS session", function() {
 
     mockTcpConnection = jasmine.createSpyObj('tcp connection', [
         'onceClosed',
-        'close'
+        'close',
+        'isClosed'
       ]);
     mockPeerconnection = jasmine.createSpyObj('peerconnection', [
         'onceDataChannelClosed',
@@ -115,6 +116,7 @@ describe("SOCKS session", function() {
   it('onceReady rejects and onceStopped fulfills on unsuccessful negotiation', (done) => {
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.reject('unknown hostname'));
+    (<any>mockTcpConnection.isClosed).and.returnValue(false);
 
     session.start('buzz', mockTcpConnection, mockPeerconnection, mockBytesSent)
       .catch((e:Error) => { return session.onceStopped; }).then(done);
@@ -123,6 +125,7 @@ describe("SOCKS session", function() {
   it('onceStopped fulfills on TCP connection termination', (done) => {
     (<any>mockTcpConnection.onceClosed).and.returnValue(Promise.resolve());
     (<any>mockPeerconnection.onceDataChannelClosed).and.returnValue(new Promise<void>((F, R) => {}));
+    (<any>mockTcpConnection.isClosed).and.returnValue(false);
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
@@ -134,6 +137,7 @@ describe("SOCKS session", function() {
   it('onceStopped fulfills on call to stop', (done) => {
     (<any>mockTcpConnection.onceClosed).and.returnValue(new Promise<void>((F, R) => {}));
     (<any>mockPeerconnection.onceDataChannelClosed).and.returnValue(new Promise<void>((F, R) => {}));
+    (<any>mockTcpConnection.isClosed).and.returnValue(false);
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));

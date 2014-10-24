@@ -147,7 +147,11 @@ module SocksToRtc {
     // reject, this should never reject.
     private stopResources_ = () : Promise<void> => {
       return Promise.all([
+          // This call isn't explicitly idempodent but TCP server currently
+          // has no way to query whether it's been shutdown (and we only
+          // attempt to call this once).
           this.tcpServer_.shutdown(),
+          // This call is explicitly idempodent.
           this.peerConnection_.close()])
         .then((answers:any[]) => {
           return Promise.resolve<void>();
@@ -315,12 +319,21 @@ module SocksToRtc {
     // have closed. Since neither objects' close() methods should ever
     // reject, this should never reject.
     private stopResources_ = () : Promise<void> => {
-      return Promise.all<any>([
-          this.tcpConnection_.close(),
-          this.peerConnection_.closeDataChannel(this.channelLabel_)])
-        .then((answers:any[]) => {
-          return Promise.resolve<void>();
-        });
+      var shutdownPromises :Promise<any>[] = [];
+      // TCP connection closure is logically idempodent but prints
+      // a warning if close is called when the connection has already
+      // closed.
+      if (!this.tcpConnection_.isClosed()) {
+        shutdownPromises.push(this.tcpConnection_.close());
+      }
+      // Under the hood, datachannel closure is idempodent (and synchronous,
+      // it's uproxypeerconnection pretends it's async):
+      //   http://w3c.github.io/webrtc-pc/#dom-datachannel-close
+      shutdownPromises.push(
+          this.peerConnection_.closeDataChannel(this.channelLabel_));
+      return Promise.all(shutdownPromises).then((answers:any[]) => {
+        return Promise.resolve<void>();
+      });
     }
 
     public handleDataFromPeer = (data:WebRtc.Data) : void => {
