@@ -32,8 +32,8 @@ module Tcp {
 
   // A static helper function to close a freedom socket object and then
   // appropriately deallocate it's interface object.
-  function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket,
-      idInfoString?:string) : Promise<void> {
+  function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket)
+      : Promise<void> {
     // Note that :
     // freedom['core.tcpsocket'].close =/= freedom['core.tcpsocket']().close
     // The former destroys the freedom interface & communication channels.
@@ -149,8 +149,7 @@ module Tcp {
         // Stop too many connections.  We create a new socket here from the
         // incoming Id and immediately close it, because we don't yet have a
         // reference to the incomming socket.
-        destroyFreedomSocket_(freedom['core.tcpsocket'](socketId),
-            'L:' + socketId);
+        destroyFreedomSocket_(freedom['core.tcpsocket'](socketId));
         //log.error('Too many connections: ' + connectionsCount);
         return;
       }
@@ -209,7 +208,7 @@ module Tcp {
       // Close the server socket. Note: freedom doesn't give a socket Id for a
       // listening socket, so we just pass 0 back here: it's only for
       // debugging/console logging, so it doesn't matter.
-      return destroyFreedomSocket_(this.serverSocket_, 'listening').then(() => {
+      return destroyFreedomSocket_(this.serverSocket_).then(() => {
         this.isListening_ = false;
       })
       //.then(() => {
@@ -345,8 +344,7 @@ module Tcp {
       this.state_ = Connection.State.CLOSED;
 
       this.dataToSocketQueue.stopHandling();
-      destroyFreedomSocket_(this.connectionSocket_, this.connectionId).then(
-          () => {
+      destroyFreedomSocket_(this.connectionSocket_).then(() => {
         if (info.errcode === 'SUCCESS') {
           this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
         } else if (info.errcode === 'CONNECTION_CLOSED') {
