@@ -1,5 +1,4 @@
 <link rel="import" href="lib/third_party/polymer/polymer.html">
-<link rel="import" href='button.html'>
 
 <polymer-element name='copypaste-start' attributes='giving, getting'>
 
@@ -10,18 +9,30 @@
         width: 100%;
         text-align: center;
       }
+      button {
+        text-decoration: none;
+        padding: 0.5em;
+        color: white;
+        background-color: #50C0E0;
+        border: 1px solid #40B0D0;
+        border-radius: 0.5em;
+      }
+      button:hover {
+        background-color: #60D0F0;
+        border: 1px solid #50C0E0;
+      }      
     </style>
 
     <div id="startPanel">
       <p i18n-content="intro"></p><br><br>
 
       <p class="centered">
-        <copypaste-button translationKey="giveAccess" on-tap='{{ giveMode }}'></copypaste-button>
+        <button i18n-content="giveAccess" on-tap='{{ giveMode }}'></button>
       </p>
       <p class="centered" i18n-content="giveDescription"></p><br><br>
       
       <p class="centered">
-        <copypaste-button translationKey="getAccess" on-tap="{{ getMode }}"></copypaste-button>
+        <button i18n-content="getAccess" on-tap="{{ getMode }}"></button>
       </p>
       <p class="centered" i18n-content="getDescription"></p><br><br>
     
