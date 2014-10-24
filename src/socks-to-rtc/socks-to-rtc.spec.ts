@@ -72,16 +72,6 @@ describe('SOCKS server', function() {
     server.start(mockTcpServer, mockPeerconnection).then(
         server.stop).then(server.onceStopped).then(done);
   });
-
-  it('onceStopped rejects on peerconnection shutdown failure', (done) => {
-    (<any>mockTcpServer.listen).and.returnValue(Promise.resolve(mockEndpoint));
-    (<any>mockPeerconnection.onceConnected).and.returnValue(Promise.resolve());
-    (<any>mockPeerconnection.onceDisconnected).and.returnValue(new Promise<void>((F, R) => {}));
-    (<any>mockPeerconnection.close).and.returnValue(Promise.reject('could not cleanly shutdown'));
-
-    server.start(mockTcpServer, mockPeerconnection).then(
-        server.stop).then(server.onceStopped).catch(done);
-  });
 });
 
 describe("SOCKS session", function() {
@@ -150,17 +140,5 @@ describe("SOCKS session", function() {
 
     session.start('buzz', mockTcpConnection, mockPeerconnection, mockBytesSent)
       .then(session.stop).then(() => { return session.onceStopped; }).then(done);
-  });
-
-  it('onceStopped rejects on tcp connection shutdown failure', (done) => {
-    (<any>mockTcpConnection.onceClosed).and.returnValue(new Promise<void>((F, R) => {}));
-    (<any>mockPeerconnection.onceDataChannelClosed).and.returnValue(new Promise<void>((F, R) => {}));
-    (<any>mockTcpConnection.close).and.returnValue(Promise.reject('client vanished'));
-
-    spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
-    spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
-
-    session.start('buzz', mockTcpConnection, mockPeerconnection, mockBytesSent)
-      .then(session.stop).then(() => { return session.onceStopped; }).catch(done);
   });
 });

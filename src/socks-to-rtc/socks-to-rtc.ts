@@ -43,8 +43,7 @@ module SocksToRtc {
     //  - startup failure
     //  - TCP server or peerconnection failure
     //  - manual invocation of stop()
-    // Rejects if there was any error shutting down the TCP server or
-    // peerconnection.
+    // Should never reject.
     private onceStopped_ :Promise<void>;
     public onceStopped = () : Promise<void> => { return this.onceStopped_; }
 
@@ -143,8 +142,9 @@ module SocksToRtc {
       return this.onceStopped_;
     }
 
-    // Closes the TCP server and peerconnection.
-    // Fulfills if both close with out error, otherwise rejects.
+    // Shuts down the TCP server and peerconnection, fulfilling once both
+    // have terminated. Since neither objects' close() methods should ever
+    // reject, this should never reject.
     private stopResources_ = () : Promise<void> => {
       return Promise.all([
           this.tcpServer_.shutdown(),
@@ -258,8 +258,7 @@ module SocksToRtc {
     //  - startup (negotiation) failure
     //  - TCP connection or datachannel termination
     //  - manual invocation of stop()
-    // Rejects if there's an error shutting down the TCP connection or
-    // datachannel.
+    // Should never reject.
     public onceStopped :Promise<void>;
 
     // We push data from the peer into this queue so that we can write the
@@ -312,8 +311,9 @@ module SocksToRtc {
       return this.onceStopped;
     }
 
-    // Closes the TCP connection and datachannel.
-    // Fulfills if both close with out error, otherwise rejects.
+    // Closes the TCP connection and datachannel, fulfilling once both
+    // have closed. Since neither objects' close() methods should ever
+    // reject, this should never reject.
     private stopResources_ = () : Promise<void> => {
       return Promise.all<any>([
           this.tcpConnection_.close(),
