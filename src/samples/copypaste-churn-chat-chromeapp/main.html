@@ -1,0 +1,40 @@
+<html>
+<head>
+  <title>Obfuscated peerconnection-driven chat client with copy paste signalling channel</title>
+</head>
+
+<body>
+  <div>
+    <button id="startButton">Start</button>
+  </div>
+  <div>
+    Copy this into the other browser window:
+  </div>
+  <textarea id="copy" disabled></textarea>
+
+  <div>
+    Paste text from the other window and click Receive:
+  </div>
+  <textarea id="paste"></textarea>
+  <div>
+    <button id="receiveButton">Receive</button>
+  </div>
+
+  <hr>
+
+  <textarea id="sendArea" disabled></textarea>
+  <textarea id="receiveArea" disabled></textarea>
+  <div>
+    <button id="sendButton">Send</button>
+  </div>
+
+  <script src='lib/freedom/uproxy-core-env.js'></script>
+  <script src='lib/freedom/freedom-for-chrome-for-uproxy.js'
+          data-manifest='freedom.json'>
+    {
+      "debug": "warn"
+    }
+  </script>
+  <script src='main.js'></script>
+</body>
+</html>

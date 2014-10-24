@@ -1,7 +1,7 @@
 {
   "name": "uproxy-networking",
   "description": "uProxy's networking library: SOCKS5 over WebRTC",
-  "version": "2.0.0",
+  "version": "2.1.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/uProxy/uproxy-networking"
@@ -36,7 +36,10 @@
     "grunt-ts": "^1.11",
     "typescript": "^1.1.0-1",
     "uproxy-lib": "^13",
-    "uproxy-churn": "^2.1"
+    "grunt-browserify": "~3.0.1",
+    "crypto": "0.0.3",
+    "utransformers": "~0.2.1",
+    "regex2dfa": "~0.1.6"
   },
   "scripts": {
     "test": "grunt test",
