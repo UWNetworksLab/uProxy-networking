@@ -122,15 +122,15 @@ describe("SOCKS session", function() {
       .then(done);
   });
 
-  it('onceReady rejects and onceClosed fulfills on unsuccessful negotiation', (done) => {
+  it('onceReady rejects and onceStopped fulfills on unsuccessful negotiation', (done) => {
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.reject('unknown hostname'));
 
     session.start('buzz', mockTcpConnection, mockPeerconnection, mockBytesSent)
-      .catch((e:Error) => { return session.onceClosed; }).then(done);
+      .catch((e:Error) => { return session.onceStopped; }).then(done);
   });
 
-  it('onceClosed fulfills on TCP connection termination', (done) => {
+  it('onceStopped fulfills on TCP connection termination', (done) => {
     (<any>mockTcpConnection.onceClosed).and.returnValue(Promise.resolve());
     (<any>mockPeerconnection.onceDataChannelClosed).and.returnValue(new Promise<void>((F, R) => {}));
 
@@ -138,10 +138,10 @@ describe("SOCKS session", function() {
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
 
     session.start('buzz', mockTcpConnection, mockPeerconnection, mockBytesSent)
-      .then(() => { return session.onceClosed; }).then(done);
+      .then(() => { return session.onceStopped; }).then(done);
   });
 
-  it('onceClosed fulfills on call to stop', (done) => {
+  it('onceStopped fulfills on call to stop', (done) => {
     (<any>mockTcpConnection.onceClosed).and.returnValue(new Promise<void>((F, R) => {}));
     (<any>mockPeerconnection.onceDataChannelClosed).and.returnValue(new Promise<void>((F, R) => {}));
 
@@ -149,10 +149,10 @@ describe("SOCKS session", function() {
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
 
     session.start('buzz', mockTcpConnection, mockPeerconnection, mockBytesSent)
-      .then(session.stop).then(() => { return session.onceClosed; }).then(done);
+      .then(session.stop).then(() => { return session.onceStopped; }).then(done);
   });
 
-  it('onceClosed rejects on tcp connection shutdown failure', (done) => {
+  it('onceStopped rejects on tcp connection shutdown failure', (done) => {
     (<any>mockTcpConnection.onceClosed).and.returnValue(new Promise<void>((F, R) => {}));
     (<any>mockPeerconnection.onceDataChannelClosed).and.returnValue(new Promise<void>((F, R) => {}));
     (<any>mockTcpConnection.close).and.returnValue(Promise.reject('client vanished'));
@@ -161,6 +161,6 @@ describe("SOCKS session", function() {
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
 
     session.start('buzz', mockTcpConnection, mockPeerconnection, mockBytesSent)
-      .then(session.stop).then(() => { return session.onceClosed; }).catch(done);
+      .then(session.stop).then(() => { return session.onceStopped; }).catch(done);
   });
 });

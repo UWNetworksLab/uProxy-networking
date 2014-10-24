@@ -32,9 +32,9 @@ module SocksToRtc {
     public onceReady :Promise<Net.Endpoint>;
 
     // Call this to initiate shutdown.
-    private initiateShutdown_ :() => void;
+    private fulfillStopping_ :() => void;
     private onceStopping_ = new Promise((F, R) => {
-      this.initiateShutdown_ = F;
+      this.fulfillStopping_ = F;
     });
 
     // Fulfills once the SOCKS server has terminated and the TCP server
@@ -129,8 +129,8 @@ module SocksToRtc {
       // Shutdown if startup fails, or peerconnection terminates.
       // TODO: Shutdown on TCP server termination:
       //         https://github.com/uProxy/uproxy/issues/485
-      this.onceReady.catch(this.initiateShutdown_);
-      peerconnection.onceDisconnected().then(this.initiateShutdown_, this.initiateShutdown_);
+      this.onceReady.catch(this.fulfillStopping_);
+      peerconnection.onceDisconnected().then(this.fulfillStopping_, this.fulfillStopping_);
       this.onceStopped_ = this.onceStopping_.then(this.shutdown_);
 
       return this.onceReady;
@@ -139,7 +139,7 @@ module SocksToRtc {
     // Initiates shutdown of the TCP server and peerconnection.
     // Returns onceStopped.
     public stop = () : Promise<void> => {
-      this.initiateShutdown_();
+      this.fulfillStopping_();
       return this.onceStopped_;
     }
 
@@ -181,7 +181,7 @@ module SocksToRtc {
           log.debug('discarded SOCKS session ' + tag + ' (' +
               Object.keys(this.sessions_).length + ' sessions remaining)');
         };
-        session.onceClosed.then(discard, (e:Error) => {
+        session.onceStopped.then(discard, (e:Error) => {
           log.warn('SOCKS session ' + tag + ' closed with error: ' + e.message);
           discard();
         });
@@ -248,9 +248,9 @@ module SocksToRtc {
     public onceReady :Promise<Net.Endpoint>;
 
     // Call this to initiate shutdown.
-    private initiateShutdown_ :() => void;
+    private fulfillStopping_ :() => void;
     private onceStopping_ = new Promise((F, R) => {
-      this.initiateShutdown_ = F;
+      this.fulfillStopping_ = F;
     });
 
     // Fulfills once the SOCKS session has terminated and the TCP connection
@@ -261,7 +261,7 @@ module SocksToRtc {
     //  - manual invocation of stop()
     // Rejects if there's an error shutting down the TCP connection or
     // datachannel.
-    public onceClosed :Promise<void>;
+    public onceStopped :Promise<void>;
 
     // We push data from the peer into this queue so that we can write the
     // receive function to get just the next bit of data from the peer. This
@@ -291,12 +291,12 @@ module SocksToRtc {
       this.onceReady.then(this.linkTcpAndPeerConnectionData_);
 
       // Shutdown once TCP connection or datachannel terminate.
-      this.onceReady.catch(this.initiateShutdown_);
+      this.onceReady.catch(this.fulfillStopping_);
       Promise.race<any>([
           tcpConnection.onceClosed,
           peerConnection.onceDataChannelClosed(channelLabel)])
-        .then(this.initiateShutdown_);
-      this.onceClosed = this.onceStopping_.then(this.shutdown_);
+        .then(this.fulfillStopping_);
+      this.onceStopped = this.onceStopping_.then(this.shutdown_);
 
       return this.onceReady;
     }
@@ -307,10 +307,10 @@ module SocksToRtc {
     }
 
     // Initiates shutdown of the TCP server and peerconnection.
-    // Returns onceClosed.
+    // Returns onceStopped.
     public stop = () : Promise<void> => {
-      this.initiateShutdown_();
-      return this.onceClosed;
+      this.fulfillStopping_();
+      return this.onceStopped;
     }
 
     // Shuts down the TCP server and datachannel.

@@ -36,7 +36,7 @@ declare module SocksToRtc {
     public stop :() => Promise<void>;
     public tcpConnection :Tcp.Connection;
     public onceReady :Promise<Net.Endpoint>;
-    public onceClosed :Promise<void>;
+    public onceStopped :Promise<void>;
     public longId :() => string;
     public close :() => Promise<void>;
     public handleDataFromPeer :(data:WebRtc.Data) => void;
