@@ -1,59 +1,7 @@
 /// <reference path='../../freedom/typings/freedom.d.ts' />
-/// <reference path='../../webrtc/peerconnection.d.ts' />
 /// <reference path='../../interfaces/ui-polymer.d.ts' />
 /// <reference path='../../interfaces/i18n.d.ts' />
-
-// Translation.
-
-/**
-  * Return the language of the user's browser.
-  */
-// TODO (lucyhe): find a better way to do this.
-var getBrowserLanguage = () : string => {
-  return navigator.language.substring(0, 2);
-}
-
-/** Retrieve messages.json file of the appropriate language and insert
-  * strings into the application's UI.  
-  */
-var changeLanguage = (language:string) => {
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET','locales/' + language + '/messages.json',true);
-  
-  xhr.onload = function() {
-    if (this.readyState != 4) {
-      return;
-    }
-    console.log(xhr.responseText);
-    // Translate the JSON format to a simple
-    // { key : value, ... } dictionary.
-    var translations = JSON.parse(xhr.responseText);
-    for (var key in translations) {
-      if (translations.hasOwnProperty(key)) {
-        translations[key] = translations[key].message;
-      }
-    }
-    i18nTemplate.process(document, translations);
-  }
-  xhr.send(null);  
-}
-
-// Dropdown for selecting a language.
-var getLanguageInputNode = 
-    <HTMLSelectElement>document.getElementById('languageInput');
-
-// Listen for events indicating the language has changed.
-getLanguageInputNode.onchange = function(event:Event) : void {
-  var selectedLanguage = getLanguageInputNode
-      .options[getLanguageInputNode.selectedIndex].value;
-  changeLanguage(selectedLanguage);
-}
-
-
-
-
-
-// Message passing.
+/// <reference path='../../webrtc/peerconnection.d.ts' />
 
 // DOM nodes that we will choose from either the 'give access' panel or the
 // 'get access' panel once the user chooses whether to give/get.
@@ -67,11 +15,9 @@ var consumeMessageButton :HTMLElement;
 var totalBytesReceived = 0;
 var totalBytesSent = 0;
 
-
 // Stores the parsed messages for use later, if & when the user clicks the
 // button for consuming the messages.
 var parsedInboundMessages :WebRtc.SignallingMessage[];
-
 
 
 // Parses the contents of the form field 'inboundMessageField' as a sequence of
@@ -147,3 +93,48 @@ freedom.on('bytesSent', (numNewBytesSent:number) => {
   totalBytesSent += numNewBytesSent;
   sentBytesNode.innerHTML = totalBytesSent.toString();
 });
+
+// Translation.
+
+/**
+  * Return the language of the user's browser.
+  */
+// TODO (lucyhe): find a better way to do this.
+var getBrowserLanguage = () : string => {
+  return navigator.language.substring(0, 2);
+}
+
+/** Retrieve messages.json file of the appropriate language and insert
+  * strings into the application's UI.  
+  */
+var changeLanguage = (language:string) => {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET','locales/' + language + '/messages.json',true);
+  
+  xhr.onload = function() {
+    if (this.readyState != 4) {
+      return;
+    }
+    // Translate the JSON format to a simple
+    // { key : value, ... } dictionary.
+    var translations = JSON.parse(xhr.responseText);
+    for (var key in translations) {
+      if (translations.hasOwnProperty(key)) {
+        translations[key] = translations[key].message;
+      }
+    }
+    i18nTemplate.process(document, translations);
+  }
+  xhr.send(null);  
+}
+
+// Dropdown for selecting a language.
+var getLanguageInputNode = 
+    <HTMLSelectElement>document.getElementById('languageInput');
+
+// Listen for events indicating the language has changed.
+getLanguageInputNode.onchange = function(event:Event) : void {
+  var selectedLanguage = getLanguageInputNode
+      .options[getLanguageInputNode.selectedIndex].value;
+  changeLanguage(selectedLanguage);
+}
