@@ -131,7 +131,7 @@ module SocksToRtc {
       //         https://github.com/uProxy/uproxy/issues/485
       this.onceReady.catch(this.fulfillStopping_);
       peerconnection.onceDisconnected().then(this.fulfillStopping_, this.fulfillStopping_);
-      this.onceStopped_ = this.onceStopping_.then(this.shutdown_);
+      this.onceStopped_ = this.onceStopping_.then(this.stopResources_);
 
       return this.onceReady;
     }
@@ -143,10 +143,9 @@ module SocksToRtc {
       return this.onceStopped_;
     }
 
-    // Shuts down the TCP server and peerconnection.
-    // Gating this on the stop promise helps avoid multiple attempts
-    // to shutdown.
-    private shutdown_ = () : Promise<void> => {
+    // Closes the TCP server and peerconnection.
+    // Fulfills if both close with out error, otherwise rejects.
+    private stopResources_ = () : Promise<void> => {
       return Promise.all([
           this.tcpServer_.shutdown(),
           this.peerConnection_.close()])
@@ -296,7 +295,7 @@ module SocksToRtc {
           tcpConnection.onceClosed,
           peerConnection.onceDataChannelClosed(channelLabel)])
         .then(this.fulfillStopping_);
-      this.onceStopped = this.onceStopping_.then(this.shutdown_);
+      this.onceStopped = this.onceStopping_.then(this.stopResources_);
 
       return this.onceReady;
     }
@@ -313,8 +312,9 @@ module SocksToRtc {
       return this.onceStopped;
     }
 
-    // Shuts down the TCP server and datachannel.
-    private shutdown_ = () : Promise<void> => {
+    // Closes the TCP connection and datachannel.
+    // Fulfills if both close with out error, otherwise rejects.
+    private stopResources_ = () : Promise<void> => {
       return Promise.all<any>([
           this.tcpConnection_.close(),
           this.peerConnection_.closeDataChannel(this.channelLabel_)])
