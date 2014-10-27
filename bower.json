@@ -1,0 +1,19 @@
+{
+  "name": "uproxy-networking",
+  "version": "1.0.0",
+  "homepage": "https://github.com/uProxy/uproxy-networking",
+  "authors": [
+    "lucyhe"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#~0.4.2"
+  }
+}
