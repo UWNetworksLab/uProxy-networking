@@ -147,20 +147,20 @@ module SocksToRtc {
       return this.onceStopped_;
     }
 
-    // Shuts down the TCP server and peerconnection, fulfilling once both
-    // have terminated. Since neither objects' close() methods should ever
-    // reject, this should never reject.
+    // Shuts down the TCP server and peerconnection if they haven't already
+    // shut down, fulfilling once both have terminated. Since neither
+    // objects' close() methods should ever reject, this should never reject.
     private stopResources_ = () : Promise<void> => {
-      return Promise.all([
-          // This call isn't explicitly idempodent but TCP server currently
-          // has no way to query whether it's been shutdown (and we only
-          // attempt to call this once).
-          this.tcpServer_.shutdown(),
-          // This call is explicitly idempodent.
-          this.peerConnection_.close()])
-        .then((answers:any[]) => {
-          return Promise.resolve<void>();
-        });
+      var shutdownPromises :Promise<any>[] = [];
+      if (!this.tcpServer_.isShutdown()) {
+        shutdownPromises.push(this.tcpServer_.shutdown());
+      }
+      // uproxypeerconnection doesn't allow us query whether the
+      // peerconnection has shut down but the call is explicitly idempodent.
+      shutdownPromises.push(this.peerConnection_.close());
+      return Promise.all(shutdownPromises).then((answers:any[]) => {
+        return Promise.resolve<void>();
+      });
     }
 
     // Invoked when a SOCKS client establishes a connection with the TCP server.
@@ -316,19 +316,16 @@ module SocksToRtc {
       return this.onceStopped;
     }
 
-    // Closes the TCP connection and datachannel, fulfilling once both
-    // have closed. Since neither objects' close() methods should ever
-    // reject, this should never reject.
+    // Closes the TCP connection and datachannel if they haven't already
+    // closed, fulfilling once both have closed. Since neither objects'
+    // close() methods should ever reject, this should never reject.
     private stopResources_ = () : Promise<void> => {
       var shutdownPromises :Promise<any>[] = [];
-      // TCP connection closure is logically idempodent but prints
-      // a warning if close is called when the connection has already
-      // closed.
       if (!this.tcpConnection_.isClosed()) {
         shutdownPromises.push(this.tcpConnection_.close());
       }
-      // Under the hood, datachannel closure is idempodent (and synchronous,
-      // it's uproxypeerconnection pretends it's async):
+      // uproxypeerconnection doesn't allow us query whether a
+      // datachannel has closed but the call should be idempodent:
       //   http://w3c.github.io/webrtc-pc/#dom-datachannel-close
       shutdownPromises.push(
           this.peerConnection_.closeDataChannel(this.channelLabel_));

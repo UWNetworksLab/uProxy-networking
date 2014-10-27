@@ -28,7 +28,8 @@ describe('SOCKS server', function() {
         'on',
         'onceListening',
         'shutdown',
-        'onceShutdown'
+        'onceShutdown',
+        'isShutdown'
       ]);
     // TODO: make a real mock of listen; this one is frgaile to implementation
     // changes and tests that might call onceListening before listen.
