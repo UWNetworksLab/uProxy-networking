@@ -2,15 +2,14 @@
  * This is a TCP server based on Freedom's sockets API.
  */
 
-/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
-/// <reference path='../freedom/typings/freedom.d.ts' />
+/// <reference path="../logging/logging.d.ts" />
 /// <reference path='../freedom/typings/tcp-socket.d.ts' />
 /// <reference path='../handler/queue.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
 /// <reference path="../third_party/typings/es6-promise/es6-promise.d.ts" />
 
 module Tcp {
-  //var log :Freedom_UproxyLogging.Log = freedom['core.log']('Tcp');
+  var log :Logging.Log = new Logging.Log('tcp');
 
   // Code for how a Tcp Connection is closed.
   export enum SocketCloseKind {

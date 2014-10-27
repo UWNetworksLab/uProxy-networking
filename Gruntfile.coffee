@@ -84,6 +84,20 @@ module.exports = (grunt) ->
           dest: 'build/regex2dfa/'
         ]
 
+      # Symlink the Chrome and Firefox builds of Freedom under build/freedom/.
+      freedom:
+        files: [ {
+          expand: true
+          cwd: path.dirname(require.resolve('freedom-for-chrome/Gruntfile'))
+          src: ['freedom-for-chrome.js']
+          dest: 'build/freedom/'
+        }, {
+          expand: true
+          cwd: path.dirname(require.resolve('freedom-for-firefox/Gruntfile'))
+          src: ['freedom-for-firefox.jsm']
+          dest: 'build/freedom/'
+        } ]
+
       # There's only one relevant file in this repo: ipaddr.min.js.
       ipaddrjs:
         files: [
@@ -261,11 +275,12 @@ module.exports = (grunt) ->
 
   taskManager.add 'base', [
     'symlink:build'
-    'symlink:thirdParty'    
+    'symlink:thirdParty'
     'symlink:uproxyLibBuild'
     'symlink:uproxyLibThirdParty'
     'symlink:utransformers'
     'symlink:regex2dfa'
+    'symlink:freedom'
   ]
 
   taskManager.add 'tcp', [

@@ -1,7 +1,7 @@
 // For testing just the TCP server portion (see src/client/tcp.ts)
 
 /// <reference path='../../arraybuffers/arraybuffers.d.ts' />
-/// <reference path='../../freedom/coreproviders/uproxylogging.d.ts' />
+/// <reference path='../../logging/logging.d.ts' />
 /// <reference path='../../networking-typings/communications.d.ts' />
 /// <reference path='../../tcp/tcp.d.ts' />
 /// <reference path='freedom-module.ts' />

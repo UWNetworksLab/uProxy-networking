@@ -5,13 +5,13 @@
     "script": [
       "lib/arraybuffers/arraybuffers.js",
       "lib/handler/queue.js",
+      "lib/logging/logging.js",
       "lib/tcp/tcp.js",
       "tcp-echo-server.js",
       "freedom-module.js"
     ]
   },
   "permissions": [
-    "core.tcpsocket",
-    "core.log"
+    "core.tcpsocket"
   ]
 }
