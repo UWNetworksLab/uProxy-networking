@@ -3,6 +3,7 @@
 /// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
 
 /// <reference path='../tcp/tcp.d.ts' />
+/// <reference path='../handler/queue.d.ts' />
 /// <reference path='../webrtc/datachannel.d.ts' />
 /// <reference path='../webrtc/peerconnection.d.ts' />
 
@@ -20,12 +21,21 @@ describe('SOCKS server', function() {
   beforeEach(function() {
     server = new SocksToRtc.SocksToRtc();
 
+    // TODO: create named more fleshed out TcpServer and PeerConnection mock
+    // classes for testing. e.g. failing to listen mock, listen & gets
+    // connection, listen and connection drops, etc.
     mockTcpServer = jasmine.createSpyObj('tcp server', [
         'on',
-        'listen',
-        'shutdown'
+        'onceListening',
+        'shutdown',
+        'onceShutdown'
       ]);
-    mockTcpServer.endpoint = mockEndpoint;
+    // TODO: make a real mock of listen; this one is frgaile to implementation
+    // changes and tests that might call onceListening before listen.
+    mockTcpServer.listen = () => { return mockTcpServer.onceListening(); }
+    mockTcpServer.connectionsQueue = new Handler.Queue<Tcp.Connection, void>();
+    mockTcpServer.shutdown = () => { return mockTcpServer.onceShutdown(); }
+
     mockPeerconnection = jasmine.createSpyObj('peerconnection', [
         'on',
         'negotiateConnection',
@@ -36,9 +46,12 @@ describe('SOCKS server', function() {
   });
 
   it('onceReady fulfills with server endpoint on server and peerconnection success', (done) => {
-    (<any>mockTcpServer.listen).and.returnValue(Promise.resolve(mockEndpoint));
+    (<any>mockTcpServer.onceListening).and.returnValue(Promise.resolve(mockEndpoint));
+    (<any>mockTcpServer.onceShutdown)
+        .and.returnValue(new Promise((F,R) => {}));
     (<any>mockPeerconnection.onceConnected).and.returnValue(Promise.resolve());
-    (<any>mockPeerconnection.onceDisconnected).and.returnValue(new Promise<void>((F, R) => {}));
+    (<any>mockPeerconnection.onceDisconnected)
+        .and.returnValue(new Promise<void>((F, R) => {}));
 
     server.start(mockTcpServer, mockPeerconnection)
       .then((result:Net.Endpoint) => {
@@ -49,23 +62,30 @@ describe('SOCKS server', function() {
   });
 
   it('onceReady rejects and onceStopped fulfills on socket setup failure', (done) => {
-    (<any>mockTcpServer.listen).and.returnValue(Promise.reject(new Error('could not allocate port')));
-    (<any>mockPeerconnection.onceConnected).and.returnValue(new Promise<void>((F, R) => {}));
-    (<any>mockPeerconnection.onceDisconnected).and.returnValue(new Promise<void>((F, R) => {}));
+    (<any>mockTcpServer.onceListening)
+        .and.returnValue(Promise.reject(new Error('could not allocate port')));
+    (<any>mockTcpServer.onceShutdown).and.returnValue(Promise.resolve());
+    (<any>mockPeerconnection.onceConnected)
+        .and.returnValue(new Promise<void>((F, R) => {}));
+    (<any>mockPeerconnection.onceDisconnected)
+        .and.returnValue(new Promise<void>((F, R) => {}));
 
     server.start(mockTcpServer, mockPeerconnection).catch(server.onceStopped).then(done);
   });
 
   it('onceStopped fulfills on peerconnection termination', (done) => {
-    (<any>mockTcpServer.listen).and.returnValue(Promise.resolve(mockEndpoint));
+    (<any>mockTcpServer.onceListening).and.returnValue(Promise.resolve(mockEndpoint));
+    (<any>mockTcpServer.onceShutdown).and.returnValue(Promise.resolve());
     (<any>mockPeerconnection.onceConnected).and.returnValue(Promise.resolve());
-    (<any>mockPeerconnection.onceDisconnected).and.returnValue(Promise.resolve());
+    (<any>mockPeerconnection.onceDisconnected)
+        .and.returnValue(Promise.resolve());
 
     server.start(mockTcpServer, mockPeerconnection).then(server.onceStopped).then(done);
   });
 
   it('onceStopped fulfills on call to stop', (done) => {
-    (<any>mockTcpServer.listen).and.returnValue(Promise.resolve(mockEndpoint));
+    (<any>mockTcpServer.onceListening).and.returnValue(Promise.resolve(mockEndpoint));
+    (<any>mockTcpServer.onceShutdown).and.returnValue(Promise.resolve());
     (<any>mockPeerconnection.onceConnected).and.returnValue(Promise.resolve());
     (<any>mockPeerconnection.onceDisconnected).and.returnValue(new Promise<void>((F, R) => {}));
 

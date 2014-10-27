@@ -1,5 +1,6 @@
 /// <reference path='../../freedom/typings/freedom.d.ts' />
 /// <reference path='../../webrtc/peerconnection.d.ts' />
+/// <reference path='../../third_party/i18n/i18n.d.ts' />
 
 // Freedom apps don't have direct access to the page so this
 // file mediates between the page's controls and the Freedom app.
@@ -174,3 +175,39 @@ freedom.on('bytesSent', (numNewBytesSent:number) => {
   totalBytesSent += numNewBytesSent;
   sentBytesNode.innerHTML = totalBytesSent.toString();
 });
+
+// Translation.
+
+// Dropdown for selecting a language.
+var getLanguageInputNode = 
+    <HTMLSelectElement>document.getElementById('languageInput');
+
+// Retrieve messages.json file of the appropriate language and insert
+// strings into the application's UI.
+function changeLanguage(language:string) : void {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET','locales/' + language + '/messages.json',true);
+  xhr.onload = function() {
+    if (this.readyState != 4) {
+      return;
+    }
+    var translations = JSON.parse(xhr.responseText);
+    for (var key in translations) {
+      if (translations.hasOwnProperty(key)) {
+        translations[key] = translations[key].message;
+      }
+    }
+    i18nTemplate.process(document, translations);
+  }
+  xhr.send(null);  
+}
+
+// Listen for events indicating the language has changed.
+getLanguageInputNode.onchange = function(event:Event) : void {
+  var selectedLanguage = getLanguageInputNode
+      .options[getLanguageInputNode.selectedIndex].value;
+  changeLanguage(selectedLanguage);
+}
+
+// Default is English.
+changeLanguage("en");
