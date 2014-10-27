@@ -1,4 +1,4 @@
-<link rel="import" href="lib/third_party/polymer/polymer.html">
+<link rel="import" href='lib/third_party/polymer/polymer.html'>
 
 <polymer-element name='copypaste-getter'>
 
@@ -16,35 +16,35 @@
       }      
     </style>
 
-    <div id="getAccessPanel">
-      <div id="getAccessPanel_step1">
-        <h1 i18n-content="getAccess"></h1>
-        <p i18n-content="generateHandshakeAndSend"></p>
+    <div id='getAccessPanel'>
+      <div id='step1ContainerNode'>
+        <h1 i18n-content='getAccess'></h1>
+        <p i18n-content='generateHandshakeAndSend'></p>
         <p>
-          <button id="generateIceCandidatesButton" i18n-content="generate" on-click="{{ generateIceCandidates }}"></button>
+          <button id='generateIceCandidatesButton' i18n-content='generate' on-click='{{ generateIceCandidates }}'></button>
         </p>
       </div>
 
-      <div id="step2ContainerNode" style="display: none;">
-        <textarea id="outboundMessageNode" disabled></textarea>
-        <p i18n-content="copyPasteAndSend"></p>
-        <p class="warning" i18n-content="warning"></p><br>
-        <p i18n-content="pasteAndStartProxying"></p>
-        <textarea id="inboundMessageNode" value="{{ inbound }}" on-keyup="{{ parseInboundText }}"></textarea>
+      <div id='step2ContainerNode' style='display: none;'>
+        <textarea id='outboundMessageNode' disabled></textarea>
+        <p i18n-content='copyPasteAndSend'></p>
+        <p class='warning' i18n-content='warning'></p><br>
+        <p i18n-content='pasteAndStartProxying'></p>
+        <textarea id='inboundMessageNode' value='{{ inboundText }}' on-keyup='{{ parseInboundText }}'></textarea>
         <p>
-          <button id="consumeMessageButton" disabled i18n-content="startProxying" on-click="{{ consumeInboundText }}"></button>
+          <button id='consumeMessageButton' disabled i18n-content='startProxying' on-click='{{ consumeInboundText }}'></button>
         </p>
       </div>
 
       <div>
-        <a id="receivedBytesNode">0</a><a i18n-content="bytesReceived"></a><br>
-        <a id="sentBytesNode">0</a><a i18n-content="bytesSent"></a><br>
-      </div>
+        <a id='receivedBytesNode'>0</a><a i18n-content='bytesReceived'></a><br>
+        <a id='sentBytesNode'>0</a><a i18n-content='bytesSent'></a><br>
+      </div>      
     </div>
 
   </template>
 
-  <script src="getter.js">
+  <script src='getter.js'>
   </script>
 
 </polymer-element>

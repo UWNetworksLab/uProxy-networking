@@ -1,4 +1,4 @@
-<link rel="import" href="lib/third_party/polymer/polymer.html">
+<link rel="import" href='lib/third_party/polymer/polymer.html'>
 
 <polymer-element name='copypaste-giver'>
 
@@ -16,32 +16,32 @@
       }      
     </style>
 
-    <div id="giveAccessPanel">
-      <div id="giveAccessPanel_step1">
-        <h1 i18n-content="giveAccess"></h1>
-        <p i18n-content="pasteAndGenerateReply"></p>
-        <textarea id="inboundMessageNode" value="{{ inbound }}" on-keyup="{{ parseInboundText }}"></textarea>
+    <div id='giveAccessPanel'>
+      <div id='step1ContainerNode'>
+        <h1 i18n-content='giveAccess'></h1>
+        <p i18n-content='pasteAndGenerateReply'></p>
+        <textarea id='inboundMessageNode' value='{{ inboundText }}' on-keyup='{{ parseInboundText }}'></textarea>
         <p>
-        <button id="consumeMessageButton" disabled i18n-content="generateReply" on-click="{{ consumeInboundText }}"></button>
+        <button id='consumeMessageButton' disabled i18n-content='generateReply' on-click='{{ consumeInboundText }}'></button>
         </p>
       </div>
 
       <br>
-      <div id="step2ContainerNode" style="display: none;">
-        <textarea id="outboundMessageNode" disabled></textarea>
-        <p i18n-content="copyPasteAndSend"></p>
-        <p class="warning" i18n-content="warning"></p>
+      <div id='step2ContainerNode' style='display: none;'>
+        <textarea id='outboundMessageNode' disabled></textarea>
+        <p i18n-content='copyPasteAndSend'></p>
+        <p class='warning' i18n-content='warning'></p>
       </div>
 
       <div>
-        <a id="sentBytesNode">0</a><a i18n-content="bytesSent"></a><br>
-        <a id="receivedBytesNode">0</a><a i18n-content="bytesReceived"></a><br>
+        <a id='receivedBytesNode'>0</a><a i18n-content='bytesReceived'></a><br>
+        <a id='sentBytesNode'>0</a><a i18n-content='bytesSent'></a><br>
       </div>
     </div>
 
   </template>
 
-  <script src="giver.js">
+  <script src='giver.js'>
   </script>
 
 </polymer-element>

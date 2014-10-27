@@ -56,15 +56,6 @@ module.exports = (grunt) ->
           dest: 'build/third_party/'
         ]
 
-      # Symlink Polymer files from the third_party directory
-      polymer: 
-        files: [
-          expand: true,
-          cwd: 'third_party'
-          src: ['lib/polymer/*']
-          dest: 'build/samples/copypaste-socks-chromeapp/'
-        ]
-
       # Symlink each file under churn's dist/ under build/.
       # Exclude the samples/ directory.
       churnLib:

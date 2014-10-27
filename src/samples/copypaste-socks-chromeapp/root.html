@@ -1,4 +1,4 @@
-<link rel="import" href="lib/third_party/polymer/polymer.html">
+<link rel="import" href='lib/third_party/polymer/polymer.html'>
 <link rel="import" href='start.html'>
 <link rel="import" href='giver.html'>
 <link rel="import" href='getter.html'>
@@ -14,15 +14,26 @@
         text-align: left;
       }
     </style>
-    <copypaste-start id='start' giving="{{ isGiving }}" getting="{{ isGetting }}"  hidden?='{{ isGiving || isGetting }}'></copypaste-start>
-    <template if='{{isGiving}}'>
+    
+    <div><p class='centered'>
+      <select id='languageInput' on-change='{{ updateLanguage }}'>
+        <option value='en' i18n-content='english'></option>
+        <option value='it' i18n-content='italian'></option>
+      </select>        
+    </p></div>
+
+    <copypaste-start id='start' giving='{{ isGiving }}' getting='{{ isGetting }}' hidden?='{{ isGiving || isGetting }}'></copypaste-start>
+
+    <template if='{{ isGiving }}'>
       <copypaste-giver id='giver' hidden?='{{ !isGiving }}'></copypaste-giver>
     </template>  
-    <template if='{{isGetting}}'>
+
+    <template if='{{ isGetting }}'>
       <copypaste-getter id='getter' hidden?='{{ !isGetting }}'></copypaste-getter>
     </template>
+
   </template>
 
-  <script src="root.js"></script>
+  <script src='root.js'></script>
 
 </polymer-element>

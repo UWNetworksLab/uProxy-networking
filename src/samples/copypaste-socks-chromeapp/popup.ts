@@ -19,7 +19,6 @@ var totalBytesSent = 0;
 // button for consuming the messages.
 var parsedInboundMessages :WebRtc.SignallingMessage[];
 
-
 // Parses the contents of the form field 'inboundMessageField' as a sequence of
 // signalling messages. Enables/disables the corresponding form button, as
 // appropriate. Returns null if the field contents are malformed.
@@ -58,7 +57,6 @@ function parseInboundMessages(inboundMessageFieldValue:string)
   return parsedSignals;
 }
 
-
 // Forwards each line from the paste box to the Freedom app, which
 // interprets each as a signalling channel message. The Freedom app
 // knows whether this message should be sent to the socks-to-rtc
@@ -76,7 +74,6 @@ function consumeInboundMessage() : void {
   // TODO: Report success/failure to the user.
 };
 
-
 freedom.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
   step2ContainerNode.style.display = 'block';
 
@@ -93,6 +90,7 @@ freedom.on('bytesSent', (numNewBytesSent:number) => {
   totalBytesSent += numNewBytesSent;
   sentBytesNode.innerHTML = totalBytesSent.toString();
 });
+
 
 // Translation.
 
@@ -126,15 +124,4 @@ var changeLanguage = (language:string) => {
     i18nTemplate.process(document, translations);
   }
   xhr.send(null);  
-}
-
-// Dropdown for selecting a language.
-var getLanguageInputNode = 
-    <HTMLSelectElement>document.getElementById('languageInput');
-
-// Listen for events indicating the language has changed.
-getLanguageInputNode.onchange = function(event:Event) : void {
-  var selectedLanguage = getLanguageInputNode
-      .options[getLanguageInputNode.selectedIndex].value;
-  changeLanguage(selectedLanguage);
 }
