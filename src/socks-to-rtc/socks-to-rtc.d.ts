@@ -38,7 +38,6 @@ declare module SocksToRtc {
     public onceReady :Promise<Net.Endpoint>;
     public onceStopped :Promise<void>;
     public longId :() => string;
-    public close :() => Promise<void>;
     public handleDataFromPeer :(data:WebRtc.Data) => void;
     public channelLabel :() => string;
     public toString :() => string;
