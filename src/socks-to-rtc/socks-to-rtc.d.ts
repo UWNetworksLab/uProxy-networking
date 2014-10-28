@@ -26,13 +26,18 @@ declare module SocksToRtc {
     public makeTcpToRtcSession :(tcpConnection:Tcp.Connection) => void;
   }
   class Session {
-    constructor(tcpConnection:Tcp.Connection,
-                peerConnection_:freedom_UproxyPeerConnection.Pc);
+    constructor();
+    public start :(
+        channelLabel:string,
+        tcpConnection:Tcp.Connection,
+        peerConnection_:freedom_UproxyPeerConnection.Pc,
+        bytesSentToPeer:Handler.Queue<number,void>)
+        => Promise<Net.Endpoint>;
+    public stop :() => Promise<void>;
     public tcpConnection :Tcp.Connection;
     public onceReady :Promise<Net.Endpoint>;
-    public onceClosed :Promise<void>;
+    public onceStopped :Promise<void>;
     public longId :() => string;
-    public close :() => Promise<void>;
     public handleDataFromPeer :(data:WebRtc.Data) => void;
     public channelLabel :() => string;
     public toString :() => string;
