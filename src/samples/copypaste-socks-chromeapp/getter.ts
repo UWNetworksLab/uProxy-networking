@@ -12,7 +12,7 @@ Polymer({
 		consumeMessageButton.disabled = true;
 	},
   ready: function() {
-  	changeLanguage(getBrowserLanguage());
+		changeLanguage(selectedLanguage);
 
     step2ContainerNode = this.$.step2ContainerNode;
     outboundMessageNode = this.$.outboundMessageNode;

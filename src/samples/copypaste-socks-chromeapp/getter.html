@@ -15,27 +15,27 @@
 
     <div id='getAccessPanel'>
       <div id='step1ContainerNode'>
-        <h1 i18n-content='getAccess'></h1>
-        <p i18n-content='generateHandshakeAndSend'></p>
+        <h1><bdi i18n-content='getAccess'></bdi></h1>
+        <p><bdi i18n-content='generateHandshakeAndSend'></bdi></p>
         <p>
-          <button id='generateIceCandidatesButton' i18n-content='generate' on-click='{{ generateIceCandidates }}'></button>
+          <button id='generateIceCandidatesButton' on-click='{{ generateIceCandidates }}'><bdi i18n-content='generate'></bdi></button>
         </p>
       </div>
 
       <div id='step2ContainerNode' style='display: none;'>
         <textarea id='outboundMessageNode' disabled></textarea>
-        <p i18n-content='copyPasteAndSend'></p>
-        <p class='warning' i18n-content='warning'></p><br>
-        <p i18n-content='pasteAndStartProxying'></p>
+        <p><bdi i18n-content='copyPasteAndSend'></bdi></p>
+        <p class='warning'><bdi i18n-content='warning'></bdi></p><br>
+        <p><bdi i18n-content='pasteAndStartProxying'></bdi></p>
         <textarea id='inboundMessageNode' value='{{ inboundText }}' on-keyup='{{ parseInboundText }}'></textarea>
         <p>
-          <button id='consumeMessageButton' disabled i18n-content='startProxying' on-click='{{ consumeInboundText }}'></button>
+          <button id='consumeMessageButton' disabled on-click='{{ consumeInboundText }}'><bdi i18n-content='startProxying'></bdi></button>
         </p>
       </div>
 
       <div>
-        <a id='receivedBytesNode'>0</a><a i18n-content='bytesReceived'></a><br>
-        <a id='sentBytesNode'>0</a><a i18n-content='bytesSent'></a><br>
+        <bdi><a id='receivedBytesNode'>0</a><a i18n-content='bytesReceived'></a></bdi><br>
+        <bdi><a id='sentBytesNode'>0</a><a i18n-content='bytesSent'></a></bdi><br>
       </div>      
     </div>
 
