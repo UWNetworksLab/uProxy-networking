@@ -95,12 +95,25 @@ freedom.on('bytesSent', (numNewBytesSent:number) => {
 // Translation.
 
 /**
+  * Map of the supported languages to whether they are left-to-right or
+  * right-to-left languages.
+  */
+var languageDirection :{[index:string]:string} = {
+  'en' : 'ltr',
+  'it' : 'ltr',
+  'ar' : 'rtl',
+  'fa' : 'rtl'
+};
+
+/**
   * Return the language of the user's browser.
   */
 // TODO (lucyhe): find a better way to do this.
 var getBrowserLanguage = () : string => {
   return navigator.language.substring(0, 2);
 }
+
+var selectedLanguage = getBrowserLanguage();
 
 /** Retrieve messages.json file of the appropriate language and insert
   * strings into the application's UI.  
@@ -122,6 +135,8 @@ var changeLanguage = (language:string) => {
       }
     }
     i18nTemplate.process(document, translations);
+    document.querySelector('html')
+        .setAttribute('dir', languageDirection[language]);
   }
   xhr.send(null);  
 }
