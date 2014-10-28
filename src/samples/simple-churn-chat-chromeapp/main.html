@@ -1,0 +1,32 @@
+<html>
+<head>
+  <title>Single page obfuscated peerconnection-driven chat client</title>
+</head>
+
+<body>
+  <div>A:</div>
+  <textarea id="sendAreaA" disabled></textarea>
+  <textarea id="receiveAreaA" disabled></textarea>
+  <div>
+    <button id="sendButtonA">Send</button>
+  </div>
+
+  <hr>
+
+  <div>B:</div>
+  <textarea id="sendAreaB" disabled></textarea>
+  <textarea id="receiveAreaB" disabled></textarea>
+  <div>
+    <button id="sendButtonB">Send</button>
+  </div>
+
+  <script src='lib/freedom/uproxy-core-env.js'></script>
+  <script src='lib/freedom/freedom-for-chrome-for-uproxy.js'
+          data-manifest='freedom.json'>
+    {
+      "debug": "warn"
+    }
+  </script>
+  <script src='main.js'></script>
+</body>
+</html>

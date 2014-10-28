@@ -1,0 +1,117 @@
+{
+  "name": "churn",
+  "description": "Obfuscating core.uproxypeerconnection.",
+  "app": {
+    "script": [
+      "../arraybuffers/arraybuffers.js",
+      "../logging/logging.js",
+      "../webrtc/peerconnection.js",
+      "../regex2dfa/regex2dfa.js",
+      "churn.js"
+    ]
+  },
+  "provides": [
+    "churn"
+  ],
+  "api": {
+    "churn": {
+      "constructor": {
+        "value": "object"
+      },
+
+      "negotiateConnection": {
+        "type": "method",
+        "value": [],
+        "ret": "object"
+      },
+
+      "close": {
+        "type": "method",
+        "value": []
+      },
+
+      "handleSignalMessage": {
+        "type": "method",
+        "value": "object"
+      },
+
+      "signalForPeer": {
+        "type": "event",
+        "value": "object"
+      },
+
+      "onceConnected": {
+        "type": "method",
+        "value": [],
+        "ret": "object"
+      },
+
+      "onceConnecting": {
+        "type": "method",
+        "value": []
+      },
+
+      "onceDisconnected": {
+        "type": "method",
+        "value": []
+      },
+
+      "openDataChannel": {
+        "type": "method",
+        "value": "string"
+      },
+
+      "closeDataChannel": {
+        "type": "method",
+        "value": "string"
+      },
+
+      "onceDataChannelOpened": {
+        "type": "method",
+        "value": "string"
+      },
+
+      "onceDataChannelClosed": {
+        "type": "method",
+        "value": "string"
+      },
+
+      "peerOpenedChannel": {
+        "type": "event",
+        "value": "string"
+      },
+
+      "dataFromPeer": {
+        "type": "event",
+        "value": {
+          "channelLabel": "string",
+          "message": {
+            "str": "string",
+            "buffer": "buffer"
+          }
+        }
+      },
+
+      "send": {
+        "type": "method",
+        "value": [
+          "string",
+          {
+            "str": "string",
+            "buffer": "buffer"
+          }
+        ]
+      }
+    }
+  },
+  "permissions": [
+    "core.uproxypeerconnection",
+    "core.log"
+  ],
+  "dependencies": {
+    "churnPipe": {
+      "url": "../churn-pipe/freedom.json",
+      "api": "churnPipe"
+    }
+  }
+}
