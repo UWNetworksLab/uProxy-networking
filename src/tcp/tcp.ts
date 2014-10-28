@@ -8,6 +8,8 @@
 /// <reference path='../networking-typings/communications.d.ts' />
 /// <reference path="../third_party/typings/es6-promise/es6-promise.d.ts" />
 
+declare var freedom:any;
+
 module Tcp {
   var log :Logging.Log = new Logging.Log('tcp');
 

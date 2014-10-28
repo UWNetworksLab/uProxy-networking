@@ -27,7 +27,7 @@
     "grunt-contrib-copy": "~0.5.0",
     "grunt-contrib-jasmine": "~0.7.0",
     "grunt-contrib-symlink": "~0.3.0",
-    "uproxy-lib": "^13.1.0",
+    "uproxy-lib": "git://github.com/uProxy/uproxy-lib.git#freedom-v0.6",
     "babar": "0.0.3",
     "request": "^2.44.0",
     "socks5-http-client": "^0.1.6",
@@ -35,11 +35,16 @@
     "wup": "^1.0.0",
     "grunt-ts": "^1.11",
     "typescript": "^1.1.0-1",
-    "uproxy-lib": "git://github.com/uProxy/uproxy-lib.git#freedom-v0.6",
+    "freedom-for-chrome": "~0.4.1",
+    "freedom-for-firefox": "~0.5.0",
     "grunt-browserify": "~3.0.1",
     "crypto": "0.0.3",
     "utransformers": "~0.2.1",
-    "regex2dfa": "~0.1.6"
+    "regex2dfa": "~0.1.6",
+    "selenium-standalone": "~2.44.0",
+    "wd": "~0.3.10",
+    "fs-extra": "~0.12.0",
+    "chalk": "~0.5.1"
   },
   "scripts": {
     "test": "grunt test",

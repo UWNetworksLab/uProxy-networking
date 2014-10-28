@@ -151,6 +151,8 @@ module.exports = (grunt) ->
     ts:
       # SOCKS.
       tcp: Rule.typescriptSrc 'tcp'
+      tcpSpecDecl: Rule.typescriptSpecDecl 'tcp'
+
       udp: Rule.typescriptSrc 'udp'
 
       socksCommon: Rule.typescriptSrc 'socks-common'
@@ -238,6 +240,17 @@ module.exports = (grunt) ->
         options:
           specs: 'build/socks-to-rtc/*.spec.js'
 
+    integration:
+      tcp:
+        options:
+          template: 'node_modules/freedom-for-chrome/spec/helper/'
+          templateId: 'khhlpmfebmkkibipnllkeanfadmigbnj'
+          spec: ['build/tcp/*.integration.spec.js']
+          helper: [
+            {path: 'build/freedom/freedom-for-chrome.js', include: false}
+          ]
+          keepBrowser: false
+
     clean: ['build/', 'dist/', '.tscache/']
 
     ccaJsPath: path.join(ccaPath, 'src/cca.js')
@@ -267,7 +280,9 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-ts'
-  grunt.loadNpmTasks('grunt-browserify');
+  grunt.loadNpmTasks 'grunt-browserify'
+
+  grunt.loadTasks 'node_modules/freedom-for-chrome/tasks'
 
   #-------------------------------------------------------------------------
   # Define the tasks
@@ -286,6 +301,7 @@ module.exports = (grunt) ->
   taskManager.add 'tcp', [
     'base'
     'ts:tcp'
+    'ts:tcpSpecDecl'
     'copy:tcp'
   ]
 
