@@ -1,5 +1,5 @@
 /**
- * ui-polymer.d.ts
+ * polymer.d.ts
  *
  * Interface specific to the Polymer-Project specific aspects of the UI.
  */

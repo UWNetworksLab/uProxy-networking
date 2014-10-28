@@ -13,6 +13,4 @@ data/*
 .DS_Store
 .tscache
 dist
-third_party/polymer
-third_party/core-component-page
-third_party/platform
+third_party/bower

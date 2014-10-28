@@ -1,6 +1,6 @@
 /// <reference path='../../freedom/typings/freedom.d.ts' />
-/// <reference path='../../interfaces/ui-polymer.d.ts' />
-/// <reference path='../../interfaces/i18n.d.ts' />
+/// <reference path='../../networking-typings/polymer.d.ts' />
+/// <reference path='../../networking-typings/i18n.d.ts' />
 /// <reference path='../../webrtc/peerconnection.d.ts' />
 
 // DOM nodes that we will choose from either the 'give access' panel or the
