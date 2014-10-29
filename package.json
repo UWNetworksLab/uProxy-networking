@@ -1,7 +1,7 @@
 {
   "name": "uproxy-networking",
   "description": "uProxy's networking library: SOCKS5 over WebRTC",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/uProxy/uproxy-networking"
@@ -21,30 +21,30 @@
     "ipaddr.js": "~0.1.3"
   },
   "devDependencies": {
+    "babar": "0.0.3",
     "cca": "~0.3.1",
+    "chalk": "~0.5.1",
+    "crypto": "0.0.3",
+    "freedom-for-chrome": "~0.4.1",
+    "freedom-for-firefox": "~0.5.0",
+    "fs-extra": "~0.12.0",
     "grunt": "~0.4.4",
+    "grunt-browserify": "~3.0.1",
     "grunt-contrib-clean": "~0.6.0",
     "grunt-contrib-copy": "~0.5.0",
     "grunt-contrib-jasmine": "~0.7.0",
     "grunt-contrib-symlink": "~0.3.0",
-    "uproxy-lib": "git://github.com/uProxy/uproxy-lib.git#freedom-v0.6",
-    "babar": "0.0.3",
-    "request": "^2.44.0",
-    "socks5-http-client": "^0.1.6",
-    "yargs": "^1.3.1",
-    "wup": "^1.0.0",
     "grunt-ts": "^1.11",
-    "typescript": "^1.1.0-1",
-    "freedom-for-chrome": "~0.4.1",
-    "freedom-for-firefox": "~0.5.0",
-    "grunt-browserify": "~3.0.1",
-    "crypto": "0.0.3",
-    "utransformers": "~0.2.1",
     "regex2dfa": "~0.1.6",
+    "request": "^2.44.0",
     "selenium-standalone": "~2.44.0",
+    "socks5-http-client": "^0.1.6",
+    "typescript": "^1.1.0-1",
+    "uproxy-lib": "git://github.com/uProxy/uproxy-lib.git#freedom-v0.6",
+    "utransformers": "~0.2.1",
     "wd": "~0.3.10",
-    "fs-extra": "~0.12.0",
-    "chalk": "~0.5.1"
+    "wup": "^1.0.0",
+    "yargs": "^1.3.1"
   },
   "scripts": {
     "test": "grunt test",

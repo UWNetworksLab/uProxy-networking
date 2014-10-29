@@ -116,9 +116,13 @@ module.exports = (grunt) ->
       ipaddrjs: Rule.copyModule 'ipaddrjs'
       rtcToNet: Rule.copyModule 'rtc-to-net'
       benchmark: Rule.copyModule 'benchmark'
+      echo: Rule.copyModule 'echo'
 
       echoServerChromeApp: Rule.copyModule 'samples/echo-server-chromeapp'
       echoServerChromeAppLib: Rule.copySampleFiles 'samples/echo-server-chromeapp'
+
+      echoServerFirefoxApp: Rule.copyModule 'samples/echo-server-firefoxapp'
+      echoServerFirefoxAppLib: Rule.copySampleFiles 'samples/echo-server-firefoxapp/data'
 
       simpleSocksChromeApp: Rule.copyModule 'samples/simple-socks-chromeapp'
       simpleSocksChromeAppLib: Rule.copySampleFiles 'samples/simple-socks-chromeapp'
@@ -170,7 +174,11 @@ module.exports = (grunt) ->
           declaration: true
       }
 
+      echo: Rule.typescriptSrc 'echo'
+
       echoServerChromeApp: Rule.typescriptSrc 'samples/echo-server-chromeapp/'
+      echoServerFirefoxApp: Rule.typescriptSrc 'samples/echo-server-firefoxapp/'
+
       simpleSocksChromeApp: Rule.typescriptSrc 'samples/simple-socks-chromeapp'
       simpleSocksFirefoxApp: Rule.typescriptSrc 'samples/simple-socks-firefoxapp'
       copypasteSocksChromeApp: Rule.typescriptSrc 'samples/copypaste-socks-chromeapp'
@@ -350,12 +358,31 @@ module.exports = (grunt) ->
     'tcp'
   ]
 
-  taskManager.add 'echoServerChromeApp', [
+  taskManager.add 'echo', [
     'base'
     'tcp'
+    'ts:echo'
+    'copy:echo'
+  ]
+  taskManager.add 'echoServerChromeApp', [
+    'base'
+    'echo'
     'ts:echoServerChromeApp'
     'copy:echoServerChromeApp'
     'copy:echoServerChromeAppLib'
+  ]
+
+  taskManager.add 'echoServerFirefoxApp', [
+    'base'
+    'echo'
+    'ts:echoServerFirefoxApp'
+    'copy:echoServerFirefoxApp'
+    'copy:echoServerFirefoxAppLib'
+  ]
+
+  taskManager.add 'echoServer', [
+    'echoServerChromeApp'
+    'echoServerFirefoxApp'
   ]
 
   taskManager.add 'simpleSocksChromeApp', [
@@ -469,7 +496,7 @@ module.exports = (grunt) ->
   ]
 
   taskManager.add 'samples', [
-    'echoServerChromeApp'
+    'echoServer'
     'simpleSocksChromeApp'
     'simpleSocksFirefoxApp'
     'copypasteSocksChromeApp'
