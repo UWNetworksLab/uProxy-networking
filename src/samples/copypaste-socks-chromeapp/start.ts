@@ -1,13 +1,8 @@
-  Polymer({
-    giveMode: function() {
-    	this.giving = true; 
-    },
-    getMode: function() {
-    	this.getting = true;
-    },
-    ready: function() {
-    	this.giving = false;
-    	this.getting = false;
-    }
-  });
-  
+Polymer({
+  giveMode: function() {
+    model.givingOrGetting = 'giving';
+  },
+  getMode: function() {
+    model.givingOrGetting = 'getting';
+  },
+});

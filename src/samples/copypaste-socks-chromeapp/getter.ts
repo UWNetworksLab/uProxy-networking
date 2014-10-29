@@ -1,25 +1,21 @@
 Polymer({
+  model: model,
   generateIceCandidates: function(){
-		this.$.generateIceCandidatesButton.disabled = true;
+    this.$.generateIceCandidatesButton.disabled = true;
     freedom.emit('start', {});
   },
   parseInboundText: function() {
-  	parsedInboundMessages = parseInboundMessages(this.inboundText);
+    parsedInboundMessages = parseInboundMessages(this.inboundText);
   },
-	consumeInboundText: function() {
-		consumeInboundMessage();
-		// Disable the "Start Proxying" button after it's clicked.
-		consumeMessageButton.disabled = true;
-	},
+  consumeInboundText: function() {
+    consumeInboundMessage();
+    // Disable the form field, since it no longer makes sense to accept further
+    // input in it.    
+    this.$.inboundMessageNode.disabled = true;
+    // Disable the "Start Proxying" button after it's clicked.
+    this.$.consumeMessageButton.disabled = true;
+  },
   ready: function() {
-  	changeLanguage(getBrowserLanguage());
-
-    step2ContainerNode = this.$.step2ContainerNode;
-    outboundMessageNode = this.$.outboundMessageNode;
-    inboundMessageNode = this.$.inboundMessageNode;    
-    consumeMessageButton = this.$.consumeMessageButton;
-
-    sentBytesNode = this.$.sentBytesNode;
-    receivedBytesNode = this.$.receivedBytesNode;    
+    changeLanguage(getBrowserLanguage());   
   }
 });

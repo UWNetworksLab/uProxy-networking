@@ -19,20 +19,20 @@
         <p i18n-content='pasteAndGenerateReply'></p>
         <textarea id='inboundMessageNode' value='{{ inboundText }}' on-keyup='{{ parseInboundText }}'></textarea>
         <p>
-        <button id='consumeMessageButton' disabled i18n-content='generateReply' on-click='{{ consumeInboundText }}'></button>
+        <button id='consumeMessageButton' disabled?='{{ !model.inputIsWellFormed }}' i18n-content='generateReply' on-click='{{ consumeInboundText }}'></button>
         </p>
       </div>
 
       <br>
-      <div id='step2ContainerNode' style='display: none;'>
-        <textarea id='outboundMessageNode' disabled></textarea>
+      <div id='step2ContainerNode' style='display: {{ model.readyForStep2 ? "block" : "none" }};'>
+        <textarea id='outboundMessageNode' disabled value='{{ model.outboundMessageValue }}'></textarea>
         <p i18n-content='copyPasteAndSend'></p>
         <p class='warning' i18n-content='warning'></p>
       </div>
 
       <div>
-        <a id='receivedBytesNode'>0</a><a i18n-content='bytesReceived'></a><br>
-        <a id='sentBytesNode'>0</a><a i18n-content='bytesSent'></a><br>
+        {{ model.totalBytesReceived }}<a i18n-content='bytesReceived'></a><br>
+        {{ model.totalBytesSent }}<a i18n-content='bytesSent'></a><br>
       </div>
     </div>
 
