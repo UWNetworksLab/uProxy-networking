@@ -1,5 +1,5 @@
-/// <reference path='../../freedom/typings/freedom.d.ts' />
-/// <reference path='../../freedom/coreproviders/uproxylogging.d.ts' />
+/// <reference path='../freedom/typings/freedom.d.ts' />
+/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
 /// <reference path='tcp-echo-server.ts' />
 
 var log :Freedom_UproxyLogging.Log = freedom['core.log']('echo-server');
