@@ -102,6 +102,10 @@ var getBrowserLanguage = () : string => {
   return navigator.language.substring(0, 2);
 }
 
+/**
+  * The language selected by the user. Defaults to the browser's
+  * language.
+  */
 var selectedLanguage = getBrowserLanguage();
 
 /** Retrieve messages.json file of the appropriate language and insert
