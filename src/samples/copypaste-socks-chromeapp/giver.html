@@ -1,0 +1,44 @@
+<link rel="import" href='lib/third_party/bower/polymer/polymer.html'>
+
+<polymer-element name='copypaste-giver'>
+
+  <template>
+    <style>
+      textarea {
+        width: 30em;
+        height: 5em;
+      }
+      .warning {
+        color: red;
+      }      
+    </style>
+
+    <div id='giveAccessPanel'>
+      <div id='step1ContainerNode'>
+        <h1 i18n-content='giveAccess'></h1>
+        <p i18n-content='pasteAndGenerateReply'></p>
+        <textarea id='inboundMessageNode' value='{{ inboundText }}' on-keyup='{{ parseInboundText }}'></textarea>
+        <p>
+        <button id='consumeMessageButton' disabled?='{{ !model.inputIsWellFormed }}' i18n-content='generateReply' on-click='{{ consumeInboundText }}'></button>
+        </p>
+      </div>
+
+      <br>
+      <div id='step2ContainerNode' style='display: {{ model.readyForStep2 ? "block" : "none" }};'>
+        <textarea id='outboundMessageNode' disabled value='{{ model.outboundMessageValue }}'></textarea>
+        <p i18n-content='copyPasteAndSend'></p>
+        <p class='warning' i18n-content='warning'></p>
+      </div>
+
+      <div>
+        {{ model.totalBytesReceived }}<span i18n-content='bytesReceived'></span><br>
+        {{ model.totalBytesSent }}<span i18n-content='bytesSent'></span><br>
+      </div>
+    </div>
+
+  </template>
+
+  <script src='giver.js'>
+  </script>
+
+</polymer-element>

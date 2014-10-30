@@ -1,0 +1,43 @@
+<link rel="import" href='lib/third_party/bower/polymer/polymer.html'>
+
+<polymer-element name='copypaste-start'>
+
+  <template>
+    <style>
+      button {
+        text-decoration: none;
+        padding: 0.5em;
+        color: white;
+        background-color: #50C0E0;
+        border: 1px solid #40B0D0;
+        border-radius: 0.5em;
+      }
+      button:hover {
+        background-color: #60D0F0;
+        border: 1px solid #50C0E0;
+      }      
+      .centered {
+        text-align: center;
+      }      
+    </style>
+
+    <div id='startPanel'>
+      <p i18n-content='intro'></p><br><br>
+
+      <p class='centered'>
+        <button i18n-content='giveAccess' on-tap='{{ giveMode }}'></button>
+      </p>
+      <p class='centered' i18n-content='giveDescription'></p><br><br>
+      
+      <p class='centered'>
+        <button i18n-content='getAccess' on-tap='{{ getMode }}'></button>
+      </p>
+      <p class='centered' i18n-content='getDescription'></p><br><br>
+    
+    </div>
+
+  </template>
+
+  <script src='start.js'></script>
+
+</polymer-element>
