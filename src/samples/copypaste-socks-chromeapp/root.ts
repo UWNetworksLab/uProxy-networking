@@ -1,4 +1,5 @@
 Polymer({
+  model: model,
   updateLanguage: function() {
   	selectedLanguage = this.$.languageInput
   			.options[this.$.languageInput.selectedIndex].value;
