@@ -1,0 +1,45 @@
+<link rel="import" href='lib/third_party/bower/polymer/polymer.html'>
+
+<polymer-element name='copypaste-giver'>
+
+  <template>
+    <style>
+      textarea {
+        width: 30em;
+        height: 5em;
+      }
+      .warning {
+        color: red;
+      }      
+    </style>
+
+    <div id='giveAccessPanel'>
+      <div id='step1ContainerNode'>
+        <h1><bdi i18n-content='giveAccess'></bdi></h1>
+        <p><bdi i18n-content='pasteAndGenerateReply'></bdi></p>
+        <textarea id='inboundMessageNode' value='{{ inboundText }}' on-keyup='{{ parseInboundText }}'></textarea>
+        <p>
+
+        <button id='consumeMessageButton' disabled?='{{ !model.inputIsWellFormed }}' on-click='{{ consumeInboundText }}'><bdi i18n-content='generateReply'></bdi></button>
+        </p>
+      </div>
+
+      <br>
+      <div id='step2ContainerNode' style='display: {{ model.readyForStep2 ? "block" : "none" }};'>
+        <textarea id='outboundMessageNode' disabled value='{{ model.outboundMessageValue }}'></textarea>
+        <p><bdi i18n-content='copyPasteAndSend'></bdi></p>
+        <p class='warning'><bdi i18n-content='warning'></bdi></p>
+      </div>
+
+      <div>
+        <bdi>{{ model.totalBytesReceived }}<span i18n-content='bytesReceived'></span></bdi><br>
+        <bdi>{{ model.totalBytesSent }}<span i18n-content='bytesSent'></span></bdi><br>
+      </div>
+    </div>
+
+  </template>
+
+  <script src='giver.js'>
+  </script>
+
+</polymer-element>
