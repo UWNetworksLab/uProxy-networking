@@ -10,6 +10,6 @@ Polymer({
     this.$.inboundMessageNode.disabled = true;
   },
   ready: function() {
-    changeLanguage(getBrowserLanguage());
+    addTranslatedStrings(this);
   }
 });

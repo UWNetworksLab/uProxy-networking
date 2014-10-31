@@ -15,24 +15,25 @@
 
     <div id='giveAccessPanel'>
       <div id='step1ContainerNode'>
-        <h1 i18n-content='giveAccess'></h1>
-        <p i18n-content='pasteAndGenerateReply'></p>
+        <h1><bdi i18n-content='giveAccess'></bdi></h1>
+        <p><bdi i18n-content='pasteAndGenerateReply'></bdi></p>
         <textarea id='inboundMessageNode' value='{{ inboundText }}' on-keyup='{{ parseInboundText }}'></textarea>
         <p>
-        <button id='consumeMessageButton' disabled?='{{ !model.inputIsWellFormed }}' i18n-content='generateReply' on-click='{{ consumeInboundText }}'></button>
+
+        <button id='consumeMessageButton' disabled?='{{ !model.inputIsWellFormed }}' on-click='{{ consumeInboundText }}'><bdi i18n-content='generateReply'></bdi></button>
         </p>
       </div>
 
       <br>
       <div id='step2ContainerNode' style='display: {{ model.readyForStep2 ? "block" : "none" }};'>
         <textarea id='outboundMessageNode' disabled value='{{ model.outboundMessageValue }}'></textarea>
-        <p i18n-content='copyPasteAndSend'></p>
-        <p class='warning' i18n-content='warning'></p>
+        <p><bdi i18n-content='copyPasteAndSend'></bdi></p>
+        <p class='warning'><bdi i18n-content='warning'></bdi></p>
       </div>
 
       <div>
-        {{ model.totalBytesReceived }}<span i18n-content='bytesReceived'></span><br>
-        {{ model.totalBytesSent }}<span i18n-content='bytesSent'></span><br>
+        <bdi>{{ model.totalBytesReceived }}<span i18n-content='bytesReceived'></span></bdi><br>
+        <bdi>{{ model.totalBytesSent }}<span i18n-content='bytesSent'></span></bdi><br>
       </div>
     </div>
 

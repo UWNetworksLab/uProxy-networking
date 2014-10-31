@@ -96,13 +96,13 @@ var i18nTemplate = (function() {
   for (var key in handlers) {
     attributeNames.push(key);
   }
-  var selector = 'html /deep/ [' + attributeNames.join('], html /deep/ [') + ']';
-
+  
   /**
    * Processes a DOM tree with the {@code obj} map.
    */
   function process(node, obj) {
-    
+    var selector = node.nodeName + ' /deep/ [' + 
+        attributeNames.join('], ' + node.nodeName + ' /deep/ [') + ']';    
     var elements = node.querySelectorAll(selector);
     for (var element, i = 0; element = elements[i]; i++) {
       for (var j = 0; j < attributeNames.length; j++) {
