@@ -44,11 +44,13 @@ transform and restore the data being sent over the network.
 
 A variety of sample apps are included.
 
-They are packaged as Chrome apps:
+To run Chrome apps:
 
  - open `chrome://extensions`, ensure developer mode is enabled, and load unpacked extension from the relevant directory inside `dist/samples/`, e.g. `dist/samples/simple-socks-chromeapp/`.
 
-Firefox apps are on their way!
+To run Firefox add-ons:
+
+- download the [Add-on SDK](https://developer.mozilla.org/en-US/Add-ons/SDK/Tutorials/Installation), and run the extension with `cfx run` from the relevant directory inside `dist/samples/`, e.g. `dist/samples/echo-server-firefoxapp/`.
 
 ### echo server
 
