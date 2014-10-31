@@ -95,23 +95,15 @@ var languageDirection :{[index:string]:string} = {
 };
 
 /**
-  * Return the language of the user's browser.
+  * UI strings in the language selected by the user.
   */
-// TODO (lucyhe): find a better way to do this.
-var getBrowserLanguage = () : string => {
-  return navigator.language.substring(0, 2);
-}
-
-/**
-  * The language selected by the user. Defaults to the browser's
-  * language.
-  */
-var selectedLanguage = getBrowserLanguage();
+var translatedStrings :{[index:string]:string} = {};
 
 /** Retrieve messages.json file of the appropriate language and insert
   * strings into the application's UI.  
   */
-var changeLanguage = (language:string) => {
+var changeLanguage = (language:string) : void => {
+  clearTranslatedStrings();
   var xhr = new XMLHttpRequest();
   xhr.open('GET','locales/' + language + '/messages.json',true);
   
@@ -121,15 +113,41 @@ var changeLanguage = (language:string) => {
     }
     // Translate the JSON format to a simple
     // { key : value, ... } dictionary.
-    var translations = JSON.parse(xhr.responseText);
-    for (var key in translations) {
-      if (translations.hasOwnProperty(key)) {
-        translations[key] = translations[key].message;
+    var retrievedMessages = JSON.parse(xhr.responseText);
+    for (var key in retrievedMessages) {
+      if (retrievedMessages.hasOwnProperty(key)) {
+        translatedStrings[key] = retrievedMessages[key].message;
       }
     }
-    i18nTemplate.process(document, translations);
-    document.querySelector('html')
-        .setAttribute('dir', languageDirection[language]);
+    var htmlNode = document.querySelector('html');
+    addTranslatedStringsToUI(htmlNode);
+    htmlNode.setAttribute('dir', languageDirection[language]);
   }
   xhr.send(null);  
+}
+
+/**
+  * Clears the dictionary of UI strings (i.e. before a new language
+  * dictionary is loaded).
+  */
+var clearTranslatedStrings = () : void => {
+  for (var key in translatedStrings) {
+    delete translatedStrings[key];
+  }
+}
+
+/**
+  * Return the language of the user's browser.
+  */
+// TODO (lucyhe): find a better way to do this.
+var getBrowserLanguage = () : string => {
+  return navigator.language.substring(0, 2);
+}
+
+/**
+  * Given a node, add translated strings to any text-containing
+  * child nodes.
+  */
+var addTranslatedStringsToUI = (node:any) : void => {
+  i18nTemplate.process(node, translatedStrings);
 }

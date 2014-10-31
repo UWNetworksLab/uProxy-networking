@@ -16,6 +16,6 @@ Polymer({
     this.$.consumeMessageButton.disabled = true;
   },
   ready: function() {
-    changeLanguage(selectedLanguage);   
+    addTranslatedStringsToUI(this);   
   }
 });
