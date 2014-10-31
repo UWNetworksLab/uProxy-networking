@@ -120,7 +120,7 @@ var changeLanguage = (language:string) : void => {
       }
     }
     var htmlNode = document.querySelector('html');
-    addTranslatedStringsToUI(htmlNode);
+    addTranslatedStrings(htmlNode);
     htmlNode.setAttribute('dir', languageDirection[language]);
   }
   xhr.send(null);  
@@ -148,6 +148,6 @@ var getBrowserLanguage = () : string => {
   * Given a node, add translated strings to any text-containing
   * child nodes.
   */
-var addTranslatedStringsToUI = (node:any) : void => {
+var addTranslatedStrings = (node:any) : void => {
   i18nTemplate.process(node, translatedStrings);
 }
