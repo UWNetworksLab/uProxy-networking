@@ -15,7 +15,6 @@ var noopPromise = new Promise<void>((F, R) => {});
 describe('module', function() {
   var server :RtcToNet.RtcToNet;
 
-  // var mockTcpServer :Tcp.Server;
   var mockPeerconnection :freedom_UproxyPeerConnection.Pc;
 
   beforeEach(function() {
