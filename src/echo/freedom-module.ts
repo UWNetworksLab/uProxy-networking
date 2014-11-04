@@ -1,6 +1,6 @@
 /// <reference path='tcp-echo-server.ts' />
-
-declare var freedom:any;
+/// <reference path='../logging/logging.d.ts' />
+/// <reference path='../freedom/typings/freedom.d.ts' />
 
 var log :Logging.Log = new Logging.Log('echo-server');
 

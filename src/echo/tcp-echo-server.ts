@@ -23,7 +23,7 @@ class TcpEchoServer {
           JSON.stringify(listeningEndpoint));
     })
     .catch((e:Error) => {
-      log.info('Failed to listen to: ' + JSON.stringify(endpoint) +
+      log.error('Failed to listen to: ' + JSON.stringify(endpoint) +
           e.toString);
       this.server.shutdown();
     });

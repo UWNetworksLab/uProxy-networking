@@ -12,6 +12,7 @@
     ]
   },
   "permissions": [
-    "core.tcpsocket"
+    "core.tcpsocket",
+    "core.console"
   ]
 }
