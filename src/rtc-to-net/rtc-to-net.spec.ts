@@ -57,7 +57,7 @@ describe('module', function() {
 
   it('onceClosed fulfills on call to stop', (done) => {
     (<any>mockPeerconnection.onceConnected).and.returnValue(Promise.resolve());
-    // peerconnection doesn't close "naturally".
+    // Calling stop() alone should be sufficient to initiate shutdown.
     (<any>mockPeerconnection.onceDisconnected).and.returnValue(noopPromise);
 
     server.start(mockProxyConfig, mockPeerconnection)
