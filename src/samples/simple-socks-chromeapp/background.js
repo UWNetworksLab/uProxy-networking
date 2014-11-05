@@ -5,4 +5,4 @@ script.src = 'lib/freedom/freedom-for-chrome-for-uproxy.js';
 document.head.appendChild(script);
 
 // Note that the proxy runs very slowly at debug level ('*:D').
-Logging.setConsoleFilter(['*:I']);
+Logging.setConsoleFilter(['*:W', 'SocksToRtc:I', 'RtcToNet:D']);
