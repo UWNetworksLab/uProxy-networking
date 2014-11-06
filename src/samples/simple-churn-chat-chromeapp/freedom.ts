@@ -1,44 +1,56 @@
 /// <reference path="../../churn/churn.d.ts" />
 /// <reference path="../../webrtc/peerconnection.d.ts" />
 /// <reference path="../../freedom/typings/freedom.d.ts" />
-/// <reference path='../../freedom/coreproviders/uproxylogging.d.ts' />
-/// <reference path="../../freedom/coreproviders/uproxypeerconnection.d.ts" />
-/// <reference path='../../third_party/typings/webrtc/RTCPeerConnection.d.ts' />
+/// <reference path='../../logging/logging.d.ts' />
 
 // NOTE: This sample app is virtually identical to the 'freedomchat'
 //       sample app in uproxy-lib. The only real difference is that
 //       this uses churn.
 
-import PcLib = freedom_UproxyPeerConnection;
-
-var log :Freedom_UproxyLogging.Log = freedom['core.log']('top-level freedom module');
+var log :Logging.Log = new Logging.Log('top-level freedom module');
 
 var config :WebRtc.PeerConnectionConfig = {
   webrtcPcConfig: {
-    iceServers: [{url: 'stun:stun.l.google.com:19302'},
-                 {url: 'stun:stun1.l.google.com:19302'}]
-  },
-  webrtcMediaConstraints: {
-    optional: [{DtlsSrtpKeyAgreement: true}]
+    iceServers: [{urls: ['stun:stun.l.google.com:19302']},
+                 {urls: ['stun:stun1.l.google.com:19302']}]
   }
 };
 
-var a :PcLib.Pc = freedom.churn(config);
-var b :PcLib.Pc = freedom.churn(config);
+var a :WebRtc.PeerConnectionInterface = new Churn.Connection(config);
+var b :WebRtc.PeerConnectionInterface = new Churn.Connection(config);
 
 // Connect the two signalling channels.
 // Normally, these messages would be sent over the internet.
-a.on('signalForPeer', (signal:Churn.ChurnSignallingMessage) => {
+a.signalForPeerQueue.setHandler((signal:Churn.ChurnSignallingMessage) => {
   log.info('signalling channel A message: ' + JSON.stringify(signal));
   b.handleSignalMessage(signal);
 });
-b.on('signalForPeer', (signal:Churn.ChurnSignallingMessage) => {
+b.signalForPeerQueue.setHandler((signal:Churn.ChurnSignallingMessage) => {
   log.info('signalling channel B message: ' + JSON.stringify(signal));
   a.handleSignalMessage(signal);
 });
 
-b.on('peerOpenedChannel', (channelLabel:string) => {
-  log.info('i can see that `a` created a data channel called ' + channelLabel);
+// Send messages over the datachannel, in response to events from the UI.
+var sendMessage = (channel:WebRtc.DataChannel, message:string) => {
+  channel.send({ str: message }).catch((e) => {
+    log.error('error sending message: ' + e.message);
+  });
+};
+
+// Handle messages received on the datachannel(s).
+// The message is forwarded to the UI.
+var receiveMessage = (name:string, d:WebRtc.Data) => {
+    if (d.str === undefined) {
+		log.error('only text messages are supported');
+		return;
+    }
+    freedom().emit('receive' + name, d.str);
+};
+
+b.peerOpenedChannelQueue.setHandler((channel:WebRtc.DataChannel) => {
+	log.info('i can see that `a` created a data channel called ' + channel.getLabel());
+	freedom().on('sendB', sendMessage.bind(null, channel));
+	channel.dataFromPeerQueue.setHandler(receiveMessage.bind(null, 'B'));
 });
 
 a.onceConnecting().then(() => { log.info('a is connecting...'); });
@@ -58,33 +70,14 @@ b.onceConnected().then(logEndpoints.bind(null, 'b'));
 // Negotiate a peerconnection.
 // Once negotiated, enable the UI and add send/receive handlers.
 a.negotiateConnection().then((endpoints:WebRtc.ConnectionAddresses) => {
-  // Send messages over the datachannel, in response to events from the UI.
-  var sendMessage = (pc:PcLib.Pc, message:string) => {
-    pc.send('text', { str: message }).catch((e) => {
-      log.error('error sending message: ' + e.message);
-    });
-  };
-  freedom.on('sendA', sendMessage.bind(null, a));
-  freedom.on('sendB', sendMessage.bind(null, b));
-
-  // Handle messages received on the datachannel(s).
-  // The message is forwarded to the UI.
-  var receiveMessage = (name:string, d:PcLib.LabelledDataChannelMessage) => {
-    if (d.message.str === undefined) {
-      log.error('only text messages are supported');
-      return;
-    }
-    freedom.emit('receive' + name, d.message.str);
-  };
-  a.on('dataFromPeer', receiveMessage.bind(null, 'A'));
-  b.on('dataFromPeer', receiveMessage.bind(null, 'B'));
-
-  a.openDataChannel('text').then(() => {
+  a.openDataChannel('text').then((channel:WebRtc.DataChannel) => {
     log.info('datachannel open!');
-    freedom.emit('ready', {});
+	freedom().on('sendA', sendMessage.bind(null, channel));
+	channel.dataFromPeerQueue.setHandler(receiveMessage.bind(null, 'A'));
+    freedom().emit('ready', {});
   }, (e) => {
     log.error('could not setup datachannel: ' + e.message);
-    freedom.emit('error', {});
+    freedom().emit('error', {});
   });
 }, (e) => {
   log.error('could not negotiate peerconnection: ' + e.message);

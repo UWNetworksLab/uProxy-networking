@@ -2,8 +2,7 @@
 /// <reference path='../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../churn-pipe/churn-pipe.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
-/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
-/// <reference path='../freedom/coreproviders/uproxypeerconnection.d.ts' />
+/// <reference path='../logging/logging.d.ts' />
 /// <reference path='../webrtc/peerconnection.d.ts' />
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 
@@ -12,7 +11,7 @@ var regex2dfa :any;
 
 module Churn {
 
-  var log :Freedom_UproxyLogging.Log = freedom['core.log']('churn');
+  var log :Logging.Log = new Logging.Log('churn');
 
   /**
    * A uproxypeerconnection-like Freedom module which establishes obfuscated
@@ -28,14 +27,20 @@ module Churn {
    * TODO: Give the uproxypeerconnections name, to help debugging.
    * TODO: Allow obfuscation parameters be configured.
    */
-  export class Provider {
+  export class Connection {
 
+    public pcState :WebRtc.State;
+    public dataChannels :{[channelLabel:string] : WebRtc.DataChannel};
+    public peerOpenedChannelQueue :Handler.Queue<DataChannel, void>;
+    public signalForPeerQueue :Handler.Queue<ChurnSignallingMessage, void>;    
+    public peerName :string;
+ 
     // A short-lived connection used to determine network addresses on which
     // we can communicate with the remote host.
-    private surrogateConnection_ :freedom_UproxyPeerConnection.Pc;
+    private surrogateConnection_ :WebRtc.PeerConnection;
 
     // The obfuscated connection.
-    private obfuscatedConnection_ :freedom_UproxyPeerConnection.Pc;
+    private obfuscatedConnection_ :WebRtc.PeerConnection;
 
     // Fulfills once obfuscatedConnection_ has been configured.
     // At that point, the negotiator can safely attempt to
@@ -66,9 +71,7 @@ module Churn {
       this.haveForwardingSocketEndpoint_ = F;
     });
 
-    constructor(
-        private dispatchEvent_:(name:string, args:any) => void,
-        config:WebRtc.PeerConnectionConfig) {
+    constructor(config:WebRtc.PeerConnectionConfig) {
       // TODO: Remove when objects-for-constructors is fixed in Freedom:
       //         https://github.com/freedomjs/freedom/issues/87
       if (Array.isArray(config)) {
@@ -85,18 +88,25 @@ module Churn {
           this.surrogateConnection_.onceConnected()]).then((answers:any[]) => {
         this.configurePipes_(answers[0], answers[1]);
       });
+
+      this.pcState = State.WAITING;
+      this.dataChannels = {};
+      this.peerOpenedChannelQueue = new Handler.Queue<DataChannel,void>();
+      this.signalForPeerQueue = new Handler.Queue<SignallingMessage,void>();
+      this.peerName = this.config_.peerName ||
+          'churn-connection-' + crypto.randomUint32();
     }
 
     private configureSurrogateConnection_ = (
         config:WebRtc.PeerConnectionConfig) => {
       log.debug('configuring surrogate connection...');
-      this.surrogateConnection_ = freedom['core.uproxypeerconnection'](config);
-      this.surrogateConnection_.on('signalForPeer',
+      this.surrogateConnection_ = new WebRtc.PeerConnection(config);
+      this.surrogateConnection_.signalForPeerQueue.setSyncHandler(
           (signal:WebRtc.SignallingMessage) => {
-        var churnSignal :Churn.ChurnSignallingMessage =
-            <Churn.ChurnSignallingMessage>signal;
+        var churnSignal :ChurnSignallingMessage =
+            <ChurnSignallingMessage>signal;
         churnSignal.churnStage = 1;
-        this.dispatchEvent_('signalForPeer', churnSignal);
+        this.signalForPeerQueue.handle(churnSignal);
       });
       // Once the surrogate connection has been successfully established,
       // we want to tear it down and setup the obfuscated connection.
@@ -182,13 +192,10 @@ module Churn {
       var config :WebRtc.PeerConnectionConfig = {
         webrtcPcConfig: {
           iceServers: []
-        },
-        webrtcMediaConstraints: {
-          optional: [{DtlsSrtpKeyAgreement: true}]
         }
       };
-      this.obfuscatedConnection_ = freedom['core.uproxypeerconnection'](config);
-      this.obfuscatedConnection_.on('signalForPeer',
+      this.obfuscatedConnection_ = new WebRtc.PeerConnection(config);
+      this.obfuscatedConnection_.signalForPeerQueue.setSyncHandler(
           (signal:WebRtc.SignallingMessage) => {
         // Super-paranoid check: remove candidates from SDP messages.
         // This can happen if a connection is re-negotiated.
@@ -217,16 +224,20 @@ module Churn {
         var churnSignal :Churn.ChurnSignallingMessage =
             <Churn.ChurnSignallingMessage>signal;
         churnSignal.churnStage = 2;
-        this.dispatchEvent_('signalForPeer', churnSignal);
+        this.signalForPeerQueue.handle(churnSignal);
       });
       this.obfuscatedConnection_.onceConnected().then(
           (endpoints:WebRtc.ConnectionAddresses) => {
-        this.obfuscatedConnection_.on('dataFromPeer',
-            this.dispatchEvent_.bind(null, 'dataFromPeer'));
-        this.obfuscatedConnection_.on('peerOpenedChannel',
-            this.dispatchEvent_.bind(null, 'peerOpenedChannel'));
+        this.obfuscatedConnection_.peerOpenedChannelQueue.setSyncHandler(
+            this.peerOpenedChannelQueue.handle);
         this.churnSetup_();
       });
+      // NOTE: Replacing |this.dataChannels| in this way breaks recursive nesting.
+      // If the caller or |obfuscatedConnection_| applies the same approach,
+      // the code will break in hard-to-debug fashion.  This could be
+      // addressed by using a javascript "getter", or by changing the
+      // WebRtc.PeerConnection API.
+      this.dataChannels = this.obfuscatedConnection_.dataChannels;
       this.pc2Setup_();
     }
 
@@ -267,47 +278,42 @@ module Churn {
       }
     }
 
-    public openDataChannel = (channelLabel:string) : Promise<void> => {
+    public openDataChannel = (channelLabel:string,
+        options?:freedomRTCPeerConnection.RTCDataChannelInit)
+        : Promise<WebRtc.DataChannel> => {
       return this.obfuscatedConnection_.openDataChannel(channelLabel);
-    }
-
-    public closeDataChannel = (channelLabel:string) : Promise<void> => {
-      return this.obfuscatedConnection_.closeDataChannel(channelLabel);
-    }
-
-    public onceDataChannelOpened = (channelLabel:string) : Promise<void> => {
-      return this.obfuscatedConnection_.onceDataChannelOpened(channelLabel);
-    }
-
-    public onceDataChannelClosed = (channelLabel:string) : Promise<void> => {
-      return this.obfuscatedConnection_.onceDataChannelClosed(channelLabel);
-    }
-
-    public send = (channelLabel:string, data:WebRtc.Data) : Promise<void> => {
-      return this.obfuscatedConnection_.send(channelLabel, data);
     }
 
     public close = () : Promise<void> => {
       return this.obfuscatedConnection_.close();
     }
 
-    public onceConnected = () : Promise<WebRtc.ConnectionAddresses> => {
+    public onceConnected = new Promise<WebRtc.ConnectionAddresses>((F, R) =>
       // obfuscatedConnection_ doesn't exist until onceChurnSetup_ fulfills.
-      return this.onceChurnSetup_.then(() => {
-        return this.obfuscatedConnection_.onceConnected();
+      this.onceChurnSetup_.then(() => {
+        this.obfuscatedConnection_.onceConnected.then((addresses:WebRtc.ConnectionAddresses) => {
+          this.pcState = WebRtc.State.CONNECTED;
+          F(addresses);
+        }, R);
       });
-    }
+    });
 
-    public onceConnecting = () : Promise<void> => {
-      return this.surrogateConnection_.onceConnecting();
-    }
+    public onceConnecting = new Promise<void>((F, R) => {
+      this.surrogateConnection_.onceConnecting.then(() => {
+        this.pcState = WebRtc.State.CONNECTING;
+        F();
+      }, R);
+    });
 
-    public onceDisconnected = () : Promise<void> => {
+    public onceDisconnected = new Promise<void>((F, R) => {
       // obfuscatedConnection_ doesn't exist until onceChurnSetup_ fulfills.
-      return this.onceChurnSetup_.then(() => {
-        return this.obfuscatedConnection_.onceDisconnected();
+      this.onceChurnSetup_.then(() => {
+        this.obfuscatedConnection_.onceDisconnected.then(() => {
+          this.pcState = WebRtc.State.DISCONNECTED;
+          F();
+        }, R);
       });
-    }
+    });
 
     // Strips candidate lines from an SDP.
     // In general, an SDP is a newline-delimited series of lines of the form:
@@ -373,9 +379,13 @@ module Churn {
       lines[5] = endpoint.port.toString();
       return lines.join(' ');
     }
-  }
 
-  if (typeof freedom !== 'undefined') {
-    freedom.churn().providePromises(Churn.Provider);
+    public toString = () : string {
+      if (this.obfuscatedConnection_) {
+        return this.obfuscatedConnection_.toString();
+      } else {
+        return 'Not yet connected';
+      }
+    };
   }
 }

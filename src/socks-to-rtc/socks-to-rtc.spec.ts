@@ -21,7 +21,7 @@ describe('SOCKS server', function() {
   var server :SocksToRtc.SocksToRtc;
 
   var mockTcpServer :Tcp.Server;
-  var mockPeerconnection :freedom_UproxyPeerConnection.Pc;
+  var mockPeerconnection :WebRtc.PeerConnection;
 
   beforeEach(function() {
     server = new SocksToRtc.SocksToRtc();
@@ -102,7 +102,7 @@ describe("SOCKS session", function() {
   var session :SocksToRtc.Session;
 
   var mockTcpConnection :Tcp.Connection;
-  var mockPeerconnection :freedom_UproxyPeerConnection.Pc;
+  var mockPeerConnection :WebRtc.PeerConnection;
   var mockBytesSent :Handler.Queue<number,void>;
 
   beforeEach(function() {
@@ -113,6 +113,7 @@ describe("SOCKS session", function() {
         'close',
         'isClosed'
       ]);
+    // FIXME
     mockPeerconnection = jasmine.createSpyObj('peerconnection', [
         'onceDataChannelClosed',
         'closeDataChannel'

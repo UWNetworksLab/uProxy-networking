@@ -34,6 +34,19 @@ module.exports = (grunt) ->
           dest: 'build/'
         ]
 
+       # Symlink the Chrome and Firefox browser-specific Freedom modules under build/freedom/.
+       freedom:
+         files: [ {
+           expand: true
+           cwd: path.dirname(require.resolve('freedom-for-chrome/Gruntfile'))
+           src: ['freedom-for-chrome.js']
+           dest: 'build/freedom/'
+         }, {
+           expand: true
+           cwd: path.dirname(require.resolve('freedom-for-firefox/Gruntfile'))
+           src: ['freedom-for-firefox.jsm']
+           dest: 'build/freedom/'
+         } ]
       # Symlink each directory under third_party/ under build/third_party/.
       thirdParty:
         files: [
