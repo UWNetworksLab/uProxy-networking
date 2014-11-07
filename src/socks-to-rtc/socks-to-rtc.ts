@@ -150,6 +150,7 @@ module SocksToRtc {
     // Shuts down the TCP server and peerconnection if they haven't already
     // shut down, fulfilling once both have terminated. Since neither
     // objects' close() methods should ever reject, this should never reject.
+    // TODO: close all sessions before fulfilling
     private stopResources_ = () : Promise<void> => {
       var shutdownPromises :Promise<any>[] = [];
       if (!this.tcpServer_.isShutdown()) {

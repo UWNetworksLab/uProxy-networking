@@ -10,9 +10,12 @@ declare module RtcToNet {
     allowNonUnicast :boolean;
   }
   class RtcToNet {
-    constructor(pcConfig:WebRtc.PeerConnectionConfig,
-                proxyConfig:ProxyConfig,
+    constructor(pcConfig?:WebRtc.PeerConnectionConfig,
+                proxyConfig?:ProxyConfig,
                 obfuscate?:boolean);
+    public start :(
+        proxyConfig:ProxyConfig,
+        peerconnection:freedom_UproxyPeerConnection.Pc) => Promise<void>;
     public proxyConfig :ProxyConfig;
     public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
     public bytesReceivedFromPeer :Handler.Queue<number, void>;
