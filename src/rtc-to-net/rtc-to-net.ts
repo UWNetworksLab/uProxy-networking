@@ -156,6 +156,7 @@ module RtcToNet {
 
     // Shuts down the peerconnection, fulfilling it has terminated.
     // Since its close() method should ever reject, this should never reject.
+    // TODO: close all sessions before fulfilling
     public stopResources_ = () : Promise<void> => {
       // uproxypeerconnection doesn't allow us query whether the
       // peerconnection has shut down but the call is explicitly idempodent.
