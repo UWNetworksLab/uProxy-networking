@@ -1,0 +1,31 @@
+{
+  "name": "Simple SOCKS",
+  "description": "Single-page SOCKS server with fake signalling channel.",
+  "app": {
+    "script": [
+      "../arraybuffers/arraybuffers.js",
+      "../handler/queue.js",
+      "../logging/logging.js",
+      "../tcp/tcp.js",
+      "../webrtc/datachannel.js",
+      "../webrtc/peerconnection.js",
+      "../ipaddrjs/ipaddr.min.js",
+      "../socks-common/socks-headers.js",
+      "../socks-to-rtc/socks-to-rtc.js",
+      "../rtc-to-net/rtc-to-net.js",
+      "freedom-module.js"
+    ]
+  },
+  "dependencies": {
+    "churn": {
+      "url": "../churn/freedom.json",
+      "api": "churn"
+    }
+  },
+  "permissions": [
+    "core.log",
+    "core.tcpsocket",
+    "core.udpsocket",
+    "core.uproxypeerconnection"
+  ]
+}
