@@ -4,7 +4,7 @@
 /// <reference path='../../webrtc/peerconnection.d.ts' />
 
 // 'model' object contains variables about the state of the application.
-// Polymer elements will bind to model so that the elements' style and 
+// Polymer elements will bind to model so that the elements' style and
 // contents are up to date.
 var model = { givingOrGetting : <string>null,
               readyForStep2 : false,
@@ -71,7 +71,7 @@ function parseInboundMessages(inboundMessageFieldValue:string)
 
   return parsedSignals;
 }
-  
+
 // Forwards each line from the paste box to the Freedom app, which
 // interprets each as a signalling channel message. The Freedom app
 // knows whether this message should be sent to the socks-to-rtc
@@ -121,12 +121,12 @@ var languageDirection :{[index:string]:string} = {
 var translatedStrings :{[index:string]:string} = {};
 
 // Retrieve messages.json file of the appropriate language and insert strings
-// into the application's UI.  
+// into the application's UI.
 var changeLanguage = (language:string) : void => {
   clearTranslatedStrings();
   var xhr = new XMLHttpRequest();
   xhr.open('GET','locales/' + language + '/messages.json',true);
-  
+
   xhr.onload = function() {
     if (this.readyState != 4) {
       return;
@@ -142,7 +142,7 @@ var changeLanguage = (language:string) : void => {
     addTranslatedStrings(htmlNode);
     htmlNode.setAttribute('dir', languageDirection[language]);
   }
-  xhr.send(null);  
+  xhr.send(null);
 }
 
 // Clears the dictionary of UI strings (i.e. before a new language dictionary
