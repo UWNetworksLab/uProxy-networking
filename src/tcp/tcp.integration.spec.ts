@@ -9,7 +9,7 @@
 //       expectations. This depends on a test runner which can run its tests
 //       *inside* of a Freedom module (rather than a Chrome app):
 //         https://github.com/freedomjs/freedom/issues/146
-describe('core.udpsocket wrapper', function() {
+describe('core.tcpsocket wrapper', function() {
   // TODO: This is flaky! figuring out why may help explain why
   //       the SOCKS server sometimes fails to start..
   it('listens and echoes', (done) => {
