@@ -1,11 +1,12 @@
+/// <reference path="tcp.ts" />
 /// <reference path='../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
 
 // Starts an echo server on a free port and verifies that the server
-// sends back to clients whatever it receives. Tests that:
+// is listening on that port. Tests:
 //  - a free port is chosen when port zero is requested
-//  - data is received on the socket
-//  - data can be sent on a socket
+//  - the server is listening on that port
+//  - data can be sent and received on that socket
 freedom().on('listen', () => {
   var server = new Tcp.Server({
     address: '127.0.0.1',
@@ -28,12 +29,15 @@ freedom().on('listen', () => {
         freedom().emit('listen');
       }
     });
+  }, (e:Error) => {
+    // Because this is flaky...
+    console.error('failed to listen!: ' + e.message);
   });
 });
 
 // Starts an echo server on a free port and makes two connections to that
 // port before shutting down the server.
-// Tests that:
+// Tests:
 //  - client sockets receive connection events
 //  - server and client sockets receive disconnected events
 //  - onceShutdown fulfills
