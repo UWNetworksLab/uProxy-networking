@@ -16,16 +16,16 @@ var config :WebRtc.PeerConnectionConfig = {
   }
 };
 
-var a :WebRtc.PeerConnectionInterface = new Churn.Connection(config);
-var b :WebRtc.PeerConnectionInterface = new Churn.Connection(config);
+var a :Churn.Connection = new Churn.Connection(config);
+var b :Churn.Connection = new Churn.Connection(config);
 
 // Connect the two signalling channels.
 // Normally, these messages would be sent over the internet.
-a.signalForPeerQueue.setHandler((signal:Churn.ChurnSignallingMessage) => {
+a.signalForPeerQueue.setSyncHandler((signal:Churn.ChurnSignallingMessage) => {
   log.info('signalling channel A message: ' + JSON.stringify(signal));
   b.handleSignalMessage(signal);
 });
-b.signalForPeerQueue.setHandler((signal:Churn.ChurnSignallingMessage) => {
+b.signalForPeerQueue.setSyncHandler((signal:Churn.ChurnSignallingMessage) => {
   log.info('signalling channel B message: ' + JSON.stringify(signal));
   a.handleSignalMessage(signal);
 });
@@ -47,14 +47,14 @@ var receiveMessage = (name:string, d:WebRtc.Data) => {
     freedom().emit('receive' + name, d.str);
 };
 
-b.peerOpenedChannelQueue.setHandler((channel:WebRtc.DataChannel) => {
+b.peerOpenedChannelQueue.setSyncHandler((channel:WebRtc.DataChannel) => {
 	log.info('i can see that `a` created a data channel called ' + channel.getLabel());
 	freedom().on('sendB', sendMessage.bind(null, channel));
 	channel.dataFromPeerQueue.setHandler(receiveMessage.bind(null, 'B'));
 });
 
-a.onceConnecting().then(() => { log.info('a is connecting...'); });
-b.onceConnecting().then(() => { log.info('b is connecting...'); });
+a.onceConnecting.then(() => { log.info('a is connecting...'); });
+b.onceConnecting.then(() => { log.info('b is connecting...'); });
 
 // Log the chosen endpoints.
 function logEndpoints(name:string, endpoints:WebRtc.ConnectionAddresses) {
@@ -64,8 +64,8 @@ function logEndpoints(name:string, endpoints:WebRtc.ConnectionAddresses) {
       endpoints.remote.address + ':' + endpoints.remote.port +
       ' (' + endpoints.remoteType + ')');
 }
-a.onceConnected().then(logEndpoints.bind(null, 'a'));
-b.onceConnected().then(logEndpoints.bind(null, 'b'));
+a.onceConnected.then(logEndpoints.bind(null, 'a'));
+b.onceConnected.then(logEndpoints.bind(null, 'b'));
 
 // Negotiate a peerconnection.
 // Once negotiated, enable the UI and add send/receive handlers.

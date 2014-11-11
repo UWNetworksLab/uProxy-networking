@@ -54,6 +54,8 @@ module RtcToNet {
     // by the session (by handling each data channels close event).
     public onceClosed :Promise<void>;
 
+    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
+
     // The connection to the peer that is acting as a proxy client.
     private peerConnection_  :WebRtc.PeerConnection = null;
     // The |sessions_| map goes from WebRTC data-channel labels to the Session.
@@ -83,12 +85,12 @@ module RtcToNet {
       this.sessions_ = {};
       this.proxyConfig = proxyConfig;
       this.peerConnection_ = obfuscate ?
-          freedom.churn(pcConfig) :
+          new Churn.Connection(pcConfig) :
           new WebRtc.PeerConnection(pcConfig);
       this.peerConnection_.peerOpenedChannelQueue.setSyncHandler((channel:WebRtc.DataChannel) => {
         var channelLabel = channel.getLabel();
         if(channelLabel === '_control_') {
-			channel.dataFromPeerQueue.setSyncHandler((d:WebRtc.data) => {
+          channel.dataFromPeerQueue.setSyncHandler((d:WebRtc.Data) => {
 				this.handleControlMessage_(d.str);
 			});
           log.debug('control channel openned.');
@@ -105,13 +107,10 @@ module RtcToNet {
         session.onceClosed.then(() => {
           delete this.sessions_[channelLabel];
         });
-        channel.dataFromPeerQueue.setSyncHandler((data:WebRtc.Data) => {
-          this.onDataFromPeer_(data, channel);
-        });
       });
-      this.signalsForPeer = this.peerConnection_.signalsForPeerQueue;
-      this.onceReady = this.peerConnection_.onceConnected().then(() => {});
-      this.onceClosed = this.peerConnection_.onceDisconnected();
+      this.signalsForPeer = this.peerConnection_.signalForPeerQueue;
+      this.onceReady = this.peerConnection_.onceConnected.then(() => {});
+      this.onceClosed = this.peerConnection_.onceDisconnected;
       // TODO: add checking that the peer's fingerprint matches the provided
       // fingerprint.
     }
@@ -172,6 +171,8 @@ module RtcToNet {
     // low-level WebRtc provider), then refer to dataChannel.isClosed directly.
     private isClosed_ :boolean;
 
+    private channelLabel_ :string;
+
     // This variable starts false, and becomes true after the socket to the
     // remote endpoint is open (and the endpoint is confirmed to be at an
     // allowed address).
@@ -192,7 +193,7 @@ module RtcToNet {
       this.hasConnectedToEndpoint_ = false;
       // Open a data channel to the peer. The session is ready when the channel
       // is open.
-      this.onceReady = this.dataChannel_.onceOpened();
+      this.onceReady = this.dataChannel_.onceOpened;
 
       dataChannel_.dataFromPeerQueue.setSyncHandler(this.handleWebRtcDataFromPeer_);
 
@@ -201,7 +202,7 @@ module RtcToNet {
       // setTcpConnection). When a TCP stream closes, it also closes the data
       // channel, so it does suffice to consider a session closed when the data
       // channel is closed.
-      this.onceClosed = this.dataChannel_.onceClosed();
+      this.onceClosed = this.dataChannel_.onceClosed;
       this.onceClosed.then(() => {
         this.isClosed_ = true;
         log.debug(this.longId() + ': onceClosed.');
@@ -278,8 +279,7 @@ module RtcToNet {
             }
             this.hasConnectedToEndpoint_ = true;
             // TODO: send back to peer.
-            this.peerConnection_.send(
-              this.channelLabel_, {str: JSON.stringify(connectedToEndpoint)});
+            this.dataChannel_.send({str: JSON.stringify(connectedToEndpoint)});
             log.info(this.longId() + ': Connected to ' + JSON.stringify(connectedToEndpoint));
           });
       } else {
@@ -297,7 +297,7 @@ module RtcToNet {
       this.tcpConnection.dataFromSocketQueue.setSyncHandler((buffer) => {
         log.debug(this.longId() + ': passing on data from tcp connection to pc (' +
             buffer.byteLength + ' bytes)');
-        this.peerConnection_.send(this.channelLabel_, {buffer: buffer});
+        this.dataChannel_.send({buffer: buffer});
         this.bytesSentToPeer.handle(buffer.byteLength);
       });
       // Make sure that closing the TCP connection closes the peer connection

@@ -93,7 +93,7 @@ module SocksToRtc {
         this.start(
             new Tcp.Server(endpoint),
             obfuscate ?
-              freedom.churn(pcConfig) :
+              new Churn.Connection(pcConfig) :
               new WebRtc.PeerConnection(pcConfig));
       }
     }
@@ -102,7 +102,7 @@ module SocksToRtc {
     // Returns this.onceReady.
     public start = (
         tcpServer:Tcp.Server,
-        peerconnection:WebRtc.PeerConnection)
+        peerconnection:WebRtc.PeerConnectionInterface)
         : Promise<Net.Endpoint> => {
       if (this.tcpServer_) {
         throw new Error('already configured');
@@ -112,15 +112,14 @@ module SocksToRtc {
           .setSyncHandler(this.makeTcpToRtcSession);
       this.peerConnection_ = peerconnection;
 
-      this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
-			this.signalsForPeer = this.peerConnection_.signalForPeerQueue;
+      this.signalsForPeer = this.peerConnection_.signalForPeerQueue;
 
       // Start and listen for notifications.
       peerconnection.negotiateConnection();
       this.onceReady =
         Promise.all<any>([
           tcpServer.listen(),
-          peerconnection.onceConnected()
+          peerconnection.onceConnected
         ])
         .then((answers:any[]) => {
           return tcpServer.onceListening();
@@ -132,7 +131,7 @@ module SocksToRtc {
       this.onceReady.catch(this.fulfillStopping_);
       this.tcpServer_.onceShutdown()
           .then(this.fulfillStopping_, this.fulfillStopping_);
-      this.peerConnection_.onceDisconnected()
+      this.peerConnection_.onceDisconnected
           .then(this.fulfillStopping_, this.fulfillStopping_);
       this.onceStopped_ = this.onceStopping_.then(this.stopResources_);
 
@@ -169,7 +168,6 @@ module SocksToRtc {
         this.sessions_[tag] = session;
 
         session.start(
-            tag,
             tcpConnection,
             channel,
             this.bytesSentToPeer,
@@ -253,7 +251,7 @@ module SocksToRtc {
         bytesSentToPeer:Handler.Queue<number,void>,
         bytesReceivedFromPeer:Handler.Queue<number,void>)
         : Promise<Net.Endpoint> => {
-      this.channelLabel_ = channel.getLabel();
+      this.channelLabel_ = dataChannel.getLabel();
       this.tcpConnection_ = tcpConnection;
       this.dataChannel_ = dataChannel;
       this.bytesSentToPeer_ = bytesSentToPeer;
@@ -262,8 +260,6 @@ module SocksToRtc {
       // Startup notifications.
       this.onceReady = this.doAuthHandshake_().then(this.doRequestHandshake_);
       this.onceReady.then(this.linkTcpAndPeerConnectionData_);
-
-			dataChannel_.dataFromPeerQueue.setSyncHandler(this.handleDataFromPeer_);
 
       // Shutdown once TCP connection or datachannel terminate.
       this.onceReady.catch(this.fulfillStopping_);
@@ -295,7 +291,7 @@ module SocksToRtc {
       // DataChannel.close() returns void, implying that it is
       // effective immediately.
       this.dataChannel_.close();
-      return this.tcpConnection_.close();
+      return this.tcpConnection_.close().then((discard:any) => {});
     }
 
     public channelLabel = () : string => {
@@ -384,7 +380,7 @@ module SocksToRtc {
         }
         log.debug(this.longId() + ': dataFromPeer: ' + data.buffer.byteLength +
             ' bytes.');
-          this.bytesReceivedFromPeer_.handle(data.byteLength);
+          this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
         this.tcpConnection_.send(data.buffer);
       });
     }

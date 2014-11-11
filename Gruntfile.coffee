@@ -97,20 +97,6 @@ module.exports = (grunt) ->
           dest: 'build/regex2dfa/'
         ]
 
-      # Symlink the Chrome and Firefox builds of Freedom under build/freedom/.
-      freedom:
-        files: [ {
-          expand: true
-          cwd: path.dirname(require.resolve('freedom-for-chrome/Gruntfile'))
-          src: ['freedom-for-chrome.js']
-          dest: 'build/freedom/'
-        }, {
-          expand: true
-          cwd: path.dirname(require.resolve('freedom-for-firefox/Gruntfile'))
-          src: ['freedom-for-firefox.jsm']
-          dest: 'build/freedom/'
-        } ]
-
       # There's only one relevant file in this repo: ipaddr.min.js.
       ipaddrjs:
         files: [
@@ -235,6 +221,7 @@ module.exports = (grunt) ->
       #       https://github.com/uProxy/uproxy/issues/430
       turnFrontend:
         src: FILES.jasmine_helpers.concat([
+          'build/logging/logging.js'
           'build/turn-frontend/mocks.js'
           'build/turn-frontend/messages.js'
           'build/turn-frontend/turn-frontend.js'
@@ -247,6 +234,7 @@ module.exports = (grunt) ->
       #       https://github.com/uProxy/uproxy/issues/430
       churn:
         src: FILES.jasmine_helpers.concat([
+          'build/logging/logging.js'
           'build/churn/mocks.js'
           'build/churn/churn.js'
           'build/peerconnection/*.js'
@@ -257,11 +245,15 @@ module.exports = (grunt) ->
       #       https://github.com/uProxy/uproxy/issues/430
       socksToRtc:
         src: FILES.jasmine_helpers.concat([
+          'build/peerconnection/*.js'
+          'build/logging/logging.js'
           'build/handler/queue.js'
           'build/socks-to-rtc/mocks.js'
           'build/socks-to-rtc/socks-to-rtc.js'
         ])
         options:
+          outfile: 'build/socks-to-rtc/SpecRunner.html'
+          keepRunner: true
           specs: 'build/socks-to-rtc/*.spec.js'
       # TODO: rtcToNet tests require a bunch of other modules
       #       https://github.com/uProxy/uproxy/issues/430

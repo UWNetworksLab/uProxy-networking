@@ -23,14 +23,14 @@ freedom().on('handleSignalMessage', (signal:Churn.ChurnSignallingMessage) => {
   pc.handleSignalMessage(signal);
 });
 
-pc.onceConnecting().then(() => { log.info('connecting...'); });
+pc.onceConnecting.then(() => { log.info('connecting...'); });
 
 
 var connectDataChannel = (channel:WebRtc.DataChannel) => {
 	// Send messages over the datachannel, in response to events from the UI,
 	// and forward messages received on the datachannel to the UI.
 	freedom().on('send', (message:string) => {
-		channel.send('text', { str: message }).catch((e) => {
+    channel.send({ str: message }).catch((e:Error) => {
 			log.error('error sending message: ' + e.message);
 		});
 	});
