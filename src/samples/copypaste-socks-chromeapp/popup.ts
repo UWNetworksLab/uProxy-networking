@@ -91,10 +91,10 @@ freedom.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
   // Base64-encode the concatenated messages because some communication
   // channels are likely to transform portions of the raw concatenated JSON
   // into emoticons, whereas the base64 alphabet is much less prone to such
-  // unintended transormation.
-  var oldJson = base64Decode(model.outboundMessageValue.trim());
-  var newJson = oldJson + '\n' + JSON.stringify(signal);
-  model.outboundMessageValue = base64Encode(newJson);
+  // unintended transformation.
+  var oldConcatenatedJson = base64Decode(model.outboundMessageValue.trim());
+  var newConcatenatedJson = oldConcatenatedJson + '\n' + JSON.stringify(signal);
+  model.outboundMessageValue = base64Encode(newConcatenatedJson);
 });
 
 freedom.on('bytesReceived', (numNewBytesReceived:number) => {
