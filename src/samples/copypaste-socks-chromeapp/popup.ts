@@ -108,10 +108,8 @@ freedom.on('bytesSent', (numNewBytesSent:number) => {
 
 // Translation.
 
-/**
-  * Map of the supported languages to whether they are left-to-right or
-  * right-to-left languages.
-  */
+// Map of the supported languages to whether they are left-to-right or
+// right-to-left languages.
 var languageDirection :{[index:string]:string} = {
   'en' : 'ltr',
   'it' : 'ltr',
@@ -119,14 +117,11 @@ var languageDirection :{[index:string]:string} = {
   'fa' : 'rtl'
 };
 
-/**
-  * UI strings in the language selected by the user.
-  */
+// UI strings in the language selected by the user.
 var translatedStrings :{[index:string]:string} = {};
 
-/** Retrieve messages.json file of the appropriate language and insert
-  * strings into the application's UI.  
-  */
+// Retrieve messages.json file of the appropriate language and insert strings
+// into the application's UI.  
 var changeLanguage = (language:string) : void => {
   clearTranslatedStrings();
   var xhr = new XMLHttpRequest();
@@ -136,8 +131,7 @@ var changeLanguage = (language:string) : void => {
     if (this.readyState != 4) {
       return;
     }
-    // Translate the JSON format to a simple
-    // { key : value, ... } dictionary.
+    // Translate the JSON format to a simple { key : value, ... } dictionary.
     var retrievedMessages = JSON.parse(xhr.responseText);
     for (var key in retrievedMessages) {
       if (retrievedMessages.hasOwnProperty(key)) {
@@ -151,28 +145,22 @@ var changeLanguage = (language:string) : void => {
   xhr.send(null);  
 }
 
-/**
-  * Clears the dictionary of UI strings (i.e. before a new language
-  * dictionary is loaded).
-  */
+// Clears the dictionary of UI strings (i.e. before a new language dictionary
+// is loaded).
 var clearTranslatedStrings = () : void => {
   for (var key in translatedStrings) {
     delete translatedStrings[key];
   }
 }
 
-/**
-  * Return the language of the user's browser.
-  */
+// Return the language of the user's browser.
+//
 // TODO (lucyhe): find a better way to do this.
 var getBrowserLanguage = () : string => {
   return navigator.language.substring(0, 2);
 }
 
-/**
-  * Given a node, add translated strings to any text-containing
-  * child nodes.
-  */
+// Given a node, add translated strings to any text-containing child nodes.
 var addTranslatedStrings = (node:any) : void => {
   i18nTemplate.process(node, translatedStrings);
 }
