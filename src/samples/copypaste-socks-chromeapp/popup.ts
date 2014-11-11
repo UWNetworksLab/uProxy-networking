@@ -14,6 +14,16 @@ var model = { givingOrGetting : <string>null,
               totalBytesSent : 0,
             };
 
+// Define basee64 helper functions that are type-annotated and meaningfully
+// named.
+function base64Encode(unencoded:string): string {
+  return window.btoa(unencoded);
+}
+// Throws an exception if the input is malformed.
+function base64Decode(encoded:string): string {
+  return window.atob(encoded);
+}
+
 // Stores the parsed messages for use later, if & when the user clicks the
 // button for consuming the messages.
 var parsedInboundMessages :WebRtc.SignallingMessage[];
@@ -23,7 +33,16 @@ var parsedInboundMessages :WebRtc.SignallingMessage[];
 // appropriate. Returns null if the field contents are malformed.
 function parseInboundMessages(inboundMessageFieldValue:string)
     : WebRtc.SignallingMessage[] {
-  var signals :string[] = inboundMessageFieldValue.trim().split('\n');
+  // Base64-decode the pasted text.
+  var signalsString :string = null;
+  try {
+    signalsString = base64Decode(inboundMessageFieldValue.trim());
+  } catch (e) {
+    // TODO: Notify the user that the pasted text is malformed.
+    return;
+  }
+
+  var signals :string[] = signalsString.trim().split('\n');
 
   // Each line should be a JSON representation of a WebRtc.SignallingMessage.
   // Parse the lines here.
@@ -68,8 +87,14 @@ function consumeInboundMessage() : void {
 freedom.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
   model.readyForStep2 = true;
 
-  model.outboundMessageValue =
-      model.outboundMessageValue.trim() + '\n' + JSON.stringify(signal);
+  // Append the new signalling message to the previous message(s), if any.
+  // Base64-encode the concatenated messages because some communication
+  // channels are likely to transform portions of the raw concatenated JSON
+  // into emoticons, whereas the base64 alphabet is much less prone to such
+  // unintended transormation.
+  var oldJson = base64Decode(model.outboundMessageValue.trim());
+  var newJson = oldJson + '\n' + JSON.stringify(signal);
+  model.outboundMessageValue = base64Encode(newJson);
 });
 
 freedom.on('bytesReceived', (numNewBytesReceived:number) => {
