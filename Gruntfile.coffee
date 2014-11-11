@@ -166,6 +166,8 @@ module.exports = (grunt) ->
       socksToRtcSpecDecl: Rule.typescriptSpecDecl 'socks-to-rtc'
 
       rtcToNet: Rule.typescriptSrc 'rtc-to-net'
+      rtcToNetSpecDecl: Rule.typescriptSpecDecl 'rtc-to-net'
+
       # Benchmark
       benchmark: Rule.typescriptSrc 'benchmark'
       options: {
@@ -213,6 +215,7 @@ module.exports = (grunt) ->
 
     jasmine:
       socksCommon: Rule.jasmineSpec 'socks-common'
+      simpleTransformers: Rule.jasmineSpec 'simple-transformers'
       # TODO: turn tests require arraybuffers
       #       https://github.com/uProxy/uproxy/issues/430
       turnFrontend:
@@ -235,8 +238,6 @@ module.exports = (grunt) ->
         ]),
         options:
           specs: 'build/churn/*.spec.js'
-      simpleTransformers: Rule.jasmineSpec 'simple-transformers'
-
       # TODO: socksToRtc tests require a bunch of other modules
       #       https://github.com/uProxy/uproxy/issues/430
       socksToRtc:
@@ -247,6 +248,16 @@ module.exports = (grunt) ->
         ])
         options:
           specs: 'build/socks-to-rtc/*.spec.js'
+      # TODO: rtcToNet tests require a bunch of other modules
+      #       https://github.com/uProxy/uproxy/issues/430
+      rtcToNet:
+        src: FILES.jasmine_helpers.concat([
+          'build/handler/queue.js'
+          'build/rtc-to-net/mocks.js'
+          'build/rtc-to-net/rtc-to-net.js'
+        ])
+        options:
+          specs: 'build/rtc-to-net/*.spec.js'
 
     integration:
       tcp:
@@ -353,6 +364,7 @@ module.exports = (grunt) ->
     'socksCommon'
     'ipaddrjs'
     'ts:rtcToNet'
+    'ts:rtcToNetSpecDecl'
     'copy:rtcToNet'
   ]
 
