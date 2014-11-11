@@ -1,4 +1,4 @@
-declare var freedom:any;
+/// <reference path='../../freedom/typings/freedom.d.ts' />
 
 var script = document.createElement('script');
 script.src = 'lib/freedom/freedom-for-chrome.js';
