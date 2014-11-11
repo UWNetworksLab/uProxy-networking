@@ -272,8 +272,7 @@ module.exports = (grunt) ->
             {path: 'build/logging/logging.js', include: false}
             {path: 'build/handler/queue.js', include: false}
             {path: 'build/tcp/tcp.js', include: false}
-            {path: 'build/tcp/freedom-module.json', include: false}
-            {path: 'build/tcp/test.js', include: false}
+            {path: 'build/tcp/integration.*', include: false}
           ]
           keepBrowser: true
 

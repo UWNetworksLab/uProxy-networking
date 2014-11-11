@@ -34,8 +34,10 @@ freedom().on('listen', () => {
 // Starts an echo server on a free port and makes two connections to that
 // port before shutting down the server.
 // Tests that:
-//  - connections receive shutdown events
+//  - client sockets receive connection events
+//  - server and client sockets receive disconnected events
 //  - onceShutdown fulfills
+// TODO: verify server receives connection events
 freedom().on('shutdown', () => {
   var server = new Tcp.Server({
     address: '127.0.0.1',
