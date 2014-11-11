@@ -39,7 +39,7 @@ function parseInboundMessages(inboundMessageFieldValue:string)
     signalsString = base64Decode(inboundMessageFieldValue.trim());
   } catch (e) {
     // TODO: Notify the user that the pasted text is malformed.
-    return;
+    return null;
   }
 
   var signals :string[] = signalsString.trim().split('\n');
