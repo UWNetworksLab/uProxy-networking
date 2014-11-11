@@ -14,3 +14,4 @@ data/*
 .tscache
 dist
 third_party/bower
+.build
