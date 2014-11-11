@@ -481,7 +481,6 @@ module.exports = (grunt) ->
 
   taskManager.add 'churn', [
     'base'
-    'turn'
     'churnPipe'
     'ts:churn'
     'ts:churnSpecDecl'
