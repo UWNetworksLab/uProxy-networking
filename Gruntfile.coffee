@@ -103,6 +103,7 @@ module.exports = (grunt) ->
       rtcToNet: Rule.copyModule 'rtc-to-net'
       benchmark: Rule.copyModule 'benchmark'
       echo: Rule.copyModule 'echo'
+      simpleSocks: Rule.copyModule 'simple-socks'
 
       echoServerChromeApp: Rule.copyModule 'samples/echo-server-chromeapp'
       echoServerChromeAppLib: Rule.copySampleFiles 'samples/echo-server-chromeapp'
@@ -114,7 +115,7 @@ module.exports = (grunt) ->
       simpleSocksChromeAppLib: Rule.copySampleFiles 'samples/simple-socks-chromeapp'
 
       simpleSocksFirefoxApp: Rule.copyModule 'samples/simple-socks-firefoxapp'
-      simpleSocksFirefoxAppLib: Rule.copySampleFiles 'samples/simple-socks-firefoxapp'
+      simpleSocksFirefoxAppLib: Rule.copySampleFiles 'samples/simple-socks-firefoxapp/data'
 
       copypasteSocksChromeApp: Rule.copyModule 'samples/copypaste-socks-chromeapp'
       copypasteSocksChromeAppLib: Rule.copySampleFiles 'samples/copypaste-socks-chromeapp'
@@ -161,6 +162,7 @@ module.exports = (grunt) ->
       }
 
       echo: Rule.typescriptSrc 'echo'
+      simpleSocks: Rule.typescriptSrc 'simple-socks'
 
       echoServerChromeApp: Rule.typescriptSrc 'samples/echo-server-chromeapp/'
       echoServerFirefoxApp: Rule.typescriptSrc 'samples/echo-server-firefoxapp/'
@@ -347,6 +349,7 @@ module.exports = (grunt) ->
     'ts:echo'
     'copy:echo'
   ]
+
   taskManager.add 'echoServerChromeApp', [
     'base'
     'echo'
@@ -368,9 +371,16 @@ module.exports = (grunt) ->
     'echoServerFirefoxApp'
   ]
 
-  taskManager.add 'simpleSocksChromeApp', [
+  taskManager.add 'simpleSocks', [
     'base'
     'socks'
+    'ts:simpleSocks'
+    'copy:simpleSocks'
+  ]
+
+  taskManager.add 'simpleSocksChromeApp', [
+    'base'
+    'simpleSocks'
     'ts:simpleSocksChromeApp'
     'copy:simpleSocksChromeApp'
     'copy:simpleSocksChromeAppLib'
@@ -378,7 +388,7 @@ module.exports = (grunt) ->
 
   taskManager.add 'simpleSocksFirefoxApp', [
     'base'
-    'socks'
+    'simpleSocks'
     'ts:simpleSocksFirefoxApp'
     'copy:simpleSocksFirefoxApp'
     'copy:simpleSocksFirefoxAppLib'
