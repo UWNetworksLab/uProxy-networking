@@ -133,3 +133,12 @@ freedom.on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
     rtcNet.handleSignalFromPeer(signal);
   }
 });
+
+// Stops proxying.
+freedom.on('stop', () => {
+  if (socksRtc !== undefined) {
+    socksRtc.stop();
+  } else if (rtcNet !== undefined) {
+    rtcNet.close();
+  }
+});
