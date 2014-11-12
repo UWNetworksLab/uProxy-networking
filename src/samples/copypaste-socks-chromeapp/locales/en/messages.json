@@ -55,5 +55,23 @@
   },
   "startProxying" : {
     "message" : "Start proxying"
+  },
+  "proxyingStateNotYetAttempted" : {
+    "message" : "Sharing status: Waiting for user input"
+  },
+  "proxyingStateConnecting" : {
+    "message" : "Sharing status: Waiting for connection..."
+  },
+  "proxyingStateStarted" : {
+    "message" : "Sharing status: Active"
+  },
+  "proxyingStateStopped" : {
+    "message" : "Sharing status: Stopped"
+  },
+  "proxyEndpoint" : {
+    "message" : "SOCKS proxy is listening on "
+  },
+  "proxyEndpointUsageExample" : {
+    "message" : "Usage example:"
   }
 }
