@@ -60,7 +60,7 @@
     "message" : "تقاسم الوضع: في انتظار إدخال المستخدم"
   },
   "proxyingStateConnecting" : {
-    "message" : "تقاسم الوضع: توصيل ..."
+    "message" : "وضع مشاركة: في انتظار اتصال ..."
   },
   "proxyingStateStarted" : {
     "message" : "وضع مشاركة: نشاطات"

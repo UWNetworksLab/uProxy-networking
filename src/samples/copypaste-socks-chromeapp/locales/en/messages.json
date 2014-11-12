@@ -60,7 +60,7 @@
     "message" : "Sharing status: Waiting for user input"
   },
   "proxyingStateConnecting" : {
-    "message" : "Sharing status: Connecting..."
+    "message" : "Sharing status: Waiting for connection..."
   },
   "proxyingStateStarted" : {
     "message" : "Sharing status: Active"

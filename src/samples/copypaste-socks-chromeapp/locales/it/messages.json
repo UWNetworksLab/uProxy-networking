@@ -60,7 +60,7 @@
     "message" : "Stato condivisione: In attesa di input da parte dell'utente"
   },
   "proxyingStateConnecting" : {
-    "message" : "Stato condivisione: Connessione in corso ..."
+    "message" : "Stato condivisione: In attesa di connessione ..."
   },
   "proxyingStateStarted" : {
     "message" : "Stato condivisione: Attivo"
