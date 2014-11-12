@@ -84,6 +84,7 @@ function consumeInboundMessage() : void {
   for (var i = 0; i < parsedInboundMessages.length; i++) {
     freedom.emit('handleSignalMessage', parsedInboundMessages[i]);
   }
+  model.proxyingState = 'connecting';
   // TODO: Report success/failure to the user.
 };
 
@@ -139,7 +140,7 @@ var translatedStrings :{[index:string]:string} = {};
 var changeLanguage = (language:string) : void => {
   clearTranslatedStrings();
   var xhr = new XMLHttpRequest();
-  xhr.open('GET','locales/' + language + '/messages.json',true);
+  xhr.open('GET', 'locales/' + language + '/messages.json', true);
 
   xhr.onload = function() {
     if (this.readyState != 4) {
