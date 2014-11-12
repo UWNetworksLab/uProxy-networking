@@ -139,7 +139,7 @@ module RtcToNet {
         log.debug('discarded session ' + channelLabel + ' (' +
             Object.keys(this.sessions_).length + ' sessions remaining)');
       };
-      session.onceClosed.then(discard, (e:Error) => {
+      session.onceStopped().then(discard, (e:Error) => {
         log.error('session ' + channelLabel + ' closed with error: ' + e.message);
         discard();
       });
@@ -236,13 +236,16 @@ module RtcToNet {
     //  - TCP connection or datachannel termination
     //  - manual invocation of close()
     // Should never reject.
-    public onceClosed :Promise<void>;
+    private onceStopped_ :Promise<void>;
+    public onceStopped = () : Promise<void> => { return this.onceStopped_; }
 
     // TODO: This will be much cleaner once we move off uproxypeerconnection.
     private dataFromPeer_ :Handler.Queue<WebRtc.Data,void> =
         new Handler.Queue<WebRtc.Data,void>();
 
-    // TODO: should datachannel already be open?
+    // The supplied datachannel must already be successfully established.
+    // TODO: Rather than passing a reference to the whole peerconnection, we
+    //       should only pass a reference to the datachannel.
     constructor(
         private channelLabel_:string,
         private peerConnection_:freedom_UproxyPeerConnection.Pc,
@@ -251,33 +254,29 @@ module RtcToNet {
     // Returns onceReady.
     public start = () : Promise<void> => {
       this.onceReady = this.receiveEndpointFromPeer_()
-          .then(this.getTcpConnection_)
-          .then((tcpConnection:Tcp.Connection) => {
-            this.tcpConnection_ = tcpConnection;
-            // Shutdown once the TCP connection terminates.
-            this.tcpConnection_.onceClosed
-                .then(() => { log.debug('tcp connection closed'); })
-                .then(this.fulfillStopping_);
-            return this.tcpConnection_.onceConnected;
-          })
-          .then(this.returnEndpointToPeer_);
+        .then(this.getTcpConnection_)
+        .then((tcpConnection:Tcp.Connection) => {
+          this.tcpConnection_ = tcpConnection;
+          // Shutdown once the TCP connection terminates.
+          this.tcpConnection_.onceClosed.then(this.fulfillStopping_);
+          return this.tcpConnection_.onceConnected;
+        })
+        .then(this.returnEndpointToPeer_);
       this.onceReady.then(this.linkTcpAndPeerConnectionData_);
 
       this.onceReady.catch(this.fulfillStopping_);
       this.peerConnection_.onceDataChannelClosed(this.channelLabel_)
-          .then(() => { log.debug('datachannel closed'); })
-          .then(this.fulfillStopping_);
-      this.onceClosed = this.onceStopping_.then(this.stopResources_);
+        .then(this.fulfillStopping_);
+      this.onceStopped_ = this.onceStopping_.then(this.stopResources_);
 
       return this.onceReady;
     }
 
     // Initiates shutdown of the TCP server and peerconnection.
     // Returns onceStopped.
-    // TODO: rename stop, ala SocksToRtc (API breakage).
-    public close = () : Promise<void> => {
+    public stop = () : Promise<void> => {
       this.fulfillStopping_();
-      return this.onceClosed;
+      return this.onceStopped_;
     }
 
     // Closes the TCP connection and datachannel if they haven't already
@@ -285,7 +284,7 @@ module RtcToNet {
     // close() methods should ever reject, this should never reject.
     private stopResources_ = () : Promise<void> => {
       var shutdownPromises :Promise<any>[] = [];
-      if (!this.tcpConnection_.isClosed()) {
+      if (this.tcpConnection_ && (!this.tcpConnection_.isClosed())) {
         shutdownPromises.push(this.tcpConnection_.close());
       }
       // uproxypeerconnection doesn't allow us query whether a
