@@ -272,7 +272,7 @@ module RtcToNet {
       return this.onceReady;
     }
 
-    // Initiates shutdown of the TCP server and peerconnection.
+    // Initiates shutdown of the TCP connection and peerconnection.
     // Returns onceStopped.
     public stop = () : Promise<void> => {
       this.fulfillStopping_();
@@ -309,7 +309,8 @@ module RtcToNet {
     }
 
     // Fulfills with the endpoint requested by the SOCKS client.
-    // Rejects if ............
+    // Rejects if the received message is not for an endpoint
+    // or if the received endpoint cannot be parsed.
     // TODO: needs tests (mocked by several tests)
     private receiveEndpointFromPeer_ = () : Promise<Net.Endpoint> => {
       return this.receiveNext_().then((data:WebRtc.Data) => {
@@ -336,18 +337,17 @@ module RtcToNet {
     }
 
     // Fulfills once the connected endpoint has been returned to the SOCKS client.
-    // Rejects if ......
+    // Rejects if the endpoint cannot be sent to the SOCKS client.
     private returnEndpointToPeer_ = (endpoint:Net.Endpoint) : Promise<void> => {
-      log.debug('returning connected endpoint to SOCKS client: ' +
-            endpoint.address + ':' + endpoint.port);
       return this.peerConnection_.send(this.channelLabel_, {
         str: JSON.stringify(endpoint)
       });
     }
 
-    // Assumes that xxx has completed.
+    // Assumes that |receiveEndpointFromPeer| and |getTcpConnection_|
+    // have completed.
     private linkTcpAndPeerConnectionData_ = () : void => {
-      // Data from the TCP socket goes to the dtaa channel.
+      // Data from the TCP socket goes to the data channel.
       this.tcpConnection_.dataFromSocketQueue.setSyncHandler((buffer) => {
         log.debug(this.longId() + ': passing on data from tcp connection to pc (' +
             buffer.byteLength + ' bytes)');
