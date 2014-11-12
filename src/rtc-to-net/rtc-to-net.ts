@@ -31,6 +31,9 @@ module RtcToNet {
     // (externally provided) proxyconfig.
     public proxyConfig :ProxyConfig;
 
+    // Message handler queues to/from the peer.
+    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
+
     // The two Queues below only count bytes transferred between the SOCKS
     // client and the remote host(s) the client wants to connect to. WebRTC
     // overhead (DTLS headers, ICE initiation, etc.) is not included (because
@@ -42,22 +45,35 @@ module RtcToNet {
     // defined in the class that creates an instance of RtcToNet.
     public bytesReceivedFromPeer :Handler.Queue<number, void> =
         new Handler.Queue<number, void>();
+
     // Queue of the number of bytes sent to the peer. Handler is typically
     // defined in the class that creates an instance of RtcToNet.
     public bytesSentToPeer :Handler.Queue<number, void> =
         new Handler.Queue<number, void>();
-    // This promise is fulfilled once the peer connection is stablished and
-    // this module is ready to start making tcp connections.
-    public onceReady :Promise<void>;
-    // Fulfilled when the peer connection is closed. Once closed fulfills
-    // implies that every tcp-connection is closed, or closing. This is handled
-    // by the session (by handling each data channels close event).
-    public onceClosed :Promise<void>;
 
-    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
+    // Fulfills once the module is ready to allocate sockets.
+    // Rejects if a peerconnection could not be made for any reason.
+    public onceReady :Promise<void>;
+
+    // Call this to initiate shutdown.
+    private fulfillStopping_ :() => void;
+    private onceStopping_ = new Promise((F, R) => {
+      this.fulfillStopping_ = F;
+    });
+
+    // Fulfills once the module has terminated and the peerconnection has
+    // been shutdown.
+    // This can happen in response to:
+    //  - startup failure
+    //  - peerconnection termination
+    //  - manual invocation of close()
+    // Should never reject.
+    // TODO: rename onceStopped, ala SocksToRtc (API breakage).
+    public onceClosed :Promise<void>;
 
     // The connection to the peer that is acting as a proxy client.
     private peerConnection_  :WebRtc.PeerConnection = null;
+
     // The |sessions_| map goes from WebRTC data-channel labels to the Session.
     // Most of the wiring to manage this relationship happens via promises. We
     // need this only for data being received from a peer-connection data
@@ -66,66 +82,81 @@ module RtcToNet {
     // DataChannel and PeerConnection to be used directly and not via a freedom
     // interface. Then all work can be done by promise binding and this can be
     // removed.
-    private sessions_ :{ [channelLabel:string] : Session }
+    private sessions_ :{ [channelLabel:string] : Session } = {};
 
-    // SocsToRtc server is given a localhost transport address (endpoint) to
-    // start a socks server listening to, and a config for setting up a peer-
-    // connection. If the given port is zero, platform chooses a port and this
-    // listening port is returned by the promise.
-    //
-    // TODO: add checking of fingerprints.
+    // As configure() but handles creation of peerconnection.
     constructor(
-        pcConfig:WebRtc.PeerConnectionConfig,
-        proxyConfig:ProxyConfig,
+        pcConfig?:WebRtc.PeerConnectionConfig,
+        proxyConfig?:ProxyConfig,
         obfuscate?:boolean) {
-      // Messages received via signalling channel must reach the remote peer
-      // through something other than the peerconnection. (e.g. XMPP). This is
-      // the Freedom channel object to sends signalling messages to the peer.
-      // SOCKS sessions biject to peerconnection datachannels.
-      this.sessions_ = {};
-      this.proxyConfig = proxyConfig;
-      this.peerConnection_ = obfuscate ?
-          new Churn.Connection(pcConfig) :
-          new WebRtc.PeerConnection(pcConfig);
-      this.peerConnection_.peerOpenedChannelQueue.setSyncHandler((channel:WebRtc.DataChannel) => {
-        var channelLabel = channel.getLabel();
-        if(channelLabel === '_control_') {
-          channel.dataFromPeerQueue.setSyncHandler((d:WebRtc.Data) => {
-				this.handleControlMessage_(d.str);
-			});
-          log.debug('control channel openned.');
-          return;
-        }
-        // TODO: This can be removed once https://github.com/uProxy/uproxy/issues/347 is fixed.
-        if(channelLabel === '') {
-          log.debug('dummy init channel.');
-          return;
-        }
-        var session = new Session(channel,
-          proxyConfig, this.bytesReceivedFromPeer, this.bytesSentToPeer);
-        this.sessions_[channelLabel] = session;
-        session.onceClosed.then(() => {
-          delete this.sessions_[channelLabel];
-        });
-      });
-      this.signalsForPeer = this.peerConnection_.signalForPeerQueue;
-      this.onceReady = this.peerConnection_.onceConnected.then(() => {});
-      this.onceClosed = this.peerConnection_.onceDisconnected;
-      // TODO: add checking that the peer's fingerprint matches the provided
-      // fingerprint.
+      if (pcConfig) {
+        this.start(
+            proxyConfig,
+            obfuscate ?
+                new Churn.Connection(pcConfig) :
+                new WebRtc.PeerConnection(pcConfig));
+      }
     }
 
-    // Close the peer-connection (and hence all data channels) and all
-    // associated TCP connections. Note: once closed, cannot be openned again.
-    public close = () => {
-      this.peerConnection_.close();
-      // CONSIDER: will peerConnection's closing of channels make this un-
-      // needed? is it better to include this anyway?
-      var channelLabel :string;
-      for (channelLabel in this.sessions_) {
-        this.sessions_[channelLabel].close();
-        delete this.sessions_[channelLabel];
+    // Starts with the supplied peerconnection.
+    // Returns this.onceReady.
+    public start = (
+        proxyConfig:ProxyConfig,
+        peerconnection:WebRtc.PeerConnection)
+        : Promise<void> => {
+      if (this.peerConnection_) {
+        throw new Error('already configured');
       }
+      this.proxyConfig = proxyConfig;
+      this.peerConnection_ = peerconnection;
+
+      this.signalsForPeer = this.peerConnection_.signalForPeerQueue;
+      this.peerConnection_.peerOpenedChannelQueue.setSyncHandler(
+          this.onPeerOpenedChannel_);
+
+      this.onceReady = this.peerConnection_.onceConnected.then(() => {});
+      this.onceReady.catch(this.fulfillStopping_);
+      this.peerConnection_.onceDisconnected
+          .then(this.fulfillStopping_, this.fulfillStopping_);
+      this.onceClosed = this.onceStopping_.then(this.stopResources_);
+
+      return this.onceReady;
+    }
+
+    private onPeerOpenedChannel_ = (channel:WebRtc.DataChannel) => {
+      var channelLabel = channel.getLabel();
+      log.debug('creating new session for channel ' + channelLabel);
+
+      var session = new Session(
+          channel,
+          this.proxyConfig,
+          this.bytesReceivedFromPeer,
+          this.bytesSentToPeer);
+      this.sessions_[channelLabel] = session;
+
+      var discard = () => {
+        delete this.sessions_[channelLabel];
+        log.debug('discarded session ' + channelLabel + ' (' +
+            Object.keys(this.sessions_).length + ' sessions remaining)');
+      };
+      session.onceClosed.then(discard, (e:Error) => {
+        log.warn('session ' + channelLabel + ' closed with error: ' + e.message);
+        discard();
+      });
+    }
+
+    // Initiates shutdown of the peerconnection.
+    // Returns onceClosed.
+    // TODO: rename stop, ala SocksToRtc (API breakage).
+    public close = () : Promise<void> => {
+      this.fulfillStopping_();
+      return this.onceClosed;
+    }
+
+    // Shuts down the peerconnection, fulfilling it has terminated.
+    // TODO: close all sessions and return asynchronously
+    public stopResources_ = () => {
+      this.peerConnection_.close();
     }
 
     public handleSignalFromPeer = (signal:WebRtc.SignallingMessage)

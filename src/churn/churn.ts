@@ -81,7 +81,7 @@ module Churn {
     public pcState :WebRtc.State;
     public dataChannels :{[channelLabel:string] : WebRtc.DataChannel};
     public peerOpenedChannelQueue :Handler.Queue<WebRtc.DataChannel, void>;
-    public signalForPeerQueue :Handler.Queue<Churn.ChurnSignallingMessage, void>;    
+    public signalForPeerQueue :Handler.Queue<Churn.ChurnSignallingMessage, void>;
     public peerName :string;
  
     // A short-lived connection used to determine network addresses on which

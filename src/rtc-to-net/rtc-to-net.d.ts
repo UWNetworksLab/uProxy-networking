@@ -14,7 +14,7 @@ declare module RtcToNet {
                 obfuscate?:boolean);
     public start :(
         proxyConfig:ProxyConfig,
-        peerconnection:freedom_UproxyPeerConnection.Pc) => Promise<void>;
+        peerconnection:WebRtc.PeerConnection) => Promise<void>;
     public proxyConfig :ProxyConfig;
     public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
     public bytesReceivedFromPeer :Handler.Queue<number, void>;

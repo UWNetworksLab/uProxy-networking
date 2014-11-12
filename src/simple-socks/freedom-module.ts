@@ -1,10 +1,10 @@
-/// <reference path='../../rtc-to-net/rtc-to-net.d.ts' />
-/// <reference path='../../socks-to-rtc/socks-to-rtc.d.ts' />
+/// <reference path='../rtc-to-net/rtc-to-net.d.ts' />
+/// <reference path='../socks-to-rtc/socks-to-rtc.d.ts' />
 
-/// <reference path='../../webrtc/peerconnection.d.ts' />
-/// <reference path='../../logging/logging.d.ts' />
-/// <reference path='../../freedom/typings/freedom.d.ts' />
-/// <reference path='../../networking-typings/communications.d.ts' />
+/// <reference path='../webrtc/peerconnection.d.ts' />
+/// <reference path='../logging/logging.d.ts' />
+/// <reference path='../freedom/typings/freedom.d.ts' />
+/// <reference path='../networking-typings/communications.d.ts' />
 
 var log :Logging.Log = new Logging.Log('simple-socks');
 
