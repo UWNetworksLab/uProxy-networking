@@ -33,6 +33,7 @@ module.exports = (grunt) ->
           filter: 'isFile'
           dest: 'build/'
         ]
+
       # Symlink each directory under third_party/ under build/third_party/.
       thirdParty:
         files: [
