@@ -29,7 +29,8 @@ declare module RtcToNet {
   class Session {
     constructor(channelLabel_:string,
                 peerConnection_:freedom_UproxyPeerConnection.Pc,
-                proxyConfig:ProxyConfig);
+                proxyConfig:ProxyConfig,
+                bytesSentToPeer:Handler.Queue<number,void>);
 
     public start :() => Promise<void>;
     public onceReady :Promise<void>;

@@ -130,7 +130,8 @@ module RtcToNet {
       var session = new Session(
           channelLabel,
           this.peerConnection_,
-          this.proxyConfig);
+          this.proxyConfig,
+          this.bytesSentToPeer);
       this.sessions_[channelLabel] = session;
       session.start();
 
@@ -249,7 +250,8 @@ module RtcToNet {
     constructor(
         private channelLabel_:string,
         private peerConnection_:freedom_UproxyPeerConnection.Pc,
-        private proxyConfig_:ProxyConfig) {}
+        private proxyConfig_:ProxyConfig,
+        private bytesSentToPeer_:Handler.Queue<number,void>) {}
 
     // Returns onceReady.
     public start = () : Promise<void> => {
@@ -352,7 +354,7 @@ module RtcToNet {
         log.debug(this.longId() + ': passing on data from tcp connection to pc (' +
             buffer.byteLength + ' bytes)');
         this.peerConnection_.send(this.channelLabel_, {buffer: buffer});
-        // this.bytesSentToPeer.handle(buffer.byteLength);
+        this.bytesSentToPeer_.handle(buffer.byteLength);
       });
       // Data from the datachannel goes to the TCP socket.
       this.dataFromPeer_.setSyncHandler((data:WebRtc.Data) => {

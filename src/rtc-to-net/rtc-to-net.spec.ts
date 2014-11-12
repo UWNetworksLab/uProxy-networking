@@ -73,9 +73,11 @@ describe('RtcToNet', function() {
 });
 
 describe("RtcToNet session", function() {
+  var session :RtcToNet.Session;
+
   var mockTcpConnection :Tcp.Connection;
   var mockPeerconnection :freedom_UproxyPeerConnection.Pc;
-  // var mockBytesSent :Handler.Queue<number,void>;
+  var mockBytesSent :Handler.Queue<number,void>;
 
   beforeEach(function() {
     mockTcpConnection = jasmine.createSpyObj('tcp connection', [
@@ -88,13 +90,18 @@ describe("RtcToNet session", function() {
         'onceDataChannelClosed',
         'closeDataChannel'
       ]);
-    // mockBytesSent = jasmine.createSpyObj('bytes sent handler', [
-    //     'handle'
-    //   ]);
+    mockBytesSent = jasmine.createSpyObj('bytes sent handler', [
+        'handle'
+      ]);
+
+    session  = new RtcToNet.Session(
+        'buzz',
+        mockPeerconnection,
+        mockProxyConfig,
+        mockBytesSent);
   });
 
   it('onceReady fulfills with listening endpoint on successful negotiation', (done) => {
-    var session  = new RtcToNet.Session('buzz', mockPeerconnection, mockProxyConfig);
     spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockEndpoint));
     spyOn(session, 'returnEndpointToPeer_').and.returnValue(Promise.resolve());
     spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
@@ -108,7 +115,6 @@ describe("RtcToNet session", function() {
   });
 
   it('onceReady rejects and onceStopped fulfills on unsuccessful endpoint negotiation', (done) => {
-    var session  = new RtcToNet.Session('buzz', mockPeerconnection, mockProxyConfig);
     spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.reject(new Error('bad format')));
     spyOn(session, 'returnEndpointToPeer_').and.returnValue(Promise.resolve());
     spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
@@ -122,7 +128,6 @@ describe("RtcToNet session", function() {
   });
 
   it('onceStopped fulfills on datachannel termination', (done) => {
-    var session  = new RtcToNet.Session('buzz', mockPeerconnection, mockProxyConfig);
     spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockEndpoint));
     spyOn(session, 'returnEndpointToPeer_').and.returnValue(Promise.resolve());
     spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
@@ -135,7 +140,6 @@ describe("RtcToNet session", function() {
   });
 
   it('onceStopped fulfills on TCP connection termination', (done) => {
-    var session  = new RtcToNet.Session('buzz', mockPeerconnection, mockProxyConfig);
     spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockEndpoint));
     spyOn(session, 'returnEndpointToPeer_').and.returnValue(Promise.resolve());
     spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
@@ -148,7 +152,6 @@ describe("RtcToNet session", function() {
   });
 
   it('onceStopped fulfills on call to stop', (done) => {
-    var session  = new RtcToNet.Session('buzz', mockPeerconnection, mockProxyConfig);
     spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockEndpoint));
     spyOn(session, 'returnEndpointToPeer_').and.returnValue(Promise.resolve());
     spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
