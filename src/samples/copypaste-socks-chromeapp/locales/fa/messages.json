@@ -55,5 +55,23 @@
   },
   "startProxying": {
     "message": "شروع وکالتی"
+  },
+  "proxyingStateNotYetAttempted" : {
+    "message" : "به اشتراک گذاری وضعیت: در حال انتظار برای ورودی کاربر"
+  },
+  "proxyingStateConnecting" : {
+    "message" : "به اشتراک گذاری وضعیت: اتصال ..."
+  },
+  "proxyingStateStarted" : {
+    "message" : "به اشتراک گذاری وضعیت: فعال"
+  },
+  "proxyingStateStopped" : {
+    "message" : "به اشتراک گذاری وضعیت: متوقف"
+  },
+  "proxyEndpoint" : {
+    "message" : " پروکسی SOCKS است گوش دادن بر روی"
+  },
+  "proxyEndpointUsageExample" : {
+    "message" : "طریقه استفاده به عنوان مثال:"
   }
 }
