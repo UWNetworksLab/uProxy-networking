@@ -4,7 +4,7 @@
 /// <reference path='../../webrtc/peerconnection.d.ts' />
 
 // 'model' object contains variables about the state of the application.
-// Polymer elements will bind to model so that the elements' style and 
+// Polymer elements will bind to model so that the elements' style and
 // contents are up to date.
 var model = { givingOrGetting : <string>null,
               readyForStep2 : false,
@@ -40,7 +40,7 @@ function parseInboundMessages(inboundMessageFieldValue:string)
     signalsString = base64Decode(inboundMessageFieldValue.trim());
   } catch (e) {
     // TODO: Notify the user that the pasted text is malformed.
-    return;
+    return null;
   }
 
   var signals :string[] = signalsString.trim().split('\n');
@@ -72,7 +72,7 @@ function parseInboundMessages(inboundMessageFieldValue:string)
 
   return parsedSignals;
 }
-  
+
 // Forwards each line from the paste box to the Freedom app, which
 // interprets each as a signalling channel message. The Freedom app
 // knows whether this message should be sent to the socks-to-rtc
@@ -117,10 +117,8 @@ freedom.on('proxyingStopped', () => {
 
 // Translation.
 
-/**
-  * Map of the supported languages to whether they are left-to-right or
-  * right-to-left languages.
-  */
+// Map of the supported languages to whether they are left-to-right or
+// right-to-left languages.
 var languageDirection :{[index:string]:string} = {
   'en' : 'ltr',
   'it' : 'ltr',
@@ -128,25 +126,21 @@ var languageDirection :{[index:string]:string} = {
   'fa' : 'rtl'
 };
 
-/**
-  * UI strings in the language selected by the user.
-  */
+// UI strings in the language selected by the user.
 var translatedStrings :{[index:string]:string} = {};
 
-/** Retrieve messages.json file of the appropriate language and insert
-  * strings into the application's UI.  
-  */
+// Retrieve messages.json file of the appropriate language and insert strings
+// into the application's UI.
 var changeLanguage = (language:string) : void => {
   clearTranslatedStrings();
   var xhr = new XMLHttpRequest();
   xhr.open('GET','locales/' + language + '/messages.json',true);
-  
+
   xhr.onload = function() {
     if (this.readyState != 4) {
       return;
     }
-    // Translate the JSON format to a simple
-    // { key : value, ... } dictionary.
+    // Translate the JSON format to a simple { key : value, ... } dictionary.
     var retrievedMessages = JSON.parse(xhr.responseText);
     for (var key in retrievedMessages) {
       if (retrievedMessages.hasOwnProperty(key)) {
@@ -157,31 +151,25 @@ var changeLanguage = (language:string) : void => {
     addTranslatedStrings(htmlNode);
     htmlNode.setAttribute('dir', languageDirection[language]);
   }
-  xhr.send(null);  
+  xhr.send(null);
 }
 
-/**
-  * Clears the dictionary of UI strings (i.e. before a new language
-  * dictionary is loaded).
-  */
+// Clears the dictionary of UI strings (i.e. before a new language dictionary
+// is loaded).
 var clearTranslatedStrings = () : void => {
   for (var key in translatedStrings) {
     delete translatedStrings[key];
   }
 }
 
-/**
-  * Return the language of the user's browser.
-  */
+// Return the language of the user's browser.
+//
 // TODO (lucyhe): find a better way to do this.
 var getBrowserLanguage = () : string => {
   return navigator.language.substring(0, 2);
 }
 
-/**
-  * Given a node, add translated strings to any text-containing
-  * child nodes.
-  */
+// Given a node, add translated strings to any text-containing child nodes.
 var addTranslatedStrings = (node:any) : void => {
   i18nTemplate.process(node, translatedStrings);
 }
