@@ -26,7 +26,7 @@
       <div id='step2ContainerNode' style='display: {{ model.readyForStep2 ? "block" : "none" }};'>
         <textarea id='outboundMessageNode' disabled value='{{ model.outboundMessageValue }}'></textarea>
         <p><bdi i18n-content='copyPasteAndSend'></bdi></p>
-        <p class='warning'><bdi i18n-content='warning'></bdi></p><br>
+        <p class='warning'><bdi i18n-content='warning'></bdi></p>
         <p><bdi i18n-content='pasteAndStartProxying'></bdi></p>
         <textarea id='inboundMessageNode' value='{{ inboundText }}' on-keyup='{{ parseInboundText }}'></textarea>
         <p>
