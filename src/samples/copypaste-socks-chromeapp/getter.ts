@@ -1,6 +1,6 @@
 Polymer({
   model: model,
-  generateIceCandidates: function(){
+  generateIceCandidates: function() {
     this.$.generateIceCandidatesButton.disabled = true;
     freedom.emit('start', {});
   },
