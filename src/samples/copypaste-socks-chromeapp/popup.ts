@@ -10,6 +10,7 @@ var model = { givingOrGetting : <string>null,
               readyForStep2 : false,
               outboundMessageValue : '',
               inputIsWellFormed : false,
+              proxyingState : 'notYetAttempted',
               totalBytesReceived : 0,
               totalBytesSent : 0,
             };
@@ -103,6 +104,14 @@ freedom.on('bytesReceived', (numNewBytesReceived:number) => {
 
 freedom.on('bytesSent', (numNewBytesSent:number) => {
   model.totalBytesSent += numNewBytesSent;
+});
+
+freedom.on('proxyingStarted', () => {
+  model.proxyingState = 'started';
+});
+
+freedom.on('proxyingStopped', () => {
+  model.proxyingState = 'stopped';
 });
 
 

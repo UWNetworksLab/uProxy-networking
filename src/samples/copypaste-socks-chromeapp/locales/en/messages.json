@@ -55,5 +55,17 @@
   },
   "startProxying" : {
     "message" : "Start proxying"
+  },
+  "proxyingStateNotYetAttempted" : {
+    "message" : "Sharing status: Waiting for user input"
+  },
+  "proxyingStateConnecting" : {
+    "message" : "Sharing status: Connecting..."
+  },
+  "proxyingStateStarted" : {
+    "message" : "Sharing status: Active"
+  },
+  "proxyingStateStopped" : {
+    "message" : "Sharing status: Stopped"
   }
 }

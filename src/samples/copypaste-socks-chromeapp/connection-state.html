@@ -1,0 +1,35 @@
+<link rel="import" href='lib/third_party/bower/polymer/polymer.html'>
+
+<polymer-element name='copypaste-connection-state'>
+
+  <template>
+    <style>
+    </style>
+
+    <div>
+      <div hidden?='{{ model.proxyingState !== "notYetAttempted" }}'>
+        <bdi><span i18n-content='proxyingStateNotYetAttempted'></span></bdi><br>
+      </div>
+      <!-- TODO: Nothing sets this state yet. -->
+      <div hidden?='{{ model.proxyingState !== "connecting" }}'>
+        <bdi><span i18n-content='proxyingStateConnecting'></span></bdi><br>
+      </div>
+      <div hidden?='{{ model.proxyingState !== "started" }}'>
+        <bdi><span i18n-content='proxyingStateStarted'></span></bdi><br>
+      </div>
+      <div hidden?='{{ model.proxyingState !== "stopped" }}'>
+        <bdi><span i18n-content='proxyingStateStopped'></span></bdi><br>
+      </div>
+
+      <div hidden?='{{ !(model.proxyingState === "started" || model.proxyingState === "stopped") }}'>
+        <br>
+        <bdi>{{ model.totalBytesReceived }}<span i18n-content='bytesReceived'></span></bdi><br>
+        <bdi>{{ model.totalBytesSent }}<span i18n-content='bytesSent'></span></bdi><br>
+      </div>
+    </div>  
+  </template>
+
+  <script src='connection-state.js'>
+  </script>
+
+</polymer-element>
