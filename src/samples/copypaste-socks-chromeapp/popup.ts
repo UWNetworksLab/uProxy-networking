@@ -1,4 +1,5 @@
 /// <reference path='../../freedom/typings/freedom.d.ts' />
+/// <reference path='../../networking-typings/communications.d.ts' />
 /// <reference path='../../networking-typings/polymer.d.ts' />
 /// <reference path='../../networking-typings/i18n.d.ts' />
 /// <reference path='../../webrtc/peerconnection.d.ts' />
@@ -11,6 +12,7 @@ var model = { givingOrGetting : <string>null,
               outboundMessageValue : '',
               inputIsWellFormed : false,
               proxyingState : 'notYetAttempted',
+              endpoint : <string>null,  // E.g., "127.0.0.1:9999"
               totalBytesReceived : 0,
               totalBytesSent : 0,
             };
@@ -106,7 +108,10 @@ freedom.on('bytesSent', (numNewBytesSent:number) => {
   model.totalBytesSent += numNewBytesSent;
 });
 
-freedom.on('proxyingStarted', () => {
+freedom.on('proxyingStarted', (listeningEndpoint:Net.Endpoint) => {
+  if (listeningEndpoint !== null) {
+    model.endpoint = listeningEndpoint.address + ':' + listeningEndpoint.port;
+  }
   model.proxyingState = 'started';
 });
 

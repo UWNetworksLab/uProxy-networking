@@ -67,5 +67,11 @@
   },
   "proxyingStateStopped" : {
     "message" : "Sharing status: Stopped"
+  },
+  "proxyEndpoint" : {
+    "message" : "SOCKS proxy is listening on "
+  },
+  "proxyEndpointUsageExample" : {
+    "message" : "Usage example:"
   }
 }

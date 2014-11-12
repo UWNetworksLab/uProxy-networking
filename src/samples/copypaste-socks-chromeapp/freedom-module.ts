@@ -79,7 +79,7 @@ freedom.on('start', () => {
       // TODO: Show this update in the UI, not just in the log.
       log.info('socksRtc ready. listening to SOCKS5 on: ' + JSON.stringify(endpoint));
       log.info('` curl -x socks5h://localhost:9999 www.google.com `')
-      freedom.emit('proxyingStarted');
+      freedom.emit('proxyingStarted', endpoint);
     })
     .catch((e) => {
       console.error('socksRtc Error: ' + e + '; ' + this.socksRtc.toString());
@@ -124,7 +124,7 @@ freedom.on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
 
       rtcNet.onceReady.then(() => {
         log.info('rtcNet ready.');
-        freedom.emit('proxyingStarted');
+        freedom.emit('proxyingStarted', null);
       });
 
       rtcNet.onceClosed.then(() => {
