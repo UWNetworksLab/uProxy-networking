@@ -5,6 +5,7 @@
     "script": [
       "../arraybuffers/arraybuffers.js",
       "../handler/queue.js",
+      "../logging/logging.js",
       "../tcp/tcp.js",
       "tcp-echo-server.js",
       "freedom-module.js"

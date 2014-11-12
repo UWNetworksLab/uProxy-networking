@@ -1,8 +1,8 @@
 {
-  "name": "firefox-app",
-  "title": "firefox-app",
+  "name": "simple-socks",
+  "title": "Simple SOCKS",
   "id": "jid1-jBoSL7j4ljmKZw",
-  "description": "Experiments in proxying SOCKS5 over WebRTC",
+  "description": "Single-page SOCKS server.",
   "author": "",
   "license": "",
   "version": "0.1"

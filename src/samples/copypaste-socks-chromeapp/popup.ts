@@ -4,7 +4,7 @@
 /// <reference path='../../webrtc/peerconnection.d.ts' />
 
 // 'model' object contains variables about the state of the application.
-// Polymer elements will bind to model so that the elements' style and 
+// Polymer elements will bind to model so that the elements' style and
 // contents are up to date.
 var model = { givingOrGetting : <string>null,
               readyForStep2 : false,
@@ -13,6 +13,16 @@ var model = { givingOrGetting : <string>null,
               totalBytesReceived : 0,
               totalBytesSent : 0,
             };
+
+// Define basee64 helper functions that are type-annotated and meaningfully
+// named.
+function base64Encode(unencoded:string): string {
+  return window.btoa(unencoded);
+}
+// Throws an exception if the input is malformed.
+function base64Decode(encoded:string): string {
+  return window.atob(encoded);
+}
 
 // Stores the parsed messages for use later, if & when the user clicks the
 // button for consuming the messages.
@@ -23,7 +33,16 @@ var parsedInboundMessages :WebRtc.SignallingMessage[];
 // appropriate. Returns null if the field contents are malformed.
 function parseInboundMessages(inboundMessageFieldValue:string)
     : WebRtc.SignallingMessage[] {
-  var signals :string[] = inboundMessageFieldValue.trim().split('\n');
+  // Base64-decode the pasted text.
+  var signalsString :string = null;
+  try {
+    signalsString = base64Decode(inboundMessageFieldValue.trim());
+  } catch (e) {
+    // TODO: Notify the user that the pasted text is malformed.
+    return null;
+  }
+
+  var signals :string[] = signalsString.trim().split('\n');
 
   // Each line should be a JSON representation of a WebRtc.SignallingMessage.
   // Parse the lines here.
@@ -52,7 +71,7 @@ function parseInboundMessages(inboundMessageFieldValue:string)
 
   return parsedSignals;
 }
-  
+
 // Forwards each line from the paste box to the Freedom app, which
 // interprets each as a signalling channel message. The Freedom app
 // knows whether this message should be sent to the socks-to-rtc
@@ -68,8 +87,14 @@ function consumeInboundMessage() : void {
 freedom.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
   model.readyForStep2 = true;
 
-  model.outboundMessageValue =
-      model.outboundMessageValue.trim() + '\n' + JSON.stringify(signal);
+  // Append the new signalling message to the previous message(s), if any.
+  // Base64-encode the concatenated messages because some communication
+  // channels are likely to transform portions of the raw concatenated JSON
+  // into emoticons, whereas the base64 alphabet is much less prone to such
+  // unintended transformation.
+  var oldConcatenatedJson = base64Decode(model.outboundMessageValue.trim());
+  var newConcatenatedJson = oldConcatenatedJson + '\n' + JSON.stringify(signal);
+  model.outboundMessageValue = base64Encode(newConcatenatedJson);
 });
 
 freedom.on('bytesReceived', (numNewBytesReceived:number) => {
@@ -83,10 +108,8 @@ freedom.on('bytesSent', (numNewBytesSent:number) => {
 
 // Translation.
 
-/**
-  * Map of the supported languages to whether they are left-to-right or
-  * right-to-left languages.
-  */
+// Map of the supported languages to whether they are left-to-right or
+// right-to-left languages.
 var languageDirection :{[index:string]:string} = {
   'en' : 'ltr',
   'it' : 'ltr',
@@ -94,25 +117,21 @@ var languageDirection :{[index:string]:string} = {
   'fa' : 'rtl'
 };
 
-/**
-  * UI strings in the language selected by the user.
-  */
+// UI strings in the language selected by the user.
 var translatedStrings :{[index:string]:string} = {};
 
-/** Retrieve messages.json file of the appropriate language and insert
-  * strings into the application's UI.  
-  */
+// Retrieve messages.json file of the appropriate language and insert strings
+// into the application's UI.
 var changeLanguage = (language:string) : void => {
   clearTranslatedStrings();
   var xhr = new XMLHttpRequest();
   xhr.open('GET','locales/' + language + '/messages.json',true);
-  
+
   xhr.onload = function() {
     if (this.readyState != 4) {
       return;
     }
-    // Translate the JSON format to a simple
-    // { key : value, ... } dictionary.
+    // Translate the JSON format to a simple { key : value, ... } dictionary.
     var retrievedMessages = JSON.parse(xhr.responseText);
     for (var key in retrievedMessages) {
       if (retrievedMessages.hasOwnProperty(key)) {
@@ -123,31 +142,25 @@ var changeLanguage = (language:string) : void => {
     addTranslatedStrings(htmlNode);
     htmlNode.setAttribute('dir', languageDirection[language]);
   }
-  xhr.send(null);  
+  xhr.send(null);
 }
 
-/**
-  * Clears the dictionary of UI strings (i.e. before a new language
-  * dictionary is loaded).
-  */
+// Clears the dictionary of UI strings (i.e. before a new language dictionary
+// is loaded).
 var clearTranslatedStrings = () : void => {
   for (var key in translatedStrings) {
     delete translatedStrings[key];
   }
 }
 
-/**
-  * Return the language of the user's browser.
-  */
+// Return the language of the user's browser.
+//
 // TODO (lucyhe): find a better way to do this.
 var getBrowserLanguage = () : string => {
   return navigator.language.substring(0, 2);
 }
 
-/**
-  * Given a node, add translated strings to any text-containing
-  * child nodes.
-  */
+// Given a node, add translated strings to any text-containing child nodes.
 var addTranslatedStrings = (node:any) : void => {
   i18nTemplate.process(node, translatedStrings);
 }
