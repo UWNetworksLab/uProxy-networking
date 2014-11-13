@@ -1,8 +1,8 @@
 /// <reference path='churn-pipe.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
-/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
 /// <reference path='../freedom/typings/udp-socket.d.ts' />
+/// <reference path='../logging/logging.d.ts' />
 /// <reference path='../utransformers/interfaces/utransformer.d.ts' />
 /// <reference path='../utransformers/interfaces/utransformers.fte.d.ts' />
 /// <reference path='../utransformers/interfaces/utransformers.rabbit.d.ts' />
@@ -12,7 +12,7 @@
 
 module Churn {
 
-  var log :Freedom_UproxyLogging.Log = freedom['core.log']('churn pipe');
+  var log :Logging.Log = new Logging.Log('churn pipe');
 
   /**
    * Listens on a port for UDP datagrams -- emitting a Freedom message for each

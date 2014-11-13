@@ -1,9 +1,9 @@
 /// <reference path='../../turn-frontend/turn-frontend.d.ts' />
 /// <reference path='../../turn-backend/turn-backend.d.ts' />
 /// <reference path='../../freedom/typings/freedom.d.ts' />
-/// <reference path='../../freedom/coreproviders/uproxylogging.d.ts' />
+/// <reference path='../../logging/logging.d.ts' />
 
-var log :Freedom_UproxyLogging.Log = freedom['core.log']('top-level freedom module');
+var log :Logging.Log = new Logging.Log('top-level freedom module');
 
 var frontend :freedom_TurnFrontend = freedom.turnFrontend();
 

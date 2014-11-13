@@ -223,6 +223,7 @@ module.exports = (grunt) ->
       turnFrontend:
         src: FILES.jasmine_helpers.concat([
           'build/turn-frontend/mocks.js'
+          'build/logging/logging.js'
           'build/turn-frontend/messages.js'
           'build/turn-frontend/turn-frontend.js'
           'build/arraybuffers/arraybuffers.js'
@@ -235,6 +236,7 @@ module.exports = (grunt) ->
       churn:
         src: FILES.jasmine_helpers.concat([
           'build/churn/mocks.js'
+          'build/logging/logging.js'
           'build/churn/churn.js'
           'build/peerconnection/*.js'
         ]),
@@ -244,21 +246,29 @@ module.exports = (grunt) ->
       #       https://github.com/uProxy/uproxy/issues/430
       socksToRtc:
         src: FILES.jasmine_helpers.concat([
-          'build/handler/queue.js'
           'build/socks-to-rtc/mocks.js'
+          'build/handler/queue.js'
+          'build/logging/logging.js'
+          'build/webrtc/*.js'
           'build/socks-to-rtc/socks-to-rtc.js'
         ])
         options:
+          outfile: 'build/socks-to-rtc/SpecRunner.html'
+          keepRunner: true
           specs: 'build/socks-to-rtc/*.spec.js'
       # TODO: rtcToNet tests require a bunch of other modules
       #       https://github.com/uProxy/uproxy/issues/430
       rtcToNet:
         src: FILES.jasmine_helpers.concat([
-          'build/handler/queue.js'
           'build/rtc-to-net/mocks.js'
+          'build/handler/queue.js'
+          'build/logging/logging.js'
+          'build/webrtc/*.js'
           'build/rtc-to-net/rtc-to-net.js'
         ])
         options:
+          outfile: 'build/rtc-to-net/SpecRunner.html'
+          keepRunner: true
           specs: 'build/rtc-to-net/*.spec.js'
 
     integration:

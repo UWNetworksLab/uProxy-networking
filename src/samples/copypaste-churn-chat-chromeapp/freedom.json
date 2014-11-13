@@ -7,9 +7,9 @@
     ]
   },
   "dependencies": {
-    "churn": {
-      "url": "lib/churn/freedom.json",
-      "api": "churn"
+    "churnPipe": {
+      "url": "../churn-pipe/freedom.json",
+      "api": "churnPipe"
     }
   },
   "permissions": [

@@ -9,10 +9,10 @@ var receiveButton = document.getElementById("receiveButton");
 receiveButton.onclick = handleSignallingMessages;
 
 function start() {
-  freedom.emit('start', {});
+  freedom().emit('start', {});
 }
 
-freedom.on('signalForPeer', (signal:Churn.ChurnSignallingMessage) => {
+freedom().on('signalForPeer', (signal:Churn.ChurnSignallingMessage) => {
   copyTextarea.value = copyTextarea.value.trim() + '\n' + JSON.stringify(signal);
 });
 
@@ -22,7 +22,7 @@ function handleSignallingMessages() {
   for (var i = 0; i < signals.length; i++) {
     var s:string = signals[i];
     var signal:Churn.ChurnSignallingMessage = JSON.parse(s);
-    freedom.emit('handleSignalMessage', signal);
+    freedom().emit('handleSignalMessage', signal);
   }
 
   // "Flush" the signalling channels.
@@ -35,12 +35,12 @@ var sendButton = document.getElementById("sendButton");
 var sendArea = <HTMLInputElement>document.getElementById("sendArea");
 var receiveArea = <HTMLInputElement>document.getElementById("receiveArea");
 
-freedom.on('ready', function() {
+freedom().on('ready', function() {
   console.log('peer connection established!');
   sendArea.disabled = false;
 });
 
-freedom.on('error', function() {
+freedom().on('error', function() {
   console.error('something went wrong with the peer connection');
   sendArea.disabled = true;
 });
@@ -48,9 +48,9 @@ freedom.on('error', function() {
 sendButton.onclick = function() {
   // Currently, PeerConnection does not support empty text messages:
   //   https://github.com/freedomjs/freedom/issues/67
-  freedom.emit('send', sendArea.value || '(empty message)');
+  freedom().emit('send', sendArea.value || '(empty message)');
 }
 
-freedom.on('receive', function(message:string) {
+freedom().on('receive', function(message:string) {
   receiveArea.value = message;
 });
