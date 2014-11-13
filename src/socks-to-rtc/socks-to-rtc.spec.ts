@@ -107,7 +107,6 @@ describe("SOCKS session", function() {
   var mockDataChannel :WebRtc.DataChannel;
   var mockBytesSent :Handler.Queue<number,void>;
   var mockBytesReceived :Handler.Queue<number,void>;
-
   
   beforeEach(function() {
     session = new SocksToRtc.Session();

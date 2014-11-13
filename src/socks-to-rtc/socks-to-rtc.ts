@@ -219,7 +219,6 @@ module SocksToRtc {
   // can use the DataChannel class directly here instead of the awkward pairing
   // of peerConnection with chanelLabel.
   export class Session {
-    private channelLabel_ :string;
     private tcpConnection_ :Tcp.Connection;
     private dataChannel_ :WebRtc.DataChannel;
     private bytesSentToPeer_ :Handler.Queue<number,void>;
@@ -254,7 +253,6 @@ module SocksToRtc {
         bytesSentToPeer:Handler.Queue<number,void>,
         bytesReceivedFromPeer:Handler.Queue<number,void>)
         : Promise<Net.Endpoint> => {
-      this.channelLabel_ = dataChannel.getLabel();
       this.tcpConnection_ = tcpConnection;
       this.dataChannel_ = dataChannel;
       this.bytesSentToPeer_ = bytesSentToPeer;
@@ -276,7 +274,7 @@ module SocksToRtc {
     }
 
     public longId = () : string => {
-      return 'session ' + this.channelLabel_ + ' (TCP connection ' +
+      return 'session ' + this.channelLabel() + ' (TCP connection ' +
           (this.tcpConnection_.isClosed() ? 'closed' : 'open') + ') ';
     }
 
@@ -292,18 +290,22 @@ module SocksToRtc {
     // close() methods should ever reject, this should never reject.
     private stopResources_ = () : Promise<void> => {
       // DataChannel.close() returns void, implying that it is
-      // effective immediately.
-      this.dataChannel_.close();
-      return this.tcpConnection_.close().then((discard:any) => {});
+      // effectively immediate.  However, we wrap it in a promise to ensure
+      // that any exception is sent to the Promise.catch, rather than
+      // propagating synchronously up the stack.
+      return Promise.all(<Promise<any>[]>[
+        new Promise((F, R) => { this.dataChannel_.close(); F(); }),
+        this.tcpConnection_.close()
+      ]).then((discard:any) => {});
     }
 
     public channelLabel = () : string => {
-      return this.channelLabel_;
+      return this.dataChannel_.getLabel();
     }
 
     public toString = () : string => {
       return JSON.stringify({
-        channelLabel_: this.channelLabel_,
+        channelLabel_: this.channelLabel(),
         tcpConnection: this.tcpConnection_.toString()
       });
     }
@@ -383,7 +385,7 @@ module SocksToRtc {
         }
         log.debug(this.longId() + ': dataFromPeer: ' + data.buffer.byteLength +
             ' bytes.');
-          this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
+        this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
         this.tcpConnection_.send(data.buffer);
       });
     }

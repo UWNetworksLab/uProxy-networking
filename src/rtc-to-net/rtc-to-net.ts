@@ -154,9 +154,10 @@ module RtcToNet {
     }
 
     // Shuts down the peerconnection, fulfilling it has terminated.
-    // TODO: close all sessions and return asynchronously
-    public stopResources_ = () => {
-      this.peerConnection_.close();
+    // Since its close() method should never throw, this should never reject.
+    // TODO: close all sessions before fulfilling
+    private stopResources_ = () : Promise<void> => {
+      return new Promise<void>((F, R) => { this.peerConnection_.close(); F(); });
     }
 
     public handleSignalFromPeer = (signal:WebRtc.SignallingMessage)
@@ -202,15 +203,13 @@ module RtcToNet {
     // low-level WebRtc provider), then refer to dataChannel.isClosed directly.
     private isClosed_ :boolean;
 
-    private channelLabel_ :string;
-
     // This variable starts false, and becomes true after the socket to the
     // remote endpoint is open (and the endpoint is confirmed to be at an
     // allowed address).
     private hasConnectedToEndpoint_ :boolean;
 
     // Getters.
-    public channelLabel = () : string => { return this.channelLabel_; }
+    public channelLabel = () : string => { return this.dataChannel_.getLabel(); }
     public isClosed = () : boolean => { return this.isClosed_; }
 
     constructor(
@@ -218,7 +217,6 @@ module RtcToNet {
         public proxyConfig :ProxyConfig,
         private bytesReceivedFromPeer:Handler.Queue<number,void>,
         private bytesSentToPeer:Handler.Queue<number,void>) {
-      this.channelLabel_ = dataChannel_.getLabel();
       this.proxyConfig = proxyConfig;
       this.isClosed_ = false;
       this.hasConnectedToEndpoint_ = false;
@@ -245,7 +243,7 @@ module RtcToNet {
       if(this.tcpConnection) {
         tcp = this.tcpConnection.connectionId + (this.tcpConnection.isClosed() ? '.c' : '.o');
       }
-      return this.channelLabel_ + (this.isClosed_ ? '.c' : '.o') + '-' + tcp;
+      return this.channelLabel() + (this.isClosed_ ? '.c' : '.o') + '-' + tcp;
     }
 
     public close = () : void => {
@@ -372,7 +370,7 @@ module RtcToNet {
         tcpString = this.tcpConnection.toString();
       }
       return JSON.stringify({
-        channelLabel_: this.channelLabel_,
+        channelLabel: this.channelLabel(),
         isClosed_: this.isClosed_,
         tcpConnection: tcpString
       });

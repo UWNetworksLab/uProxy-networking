@@ -336,31 +336,23 @@ module Churn {
       this.obfuscatedConnection_.close();
     }
 
-    public onceConnected = new Promise<WebRtc.ConnectionAddresses>((F, R) => {
+    public onceConnected = this.onceChurnSetup_.then(() => {
       // obfuscatedConnection_ doesn't exist until onceChurnSetup_ fulfills.
-      this.onceChurnSetup_.then(() => {
-        this.obfuscatedConnection_.onceConnected.then((addresses:WebRtc.ConnectionAddresses) => {
-          this.pcState = WebRtc.State.CONNECTED;
-          F(addresses);
-        }, R);
-      });
+      return this.obfuscatedConnection_.onceConnected
+    }).then((addresses:WebRtc.ConnectionAddresses) => {
+      this.pcState = WebRtc.State.CONNECTED;
+      return addresses;
     });
 
-    public onceConnecting = new Promise<void>((F, R) => {
-      this.surrogateConnection_.onceConnecting.then(() => {
-        this.pcState = WebRtc.State.CONNECTING;
-        F();
-      }, R);
+    public onceConnecting = this.surrogateConnection_.onceConnecting.then(() => {
+      this.pcState = WebRtc.State.CONNECTING;
     });
 
-    public onceDisconnected = new Promise<void>((F, R) => {
+    public onceDisconnected = this.onceChurnSetup_.then(() => {
       // obfuscatedConnection_ doesn't exist until onceChurnSetup_ fulfills.
-      this.onceChurnSetup_.then(() => {
-        this.obfuscatedConnection_.onceDisconnected.then(() => {
-          this.pcState = WebRtc.State.DISCONNECTED;
-          F();
-        }, R);
-      });
+      return this.obfuscatedConnection_.onceDisconnected
+    }).then(() => {
+      this.pcState = WebRtc.State.DISCONNECTED;
     });
 
     public toString = () : string => {
