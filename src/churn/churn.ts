@@ -350,7 +350,7 @@ module Churn {
 
     public onceDisconnected = this.onceChurnSetup_.then(() => {
       // obfuscatedConnection_ doesn't exist until onceChurnSetup_ fulfills.
-      return this.obfuscatedConnection_.onceDisconnected
+      return this.obfuscatedConnection_.onceDisconnected;
     }).then(() => {
       this.pcState = WebRtc.State.DISCONNECTED;
     });
