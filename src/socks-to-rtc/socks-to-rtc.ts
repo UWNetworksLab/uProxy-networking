@@ -47,8 +47,7 @@ module SocksToRtc {
     public onceStopped = () : Promise<void> => { return this.onceStopped_; }
 
     // Message handler queues to/from the peer.
-    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void> =
-        null;
+    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
 
     // The two Queues below only count bytes transferred between the SOCKS
     // client and the remote host(s) the client wants to connect to. WebRTC
@@ -68,11 +67,11 @@ module SocksToRtc {
         new Handler.Queue<number, void>();
 
     // Tcp server that is listening for SOCKS connections.
-    private tcpServer_       :Tcp.Server = null;
+    private tcpServer_       :Tcp.Server;
 
     // The connection to the peer that is acting as the endpoint for the proxy
     // connection.
-    private peerConnection_  :WebRtc.PeerConnection = null;
+    private peerConnection_  :WebRtc.PeerConnection;
 
     // From WebRTC data-channel labels to their TCP connections. Most of the
     // wiring to manage this relationship happens via promises of the
@@ -151,9 +150,13 @@ module SocksToRtc {
     // TODO: close all sessions before fulfilling
     private stopResources_ = () : Promise<void> => {
       // PeerConnection.close() returns void, implying that the shutdown is
-      // effectively immediate.
-	  this.peerConnection_.close();
-      return this.tcpServer_.shutdown();
+      // effectively immediate.  However, we wrap it in a promise to ensure
+      // that any exception is sent to the Promise.catch, rather than
+      // propagating synchronously up the stack.
+      return Promise.all(<Promise<any>[]>[
+        new Promise((F, R) => { this.peerConnection_.close(); F(); }),
+        this.tcpServer_.shutdown()
+      ]).then((discard:any) => {});
     }
 
     // Invoked when a SOCKS client establishes a connection with the TCP server.
