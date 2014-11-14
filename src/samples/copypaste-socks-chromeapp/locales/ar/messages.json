@@ -55,5 +55,26 @@
   },
   "startProxying": {
     "message": "بدء إنشاء الوكلاء"
+  },
+  "proxyingStateNotYetAttempted" : {
+    "message" : "تقاسم الوضع: في انتظار إدخال المستخدم"
+  },
+  "proxyingStateConnecting" : {
+    "message" : "وضع مشاركة: في انتظار اتصال ..."
+  },
+  "proxyingStateStarted" : {
+    "message" : "وضع مشاركة: نشاطات"
+  },
+  "proxyingStateStopped" : {
+    "message" : "وضع مشاركة: توقف"
+  },
+  "proxyEndpoint" : {
+    "message" : " الجوارب وكيل الإصغاء"
+  },
+  "proxyEndpointUsageExample" : {
+    "message" : "الاستخدام سبيل المثال:"
+  },
+  "stopProxying" : {
+    "message" : "وقف إنشاء الوكلاء"
   }
 }

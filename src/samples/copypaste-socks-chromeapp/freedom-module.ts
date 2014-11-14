@@ -78,10 +78,15 @@ freedom().on('start', () => {
     .then((endpoint:Net.Endpoint) => {
       log.info('socksRtc ready. listening to SOCKS5 on: ' + JSON.stringify(endpoint));
       log.info('` curl -x socks5h://localhost:9999 www.google.com `')
+      freedom.emit('proxyingStarted', endpoint);
     })
     .catch((e) => {
       console.error('socksRtc Error: ' + e + '; ' + this.socksRtc.toString());
     });
+
+  socksRtc.onceStopped().then(() => {
+    freedom.emit('proxyingStopped');
+  });
 });
 
 // Receive signalling channel messages from the UI.
@@ -118,8 +123,22 @@ freedom().on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
 
       rtcNet.onceReady.then(() => {
         log.info('rtcNet ready.');
+        freedom.emit('proxyingStarted', null);
+      });
+
+      rtcNet.onceClosed.then(() => {
+        freedom.emit('proxyingStopped');
       });
     }
     rtcNet.handleSignalFromPeer(signal);
+  }
+});
+
+// Stops proxying.
+freedom.on('stop', () => {
+  if (socksRtc !== undefined) {
+    socksRtc.stop();
+  } else if (rtcNet !== undefined) {
+    rtcNet.close();
   }
 });
