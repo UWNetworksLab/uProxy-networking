@@ -2,11 +2,10 @@
   "manifest_version": 2,
   "name": "Simple SOCKS",
   "description": "Single-page SOCKS server.",
-  "version": "0.0.2",
+  "version": "0.1",
   "app": {
     "background": {
       "scripts": [
-        "lib/freedom/uproxy-core-env.js",
         "background.js"
       ]
     }

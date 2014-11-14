@@ -16,16 +16,11 @@
       "freedom-module.js"
     ]
   },
-  "dependencies": {
-    "churn": {
-      "url": "../churn/freedom.json",
-      "api": "churn"
-    }
-  },
   "permissions": [
-    "core.log",
+    "core.console",
     "core.tcpsocket",
     "core.udpsocket",
-    "core.uproxypeerconnection"
+    "core.rtcdatachannel",
+    "core.rtcpeerconnection"
   ]
 }

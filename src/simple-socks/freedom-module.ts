@@ -6,6 +6,13 @@
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
 
+// Note that the proxy server runs very slowly in debug level.
+Logging.setConsoleFilter([
+    '*:W',
+    'simple-socks:I',
+    'SocksToRtc:I',
+    'RtcToNet:I']);
+
 var log :Logging.Log = new Logging.Log('simple-socks');
 
 //-----------------------------------------------------------------------------
