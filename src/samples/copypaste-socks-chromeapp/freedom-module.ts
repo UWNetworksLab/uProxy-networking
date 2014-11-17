@@ -6,6 +6,13 @@
 /// <reference path='../../networking-typings/communications.d.ts' />
 /// <reference path='../../webrtc/peerconnection.d.ts' />
 
+// Note that the proxy server runs very slowly in debug level.
+Logging.setConsoleFilter([
+    '*:W',
+    'copypaste-socks:I',
+    'SocksToRtc:I',
+    'RtcToNet:I']);
+
 var log :Logging.Log = new Logging.Log('copypaste-socks');
 
 var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
@@ -78,14 +85,14 @@ freedom().on('start', () => {
     .then((endpoint:Net.Endpoint) => {
       log.info('socksRtc ready. listening to SOCKS5 on: ' + JSON.stringify(endpoint));
       log.info('` curl -x socks5h://localhost:9999 www.google.com `')
-      freedom.emit('proxyingStarted', endpoint);
+      freedom().emit('proxyingStarted', endpoint);
     })
     .catch((e) => {
       console.error('socksRtc Error: ' + e + '; ' + this.socksRtc.toString());
     });
 
   socksRtc.onceStopped().then(() => {
-    freedom.emit('proxyingStopped');
+    freedom().emit('proxyingStopped');
   });
 });
 
@@ -123,11 +130,11 @@ freedom().on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
 
       rtcNet.onceReady.then(() => {
         log.info('rtcNet ready.');
-        freedom.emit('proxyingStarted', null);
+        freedom().emit('proxyingStarted', null);
       });
 
       rtcNet.onceClosed.then(() => {
-        freedom.emit('proxyingStopped');
+        freedom().emit('proxyingStopped');
       });
     }
     rtcNet.handleSignalFromPeer(signal);
@@ -135,7 +142,7 @@ freedom().on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
 });
 
 // Stops proxying.
-freedom.on('stop', () => {
+freedom().on('stop', () => {
   if (socksRtc !== undefined) {
     socksRtc.stop();
   } else if (rtcNet !== undefined) {

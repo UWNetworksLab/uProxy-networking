@@ -1,6 +1,6 @@
 Polymer({
   model: model,
   stopProxying: function() {
-    freedom.emit('stop', {});
+    copypastePromise.then((copypaste:any) => { copypaste.emit('stop', {}); });
   }
 });
