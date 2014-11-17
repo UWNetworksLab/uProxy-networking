@@ -6,7 +6,11 @@
 /// <reference path='../../networking-typings/communications.d.ts' />
 /// <reference path='../../webrtc/peerconnection.d.ts' />
 
-// Note that the proxy server runs very slowly in debug level.
+// Set each module to I, W, E, or D depending on which module
+// you're debugging. Since the proxy outputs quite a lot of messages,
+// show only warnings by default from the rest of the system.
+// Note that the proxy is extremely slow in debug (D) mode.
+show by default only warnings from the rest of the stack.
 Logging.setConsoleFilter([
     '*:W',
     'copypaste-socks:I',
