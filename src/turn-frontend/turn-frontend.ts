@@ -2,13 +2,13 @@
 /// <reference path='messages.ts' />
 /// <reference path='../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
-/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
+/// <reference path='../logging/logging.d.ts' />
 /// <reference path='../freedom/typings/udp-socket.d.ts' />
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 
 module Turn {
 
-  var log :Freedom_UproxyLogging.Log = freedom['core.log']('TURN frontend');
+  var log :Logging.Log = new Logging.Log('TURN frontend');
 
   /**
    * A TURN server which delegates the creation and operation of relay sockets

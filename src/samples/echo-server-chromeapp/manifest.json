@@ -6,7 +6,6 @@
   "app": {
     "background": {
       "scripts": [
-        "lib/freedom/uproxy-core-env.js",
         "background.js"
       ]
     }

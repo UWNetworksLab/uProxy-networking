@@ -3,10 +3,10 @@
   "description": "Remote endpoints for the TURN relay.",
   "app": {
     "script": [
-      "turn-backend.js",
+      "../arraybuffers/arraybuffers.js",
       "../logging/logging.js",
       "../turn-frontend/messages.js",
-      "../arraybuffers/arraybuffers.js"
+      "turn-backend.js"
     ]
   },
   "provides": [
@@ -27,7 +27,7 @@
     }
   },
   "permissions": [
-    "core.udpsocket",
-    "core.log"
+    "core.console",
+    "core.udpsocket"
   ]
 }

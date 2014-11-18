@@ -4,3 +4,6 @@
 var freedom = jasmine.createSpyObj('freedom', ['core.log']);
 freedom.churn = jasmine.createSpy().and.returnValue(
     jasmine.createSpyObj('churn', ['providePromises']));
+freedom['core.console'] = function() {
+  return window.console;
+};

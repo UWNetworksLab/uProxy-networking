@@ -1,14 +1,16 @@
 /// <reference path='../../turn-frontend/turn-frontend.d.ts' />
 /// <reference path='../../turn-backend/turn-backend.d.ts' />
 /// <reference path='../../freedom/typings/freedom.d.ts' />
-/// <reference path='../../freedom/coreproviders/uproxylogging.d.ts' />
+/// <reference path='../../logging/logging.d.ts' />
 
-var log :Freedom_UproxyLogging.Log = freedom['core.log']('top-level freedom module');
+Logging.setConsoleFilter(['*:I']);
 
-var frontend :freedom_TurnFrontend = freedom.turnFrontend();
+var log :Logging.Log = new Logging.Log('simple TURN');
+
+var frontend :freedom_TurnFrontend = freedom['turnFrontend']();
+var backend :freedom_TurnBackend = freedom['turnBackend']();
 
 frontend.bind('127.0.0.1', 9997).then(() => {
-  var backend :freedom_TurnBackend = freedom.turnBackend();
   // Connect the TURN server with the net module.
   // Normally, these messages would traverse the internet
   // along an encrypted channel.

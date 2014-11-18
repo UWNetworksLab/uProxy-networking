@@ -1,4 +1,3 @@
-/// <reference path="../freedom/coreproviders/uproxypeerconnection.d.ts" />
 /// <reference path="../handler/queue.d.ts" />
 /// <reference path="../webrtc/datachannel.d.ts" />
 /// <reference path="../webrtc/peerconnection.d.ts" />
@@ -15,7 +14,7 @@ declare module RtcToNet {
                 obfuscate?:boolean);
     public start :(
         proxyConfig:ProxyConfig,
-        peerconnection:freedom_UproxyPeerConnection.Pc) => Promise<void>;
+        peerconnection:WebRtc.PeerConnection) => Promise<void>;
     public proxyConfig :ProxyConfig;
     public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
     public bytesReceivedFromPeer :Handler.Queue<number, void>;
@@ -27,8 +26,7 @@ declare module RtcToNet {
     public toString :() => string;
   }
   class Session {
-    constructor(channelLabel_:string,
-                peerConnection_:freedom_UproxyPeerConnection.Pc,
+    constructor(channel:WebRtc.DataChannel,
                 proxyConfig:ProxyConfig,
                 bytesSentToPeer:Handler.Queue<number,void>);
 
@@ -43,7 +41,6 @@ declare module RtcToNet {
     public tcpConnection :Tcp.Connection;
     public channelLabel :() => string;
     public longId :() => string;
-    public handleWebRtcDataFromPeer :(webrtcData: WebRtc.Data) => void;
     public toString :() => string;
   }
 }

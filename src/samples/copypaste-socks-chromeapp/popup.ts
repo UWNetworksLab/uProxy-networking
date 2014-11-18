@@ -1,7 +1,16 @@
 /// <reference path='../../freedom/typings/freedom.d.ts' />
+/// <reference path='../../networking-typings/communications.d.ts' />
 /// <reference path='../../networking-typings/polymer.d.ts' />
 /// <reference path='../../networking-typings/i18n.d.ts' />
 /// <reference path='../../webrtc/peerconnection.d.ts' />
+
+var copypastePromise :Promise<any> = freedom(
+    'freedom-module.json', { 'debug': 'log' })
+.then((interface:any) => {
+  return interface();
+}, (e:Error) => {
+  console.error('could not load freedom: ' + e.message);
+});
 
 // 'model' object contains variables about the state of the application.
 // Polymer elements will bind to model so that the elements' style and
@@ -10,6 +19,8 @@ var model = { givingOrGetting : <string>null,
               readyForStep2 : false,
               outboundMessageValue : '',
               inputIsWellFormed : false,
+              proxyingState : 'notYetAttempted',
+              endpoint : <string>null,  // E.g., "127.0.0.1:9999"
               totalBytesReceived : 0,
               totalBytesSent : 0,
             };
@@ -19,6 +30,7 @@ var model = { givingOrGetting : <string>null,
 function base64Encode(unencoded:string): string {
   return window.btoa(unencoded);
 }
+
 // Throws an exception if the input is malformed.
 function base64Decode(encoded:string): string {
   return window.atob(encoded);
@@ -78,33 +90,48 @@ function parseInboundMessages(inboundMessageFieldValue:string)
 // or rtc-to-net module. Disables the form field.
 function consumeInboundMessage() : void {
   // Forward the signalling messages to the Freedom app.
-  for (var i = 0; i < parsedInboundMessages.length; i++) {
-    freedom.emit('handleSignalMessage', parsedInboundMessages[i]);
-  }
+  copypastePromise.then(function(copypaste:any) {
+    for (var i = 0; i < parsedInboundMessages.length; i++) {
+      copypaste.emit('handleSignalMessage', parsedInboundMessages[i]);
+    }
+  });
+  model.proxyingState = 'connecting';
   // TODO: Report success/failure to the user.
 };
 
-freedom.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
-  model.readyForStep2 = true;
+copypastePromise.then(function(copypaste:any) {
+  copypaste.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
+    model.readyForStep2 = true;
 
-  // Append the new signalling message to the previous message(s), if any.
-  // Base64-encode the concatenated messages because some communication
-  // channels are likely to transform portions of the raw concatenated JSON
-  // into emoticons, whereas the base64 alphabet is much less prone to such
-  // unintended transformation.
-  var oldConcatenatedJson = base64Decode(model.outboundMessageValue.trim());
-  var newConcatenatedJson = oldConcatenatedJson + '\n' + JSON.stringify(signal);
-  model.outboundMessageValue = base64Encode(newConcatenatedJson);
+    // Append the new signalling message to the previous message(s), if any.
+    // Base64-encode the concatenated messages because some communication
+    // channels are likely to transform portions of the raw concatenated JSON
+    // into emoticons, whereas the base64 alphabet is much less prone to such
+    // unintended transformation.
+    var oldConcatenatedJson = base64Decode(model.outboundMessageValue.trim());
+    var newConcatenatedJson = oldConcatenatedJson + '\n' + JSON.stringify(signal);
+    model.outboundMessageValue = base64Encode(newConcatenatedJson);
+  });
+
+  copypaste.on('bytesReceived', (numNewBytesReceived:number) => {
+    model.totalBytesReceived += numNewBytesReceived;
+  });
+
+  copypaste.on('bytesSent', (numNewBytesSent:number) => {
+    model.totalBytesSent += numNewBytesSent;
+  });
+
+  copypaste.on('proxyingStarted', (listeningEndpoint:Net.Endpoint) => {
+    if (listeningEndpoint !== null) {
+      model.endpoint = listeningEndpoint.address + ':' + listeningEndpoint.port;
+    }
+    model.proxyingState = 'started';
+  });
+
+  copypaste.on('proxyingStopped', () => {
+    model.proxyingState = 'stopped';
+  });
 });
-
-freedom.on('bytesReceived', (numNewBytesReceived:number) => {
-  model.totalBytesReceived += numNewBytesReceived;
-});
-
-freedom.on('bytesSent', (numNewBytesSent:number) => {
-  model.totalBytesSent += numNewBytesSent;
-});
-
 
 // Translation.
 
@@ -125,7 +152,7 @@ var translatedStrings :{[index:string]:string} = {};
 var changeLanguage = (language:string) : void => {
   clearTranslatedStrings();
   var xhr = new XMLHttpRequest();
-  xhr.open('GET','locales/' + language + '/messages.json',true);
+  xhr.open('GET', 'locales/' + language + '/messages.json', true);
 
   xhr.onload = function() {
     if (this.readyState != 4) {

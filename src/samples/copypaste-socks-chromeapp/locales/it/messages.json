@@ -55,5 +55,26 @@
   },
   "startProxying" : {
     "message" : "Inizia proxying"
+  },
+  "proxyingStateNotYetAttempted" : {
+    "message" : "Stato condivisione: In attesa di input da parte dell'utente"
+  },
+  "proxyingStateConnecting" : {
+    "message" : "Stato condivisione: In attesa di connessione ..."
+  },
+  "proxyingStateStarted" : {
+    "message" : "Stato condivisione: Attivo"
+  },
+  "proxyingStateStopped" : {
+    "message" : "Stato condivisione: Arrestato"
+  },
+  "proxyEndpoint" : {
+    "message" : "Proxy SOCKS è in ascolto "
+  },
+  "proxyEndpointUsageExample" : {
+    "message" : "Esempio di utilizzo: "
+  },
+  "stopProxying" : {
+    "message" : "Smettere di proxying"
   }
 }

@@ -2,11 +2,18 @@
 /// <reference path='../socks-to-rtc/socks-to-rtc.d.ts' />
 
 /// <reference path='../webrtc/peerconnection.d.ts' />
-/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
+/// <reference path='../logging/logging.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
 
-var log :Freedom_UproxyLogging.Log = freedom['core.log']('simple-socks');
+// Note that the proxy server runs very slowly in debug level.
+Logging.setConsoleFilter([
+    '*:W',
+    'simple-socks:I',
+    'SocksToRtc:D',
+    'RtcToNet:D']);
+
+var log :Logging.Log = new Logging.Log('simple-socks');
 
 //-----------------------------------------------------------------------------
 var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port:9999 };
@@ -14,14 +21,11 @@ var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port:9999 };
 //-----------------------------------------------------------------------------
 var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
     webrtcPcConfig: {
-      iceServers: [{url: 'stun:stun.l.google.com:19302'},
-                   {url: 'stun:stun1.l.google.com:19302'},
-                   {url: 'stun:stun2.l.google.com:19302'},
-                   {url: 'stun:stun3.l.google.com:19302'},
-                   {url: 'stun:stun4.l.google.com:19302'}]
-    },
-    webrtcMediaConstraints: {
-      optional: [{DtlsSrtpKeyAgreement: true}]
+      iceServers: [{urls: ['stun:stun.l.google.com:19302']},
+                   {urls: ['stun:stun1.l.google.com:19302']},
+                   {urls: ['stun:stun2.l.google.com:19302']},
+                   {urls: ['stun:stun3.l.google.com:19302']},
+                   {urls: ['stun:stun4.l.google.com:19302']}]
     },
     peerName: 'rtcNet'
   };
@@ -35,14 +39,11 @@ var rtcNet = new RtcToNet.RtcToNet(
 //-----------------------------------------------------------------------------
 var socksRtcPcConfig :WebRtc.PeerConnectionConfig = {
     webrtcPcConfig: {
-      iceServers: [{url: 'stun:stun.l.google.com:19302'},
-                   {url: 'stun:stun1.l.google.com:19302'},
-                   {url: 'stun:stun2.l.google.com:19302'},
-                   {url: 'stun:stun3.l.google.com:19302'},
-                   {url: 'stun:stun4.l.google.com:19302'}]
-    },
-    webrtcMediaConstraints: {
-      optional: [{DtlsSrtpKeyAgreement: true}]
+      iceServers: [{urls: ['stun:stun.l.google.com:19302']},
+                   {urls: ['stun:stun1.l.google.com:19302']},
+                   {urls: ['stun:stun2.l.google.com:19302']},
+                   {urls: ['stun:stun3.l.google.com:19302']},
+                   {urls: ['stun:stun4.l.google.com:19302']}]
     },
     peerName: 'socksRtc'
   };

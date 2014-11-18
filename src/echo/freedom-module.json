@@ -13,6 +13,6 @@
   },
   "permissions": [
     "core.tcpsocket",
-    "core.log"
+    "core.console"
   ]
 }

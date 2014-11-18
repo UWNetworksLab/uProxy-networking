@@ -1,4 +1,5 @@
 <link rel="import" href='lib/third_party/bower/polymer/polymer.html'>
+<link rel="import" href='connection-state.html'>
 
 <polymer-element name='copypaste-getter'>
 
@@ -25,7 +26,7 @@
       <div id='step2ContainerNode' style='display: {{ model.readyForStep2 ? "block" : "none" }};'>
         <textarea id='outboundMessageNode' disabled value='{{ model.outboundMessageValue }}'></textarea>
         <p><bdi i18n-content='copyPasteAndSend'></bdi></p>
-        <p class='warning'><bdi i18n-content='warning'></bdi></p><br>
+        <p class='warning'><bdi i18n-content='warning'></bdi></p>
         <p><bdi i18n-content='pasteAndStartProxying'></bdi></p>
         <textarea id='inboundMessageNode' value='{{ inboundText }}' on-keyup='{{ parseInboundText }}'></textarea>
         <p>
@@ -33,12 +34,8 @@
         </p>
       </div>
 
-      <div>
-        <bdi>{{ model.totalBytesReceived }}<span i18n-content='bytesReceived'></span></bdi><br>
-        <bdi>{{ model.totalBytesSent }}<span i18n-content='bytesSent'></span></bdi><br>
-      </div>
+      <copypaste-connection-state></copypaste-connection-state>
     </div>
-
   </template>
 
   <script src='getter.js'>

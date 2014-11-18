@@ -1,6 +1,7 @@
 <html>
 <head>
-  <title>Obfuscated peerconnection-driven chat client with copy paste signalling channel</title>
+  <title>Obfuscated peerconnection-driven chat client with copy/paste signalling channel</title>
+  <script src='lib/freedom/freedom-for-chrome.js'></script>
 </head>
 
 <body>
@@ -28,13 +29,6 @@
     <button id="sendButton">Send</button>
   </div>
 
-  <script src='lib/freedom/uproxy-core-env.js'></script>
-  <script src='lib/freedom/freedom-for-chrome-for-uproxy.js'
-          data-manifest='freedom.json'>
-    {
-      "debug": "warn"
-    }
-  </script>
   <script src='main.js'></script>
 </body>
 </html>

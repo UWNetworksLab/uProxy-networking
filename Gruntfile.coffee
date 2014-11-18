@@ -84,6 +84,20 @@ module.exports = (grunt) ->
           dest: 'build/regex2dfa/'
         ]
 
+      # Symlink the Chrome and Firefox builds of Freedom under build/freedom/.
+      freedom:
+        files: [ {
+          expand: true
+          cwd: path.dirname(require.resolve('freedom-for-chrome/Gruntfile'))
+          src: ['freedom-for-chrome.js']
+          dest: 'build/freedom/'
+        }, {
+          expand: true
+          cwd: path.dirname(require.resolve('freedom-for-firefox/Gruntfile'))
+          src: ['freedom-for-firefox.jsm']
+          dest: 'build/freedom/'
+        } ]
+
       # There's only one relevant file in this repo: ipaddr.min.js.
       ipaddrjs:
         files: [
@@ -142,6 +156,8 @@ module.exports = (grunt) ->
     ts:
       # SOCKS.
       tcp: Rule.typescriptSrc 'tcp'
+      tcpSpecDecl: Rule.typescriptSpecDecl 'tcp'
+
       udp: Rule.typescriptSrc 'udp'
 
       socksCommon: Rule.typescriptSrc 'socks-common'
@@ -201,11 +217,13 @@ module.exports = (grunt) ->
 
     jasmine:
       socksCommon: Rule.jasmineSpec 'socks-common'
+      simpleTransformers: Rule.jasmineSpec 'simple-transformers'
       # TODO: turn tests require arraybuffers
       #       https://github.com/uProxy/uproxy/issues/430
       turnFrontend:
         src: FILES.jasmine_helpers.concat([
           'build/turn-frontend/mocks.js'
+          'build/logging/logging.js'
           'build/turn-frontend/messages.js'
           'build/turn-frontend/turn-frontend.js'
           'build/arraybuffers/arraybuffers.js'
@@ -218,34 +236,55 @@ module.exports = (grunt) ->
       churn:
         src: FILES.jasmine_helpers.concat([
           'build/churn/mocks.js'
+          'build/logging/logging.js'
           'build/churn/churn.js'
           'build/peerconnection/*.js'
         ]),
         options:
           specs: 'build/churn/*.spec.js'
-      simpleTransformers: Rule.jasmineSpec 'simple-transformers'
-
       # TODO: socksToRtc tests require a bunch of other modules
       #       https://github.com/uProxy/uproxy/issues/430
       socksToRtc:
         src: FILES.jasmine_helpers.concat([
-          'build/handler/queue.js'
           'build/socks-to-rtc/mocks.js'
+          'build/handler/queue.js'
+          'build/logging/logging.js'
+          'build/webrtc/*.js'
           'build/socks-to-rtc/socks-to-rtc.js'
         ])
         options:
+          outfile: 'build/socks-to-rtc/SpecRunner.html'
+          keepRunner: true
           specs: 'build/socks-to-rtc/*.spec.js'
-
       # TODO: rtcToNet tests require a bunch of other modules
       #       https://github.com/uProxy/uproxy/issues/430
       rtcToNet:
         src: FILES.jasmine_helpers.concat([
-          'build/handler/queue.js'
           'build/rtc-to-net/mocks.js'
+          'build/handler/queue.js'
+          'build/logging/logging.js'
+          'build/webrtc/*.js'
           'build/rtc-to-net/rtc-to-net.js'
         ])
         options:
+          outfile: 'build/rtc-to-net/SpecRunner.html'
+          keepRunner: true
           specs: 'build/rtc-to-net/*.spec.js'
+
+    integration:
+      tcp:
+        options:
+          template: 'node_modules/freedom-for-chrome/spec/helper/'
+          spec: ['build/tcp/*.integration.spec.js']
+          helper: [
+            {path: 'build/freedom/freedom-for-chrome.js', include: true}
+            {path: 'build/arraybuffers/arraybuffers.js', include: false}
+            {path: 'build/logging/logging.js', include: false}
+            {path: 'build/handler/queue.js', include: false}
+            {path: 'build/tcp/tcp.js', include: false}
+            {path: 'build/tcp/integration.*', include: false}
+          ]
+          keepBrowser: false
 
     clean: ['build/', 'dist/', '.tscache/']
 
@@ -276,7 +315,9 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-ts'
-  grunt.loadNpmTasks('grunt-browserify');
+  grunt.loadNpmTasks 'grunt-browserify'
+
+  grunt.loadTasks 'node_modules/freedom-for-chrome/tasks'
 
   #-------------------------------------------------------------------------
   # Define the tasks
@@ -289,11 +330,13 @@ module.exports = (grunt) ->
     'symlink:uproxyLibThirdParty'
     'symlink:utransformers'
     'symlink:regex2dfa'
+    'symlink:freedom'
   ]
 
   taskManager.add 'tcp', [
     'base'
     'ts:tcp'
+    'ts:tcpSpecDecl'
     'copy:tcp'
   ]
 
@@ -457,7 +500,6 @@ module.exports = (grunt) ->
 
   taskManager.add 'churn', [
     'base'
-    'turn'
     'churnPipe'
     'ts:churn'
     'ts:churnSpecDecl'

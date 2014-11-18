@@ -1,4 +1,3 @@
-/// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../freedom/typings/tcp-socket.d.ts' />
 /// <reference path='../handler/queue.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />

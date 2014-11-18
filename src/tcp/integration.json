@@ -1,0 +1,16 @@
+{
+  "name": "core.tcpsocket wrapper integration tests",
+  "app": {
+    "script": [
+      "../arraybuffers/arraybuffers.js",
+      "../handler/queue.js",
+      "../logging/logging.js",
+      "../tcp/tcp.js",
+      "integration.js"
+    ]
+  },
+  "permissions": [
+    "core.console",
+    "core.tcpsocket"
+  ]
+}

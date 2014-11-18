@@ -1,9 +1,9 @@
-/// <reference path='churn.d.ts' />
 /// <reference path='../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../churn-pipe/churn-pipe.d.ts' />
+/// <reference path='../crypto/random.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
-/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
-/// <reference path='../freedom/coreproviders/uproxypeerconnection.d.ts' />
+/// <reference path='../logging/logging.d.ts' />
+/// <reference path='../webrtc/datachannel.d.ts' />
 /// <reference path='../webrtc/peerconnection.d.ts' />
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 
@@ -11,8 +11,55 @@
 var regex2dfa :any;
 
 module Churn {
+  var log :Logging.Log = new Logging.Log('churn');
 
-  var log :Freedom_UproxyLogging.Log = freedom['core.log']('churn');
+  export interface ChurnSignallingMessage extends WebRtc.SignallingMessage {
+    type          :WebRtc.SignalType
+    candidate     ?:freedom_RTCPeerConnection.RTCIceCandidate;
+    description   ?:freedom_RTCPeerConnection.RTCSessionDescription;
+    churnStage :number;
+  }
+
+  export var filterCandidatesFromSdp = (sdp:string) : string => {
+    return sdp.split('\n').filter((s) => {
+      return s.indexOf('a=candidate') != 0;
+    }).join('\n');
+  }
+
+  var isHostCandidateLine_ = (candidate:string) : string[] => {
+    var lines = candidate.split(' ');
+    if (lines.length < 8 || lines[6] != 'typ') {
+      throw new Error('cannot parse candidate line: ' + candidate);
+    }
+    var typ = lines[7];
+    if (typ != 'host') {
+      throw new Error('not a host candidate line: ' + candidate);
+    }
+    return lines;
+  }
+
+  export var extractEndpointFromCandidateLine = (
+      candidate:string) : freedom_ChurnPipe.Endpoint => {
+    var lines = isHostCandidateLine_(candidate);
+    var address = lines[4];
+    var port = parseInt(lines[5]);
+    if (port != port) {
+      // Check for NaN.
+      throw new Error('invalid port in candidate line: ' + candidate);
+    }
+    return {
+      address: address,
+      port: port
+    };
+  }
+
+  export var setCandidateLineEndpoint = (
+      candidate:string, endpoint:freedom_ChurnPipe.Endpoint) : string => {
+    var lines = isHostCandidateLine_(candidate);
+    lines[4] = endpoint.address;
+    lines[5] = endpoint.port.toString();
+    return lines.join(' ');
+  }
 
   /**
    * A uproxypeerconnection-like Freedom module which establishes obfuscated
@@ -28,14 +75,22 @@ module Churn {
    * TODO: Give the uproxypeerconnections name, to help debugging.
    * TODO: Allow obfuscation parameters be configured.
    */
-  export class Provider {
+  export class Connection implements WebRtc.PeerConnectionInterface {
+
+    public pcState :WebRtc.State;
+    public dataChannels :{[channelLabel:string] : WebRtc.DataChannel};
+    public peerOpenedChannelQueue :Handler.Queue<WebRtc.DataChannel, void>;
+    public signalForPeerQueue :Handler.Queue<Churn.ChurnSignallingMessage, void>;
+    public peerName :string;
+
+    public onceConnecting :Promise<void>;
 
     // A short-lived connection used to determine network addresses on which
     // we can communicate with the remote host.
-    private surrogateConnection_ :freedom_UproxyPeerConnection.Pc;
+    private surrogateConnection_ :WebRtc.PeerConnection;
 
     // The obfuscated connection.
-    private obfuscatedConnection_ :freedom_UproxyPeerConnection.Pc;
+    private obfuscatedConnection_ :WebRtc.PeerConnection;
 
     // Fulfills once obfuscatedConnection_ has been configured.
     // At that point, the negotiator can safely attempt to
@@ -66,9 +121,7 @@ module Churn {
       this.haveForwardingSocketEndpoint_ = F;
     });
 
-    constructor(
-        private dispatchEvent_:(name:string, args:any) => void,
-        config:WebRtc.PeerConnectionConfig) {
+    constructor(config:WebRtc.PeerConnectionConfig) {
       // TODO: Remove when objects-for-constructors is fixed in Freedom:
       //         https://github.com/freedomjs/freedom/issues/87
       if (Array.isArray(config)) {
@@ -82,29 +135,40 @@ module Churn {
       // establish the obfuscated connection.
       this.configureSurrogateConnection_(config);
       Promise.all([this.onceHaveWebRtcEndpoint_,
-          this.surrogateConnection_.onceConnected()]).then((answers:any[]) => {
+          this.surrogateConnection_.onceConnected]).then((answers:any[]) => {
         this.configurePipes_(answers[0], answers[1]);
+      });
+
+      this.pcState = WebRtc.State.WAITING;
+      this.dataChannels = {};
+      this.peerOpenedChannelQueue = new Handler.Queue<WebRtc.DataChannel,void>();
+      this.signalForPeerQueue = new Handler.Queue<Churn.ChurnSignallingMessage,void>();
+      this.peerName = config.peerName ||
+          'churn-connection-' + crypto.randomUint32();
+
+      // TODO: Remove this public field.
+      this.onceConnecting = this.surrogateConnection_.onceConnecting.then(() => {
+        this.pcState = WebRtc.State.CONNECTING;
       });
     }
 
     private configureSurrogateConnection_ = (
         config:WebRtc.PeerConnectionConfig) => {
       log.debug('configuring surrogate connection...');
-      this.surrogateConnection_ = freedom['core.uproxypeerconnection'](config);
-      this.surrogateConnection_.on('signalForPeer',
+      this.surrogateConnection_ = new WebRtc.PeerConnection(config);
+      this.surrogateConnection_.signalForPeerQueue.setSyncHandler(
           (signal:WebRtc.SignallingMessage) => {
-        var churnSignal :Churn.ChurnSignallingMessage =
-            <Churn.ChurnSignallingMessage>signal;
+        var churnSignal :ChurnSignallingMessage =
+            <ChurnSignallingMessage>signal;
         churnSignal.churnStage = 1;
-        this.dispatchEvent_('signalForPeer', churnSignal);
+        this.signalForPeerQueue.handle(churnSignal);
       });
       // Once the surrogate connection has been successfully established,
       // we want to tear it down and setup the obfuscated connection.
-      this.surrogateConnection_.onceConnected().then(
+      this.surrogateConnection_.onceConnected.then(
           (endpoints:WebRtc.ConnectionAddresses) => {
-        this.surrogateConnection_.close().then(() => {
-          this.configureObfuscatedConnection_(endpoints);
-        });
+        this.surrogateConnection_.close();
+        this.configureObfuscatedConnection_(endpoints);
       });
     }
 
@@ -117,7 +181,7 @@ module Churn {
         webRtcEndpoint:freedom_ChurnPipe.Endpoint,
         publicEndpoints:WebRtc.ConnectionAddresses) : void => {
       log.debug('configuring pipes...');
-      var localPipe = freedom.churnPipe();
+      var localPipe = freedom['churnPipe']();
       localPipe.bind(
           '127.0.0.1',
           0,
@@ -137,7 +201,7 @@ module Churn {
             forwardingSocketEndpoint.port + ' and webrtc at ' +
             webRtcEndpoint.address + ':' + webRtcEndpoint.port);
 
-        var publicPipe = freedom.churnPipe();
+        var publicPipe = freedom['churnPipe']();
         publicPipe.bind(
             publicEndpoints.local.address,
             publicEndpoints.local.port,
@@ -182,13 +246,10 @@ module Churn {
       var config :WebRtc.PeerConnectionConfig = {
         webrtcPcConfig: {
           iceServers: []
-        },
-        webrtcMediaConstraints: {
-          optional: [{DtlsSrtpKeyAgreement: true}]
         }
       };
-      this.obfuscatedConnection_ = freedom['core.uproxypeerconnection'](config);
-      this.obfuscatedConnection_.on('signalForPeer',
+      this.obfuscatedConnection_ = new WebRtc.PeerConnection(config);
+      this.obfuscatedConnection_.signalForPeerQueue.setSyncHandler(
           (signal:WebRtc.SignallingMessage) => {
         // Super-paranoid check: remove candidates from SDP messages.
         // This can happen if a connection is re-negotiated.
@@ -197,7 +258,7 @@ module Churn {
         if (signal.type === WebRtc.SignalType.OFFER ||
             signal.type === WebRtc.SignalType.ANSWER) {
           signal.description.sdp =
-              Provider.filterCandidatesFromSdp(signal.description.sdp);
+              filterCandidatesFromSdp(signal.description.sdp);
         }
         if (signal.type === WebRtc.SignalType.CANDIDATE) {
           // This will tell us on which port webrtc is operating.
@@ -205,10 +266,10 @@ module Churn {
           // side never knows the real address (can be an issue when both
           // hosts are on the same network).
           this.haveWebRtcEndpoint_(
-            Churn.Provider.extractEndpointFromCandidateLine(
+            extractEndpointFromCandidateLine(
               signal.candidate.candidate));
           signal.candidate.candidate =
-            Churn.Provider.setCandidateLineEndpoint(
+            setCandidateLineEndpoint(
               signal.candidate.candidate, {
                 address: '0.0.0.0',
                 port: 0
@@ -217,16 +278,20 @@ module Churn {
         var churnSignal :Churn.ChurnSignallingMessage =
             <Churn.ChurnSignallingMessage>signal;
         churnSignal.churnStage = 2;
-        this.dispatchEvent_('signalForPeer', churnSignal);
+        this.signalForPeerQueue.handle(churnSignal);
       });
-      this.obfuscatedConnection_.onceConnected().then(
+      this.obfuscatedConnection_.onceConnected.then(
           (endpoints:WebRtc.ConnectionAddresses) => {
-        this.obfuscatedConnection_.on('dataFromPeer',
-            this.dispatchEvent_.bind(null, 'dataFromPeer'));
-        this.obfuscatedConnection_.on('peerOpenedChannel',
-            this.dispatchEvent_.bind(null, 'peerOpenedChannel'));
+        this.obfuscatedConnection_.peerOpenedChannelQueue.setSyncHandler(
+            this.peerOpenedChannelQueue.handle);
         this.churnSetup_();
       });
+      // NOTE: Replacing |this.dataChannels| in this way breaks recursive nesting.
+      // If the caller or |obfuscatedConnection_| applies the same approach,
+      // the code will break in hard-to-debug fashion.  This could be
+      // addressed by using a javascript "getter", or by changing the
+      // WebRtc.PeerConnection API.
+      this.dataChannels = this.obfuscatedConnection_.dataChannels;
       this.pc2Setup_();
     }
 
@@ -244,138 +309,60 @@ module Churn {
     // In the case of obfuscated signalling channel messages, we inject our
     // local forwarding socket's endpoint.
     public handleSignalMessage = (
-        signal:Churn.ChurnSignallingMessage) : Promise<void> => {
+        signal:Churn.ChurnSignallingMessage) : void => {
       if (signal.churnStage == 1) {
-        return this.surrogateConnection_.handleSignalMessage(signal);
+        this.surrogateConnection_.handleSignalMessage(signal);
       } else if (signal.churnStage == 2) {
         if (signal.type === WebRtc.SignalType.CANDIDATE) {
-          return this.onceHaveForwardingSocketEndpoint_.then(
+          this.onceHaveForwardingSocketEndpoint_.then(
               (forwardingSocketEndpoint:freedom_ChurnPipe.Endpoint) => {
             signal.candidate.candidate =
-              Churn.Provider.setCandidateLineEndpoint(
+              setCandidateLineEndpoint(
                 signal.candidate.candidate, forwardingSocketEndpoint);
-            return this.obfuscatedConnection_.handleSignalMessage(signal);
+            this.obfuscatedConnection_.handleSignalMessage(signal);
           });
         } else {
-          return this.obfuscatedConnection_.handleSignalMessage(signal);
+          this.obfuscatedConnection_.handleSignalMessage(signal);
         }
       } else {
         // Should never happen. Incompatible remote version?
-        return Promise.reject(new Error(
+        throw new Error(
           'unknown churn stage in signalling channel message: ' +
-          signal.churnStage));
+          signal.churnStage);
       }
     }
 
-    public openDataChannel = (channelLabel:string) : Promise<void> => {
+    public openDataChannel = (channelLabel:string,
+        options?:freedom_RTCPeerConnection.RTCDataChannelInit)
+        : Promise<WebRtc.DataChannel> => {
       return this.obfuscatedConnection_.openDataChannel(channelLabel);
     }
 
-    public closeDataChannel = (channelLabel:string) : Promise<void> => {
-      return this.obfuscatedConnection_.closeDataChannel(channelLabel);
+    public close = () : void => {
+      this.obfuscatedConnection_.close();
     }
 
-    public onceDataChannelOpened = (channelLabel:string) : Promise<void> => {
-      return this.obfuscatedConnection_.onceDataChannelOpened(channelLabel);
-    }
-
-    public onceDataChannelClosed = (channelLabel:string) : Promise<void> => {
-      return this.obfuscatedConnection_.onceDataChannelClosed(channelLabel);
-    }
-
-    public send = (channelLabel:string, data:WebRtc.Data) : Promise<void> => {
-      return this.obfuscatedConnection_.send(channelLabel, data);
-    }
-
-    public close = () : Promise<void> => {
-      return this.obfuscatedConnection_.close();
-    }
-
-    public onceConnected = () : Promise<WebRtc.ConnectionAddresses> => {
+    public onceConnected = this.onceChurnSetup_.then(() => {
       // obfuscatedConnection_ doesn't exist until onceChurnSetup_ fulfills.
-      return this.onceChurnSetup_.then(() => {
-        return this.obfuscatedConnection_.onceConnected();
-      });
-    }
+      return this.obfuscatedConnection_.onceConnected
+    }).then((addresses:WebRtc.ConnectionAddresses) => {
+      this.pcState = WebRtc.State.CONNECTED;
+      return addresses;
+    });
 
-    public onceConnecting = () : Promise<void> => {
-      return this.surrogateConnection_.onceConnecting();
-    }
-
-    public onceDisconnected = () : Promise<void> => {
+    public onceDisconnected = this.onceChurnSetup_.then(() => {
       // obfuscatedConnection_ doesn't exist until onceChurnSetup_ fulfills.
-      return this.onceChurnSetup_.then(() => {
-        return this.obfuscatedConnection_.onceDisconnected();
-      });
-    }
+      return this.obfuscatedConnection_.onceDisconnected;
+    }).then(() => {
+      this.pcState = WebRtc.State.DISCONNECTED;
+    });
 
-    // Strips candidate lines from an SDP.
-    // In general, an SDP is a newline-delimited series of lines of the form:
-    //   x=yyy
-    // where x is a single character and yyy arbitrary text.
-    //
-    // ICE candidate lines look like this:
-    //   a=candidate:1297 1 udp 2122 192.168.1.5 4533 typ host generation 0
-    //
-    // For more information on SDP, see section 6 of the RFC:
-    //   http://tools.ietf.org/html/rfc2327
-    public static filterCandidatesFromSdp = (sdp:string) : string => {
-      return sdp.split('\n').filter((s) => {
-        return s.indexOf('a=candidate') != 0;
-      }).join('\n');
-    }
-
-    private static isHostCandidateLine_ = (candidate:string) : string[] => {
-      var lines = candidate.split(' ');
-      if (lines.length != 10 || lines[6] != 'typ') {
-        throw new Error('cannot parse candidate line: ' + candidate);
+    public toString = () : string => {
+      if (this.obfuscatedConnection_) {
+        return this.obfuscatedConnection_.toString();
+      } else {
+        return 'Not yet connected';
       }
-      var typ = lines[7];
-      if (typ != 'host') {
-        throw new Error('cannot parse candidate line: ' + candidate);
-      }
-      return lines;
-    }
-
-    // Extracts the endpoint from an SDP candidate line.
-    // Raises an exception if the supplied string is not a candidate line of
-    // type host or the endpoint cannot be parsed.
-    //
-    // ICE candidate lines look something like this:
-    //   a=candidate:1297 1 udp 2122 192.168.1.5 4533 typ host generation 0
-    //
-    // For more information on candidate lines, see section 15.1 of the RFC:
-    //   http://tools.ietf.org/html/rfc5245#section-15.1
-    public static extractEndpointFromCandidateLine = (
-        candidate:string) : freedom_ChurnPipe.Endpoint => {
-      var lines = Churn.Provider.isHostCandidateLine_(candidate);
-      var address = lines[4];
-      var port = parseInt(lines[5]);
-      if (port != port) {
-        // Check for NaN.
-        throw new Error('invalid port in candidate line: ' + candidate);
-      }
-      return {
-        address: address,
-        port: port
-      }
-    }
-
-    // Extracts the endpoint from an SDP candidate line.
-    // Raises an exception if the supplied string is not a candidate line of
-    // type host.
-    //
-    // See #extractEndpointFromCandidateLine.
-    public static setCandidateLineEndpoint = (
-        candidate:string, endpoint:freedom_ChurnPipe.Endpoint) : string => {
-      var lines = Churn.Provider.isHostCandidateLine_(candidate);
-      lines[4] = endpoint.address;
-      lines[5] = endpoint.port.toString();
-      return lines.join(' ');
-    }
-  }
-
-  if (typeof freedom !== 'undefined') {
-    freedom.churn().providePromises(Churn.Provider);
+    };
   }
 }
