@@ -1,8 +1,11 @@
 /// <reference path="../../churn/churn.d.ts" />
+/// <reference path="../../webrtc/peerconnection.d.ts" />
 /// <reference path='../../logging/logging.d.ts' />
 /// <reference path="../../freedom/typings/freedom.d.ts" />
 
-var log :Logging.Log = new Logging.Log('top');
+Logging.setConsoleFilter(['*:D']);
+
+var log :Logging.Log = new Logging.Log('copypaste churn chat');
 
 var pc = new Churn.Connection({
   webrtcPcConfig: {
