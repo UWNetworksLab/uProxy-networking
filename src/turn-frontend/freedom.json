@@ -3,11 +3,11 @@
   "description": "Listen for incoming requests, and relay them through a transport.",
   "app": {
     "script": [
-      "turn-frontend.js",
-      "messages.js",
-      "../logging/logging.js",
       "../arraybuffers/arraybuffers.js",
-      "../sha1/sha1.js"
+      "../logging/logging.js",
+      "../sha1/sha1.js",
+      "messages.js",
+      "turn-frontend.js"
     ]
   },
   "provides": [
@@ -39,7 +39,7 @@
     }
   },
   "permissions": [
-    "core.udpsocket",
-    "core.log"
+    "core.console",
+    "core.udpsocket"
   ]
 }

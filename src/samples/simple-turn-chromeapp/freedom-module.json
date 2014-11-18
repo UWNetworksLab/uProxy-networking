@@ -3,7 +3,10 @@
   "description": "top-level freedom manifest",
   "app": {
     "script": [
-      "freedom.js"
+      "lib/arraybuffers/arraybuffers.js",
+      "lib/handler/queue.js",
+      "lib/logging/logging.js",
+      "freedom-module.js"
     ]
   },
   "dependencies": {
@@ -17,6 +20,6 @@
     }
   },
   "permissions": [
-    "core.log"
+    "core.console"
   ]
 }

@@ -2,7 +2,7 @@ Polymer({
   model: model,
   generateIceCandidates: function() {
     this.$.generateIceCandidatesButton.disabled = true;
-    freedom.emit('start', {});
+    copypastePromise.then((copypaste:any) => { copypaste.emit('start', {}); });
   },
   parseInboundText: function() {
     parsedInboundMessages = parseInboundMessages(this.inboundText);

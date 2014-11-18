@@ -1,10 +1,9 @@
 // Server which handles SOCKS connections over WebRTC datachannels.
 
 /// <reference path='../socks-common/socks-headers.d.ts' />
-/// <reference path='../freedom/coreproviders/uproxylogging.d.ts' />
-/// <reference path='../freedom/coreproviders/uproxypeerconnection.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../handler/queue.d.ts' />
+/// <reference path='../logging/logging.d.ts' />
 /// <reference path='../ipaddrjs/ipaddrjs.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
 /// <reference path="../churn/churn.d.ts" />
@@ -16,7 +15,8 @@
 console.log('WEBWORKER - RtcToNet: ' + self.location.href);
 
 module RtcToNet {
-  var log :Freedom_UproxyLogging.Log = freedom['core.log']('RtcToNet');
+
+  var log :Logging.Log = new Logging.Log('RtcToNet');
 
   export interface ProxyConfig {
     // If |allowNonUnicast === false| then any proxy attempt that results
@@ -32,8 +32,7 @@ module RtcToNet {
     public proxyConfig :ProxyConfig;
 
     // Message handler queues to/from the peer.
-    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void> =
-        new Handler.Queue<WebRtc.SignallingMessage,void>();
+    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
 
     // The two Queues below only count bytes transferred between the SOCKS
     // client and the remote host(s) the client wants to connect to. WebRTC
@@ -73,7 +72,7 @@ module RtcToNet {
     public onceClosed :Promise<void>;
 
     // The connection to the peer that is acting as a proxy client.
-    private peerConnection_  :freedom_UproxyPeerConnection.Pc = null;
+    private peerConnection_  :WebRtc.PeerConnection = null;
 
     // The |sessions_| map goes from WebRTC data-channel labels to the Session.
     // Most of the wiring to manage this relationship happens via promises. We
@@ -94,8 +93,8 @@ module RtcToNet {
         this.start(
             proxyConfig,
             obfuscate ?
-              freedom.churn(pcConfig) :
-              freedom['core.uproxypeerconnection'](pcConfig));
+                new Churn.Connection(pcConfig) :
+                new WebRtc.PeerConnection(pcConfig));
       }
     }
 
@@ -103,7 +102,7 @@ module RtcToNet {
     // Returns this.onceReady.
     public start = (
         proxyConfig:ProxyConfig,
-        peerconnection:freedom_UproxyPeerConnection.Pc)
+        peerconnection:WebRtc.PeerConnection)
         : Promise<void> => {
       if (this.peerConnection_) {
         throw new Error('already configured');
@@ -111,25 +110,25 @@ module RtcToNet {
       this.proxyConfig = proxyConfig;
       this.peerConnection_ = peerconnection;
 
-      this.peerConnection_.on('dataFromPeer', this.onDataFromPeer_);
-      this.peerConnection_.on('signalForPeer', this.signalsForPeer.handle);
-      this.peerConnection_.on('peerOpenedChannel', this.onPeerOpenedChannel_);
+      this.signalsForPeer = this.peerConnection_.signalForPeerQueue;
+      this.peerConnection_.peerOpenedChannelQueue.setSyncHandler(
+          this.onPeerOpenedChannel_);
 
-      this.onceReady = this.peerConnection_.onceConnected().then(() => {});
+      this.onceReady = this.peerConnection_.onceConnected.then(() => {});
       this.onceReady.catch(this.fulfillStopping_);
-      this.peerConnection_.onceDisconnected()
+      this.peerConnection_.onceDisconnected
           .then(this.fulfillStopping_, this.fulfillStopping_);
       this.onceClosed = this.onceStopping_.then(this.stopResources_);
 
       return this.onceReady;
     }
 
-    private onPeerOpenedChannel_ = (channelLabel:string) : void => {
+    private onPeerOpenedChannel_ = (channel:WebRtc.DataChannel) => {
+      var channelLabel = channel.getLabel();
       log.debug('creating new session for channel ' + channelLabel);
 
       var session = new Session(
-          this.peerConnection_,
-          channelLabel,
+          channel,
           this.proxyConfig,
           this.bytesReceivedFromPeer,
           this.bytesSentToPeer);
@@ -155,40 +154,15 @@ module RtcToNet {
     }
 
     // Shuts down the peerconnection, fulfilling it has terminated.
-    // Since its close() method should ever reject, this should never reject.
+    // Since its close() method should never throw, this should never reject.
     // TODO: close all sessions before fulfilling
-    public stopResources_ = () : Promise<void> => {
-      // uproxypeerconnection doesn't allow us query whether the
-      // peerconnection has shut down but the call is explicitly idempodent.
-      return this.peerConnection_.close();
+    private stopResources_ = () : Promise<void> => {
+      return new Promise<void>((F, R) => { this.peerConnection_.close(); F(); });
     }
 
     public handleSignalFromPeer = (signal:WebRtc.SignallingMessage)
         : void => {
       this.peerConnection_.handleSignalMessage(signal);
-    }
-
-    // Data from the remote peer over WebRtc gets sent to the socket that
-    // corresponds to the channel label, or used to make a new TCP connection.
-    private onDataFromPeer_ = (
-        rtcData:freedom_UproxyPeerConnection.LabelledDataChannelMessage)
-        : void => {
-      if(rtcData.channelLabel === '_control_') {
-        this.handleControlMessage_(rtcData.message.str);
-        return;
-      }
-      log.debug('onDataFromPeer_: ' + JSON.stringify(rtcData));
-      if(rtcData.message.buffer) {
-        // We only count bytes sent in .buffer, not .str.
-        this.bytesReceivedFromPeer.handle(rtcData.message.buffer.byteLength);
-      }
-      if(!(rtcData.channelLabel in this.sessions_)) {
-        log.error('onDataFromPeer_: no such channel to send data to: ' +
-            rtcData.channelLabel);
-        return;
-      }
-      this.sessions_[rtcData.channelLabel].handleWebRtcDataFromPeer(
-          rtcData.message);
     }
 
     private handleControlMessage_ = (controlMessage:string) : void => {
@@ -235,13 +209,11 @@ module RtcToNet {
     private hasConnectedToEndpoint_ :boolean;
 
     // Getters.
-    public channelLabel = () : string => { return this.channelLabel_; }
+    public channelLabel = () : string => { return this.dataChannel_.getLabel(); }
     public isClosed = () : boolean => { return this.isClosed_; }
 
     constructor(
-        private peerConnection_:freedom_UproxyPeerConnection.Pc,
-        // The channel Label is a unique id for this data channel and session.
-        private channelLabel_:string,
+        private dataChannel_:WebRtc.DataChannel,
         public proxyConfig :ProxyConfig,
         private bytesReceivedFromPeer:Handler.Queue<number,void>,
         private bytesSentToPeer:Handler.Queue<number,void>) {
@@ -250,15 +222,16 @@ module RtcToNet {
       this.hasConnectedToEndpoint_ = false;
       // Open a data channel to the peer. The session is ready when the channel
       // is open.
-      this.onceReady = this.peerConnection_.onceDataChannelOpened(
-          this.channelLabel_);
+      this.onceReady = this.dataChannel_.onceOpened;
+
+      dataChannel_.dataFromPeerQueue.setSyncHandler(this.handleWebRtcDataFromPeer_);
+
       // Note: A TCP connection may or may not exist. If a TCP connection does,
       // exist, then onceDataChannelClosed will then close it (bound by
       // setTcpConnection). When a TCP stream closes, it also closes the data
       // channel, so it does suffice to consider a session closed when the data
       // channel is closed.
-      this.onceClosed = this.peerConnection_
-          .onceDataChannelClosed(this.channelLabel_);
+      this.onceClosed = this.dataChannel_.onceClosed;
       this.onceClosed.then(() => {
         this.isClosed_ = true;
         log.debug(this.longId() + ': onceClosed.');
@@ -270,17 +243,17 @@ module RtcToNet {
       if(this.tcpConnection) {
         tcp = this.tcpConnection.connectionId + (this.tcpConnection.isClosed() ? '.c' : '.o');
       }
-      return this.channelLabel_ + (this.isClosed_ ? '.c' : '.o') + '-' + tcp;
+      return this.channelLabel() + (this.isClosed_ ? '.c' : '.o') + '-' + tcp;
     }
 
     public close = () : void => {
       if(!this.isClosed_) {
-        this.peerConnection_.closeDataChannel(this.channelLabel_);
+        this.dataChannel_.close();
         this.isClosed_ = true;
       }
     }
 
-    public handleWebRtcDataFromPeer = (webrtcData:WebRtc.Data) : void => {
+    private handleWebRtcDataFromPeer_ = (webrtcData:WebRtc.Data) : void => {
       // Control messages are sent as strings.
       if(webrtcData.str) {
         this.handleWebRtcControlMessage_(webrtcData.str);
@@ -335,8 +308,7 @@ module RtcToNet {
             }
             this.hasConnectedToEndpoint_ = true;
             // TODO: send back to peer.
-            this.peerConnection_.send(
-              this.channelLabel_, {str: JSON.stringify(connectedToEndpoint)});
+            this.dataChannel_.send({str: JSON.stringify(connectedToEndpoint)});
             log.info(this.longId() + ': Connected to ' + JSON.stringify(connectedToEndpoint));
           });
       } else {
@@ -354,7 +326,7 @@ module RtcToNet {
       this.tcpConnection.dataFromSocketQueue.setSyncHandler((buffer) => {
         log.debug(this.longId() + ': passing on data from tcp connection to pc (' +
             buffer.byteLength + ' bytes)');
-        this.peerConnection_.send(this.channelLabel_, {buffer: buffer});
+        this.dataChannel_.send({buffer: buffer});
         this.bytesSentToPeer.handle(buffer.byteLength);
       });
       // Make sure that closing the TCP connection closes the peer connection
@@ -398,7 +370,7 @@ module RtcToNet {
         tcpString = this.tcpConnection.toString();
       }
       return JSON.stringify({
-        channelLabel_: this.channelLabel_,
+        channelLabel: this.channelLabel(),
         isClosed_: this.isClosed_,
         tcpConnection: tcpString
       });

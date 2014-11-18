@@ -1,4 +1,3 @@
-/// <reference path="../freedom/coreproviders/uproxypeerconnection.d.ts" />
 /// <reference path="../handler/queue.d.ts" />
 /// <reference path="../networking-typings/communications.d.ts" />
 /// <reference path="../webrtc/datachannel.d.ts" />
@@ -21,24 +20,23 @@ declare module SocksToRtc {
     public toString :() => string;
     public start :(
         tcpServer:Tcp.Server,
-        peerconnection:freedom_UproxyPeerConnection.Pc)
+        peerconnection:WebRtc.PeerConnection)
         => Promise<Net.Endpoint>;
     public makeTcpToRtcSession :(tcpConnection:Tcp.Connection) => void;
   }
   class Session {
     constructor();
     public start :(
-        channelLabel:string,
         tcpConnection:Tcp.Connection,
-        peerConnection_:freedom_UproxyPeerConnection.Pc,
-        bytesSentToPeer:Handler.Queue<number,void>)
+        dataChannel:WebRtc.DataChannel,
+        bytesSentToPeer:Handler.Queue<number,void>,
+        bytesReceivedFromPeer:Handler.Queue<number,void>)
         => Promise<Net.Endpoint>;
     public stop :() => Promise<void>;
     public tcpConnection :Tcp.Connection;
     public onceReady :Promise<Net.Endpoint>;
     public onceStopped :Promise<void>;
     public longId :() => string;
-    public handleDataFromPeer :(data:WebRtc.Data) => void;
     public channelLabel :() => string;
     public toString :() => string;
   }

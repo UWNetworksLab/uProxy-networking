@@ -2,55 +2,62 @@
 /// <reference path='../../freedom/typings/freedom.d.ts' />
 
 var startButton = document.getElementById("startButton");
-startButton.onclick = start;
 var copyTextarea = <HTMLInputElement>document.getElementById("copy");
 var pasteTextarea = <HTMLInputElement>document.getElementById("paste");
 var receiveButton = document.getElementById("receiveButton");
-receiveButton.onclick = handleSignallingMessages;
 
-function start() {
-  freedom.emit('start', {});
-}
+freedom('freedom-module.json', { 'debug': 'log' }).then(function(interface:any) {
+  var copypasteChurnChat :any = interface();
 
-freedom.on('signalForPeer', (signal:Churn.ChurnSignallingMessage) => {
-  copyTextarea.value = copyTextarea.value.trim() + '\n' + JSON.stringify(signal);
-});
+  // Dispatches each line from the paste box as a signalling channel message.
+  function handleSignallingMessages() {
+    var signals = pasteTextarea.value.split('\n');
+    for (var i = 0; i < signals.length; i++) {
+      var s:string = signals[i];
+      var signal:Churn.ChurnSignallingMessage = JSON.parse(s);
+      copypasteChurnChat.emit('handleSignalMessage', signal);
+    }
 
-// Dispatches each line from the paste box as a signalling channel message.
-function handleSignallingMessages() {
-  var signals = pasteTextarea.value.split('\n');
-  for (var i = 0; i < signals.length; i++) {
-    var s:string = signals[i];
-    var signal:Churn.ChurnSignallingMessage = JSON.parse(s);
-    freedom.emit('handleSignalMessage', signal);
+    // "Flush" the signalling channels.
+    copyTextarea.value = '';
+    pasteTextarea.value = '';
   }
 
-  // "Flush" the signalling channels.
-  copyTextarea.value = '';
-  pasteTextarea.value = '';
-}
+  function start() {
+    copypasteChurnChat.emit('start', {});
+  }
 
-var sendButton = document.getElementById("sendButton");
+  startButton.onclick = start;
+  receiveButton.onclick = handleSignallingMessages;
 
-var sendArea = <HTMLInputElement>document.getElementById("sendArea");
-var receiveArea = <HTMLInputElement>document.getElementById("receiveArea");
+  copypasteChurnChat.on('signalForPeer', (signal:Churn.ChurnSignallingMessage) => {
+    copyTextarea.value = copyTextarea.value.trim() + '\n' + JSON.stringify(signal);
+  });
 
-freedom.on('ready', function() {
-  console.log('peer connection established!');
-  sendArea.disabled = false;
-});
+  var sendButton = document.getElementById("sendButton");
 
-freedom.on('error', function() {
-  console.error('something went wrong with the peer connection');
-  sendArea.disabled = true;
-});
+  var sendArea = <HTMLInputElement>document.getElementById("sendArea");
+  var receiveArea = <HTMLInputElement>document.getElementById("receiveArea");
 
-sendButton.onclick = function() {
-  // Currently, PeerConnection does not support empty text messages:
-  //   https://github.com/freedomjs/freedom/issues/67
-  freedom.emit('send', sendArea.value || '(empty message)');
-}
+  copypasteChurnChat.on('ready', function() {
+    console.log('peer connection established!');
+    sendArea.disabled = false;
+  });
 
-freedom.on('receive', function(message:string) {
-  receiveArea.value = message;
+  copypasteChurnChat.on('error', function() {
+    console.error('something went wrong with the peer connection');
+    sendArea.disabled = true;
+  });
+
+  sendButton.onclick = function() {
+    // Currently, PeerConnection does not support empty text messages:
+    //   https://github.com/freedomjs/freedom/issues/67
+    copypasteChurnChat.emit('send', sendArea.value || '(empty message)');
+  }
+
+  copypasteChurnChat.on('receive', function(message:string) {
+    receiveArea.value = message;
+  });
+}, (e:Error) => {
+  console.error('could not load freedom: ' + e.message);
 });
