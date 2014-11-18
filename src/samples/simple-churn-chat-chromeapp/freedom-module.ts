@@ -70,8 +70,8 @@ b.onceConnected.then(logEndpoints.bind(null, 'b'));
 a.negotiateConnection().then((endpoints:WebRtc.ConnectionAddresses) => {
   a.openDataChannel('text').then((channel:WebRtc.DataChannel) => {
     log.info('datachannel open!');
-  	freedom().on('sendA', sendMessage.bind(null, channel));
-  	channel.dataFromPeerQueue.setHandler(receiveMessage.bind(null, 'A'));
+    freedom().on('sendA', sendMessage.bind(null, channel));
+    channel.dataFromPeerQueue.setHandler(receiveMessage.bind(null, 'A'));
     freedom().emit('ready', {});
   }, (e) => {
     log.error('could not setup datachannel: ' + e.message);
