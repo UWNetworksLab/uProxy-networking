@@ -3,11 +3,9 @@
 /// <reference path="../../freedom/typings/freedom.d.ts" />
 /// <reference path='../../logging/logging.d.ts' />
 
-// NOTE: This sample app is virtually identical to the 'freedomchat'
-//       sample app in uproxy-lib. The only real difference is that
-//       this uses churn.
+Logging.setConsoleFilter(['*:D']);
 
-var log :Logging.Log = new Logging.Log('top-level freedom module');
+var log :Logging.Log = new Logging.Log('simple churn chat');
 
 var config :WebRtc.PeerConnectionConfig = {
   webrtcPcConfig: {
@@ -72,8 +70,8 @@ b.onceConnected.then(logEndpoints.bind(null, 'b'));
 a.negotiateConnection().then((endpoints:WebRtc.ConnectionAddresses) => {
   a.openDataChannel('text').then((channel:WebRtc.DataChannel) => {
     log.info('datachannel open!');
-	freedom().on('sendA', sendMessage.bind(null, channel));
-	channel.dataFromPeerQueue.setHandler(receiveMessage.bind(null, 'A'));
+  	freedom().on('sendA', sendMessage.bind(null, channel));
+  	channel.dataFromPeerQueue.setHandler(receiveMessage.bind(null, 'A'));
     freedom().emit('ready', {});
   }, (e) => {
     log.error('could not setup datachannel: ' + e.message);

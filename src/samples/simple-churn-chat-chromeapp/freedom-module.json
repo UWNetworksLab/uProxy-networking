@@ -1,0 +1,29 @@
+{
+  "name": "churn chat",
+  "description": "top-level freedom manifest",
+  "app": {
+    "script": [
+      "lib/arraybuffers/arraybuffers.js",
+      "lib/logging/logging.js",
+      "lib/handler/queue.js",
+      "lib/webrtc/datachannel.js",
+      "lib/webrtc/peerconnection.js",
+      "lib/regex2dfa/regex2dfa.js",
+      "lib/crypto/random.js",
+      "lib/churn/churn.js",
+      "freedom-module.js"
+    ]
+  },
+  "dependencies": {
+    "churnPipe": {
+      "url": "lib/churn-pipe/freedom.json",
+      "api": "churnPipe"
+    }
+  },
+  "permissions": [
+    "core.console",
+    "core.udpsocket",
+    "core.rtcdatachannel",
+    "core.rtcpeerconnection"
+  ]
+}

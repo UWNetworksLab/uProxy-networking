@@ -11,7 +11,6 @@
 var regex2dfa :any;
 
 module Churn {
-
   var log :Logging.Log = new Logging.Log('churn');
 
   export interface ChurnSignallingMessage extends WebRtc.SignallingMessage {
@@ -51,7 +50,7 @@ module Churn {
     return {
       address: address,
       port: port
-    }
+    };
   }
 
   export var setCandidateLineEndpoint = (
@@ -76,14 +75,16 @@ module Churn {
    * TODO: Give the uproxypeerconnections name, to help debugging.
    * TODO: Allow obfuscation parameters be configured.
    */
-  export class Connection implements WebRtc.PeerConnectionInterface{
+  export class Connection implements WebRtc.PeerConnectionInterface {
 
     public pcState :WebRtc.State;
     public dataChannels :{[channelLabel:string] : WebRtc.DataChannel};
     public peerOpenedChannelQueue :Handler.Queue<WebRtc.DataChannel, void>;
     public signalForPeerQueue :Handler.Queue<Churn.ChurnSignallingMessage, void>;
     public peerName :string;
- 
+
+    public onceConnecting :Promise<void>;
+
     // A short-lived connection used to determine network addresses on which
     // we can communicate with the remote host.
     private surrogateConnection_ :WebRtc.PeerConnection;
@@ -144,6 +145,11 @@ module Churn {
       this.signalForPeerQueue = new Handler.Queue<Churn.ChurnSignallingMessage,void>();
       this.peerName = config.peerName ||
           'churn-connection-' + crypto.randomUint32();
+
+      // TODO: Remove this public field.
+      this.onceConnecting = this.surrogateConnection_.onceConnecting.then(() => {
+        this.pcState = WebRtc.State.CONNECTING;
+      });
     }
 
     private configureSurrogateConnection_ = (
@@ -175,7 +181,7 @@ module Churn {
         webRtcEndpoint:freedom_ChurnPipe.Endpoint,
         publicEndpoints:WebRtc.ConnectionAddresses) : void => {
       log.debug('configuring pipes...');
-      var localPipe = freedom.churnPipe();
+      var localPipe = freedom['churnPipe']();
       localPipe.bind(
           '127.0.0.1',
           0,
@@ -195,7 +201,7 @@ module Churn {
             forwardingSocketEndpoint.port + ' and webrtc at ' +
             webRtcEndpoint.address + ':' + webRtcEndpoint.port);
 
-        var publicPipe = freedom.churnPipe();
+        var publicPipe = freedom['churnPipe']();
         publicPipe.bind(
             publicEndpoints.local.address,
             publicEndpoints.local.port,
@@ -342,10 +348,6 @@ module Churn {
     }).then((addresses:WebRtc.ConnectionAddresses) => {
       this.pcState = WebRtc.State.CONNECTED;
       return addresses;
-    });
-
-    public onceConnecting = this.surrogateConnection_.onceConnecting.then(() => {
-      this.pcState = WebRtc.State.CONNECTING;
     });
 
     public onceDisconnected = this.onceChurnSetup_.then(() => {
