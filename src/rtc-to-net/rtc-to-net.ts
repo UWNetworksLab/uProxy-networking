@@ -286,7 +286,6 @@ module RtcToNet {
               R(new Error('unexpected type for endpoint message'));
               return;
             }
-            // log.debug('received endpoint from SOCKS client: ' + endpoint.address + ':' + endpoint.port);
             F(request.destination.endpoint);
             return;
           } catch (e) {
