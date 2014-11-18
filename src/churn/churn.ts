@@ -28,12 +28,12 @@ module Churn {
 
   var isHostCandidateLine_ = (candidate:string) : string[] => {
     var lines = candidate.split(' ');
-    if (lines.length != 10 || lines[6] != 'typ') {
+    if (lines.length < 8 || lines[6] != 'typ') {
       throw new Error('cannot parse candidate line: ' + candidate);
     }
     var typ = lines[7];
     if (typ != 'host') {
-      throw new Error('cannot parse candidate line: ' + candidate);
+      throw new Error('not a host candidate line: ' + candidate);
     }
     return lines;
   }

@@ -46,6 +46,15 @@ describe("extractEndpointFromCandidateLine", function() {
     expect(endpoint.address).toEqual('172.26.108.25');
     expect(endpoint.port).toEqual(40762);
   });
+
+  // Ensure TCP candidates don't cause a problem. See:
+  //   http://tools.ietf.org/html/rfc6544
+  it('tcp candidates', () => {
+    var endpoint = Churn.extractEndpointFromCandidateLine(
+      'a=candidate:1302982778 1 tcp 1518214911 172.29.18.131 0 typ host tcptype active generation 0');
+    expect(endpoint.address).toEqual('172.29.18.131');
+    expect(endpoint.port).toEqual(0);
+  });
 });
 
 describe("setCandidateLineEndpoint", function() {
