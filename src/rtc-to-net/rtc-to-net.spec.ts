@@ -101,12 +101,6 @@ describe("RtcToNet session", function() {
       closeDataChannel: noopPromise,
       onceClosed: noopPromise,
       close: jasmine.createSpy('close')
-      // dataChannels: {},
-      // negotiateConnection: jasmine.createSpy('negotiateConnection'),
-      // onceConnecting: noopPromise,
-      // onceConnected: noopPromise,
-      // peerOpenedChannelQueue: new Handler.Queue(),
-      // close: jasmine.createSpy('close')
     };
     mockBytesSent = jasmine.createSpyObj('bytes sent handler', [
         'handle'
