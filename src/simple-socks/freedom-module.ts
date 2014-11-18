@@ -6,12 +6,14 @@
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../networking-typings/communications.d.ts' />
 
-// Note that the proxy server runs very slowly in debug level.
+// Set each module to I, W, E, or D depending on which module
+// you're debugging. Since the proxy outputs quite a lot of messages,
+// show only warnings by default from the rest of the system.
+// Note that the proxy is extremely slow in debug (D) mode.
 Logging.setConsoleFilter([
-    '*:W',
-    'simple-socks:I',
-    'SocksToRtc:D',
-    'RtcToNet:D']);
+    '*:I',
+    'SocksToRtc:I',
+    'RtcToNet:I']);
 
 var log :Logging.Log = new Logging.Log('simple-socks');
 
