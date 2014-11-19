@@ -149,7 +149,6 @@ module Churn {
 
     private configureSurrogateConnection_ = (
         config:WebRtc.PeerConnectionConfig) => {
-      log.debug('configuring surrogate connection...');
       this.surrogateConnection_ = new WebRtc.PeerConnection(config);
       this.surrogateConnection_.signalForPeerQueue.setSyncHandler(
           (signal:WebRtc.SignallingMessage) => {
@@ -234,7 +233,6 @@ module Churn {
     }
 
     private configureObfuscatedConnection_ = () => {
-      log.debug('configuring obfuscated connection...');
       // We use an empty configuration to ensure that no STUN servers are pinged.
       var config :WebRtc.PeerConnectionConfig = {
         webrtcPcConfig: {
