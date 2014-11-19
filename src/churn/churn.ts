@@ -84,6 +84,8 @@ module Churn {
     public peerName :string;
 
     public onceConnecting :Promise<void>;
+    public onceConnected :Promise<WebRtc.ConnectionAddresses>;
+    public onceDisconnected :Promise<void>;
 
     // A short-lived connection used to determine network addresses on which
     // we can communicate with the remote host.
@@ -92,25 +94,11 @@ module Churn {
     // The obfuscated connection.
     private obfuscatedConnection_ :WebRtc.PeerConnection;
 
-    // Fulfills once obfuscatedConnection_ has been configured.
-    // At that point, the negotiator can safely attempt to
-    // negotiate the obfuscated peerconnection.
-    private pc2Setup_ :() => void;
-    private oncePc2Setup_ = new Promise((F, R) => {
-      this.pc2Setup_ = F;
-    });
-
     // Fulfills once we know on which port the RTCPeerConnection used to
     // establish the obfuscated peerconnection is listening.
     private haveWebRtcEndpoint_ :(endpoint:freedom_ChurnPipe.Endpoint) => void;
     private onceHaveWebRtcEndpoint_ = new Promise((F, R) => {
       this.haveWebRtcEndpoint_ = F;
-    });
-
-    // Fulfills once we've successfully started an obfuscated peerconnection.
-    private churnSetup_ :() => void;
-    private onceChurnSetup_ = new Promise((F, R) => {
-      this.churnSetup_ = F;
     });
 
     // Fulfills once we've successfully allocated the forwarding socket.
@@ -129,27 +117,34 @@ module Churn {
         config = (<WebRtc.PeerConnectionConfig[]><any> config)[0];
       }
 
+      this.signalForPeerQueue = new Handler.Queue<Churn.ChurnSignallingMessage,void>();
+
       // Configure the surrogate connection. Once it's been successfully
       // established *and* we know on which port WebRTC is listening we have all
       // the information we need in order to configure the pipes required to
       // establish the obfuscated connection.
       this.configureSurrogateConnection_(config);
+      this.configureObfuscatedConnection_();
       Promise.all([this.onceHaveWebRtcEndpoint_,
           this.surrogateConnection_.onceConnected]).then((answers:any[]) => {
         this.configurePipes_(answers[0], answers[1]);
       });
 
-      this.pcState = WebRtc.State.WAITING;
-      this.dataChannels = {};
-      this.peerOpenedChannelQueue = new Handler.Queue<WebRtc.DataChannel,void>();
-      this.signalForPeerQueue = new Handler.Queue<Churn.ChurnSignallingMessage,void>();
       this.peerName = config.peerName ||
           'churn-connection-' + crypto.randomUint32();
 
-      // TODO: Remove this public field.
+      // Handle |pcState| and related promises.
+      this.pcState = WebRtc.State.WAITING;
       this.onceConnecting = this.surrogateConnection_.onceConnecting.then(() => {
         this.pcState = WebRtc.State.CONNECTING;
       });
+      this.onceConnected = this.obfuscatedConnection_.onceConnected.then(
+          (addresses:WebRtc.ConnectionAddresses) => {
+        this.pcState = WebRtc.State.CONNECTED;
+        return addresses;
+      });
+      this.onceDisconnected = this.obfuscatedConnection_.onceDisconnected.then(
+          () => { this.pcState = WebRtc.State.DISCONNECTED; });
     }
 
     private configureSurrogateConnection_ = (
@@ -168,7 +163,6 @@ module Churn {
       this.surrogateConnection_.onceConnected.then(
           (endpoints:WebRtc.ConnectionAddresses) => {
         this.surrogateConnection_.close();
-        this.configureObfuscatedConnection_(endpoints);
       });
     }
 
@@ -239,10 +233,9 @@ module Churn {
       });
     }
 
-    private configureObfuscatedConnection_ = (
-        endpoints:WebRtc.ConnectionAddresses) => {
+    private configureObfuscatedConnection_ = () => {
       log.debug('configuring obfuscated connection...');
-      // TODO: It may be safe to re-use the config supplied to the constructor.
+      // We use an empty configuration to ensure that no STUN servers are pinged.
       var config :WebRtc.PeerConnectionConfig = {
         webrtcPcConfig: {
           iceServers: []
@@ -280,29 +273,21 @@ module Churn {
         churnSignal.churnStage = 2;
         this.signalForPeerQueue.handle(churnSignal);
       });
-      this.obfuscatedConnection_.onceConnected.then(
-          (endpoints:WebRtc.ConnectionAddresses) => {
-        this.obfuscatedConnection_.peerOpenedChannelQueue.setSyncHandler(
-            this.peerOpenedChannelQueue.handle);
-        this.churnSetup_();
-      });
       // NOTE: Replacing |this.dataChannels| in this way breaks recursive nesting.
       // If the caller or |obfuscatedConnection_| applies the same approach,
       // the code will break in hard-to-debug fashion.  This could be
       // addressed by using a javascript "getter", or by changing the
       // WebRtc.PeerConnection API.
       this.dataChannels = this.obfuscatedConnection_.dataChannels;
-      this.pc2Setup_();
+      this.peerOpenedChannelQueue =
+          this.obfuscatedConnection_.peerOpenedChannelQueue;
     }
 
     public negotiateConnection = () : Promise<WebRtc.ConnectionAddresses> => {
       // TODO: propagate errors.
       log.debug('negotiating initial connection...');
       this.surrogateConnection_.negotiateConnection();
-      return this.oncePc2Setup_.then(() => {
-        log.debug('negotiating obfuscated connection...');
-        return this.obfuscatedConnection_.negotiateConnection();
-      });
+      return this.obfuscatedConnection_.negotiateConnection();
     }
 
     // Forward the message to the relevant stage: surrogate or obfuscated.
@@ -342,27 +327,8 @@ module Churn {
       this.obfuscatedConnection_.close();
     }
 
-    public onceConnected = this.onceChurnSetup_.then(() => {
-      // obfuscatedConnection_ doesn't exist until onceChurnSetup_ fulfills.
-      return this.obfuscatedConnection_.onceConnected
-    }).then((addresses:WebRtc.ConnectionAddresses) => {
-      this.pcState = WebRtc.State.CONNECTED;
-      return addresses;
-    });
-
-    public onceDisconnected = this.onceChurnSetup_.then(() => {
-      // obfuscatedConnection_ doesn't exist until onceChurnSetup_ fulfills.
-      return this.obfuscatedConnection_.onceDisconnected;
-    }).then(() => {
-      this.pcState = WebRtc.State.DISCONNECTED;
-    });
-
     public toString = () : string => {
-      if (this.obfuscatedConnection_) {
-        return this.obfuscatedConnection_.toString();
-      } else {
-        return 'Not yet connected';
-      }
+      return this.obfuscatedConnection_.toString();
     };
   }
 }
