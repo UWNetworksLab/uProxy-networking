@@ -9,12 +9,21 @@
       "../tcp/tcp.js",
       "../webrtc/datachannel.js",
       "../webrtc/peerconnection.js",
+      "../regex2dfa/regex2dfa.js",
+      "../crypto/random.js",
+      "../churn/churn.js",
       "../ipaddrjs/ipaddr.min.js",
       "../socks-common/socks-headers.js",
       "../socks-to-rtc/socks-to-rtc.js",
       "../rtc-to-net/rtc-to-net.js",
       "freedom-module.js"
     ]
+  },
+  "dependencies": {
+    "churnPipe": {
+      "url": "../churn-pipe/freedom.json",
+      "api": "churnPipe"
+    }
   },
   "permissions": [
     "core.console",
