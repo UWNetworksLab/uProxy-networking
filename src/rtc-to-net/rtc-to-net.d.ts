@@ -28,6 +28,7 @@ declare module RtcToNet {
   class Session {
     constructor(channel:WebRtc.DataChannel,
                 proxyConfig:ProxyConfig,
+                bytesReceivedFromPeer:Handler.Queue<number,void>,
                 bytesSentToPeer:Handler.Queue<number,void>);
 
     public start :() => Promise<void>;

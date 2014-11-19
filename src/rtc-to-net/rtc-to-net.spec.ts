@@ -88,6 +88,7 @@ describe("RtcToNet session", function() {
 
   var mockTcpConnection :Tcp.Connection;
   var mockDataChannel :WebRtc.DataChannel;
+  var mockBytesReceived :Handler.Queue<number,void>;
   var mockBytesSent :Handler.Queue<number,void>;
 
   beforeEach(function() {
@@ -102,6 +103,9 @@ describe("RtcToNet session", function() {
       onceClosed: noopPromise,
       close: jasmine.createSpy('close')
     };
+    mockBytesReceived = jasmine.createSpyObj('bytes received handler', [
+        'handle'
+      ]);
     mockBytesSent = jasmine.createSpyObj('bytes sent handler', [
         'handle'
       ]);
@@ -109,6 +113,7 @@ describe("RtcToNet session", function() {
     session  = new RtcToNet.Session(
         mockDataChannel,
         mockProxyConfig,
+        mockBytesReceived,
         mockBytesSent);
   });
 

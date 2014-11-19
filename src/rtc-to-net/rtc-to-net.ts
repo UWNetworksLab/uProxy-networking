@@ -130,6 +130,7 @@ module RtcToNet {
       var session = new Session(
           channel,
           this.proxyConfig,
+          this.bytesReceivedFromPeer,
           this.bytesSentToPeer);
       this.sessions_[channelLabel] = session;
       session.start();
@@ -218,6 +219,7 @@ module RtcToNet {
     constructor(
         private dataChannel_:WebRtc.DataChannel,
         private proxyConfig_:ProxyConfig,
+        private bytesReceivedFromPeer_:Handler.Queue<number,void>,
         private bytesSentToPeer_:Handler.Queue<number,void>) {}
 
     // Returns onceReady.
@@ -324,6 +326,7 @@ module RtcToNet {
           return;
         }
         log.debug(this.longId() + ': dataFromPeer: ' + data.buffer.byteLength + ' bytes.');
+        this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
         this.tcpConnection_.send(data.buffer);
       });
     }
