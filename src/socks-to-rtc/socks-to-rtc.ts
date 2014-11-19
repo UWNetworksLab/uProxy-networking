@@ -11,8 +11,6 @@
 /// <reference path='../tcp/tcp.d.ts' />
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 
-console.log('WEBWORKER - SocksToRtc: ' + self.location.href);
-
 module SocksToRtc {
   var log :Logging.Log = new Logging.Log('SocksToRtc');
 
