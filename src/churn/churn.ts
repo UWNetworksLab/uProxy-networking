@@ -205,10 +205,8 @@ module Churn {
             JSON.stringify({
               'plaintext_dfa': regex2dfa('^.*$'),
               'plaintext_max_len': 1400,
-              // TFTP read request for file with name "abc", by netascii.
-              // By default, Wireshark only looks for TFTP traffic if the packet's destination
-              // port is 69; you can change this in Preferences.
-              'ciphertext_dfa': regex2dfa('^\x00\x01\x61\x62\x63\x00netascii.*$'),
+              // This is equivalent to Rabbit cipher.
+              'ciphertext_dfa': regex2dfa('^.*$'),
               'ciphertext_max_len': 1450
             }))
         .then(() => {
