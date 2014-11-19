@@ -214,8 +214,6 @@ module RtcToNet {
     public channelLabel = () : string => { return this.dataChannel_.getLabel(); }
 
     // The supplied datachannel must already be successfully established.
-    // TODO: Rather than passing a reference to the whole peerconnection, we
-    //       should only pass a reference to the datachannel.
     constructor(
         private dataChannel_:WebRtc.DataChannel,
         private proxyConfig_:ProxyConfig,
