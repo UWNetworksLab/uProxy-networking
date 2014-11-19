@@ -164,10 +164,6 @@ module RtcToNet {
       this.peerConnection_.handleSignalMessage(signal);
     }
 
-    private handleControlMessage_ = (controlMessage:string) : void => {
-      log.debug('handleControlMessage: ' + controlMessage);
-    }
-
     public toString = () : string => {
       var ret :string;
       var sessionsAsStrings :string[] = [];
