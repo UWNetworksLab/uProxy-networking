@@ -133,14 +133,15 @@ module RtcToNet {
           this.bytesReceivedFromPeer,
           this.bytesSentToPeer);
       this.sessions_[channelLabel] = session;
+      session.start();
 
       var discard = () => {
         delete this.sessions_[channelLabel];
         log.debug('discarded session ' + channelLabel + ' (' +
             Object.keys(this.sessions_).length + ' sessions remaining)');
       };
-      session.onceClosed.then(discard, (e:Error) => {
-        log.warn('session ' + channelLabel + ' closed with error: ' + e.message);
+      session.onceStopped().then(discard, (e:Error) => {
+        log.error('session ' + channelLabel + ' closed with error: ' + e.message);
         discard();
       });
     }
@@ -153,20 +154,15 @@ module RtcToNet {
       return this.onceClosed;
     }
 
-    // Shuts down the peerconnection, fulfilling it has terminated.
+    // Shuts down the peerconnection, fulfilling once it has terminated.
     // Since its close() method should never throw, this should never reject.
     // TODO: close all sessions before fulfilling
     private stopResources_ = () : Promise<void> => {
       return new Promise<void>((F, R) => { this.peerConnection_.close(); F(); });
     }
 
-    public handleSignalFromPeer = (signal:WebRtc.SignallingMessage)
-        : void => {
+    public handleSignalFromPeer = (signal:WebRtc.SignallingMessage) : void => {
       this.peerConnection_.handleSignalMessage(signal);
-    }
-
-    private handleControlMessage_ = (controlMessage:string) : void => {
-      log.debug('handleControlMessage: ' + controlMessage);
     }
 
     public toString = () : string => {
@@ -192,161 +188,151 @@ module RtcToNet {
   // CONSIDER: this and the socks-rtc session are similar: maybe abstract
   // common parts into a super-class this inherits from?
   export class Session {
-    public tcpConnection:Tcp.Connection;
+    private tcpConnection_ :Tcp.Connection;
 
+    // Fulfills once a connection has been established with the remote peer.
+    // Rejects if a connection cannot be made for any reason.
     public onceReady :Promise<void>;
-    public onceClosed :Promise<void>;
 
-    // These are used to avoid double-closure of data channels. We don't need
-    // this for tcp connections because that class already holds the open/
-    // closed state. TODO: once we have a real DataChannel object (e.g. done by
-    // low-level WebRtc provider), then refer to dataChannel.isClosed directly.
-    private isClosed_ :boolean;
+    // Call this to initiate shutdown.
+    private fulfillStopping_ :() => void;
+    private onceStopping_ = new Promise((F, R) => {
+      this.fulfillStopping_ = F;
+    });
 
-    // This variable starts false, and becomes true after the socket to the
-    // remote endpoint is open (and the endpoint is confirmed to be at an
-    // allowed address).
-    private hasConnectedToEndpoint_ :boolean;
+    // Fulfills once the session has terminated and the TCP connection
+    // and datachannel have been shutdown.
+    // This can happen in response to:
+    //  - startup failure
+    //  - TCP connection or datachannel termination
+    //  - manual invocation of close()
+    // Should never reject.
+    private onceStopped_ :Promise<void>;
+    public onceStopped = () : Promise<void> => { return this.onceStopped_; }
 
     // Getters.
     public channelLabel = () : string => { return this.dataChannel_.getLabel(); }
-    public isClosed = () : boolean => { return this.isClosed_; }
 
+    // The supplied datachannel must already be successfully established.
     constructor(
         private dataChannel_:WebRtc.DataChannel,
-        public proxyConfig :ProxyConfig,
-        private bytesReceivedFromPeer:Handler.Queue<number,void>,
-        private bytesSentToPeer:Handler.Queue<number,void>) {
-      this.proxyConfig = proxyConfig;
-      this.isClosed_ = false;
-      this.hasConnectedToEndpoint_ = false;
-      // Open a data channel to the peer. The session is ready when the channel
-      // is open.
-      this.onceReady = this.dataChannel_.onceOpened;
+        private proxyConfig_:ProxyConfig,
+        private bytesReceivedFromPeer_:Handler.Queue<number,void>,
+        private bytesSentToPeer_:Handler.Queue<number,void>) {}
 
-      dataChannel_.dataFromPeerQueue.setSyncHandler(this.handleWebRtcDataFromPeer_);
+    // Returns onceReady.
+    public start = () : Promise<void> => {
+      this.onceReady = this.receiveEndpointFromPeer_()
+        .then(this.getTcpConnection_)
+        .then((tcpConnection:Tcp.Connection) => {
+          this.tcpConnection_ = tcpConnection;
+          // Shutdown once the TCP connection terminates.
+          this.tcpConnection_.onceClosed.then(this.fulfillStopping_);
+          return this.tcpConnection_.onceConnected;
+        })
+        .then(this.returnEndpointToPeer_);
+      this.onceReady.then(this.linkTcpAndPeerConnectionData_);
 
-      // Note: A TCP connection may or may not exist. If a TCP connection does,
-      // exist, then onceDataChannelClosed will then close it (bound by
-      // setTcpConnection). When a TCP stream closes, it also closes the data
-      // channel, so it does suffice to consider a session closed when the data
-      // channel is closed.
-      this.onceClosed = this.dataChannel_.onceClosed;
-      this.onceClosed.then(() => {
-        this.isClosed_ = true;
-        log.debug(this.longId() + ': onceClosed.');
-      });
+      this.onceReady.catch(this.fulfillStopping_);
+      this.dataChannel_.onceClosed.then(this.fulfillStopping_);
+      this.onceStopped_ = this.onceStopping_.then(this.stopResources_);
+
+      return this.onceReady;
     }
 
-    public longId = () : string => {
-      var tcp :string = '?';
-      if(this.tcpConnection) {
-        tcp = this.tcpConnection.connectionId + (this.tcpConnection.isClosed() ? '.c' : '.o');
-      }
-      return this.channelLabel() + (this.isClosed_ ? '.c' : '.o') + '-' + tcp;
+    // Initiates shutdown of the TCP connection and peerconnection.
+    // Returns onceStopped.
+    public stop = () : Promise<void> => {
+      this.fulfillStopping_();
+      return this.onceStopped_;
     }
 
-    public close = () : void => {
-      if(!this.isClosed_) {
-        this.dataChannel_.close();
-        this.isClosed_ = true;
+    // Closes the TCP connection and datachannel if they haven't already
+    // closed, fulfilling once both have closed. Since neither object's
+    // close() methods should ever reject, this should never reject.
+    private stopResources_ = () : Promise<void> => {
+      // DataChannel.close() returns void, implying that the shutdown is
+      // effectively immediate.  However, we wrap it in a promise to ensure
+      // that any exception is sent to the Promise.catch, rather than
+      // propagating synchronously up the stack.
+      var shutdownPromises :Promise<any>[] = [
+        new Promise((F, R) => { this.dataChannel_.close(); F(); })
+      ];
+      if (this.tcpConnection_) {
+        shutdownPromises.push(this.tcpConnection_.close());
       }
+      return Promise.all(shutdownPromises).then((discard:any) => {});
     }
 
-    private handleWebRtcDataFromPeer_ = (webrtcData:WebRtc.Data) : void => {
-      // Control messages are sent as strings.
-      if(webrtcData.str) {
-        this.handleWebRtcControlMessage_(webrtcData.str);
-      } else if (webrtcData.buffer && this.tcpConnection) {
-        if (!this.hasConnectedToEndpoint_) {
-          log.error(this.longId() + ': Client attempted to send data to ' +
-              'tcp connection before it was opened');
-          return;
-        }
-        log.debug(this.longId() + ': passing on data from pc connection to tcp (' +
-            webrtcData.buffer.byteLength + ' bytes)');
-        // Note: tcpConnection is smart: it buffers and only sends when it is
-        // ready.
-        this.tcpConnection.dataToSocketQueue.handle(webrtcData.buffer);
-      } else {
-        log.error(this.longId() + ': handleWebRtcDataFromPeer: Bad rtcData: ' +
-            JSON.stringify(webrtcData));
-      }
-    }
-
-    private handleWebRtcControlMessage_ = (controlMessage:string) : void => {
-      // TODO: rather than doing checks like this, we should use a handler
-      // queue and receieve exactly what we want.
-      if(this.tcpConnection) {
-        log.error(this.longId() + ': Unsupported control message: ' +
-            controlMessage + '; after tcp connection is established; state: ' +
-            this.toString());
-        return;
-      }
-
-      var request :Socks.Request;
-      try {
-        request = JSON.parse(controlMessage);
-      } catch (e) {
-        log.error(this.longId() + ': Unsupported control message: ' +
-            controlMessage + '; in state: ' +
-            this.toString());
-        return;
-      }
-
-      if(request.command === Socks.Command.TCP_CONNECT) {
-        this.startTcpConnection_(request.destination.endpoint)
-          .then((connectedToEndpoint:Net.Endpoint) => {
-            if (!this.isAllowedAddress_(connectedToEndpoint.address)) {
-              log.error(this.longId() + ': Blocked attempt to access ' +
-                  connectedToEndpoint.address + ', not an allowed address');
-              // TODO: handle failure properly: tell the requester an
-              // appropriate SOCKS error.
-              // TODO: close the TCP connection and the peer-connection.
-              this.close();
+    // Fulfills with the endpoint requested by the SOCKS client.
+    // Rejects if the received message is not for an endpoint
+    // or if the received endpoint cannot be parsed.
+    // TODO: needs tests (mocked by several tests)
+    private receiveEndpointFromPeer_ = () : Promise<Net.Endpoint> => {
+      return new Promise((F,R) => {
+        this.dataChannel_.dataFromPeerQueue.setSyncNextHandler((data:WebRtc.Data) => {
+          if (!data.str) {
+            R(new Error('endpoint message must be a str'));
+            return;
+          }
+          try {
+            var request :Socks.Request = JSON.parse(data.str);
+            if (request.command != Socks.Command.TCP_CONNECT) {
+              R(new Error('unexpected type for endpoint message'));
               return;
             }
-            this.hasConnectedToEndpoint_ = true;
-            // TODO: send back to peer.
-            this.dataChannel_.send({str: JSON.stringify(connectedToEndpoint)});
-            log.info(this.longId() + ': Connected to ' + JSON.stringify(connectedToEndpoint));
-          });
-      } else {
-        log.error(this.longId() + ': Unsupported control message: ' +
-            controlMessage + '; in state: ' +
-            this.toString());
-        return;
-      }
+            F(request.destination.endpoint);
+            return;
+          } catch (e) {
+            R(new Error('could not parse requested endpoint: ' + e.message));
+            return;
+          }
+        });
+      });
     }
 
-    private startTcpConnection_ = (endpoint:Net.Endpoint)
-        : Promise<Net.Endpoint> => {
-      this.tcpConnection = new Tcp.Connection({endpoint: endpoint});
-      // All data from the tcp-connection should go to the peer connection.
-      this.tcpConnection.dataFromSocketQueue.setSyncHandler((buffer) => {
+    private getTcpConnection_ = (endpoint:Net.Endpoint) : Tcp.Connection => {
+      return new Tcp.Connection({endpoint: endpoint});
+    }
+
+    // Fulfills once the connected endpoint has been returned to the SOCKS client.
+    // Rejects if the endpoint cannot be sent to the SOCKS client.
+    private returnEndpointToPeer_ = (endpoint:Net.Endpoint) : Promise<void> => {
+      return this.dataChannel_.send({
+        str: JSON.stringify(endpoint)
+      });
+    }
+
+    // Assumes that |receiveEndpointFromPeer| and |getTcpConnection_|
+    // have completed.
+    private linkTcpAndPeerConnectionData_ = () : void => {
+      // Data from the TCP socket goes to the data channel.
+      this.tcpConnection_.dataFromSocketQueue.setSyncHandler((buffer) => {
         log.debug(this.longId() + ': passing on data from tcp connection to pc (' +
             buffer.byteLength + ' bytes)');
-        this.dataChannel_.send({buffer: buffer});
-        this.bytesSentToPeer.handle(buffer.byteLength);
+        this.dataChannel_.send({buffer: buffer})
+          .catch((e:Error) => {
+            log.error('error forwarding received TCP data to peerconnection: ' + e.message);
+          });
+        this.bytesSentToPeer_.handle(buffer.byteLength);
       });
-      // Make sure that closing the TCP connection closes the peer connection
-      // and visa-versa. CONSIDER: should we send a message on the data channel
-      // to say it should be closed? (For Chrome < 37, where close messages
-      // don't propegate properly).
-      this.tcpConnection.onceClosed.then(this.close);
-      // Note: onceClosed is fulfilled once the data channel is closed.
-      this.onceClosed.then(() => {
-        if(this.tcpConnection && !this.tcpConnection.isClosed()) {
-          this.tcpConnection.close();
+      // Data from the datachannel goes to the TCP socket.
+      this.dataChannel_.dataFromPeerQueue.setSyncHandler((data:WebRtc.Data) => {
+        if (!data.buffer) {
+          log.error(this.longId() + ': dataFromPeer: ' +
+              'got non-buffer data: ' + JSON.stringify(data));
+          return;
         }
+        log.debug(this.longId() + ': dataFromPeer: ' + data.buffer.byteLength + ' bytes.');
+        this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
+        this.tcpConnection_.send(data.buffer);
       });
-      return this.tcpConnection.onceConnected;
     }
 
     private isAllowedAddress_ = (addressString:string) : boolean => {
       // default is to disallow non-unicast addresses; i.e. only proxy for
       // public internet addresses.
-      if (this.proxyConfig.allowNonUnicast) {
+      if (this.proxyConfig_.allowNonUnicast) {
         return true
       }
 
@@ -363,15 +349,19 @@ module RtcToNet {
       }
     }
 
+    public longId = () : string => {
+      return 'session ' + this.channelLabel() + ' (TCP connection ' +
+          (this.tcpConnection_.isClosed() ? 'closed' : 'open') + ') ';
+    }
+
     // For logging/debugging.
     public toString = () : string => {
       var tcpString = 'undefined';
-      if (this.tcpConnection) {
-        tcpString = this.tcpConnection.toString();
+      if (this.tcpConnection_) {
+        tcpString = this.tcpConnection_.toString();
       }
       return JSON.stringify({
-        channelLabel: this.channelLabel(),
-        isClosed_: this.isClosed_,
+        channelLabel_: this.channelLabel(),
         tcpConnection: tcpString
       });
     }

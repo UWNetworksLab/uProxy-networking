@@ -26,17 +26,21 @@ declare module RtcToNet {
     public toString :() => string;
   }
   class Session {
-      constructor(channel:WebRtc.DataChannel,
-                  proxyConfig:ProxyConfig,
-                  bytesReceivedFromPeer:Handler.Queue<number,void>,
-                  bytesSentToPeer:Handler.Queue<number,void>);
-    public close :() => void;
+    constructor(channel:WebRtc.DataChannel,
+                proxyConfig:ProxyConfig,
+                bytesReceivedFromPeer:Handler.Queue<number,void>,
+                bytesSentToPeer:Handler.Queue<number,void>);
+
+    public start :() => Promise<void>;
+    public onceReady :Promise<void>;
+
+    public stop :() => void;
+    public onceStopped :() => Promise<void>;
+    public isStopped :() => boolean;
+
     public proxyConfig :ProxyConfig;
     public tcpConnection :Tcp.Connection;
-    public onceReady :Promise<void>;
-    public onceClosed :Promise<void>;
     public channelLabel :() => string;
-    public isClosed :() => boolean;
     public longId :() => string;
     public toString :() => string;
   }
