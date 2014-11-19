@@ -154,7 +154,7 @@ module RtcToNet {
       return this.onceClosed;
     }
 
-    // Shuts down the peerconnection, fulfilling it has terminated.
+    // Shuts down the peerconnection, fulfilling once it has terminated.
     // Since its close() method should never throw, this should never reject.
     // TODO: close all sessions before fulfilling
     private stopResources_ = () : Promise<void> => {
@@ -250,7 +250,7 @@ module RtcToNet {
     }
 
     // Closes the TCP connection and datachannel if they haven't already
-    // closed, fulfilling once both have closed. Since neither objects'
+    // closed, fulfilling once both have closed. Since neither object's
     // close() methods should ever reject, this should never reject.
     private stopResources_ = () : Promise<void> => {
       // DataChannel.close() returns void, implying that the shutdown is

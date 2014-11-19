@@ -146,7 +146,7 @@ module SocksToRtc {
 
     // Shuts down the TCP server and peerconnection if they haven't already
     // shut down, fulfilling once both have terminated. Since neither
-    // objects' close() methods should ever reject, this should never reject.
+    // object's close() methods should ever reject, this should never reject.
     // TODO: close all sessions before fulfilling
     private stopResources_ = () : Promise<void> => {
       // PeerConnection.close() returns void, implying that the shutdown is
@@ -286,7 +286,7 @@ module SocksToRtc {
     }
 
     // Closes the TCP connection and datachannel if they haven't already
-    // closed, fulfilling once both have closed. Since neither objects'
+    // closed, fulfilling once both have closed. Since neither object's
     // close() methods should ever reject, this should never reject.
     private stopResources_ = () : Promise<void> => {
       // DataChannel.close() returns void, implying that it is
