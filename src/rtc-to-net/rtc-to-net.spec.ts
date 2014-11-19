@@ -146,7 +146,7 @@ describe("RtcToNet session", function() {
 
     mockTcpConnection.onceConnected = Promise.resolve(mockEndpoint);
     mockTcpConnection.onceClosed = noopPromise;
-    mockDataChannel.onceClosed = Promise.resolve();
+    mockDataChannel.onceClosed = Promise.resolve<void>();
 
     session.start().then(session.onceStopped).then(done);
   });
