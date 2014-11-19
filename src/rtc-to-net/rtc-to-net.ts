@@ -160,8 +160,7 @@ module RtcToNet {
       return new Promise<void>((F, R) => { this.peerConnection_.close(); F(); });
     }
 
-    public handleSignalFromPeer = (signal:WebRtc.SignallingMessage)
-        : void => {
+    public handleSignalFromPeer = (signal:WebRtc.SignallingMessage) : void => {
       this.peerConnection_.handleSignalMessage(signal);
     }
 
