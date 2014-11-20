@@ -5,8 +5,9 @@
 
 declare module Churn {
   // Adds the notion of a stage (first or second) to signalling messages.
-  interface ChurnSignallingMessage extends WebRtc.SignallingMessage {
-    churnStage :number;
+  interface ChurnSignallingMessage {
+    webrtcMessage ?:WebRtc.SignallingMessage;
+    publicEndpoint ?:WebRtc.Endpoint;
   }
 
   // Strips candidate lines from an SDP.
@@ -41,9 +42,25 @@ declare module Churn {
   var setCandidateLineEndpoint : (
       candidate:string, endpoint:freedom_ChurnPipe.Endpoint) => string;
 
+  // Represents a UDP NAT mapping "five-tuple": protocol (UDP), internal
+  // address and port, and external address and port.
+  interface NatPair {
+    internal: freedom_ChurnPipe.Endpoint;
+    external: freedom_ChurnPipe.Endpoint;
+  }
+
+  // Given the list of candidates, selects a NAT mapping to use.
+  // This is designed to use mappings produced by a STUN server, but falls
+  // back to local ports ("host" candidates) if there is no STUN candidate.
+  // Raises an exception if the list contains invalid candidates, or if it
+  // does not contain any "srflx" or "host" candidates.
+  var selectPublicAddress : (
+      candidates:freedom_RTCPeerConnection.RTCIceCandidate[]) => NatPair;
+
   // Churn.Connection is an implemention of the PeerConnectionInterface that
   // transparently obfuscates the actual traffic.
-  class Connection implements WebRtc.PeerConnectionInterface {
+  class Connection implements
+      WebRtc.PeerConnectionInterface<ChurnSignallingMessage> {
     constructor(config:WebRtc.PeerConnectionConfig);
 
     // The state of this peer connection.
