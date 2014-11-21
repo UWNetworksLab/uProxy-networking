@@ -214,8 +214,6 @@ module Churn {
       // Once the obfuscated connection's local endpoint is known, the remote
       // peer has sent us its public endpoint, and probing is complete, we can
       // configure the obfuscating pipe and allow traffic to flow.
-      // the information we need in order to configure the pipes required to
-      // establish the obfuscated connection.
       this.configureProbeConnection_(config);
       Promise.all([this.onceHaveWebRtcEndpoint_,
                    this.onceHaveRemoteEndpoint_,
