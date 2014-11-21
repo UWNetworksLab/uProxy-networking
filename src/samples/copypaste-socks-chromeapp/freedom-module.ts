@@ -11,8 +11,7 @@
 // show only warnings by default from the rest of the system.
 // Note that the proxy is extremely slow in debug (D) mode.
 Logging.setConsoleFilter([
-    '*:W',
-    'copypaste-socks:I',
+    '*:I',
     'SocksToRtc:I',
     'RtcToNet:I']);
 
