@@ -24,11 +24,16 @@ module Churn {
     }).join('\n');
   }
 
-  var splitHostCandidateLine_ = (candidate:string) : string[] => {
+  var splitCandidateLine_ = (candidate:string) : string[] => {
     var lines = candidate.split(' ');
     if (lines.length < 8 || lines[6] != 'typ') {
       throw new Error('cannot parse candidate line: ' + candidate);
     }
+    return lines;
+  }
+
+  var splitHostCandidateLine_ = (candidate:string) : string[] => {
+    var lines = splitCandidateLine_(candidate)
     var typ = lines[7];
     if (typ != 'host') {
       throw new Error('not a host candidate line: ' + candidate);
@@ -70,14 +75,11 @@ module Churn {
     var address :string;
     var port :number;
     for (var i = 0; i < candidates.length; ++i) {
-      var line = candidates[i].candidate.trim();
-      var tokens = line.split(' ');
+      var line = candidates[i].candidate;
+      var tokens = splitCandidateLine_(line);
       if (tokens[2].toLowerCase() != 'udp') {
         // Skip non-UDP candidates
         continue;
-      }
-      if (tokens[6] != 'typ') {
-        throw new Error('no typ in candidate line: ' + line);
       }
       var typ = tokens[7];
       if (typ === 'srflx') {
