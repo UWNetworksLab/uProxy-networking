@@ -134,7 +134,11 @@ module Churn {
       var transformedBuffer = recvFromInfo.data;
       var buffer = this.transformer_.restore(transformedBuffer);
       this.dispatchEvent_('message', {
-        data: buffer
+        data: buffer,
+        source: {
+          address: recvFromInfo.address,
+          port: recvFromInfo.port
+        }
       });
     }
   }

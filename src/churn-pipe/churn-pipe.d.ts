@@ -5,6 +5,7 @@
 declare module freedom_ChurnPipe {
   interface Message {
     data: ArrayBuffer
+    source: Endpoint
   }
 
   interface Endpoint {

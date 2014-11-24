@@ -38,6 +38,7 @@
       },
       "getLocalEndpoint": {
         "type": "method",
+        "value": [],
         "ret": {
           "address": "string",
           "port": "number"
@@ -46,7 +47,11 @@
       "message": {
         "type": "event",
         "value": {
-          "data": "buffer"
+          "data": "buffer",
+          "source": {
+            "address": "string",
+            "port": "number"
+          }
         }
       }
     }
