@@ -36,6 +36,16 @@
           "buffer"
         ]
       },
+      "sendTo": {
+        "type": "method",
+        "value": [
+          "buffer",
+          {
+            "address": "string",
+            "port": "number"
+          }
+        ]
+      },
       "getLocalEndpoint": {
         "type": "method",
         "value": [],

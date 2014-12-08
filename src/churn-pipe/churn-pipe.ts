@@ -108,11 +108,23 @@ module Churn {
      * The message is obfuscated before it hits the wire.
      */
     public send = (buffer:ArrayBuffer) => {
+      var remoteEndpoint = {
+        address: this.remoteAddress_,
+        port: this.remotePort_
+      };
+      return this.sendTo(buffer, remoteEndpoint);
+    }
+
+    /**
+     * Sends a message over the network to the specified destination.
+     * The message is obfuscated before it hits the wire.
+     */
+    public sendTo = (buffer:ArrayBuffer, to:freedom_ChurnPipe.Endpoint) => {
       var transformedBuffer = this.transformer_.transform(buffer);
       return this.socket_.sendTo(
         transformedBuffer,
-        this.remoteAddress_,
-        this.remotePort_).then(() => {
+        to.address,
+        to.port).then(() => {
           return Promise.resolve();
         });
     }
