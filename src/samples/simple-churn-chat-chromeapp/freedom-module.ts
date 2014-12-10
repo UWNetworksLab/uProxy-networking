@@ -54,20 +54,16 @@ b.peerOpenedChannelQueue.setSyncHandler((channel:WebRtc.DataChannel) => {
 a.onceConnecting.then(() => { log.info('a is connecting...'); });
 b.onceConnecting.then(() => { log.info('b is connecting...'); });
 
-// Log the chosen endpoints.
-function logEndpoints(name:string, endpoints:WebRtc.ConnectionAddresses) {
-  log.info(name + ' connected: ' +
-      endpoints.local.address + ':' + endpoints.local.port +
-      ' (' + endpoints.localType + ') <-> ' +
-      endpoints.remote.address + ':' + endpoints.remote.port +
-      ' (' + endpoints.remoteType + ')');
+// Log the fact that the specified connection is connected.
+function logConnected(name:string) {
+  log.info(name + ' connected');
 }
-a.onceConnected.then(logEndpoints.bind(null, 'a'));
-b.onceConnected.then(logEndpoints.bind(null, 'b'));
+a.onceConnected.then(logConnected.bind(null, 'a'));
+b.onceConnected.then(logConnected.bind(null, 'b'));
 
 // Negotiate a peerconnection.
 // Once negotiated, enable the UI and add send/receive handlers.
-a.negotiateConnection().then((endpoints:WebRtc.ConnectionAddresses) => {
+a.negotiateConnection().then(() => {
   a.openDataChannel('text').then((channel:WebRtc.DataChannel) => {
     log.info('datachannel open!');
     freedom().on('sendA', sendMessage.bind(null, channel));

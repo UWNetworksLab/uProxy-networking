@@ -78,14 +78,14 @@ declare module Churn {
     // and is guarenteed to fulfilled before |onceConnected|.
     public onceConnecting  :Promise<void>;
     // The |onceConnected| promise is fulfilled when pcState === CONNECTED
-    public onceConnected :Promise<WebRtc.ConnectionAddresses>;
+    public onceConnected :Promise<void>;
     // The |onceDisconnected| promise is fulfilled when pcState === DISCONNECTED
     public onceDisconnected :Promise<void>;
 
     // Try to connect to the peer. Will change state from |WAITING| to
     // |CONNECTING|. If there was an error, promise is rejected. Otherwise
     // returned promise === |onceConnected|.
-    public negotiateConnection :() => Promise<WebRtc.ConnectionAddresses>;
+    public negotiateConnection :() => Promise<void>;
 
     // A peer connection can either open a data channel to the peer (will
     // change from |WAITING| state to |CONNECTING|)

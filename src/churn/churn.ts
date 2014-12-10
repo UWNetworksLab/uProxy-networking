@@ -149,7 +149,7 @@ module Churn {
     public peerName :string;
 
     public onceConnecting :Promise<void>;
-    public onceConnected :Promise<WebRtc.ConnectionAddresses>;
+    public onceConnected :Promise<void>;
     public onceDisconnected :Promise<void>;
 
     // A short-lived connection used to determine network addresses on which
@@ -229,10 +229,8 @@ module Churn {
           () => {
         this.pcState = WebRtc.State.CONNECTING;
       });
-      this.onceConnected = this.obfuscatedConnection_.onceConnected.then(
-          (addresses:WebRtc.ConnectionAddresses) => {
+      this.onceConnected = this.obfuscatedConnection_.onceConnected.then(() => {
         this.pcState = WebRtc.State.CONNECTED;
-        return addresses;
       });
       this.onceDisconnected = this.obfuscatedConnection_.onceDisconnected.then(
           () => { this.pcState = WebRtc.State.DISCONNECTED; });
@@ -381,7 +379,7 @@ module Churn {
           this.obfuscatedConnection_.peerOpenedChannelQueue;
     }
 
-    public negotiateConnection = () : Promise<WebRtc.ConnectionAddresses> => {
+    public negotiateConnection = () : Promise<void> => {
       // TODO: propagate errors.
       log.debug('negotiating initial connection...');
       this.probeConnection_.negotiateConnection();
