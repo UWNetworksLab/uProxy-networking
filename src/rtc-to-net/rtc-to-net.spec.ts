@@ -8,12 +8,7 @@ var mockEndpoint :Net.Endpoint = {
   port: 1234
 };
 
-var mockConnectionAddresses : WebRtc.ConnectionAddresses = {
-  local: mockEndpoint,
-  localType: 'mock',
-  remote: mockEndpoint,
-  remoteType: 'mock'
-};
+var voidPromise = Promise.resolve<void>();
 
 var mockProxyConfig :RtcToNet.ProxyConfig = {
   allowNonUnicast: false
@@ -49,7 +44,7 @@ describe('RtcToNet', function() {
   });
 
   it('onceReady fulfills on peerconnection success', (done) => {
-    mockPeerconnection.onceConnected = Promise.resolve(mockConnectionAddresses);
+    mockPeerconnection.onceConnected = voidPromise;
     // We're not testing termination.
 
     server.start(mockProxyConfig, mockPeerconnection).then(done);
@@ -64,7 +59,7 @@ describe('RtcToNet', function() {
   });
 
   it('onceClosed fulfills on peerconnection termination', (done) => {
-    mockPeerconnection.onceConnected = Promise.resolve(mockConnectionAddresses);
+    mockPeerconnection.onceConnected = voidPromise;
     mockPeerconnection.onceDisconnected = <any>Promise.resolve();
 
     server.start(mockProxyConfig, mockPeerconnection)
@@ -73,7 +68,7 @@ describe('RtcToNet', function() {
   });
 
   it('onceClosed fulfills on call to stop', (done) => {
-    mockPeerconnection.onceConnected = Promise.resolve(mockConnectionAddresses);
+    mockPeerconnection.onceConnected = voidPromise;
     // Calling stop() alone should be sufficient to initiate shutdown.
 
     server.start(mockProxyConfig, mockPeerconnection)

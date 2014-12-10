@@ -56,7 +56,7 @@ pc.peerOpenedChannelQueue.setSyncHandler((channel:WebRtc.DataChannel) => {
 
 // Negotiate a peerconnection.
 freedom().on('start', () => {
-  pc.negotiateConnection().then((endpoints:WebRtc.ConnectionAddresses) => {
+  pc.negotiateConnection().then(() => {
       pc.openDataChannel('text').then((channel:WebRtc.DataChannel) => {
       log.info('datachannel open!');
 		  connectDataChannel(channel);
