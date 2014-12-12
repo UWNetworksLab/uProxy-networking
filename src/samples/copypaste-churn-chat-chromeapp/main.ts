@@ -18,8 +18,7 @@ freedom('freedom-module.json', { 'debug': 'log' }).then(function(interface:any) 
       copypasteChurnChat.emit('handleSignalMessage', signal);
     }
 
-    // "Flush" the signalling channels.
-    copyTextarea.value = '';
+    // "Flush" the signalling channel input.
     pasteTextarea.value = '';
   }
 
@@ -41,6 +40,8 @@ freedom('freedom-module.json', { 'debug': 'log' }).then(function(interface:any) 
 
   copypasteChurnChat.on('ready', function() {
     console.log('peer connection established!');
+    // Hide remaining signalling channel contents.
+    copyTextarea.value = '';
     sendArea.disabled = false;
   });
 

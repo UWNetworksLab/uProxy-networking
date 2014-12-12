@@ -38,6 +38,7 @@
       },
       "getLocalEndpoint": {
         "type": "method",
+        "value": [],
         "ret": {
           "address": "string",
           "port": "number"
