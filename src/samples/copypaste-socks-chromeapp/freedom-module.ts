@@ -1,6 +1,8 @@
 /// <reference path='../../rtc-to-net/rtc-to-net.d.ts' />
 /// <reference path='../../socks-to-rtc/socks-to-rtc.d.ts' />
 
+/// <reference path='../..//third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../freedom/typings/pgp.d.ts' />
 /// <reference path='../../logging/logging.d.ts' />
 /// <reference path='../../freedom/typings/freedom.d.ts' />
 /// <reference path='../../networking-typings/communications.d.ts' />
@@ -17,6 +19,7 @@ Logging.setConsoleFilter([
     'RtcToNet:I']);
 
 var log :Logging.Log = new Logging.Log('copypaste-socks');
+var pgp :PgpProvider = freedom.pgp();
 
 var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
   webrtcPcConfig: {
@@ -49,6 +52,12 @@ var socksRtc:SocksToRtc.SocksToRtc;
 var rtcNet:RtcToNet.RtcToNet;
 
 freedom().on('start', () => {
+  // TODO interactive setup w/real passphrase
+  pgp.setup('super passphrase', 'Joe <joe@test.com>');
+  pgp.exportKey().then(function (publicKey) {
+    freedom().emit('publicKeyExport', publicKey);
+  });
+
   var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port: 9999 };
   socksRtc = new SocksToRtc.SocksToRtc(
       localhostEndpoint,

@@ -26,6 +26,10 @@
       </select>
     </p></div>
 
+    <p class='centered'><bdi i18n-content='publickey'></bdi><br>
+    <textarea id='publicKey' value='{{ model.publicKey }}'></textarea>
+    </p><br><br>
+
     <copypaste-start id='start' hidden?='{{ model.givingOrGetting != null }}'></copypaste-start>
 
     <template if='{{ model.givingOrGetting === "giving" }}'>

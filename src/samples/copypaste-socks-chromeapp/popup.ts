@@ -1,4 +1,6 @@
 /// <reference path='../../freedom/typings/freedom.d.ts' />
+/// <reference path='../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../freedom/typings/pgp.d.ts' />
 /// <reference path='../../networking-typings/communications.d.ts' />
 /// <reference path='../../networking-typings/polymer.d.ts' />
 /// <reference path='../../networking-typings/i18n.d.ts' />
@@ -23,6 +25,7 @@ var model = { givingOrGetting : <string>null,
               endpoint : <string>null,  // E.g., "127.0.0.1:9999"
               totalBytesReceived : 0,
               totalBytesSent : 0,
+              publicKey : '',
             };
 
 // Define basee64 helper functions that are type-annotated and meaningfully
@@ -100,6 +103,10 @@ function consumeInboundMessage() : void {
 };
 
 copypastePromise.then(function(copypaste:any) {
+  copypaste.on('publicKeyExport', (publicKey:string) => {
+    model.publicKey = publicKey;
+  });
+
   copypaste.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
     model.readyForStep2 = true;
 
