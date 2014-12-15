@@ -246,6 +246,7 @@ module Churn {
       this.probeConnection_ = new WebRtc.PeerConnection(probeConfig);
       this.probeConnection_.signalForPeerQueue.setSyncHandler(
           (signal:WebRtc.SignallingMessage) => {
+        log.debug("probe connection emitted: " + JSON.stringify(signal));
         if (signal.type === WebRtc.SignalType.CANDIDATE) {
           this.probeCandidates_.push(signal.candidate);
         } else if (signal.type === WebRtc.SignalType.NO_MORE_CANDIDATES) {
@@ -381,8 +382,7 @@ module Churn {
 
     public negotiateConnection = () : Promise<void> => {
       // TODO: propagate errors.
-      log.debug('negotiating initial connection...');
-      this.probeConnection_.negotiateConnection();
+      log.debug('negotiating obfuscated connection...');
       return this.obfuscatedConnection_.negotiateConnection();
     }
 
