@@ -33,8 +33,7 @@ module Churn {
     private transformer_ :UTransformers.Transformer;
 
     // Endpoint to which all messages are sent.
-    private remoteAddress_ :string;
-    private remotePort_ :number;
+    private remoteEndpoint_ :freedom_ChurnPipe.Endpoint;
 
     // TODO: define a type for event dispatcher in freedom-typescript-api
     constructor (private dispatchEvent_ ?:(name:string, args:any) => void) {
@@ -62,8 +61,10 @@ module Churn {
       }
 
       // Next, bind to a socket.
-      this.remoteAddress_ = remoteAddress;
-      this.remotePort_ = remotePort;
+      this.remoteEndpoint_ = {
+        address: remoteAddress,
+        port: remotePort
+      };
       return this.socket_.bind(localAddress, localPort)
           .then((resultCode:number) => {
             if (resultCode != 0) {
@@ -108,11 +109,7 @@ module Churn {
      * The message is obfuscated before it hits the wire.
      */
     public send = (buffer:ArrayBuffer) => {
-      var remoteEndpoint = {
-        address: this.remoteAddress_,
-        port: this.remotePort_
-      };
-      return this.sendTo(buffer, remoteEndpoint);
+      return this.sendTo(buffer, this.remoteEndpoint_);
     }
 
     /**
