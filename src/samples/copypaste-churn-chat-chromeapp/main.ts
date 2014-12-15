@@ -14,8 +14,11 @@ freedom('freedom-module.json', { 'debug': 'log' }).then(function(interface:any) 
     var signals = pasteTextarea.value.split('\n');
     for (var i = 0; i < signals.length; i++) {
       var s:string = signals[i];
-      var signal:Churn.ChurnSignallingMessage = JSON.parse(s);
-      copypasteChurnChat.emit('handleSignalMessage', signal);
+      // Ignore blank lines.
+      if (s) {
+        var signal:Churn.ChurnSignallingMessage = JSON.parse(s);
+        copypasteChurnChat.emit('handleSignalMessage', signal);
+      }
     }
 
     // "Flush" the signalling channel input.
