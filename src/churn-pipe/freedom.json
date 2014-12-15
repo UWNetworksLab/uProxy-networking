@@ -36,6 +36,16 @@
           "buffer"
         ]
       },
+      "sendTo": {
+        "type": "method",
+        "value": [
+          "buffer",
+          {
+            "address": "string",
+            "port": "number"
+          }
+        ]
+      },
       "getLocalEndpoint": {
         "type": "method",
         "value": [],
@@ -47,7 +57,11 @@
       "message": {
         "type": "event",
         "value": {
-          "data": "buffer"
+          "data": "buffer",
+          "source": {
+            "address": "string",
+            "port": "number"
+          }
         }
       }
     }
