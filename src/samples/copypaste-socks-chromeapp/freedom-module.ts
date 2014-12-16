@@ -20,13 +20,7 @@ var log :Logging.Log = new Logging.Log('copypaste-socks');
 var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
   webrtcPcConfig: {
     iceServers: [{urls: ['stun:stun.l.google.com:19302']},
-                 {urls: ['stun:stun1.l.google.com:19302']},
-                 {urls: ['stun:stun2.l.google.com:19302']},
-                 {urls: ['stun:stun3.l.google.com:19302']},
-                 {urls: ['stun:stun4.l.google.com:19302']}]
-  },
-  webrtcMediaConstraints: {
-    optional: [{DtlsSrtpKeyAgreement: true}]
+                 {urls: ['stun:stun1.l.google.com:19302']}]
   },
   peerName: 'rtcNet'
 };
@@ -34,13 +28,7 @@ var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
 var socksRtcPcConfig :WebRtc.PeerConnectionConfig = {
   webrtcPcConfig: {
     iceServers: [{urls: ['stun:stun.l.google.com:19302']},
-                 {urls: ['stun:stun1.l.google.com:19302']},
-                 {urls: ['stun:stun2.l.google.com:19302']},
-                 {urls: ['stun:stun3.l.google.com:19302']},
-                 {urls: ['stun:stun4.l.google.com:19302']}]
-  },
-  webrtcMediaConstraints: {
-    optional: [{DtlsSrtpKeyAgreement: true}]
+                 {urls: ['stun:stun1.l.google.com:19302']}]
   },
   peerName: 'socksRtc'
 };

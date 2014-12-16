@@ -99,7 +99,7 @@ module SocksToRtc {
     // Returns this.onceReady.
     public start = (
         tcpServer:Tcp.Server,
-        peerconnection:WebRtc.PeerConnectionInterface)
+        peerconnection:WebRtc.PeerConnectionInterface<WebRtc.SignallingMessage>)
         : Promise<Net.Endpoint> => {
       if (this.tcpServer_) {
         throw new Error('already configured');

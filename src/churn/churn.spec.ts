@@ -89,3 +89,78 @@ describe("setCandidateLineEndpoint", function() {
         'a=candidate:129713316 2 udp 2122129151 127.0.0.1 5000 typ host generation 0');
   });
 });
+
+describe("selectPublicAddress", function() {
+  var srflxEndpoint :freedom_ChurnPipe.Endpoint = {
+    address: '172.26.108.25',
+    port: 40762
+  };
+
+  var baseEndpoint :freedom_ChurnPipe.Endpoint = {
+    address: '192.168.0.28',
+    port: 56635
+  };
+
+  var srflxCandidate = {
+    candidate: 'a=candidate:129713316 2 udp 2122129151 ' +
+      srflxEndpoint.address + ' ' + srflxEndpoint.port + ' typ srflx raddr ' +
+      baseEndpoint.address + ' rport ' + baseEndpoint.port + ' generation 0'
+  };
+  var hostCandidate = {
+    candidate: 'a=candidate:9097 1 udp 4175 ' + baseEndpoint.address + ' ' +
+        baseEndpoint.port + ' typ host generation 0'
+  };
+
+  var relayCandidate = {
+    candidate: 'a=candidate:9097 1 udp 4175 127.0.0.1 50840 typ relay ' +
+        'raddr 172.26.108.25 rport 56635 generation 0'
+  };
+
+  it('garbage test', () => {
+    expect(function() {
+      Churn.selectPublicAddress([{candidate: 'abc def'}, srflxCandidate]);
+    }).toThrow();
+  });
+
+  it('reject relay candidates', () => {
+    expect(function() {
+      Churn.selectPublicAddress([relayCandidate]);
+    }).toThrow();
+  });
+
+  it('process srflx correctly', () => {
+    var endpoint = Churn.selectPublicAddress([srflxCandidate]);
+    expect(endpoint).toEqual({
+      internal: baseEndpoint,
+      external: srflxEndpoint
+    });
+  });
+
+  it('prefer srflx', () => {
+    var correctNatPair = {
+      internal: baseEndpoint,
+      external: srflxEndpoint
+    };
+
+    var natPair = Churn.selectPublicAddress([srflxCandidate, hostCandidate,
+        relayCandidate]);
+    expect(natPair).toEqual(correctNatPair);
+
+    natPair = Churn.selectPublicAddress([hostCandidate, relayCandidate,
+        srflxCandidate]);
+    expect(natPair).toEqual(correctNatPair);
+  });
+
+  it('use host if srflx is absent', () => {
+    var correctNatPair = {
+      internal: baseEndpoint,
+      external: baseEndpoint
+    };
+
+    var natPair = Churn.selectPublicAddress([hostCandidate, relayCandidate]);
+    expect(natPair).toEqual(correctNatPair);
+
+    natPair = Churn.selectPublicAddress([hostCandidate, relayCandidate]);
+    expect(natPair).toEqual(correctNatPair);
+  });
+});

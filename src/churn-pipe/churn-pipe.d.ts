@@ -5,6 +5,7 @@
 declare module freedom_ChurnPipe {
   interface Message {
     data: ArrayBuffer
+    source: Endpoint
   }
 
   interface Endpoint {
@@ -25,6 +26,7 @@ declare module freedom_ChurnPipe {
         key ?:ArrayBuffer,
         config ?:string) : Promise<void>;
     send(buffer :ArrayBuffer) : Promise<void>;
+    sendTo(buffer :ArrayBuffer, to :freedom_ChurnPipe.Endpoint) : Promise<void>;
 
     getLocalEndpoint() : Promise<freedom_ChurnPipe.Endpoint>;
 

@@ -12,12 +12,7 @@ var mockEndpoint :Net.Endpoint = {
   port: 1234
 };
 
-var mockConnectionAddresses : WebRtc.ConnectionAddresses = {
-  local: mockEndpoint,
-  localType: 'mock',
-  remote: mockEndpoint,
-  remoteType: 'mock'
-};
+var voidPromise = Promise.resolve<void>();
 
 // Neither fulfills nor rejects.
 // Useful in a bunch of tests where a promise must be returned
@@ -60,7 +55,7 @@ describe('SOCKS server', function() {
 
   it('onceReady fulfills with server endpoint on server and peerconnection success', (done) => {
     (<any>mockTcpServer.onceListening).and.returnValue(Promise.resolve(mockEndpoint));
-    mockPeerConnection.onceConnected = Promise.resolve();
+    mockPeerConnection.onceConnected = voidPromise;
     // We're not testing termination.
     (<any>mockTcpServer.onceShutdown).and.returnValue(noopPromise);
 
@@ -83,7 +78,7 @@ describe('SOCKS server', function() {
   it('onceStopped fulfills on peerconnection termination', (done) => {
     (<any>mockTcpServer.onceListening).and.returnValue(Promise.resolve(mockEndpoint));
     (<any>mockTcpServer.onceShutdown).and.returnValue(Promise.resolve());
-    mockPeerConnection.onceConnected = Promise.resolve(mockConnectionAddresses);
+    mockPeerConnection.onceConnected = voidPromise;
     mockPeerConnection.onceDisconnected = <any>(Promise.resolve());
 
     server.start(mockTcpServer, mockPeerConnection).then(server.onceStopped).then(done);
@@ -91,7 +86,7 @@ describe('SOCKS server', function() {
 
   it('onceStopped fulfills on call to stop', (done) => {
     (<any>mockTcpServer.onceListening).and.returnValue(Promise.resolve(mockEndpoint));
-    mockPeerConnection.onceConnected = Promise.resolve(mockConnectionAddresses);
+    mockPeerConnection.onceConnected = voidPromise;
     // Neither TCP connection nor datachannel close "naturally".
     (<any>mockTcpServer.onceShutdown).and.returnValue(noopPromise);
 
