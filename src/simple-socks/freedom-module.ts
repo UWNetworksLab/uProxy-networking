@@ -84,14 +84,16 @@ rtcNet.bytesSentToPeer.setSyncHandler((numBytes:number) => {
 
 socksRtc.onceReady
   .then((endpoint:Net.Endpoint) => {
-    log.info('socksRtc ready. listening to SOCKS5 on: ' + JSON.stringify(endpoint));
-    log.info('` curl -x socks5h://localhost:9999 www.google.com `')
-  })
-  .catch((e) => {
-    console.error('socksRtc Error: ' + e +
-        '; ' + this.socksRtc.toString());
+    log.info('SocksToRtc listening on: ' + JSON.stringify(endpoint));
+    log.info('curl -x socks5h://' + endpoint.address + ':' + endpoint.port +
+        ' www.example.com')
+  }, (e:Error) => {
+    log.error('failed to start SocksToRtc: ' + e.message);
   });
 
-rtcNet.onceReady.then(() => {
-  log.info('rtcNet ready.');
-});
+rtcNet.onceReady
+  .then(() => {
+    log.info('RtcToNet ready');
+  }, (e:Error) => {
+    log.error('failed to start RtcToNet: ' + e.message);
+  });

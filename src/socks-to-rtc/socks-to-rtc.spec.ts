@@ -102,7 +102,7 @@ describe("SOCKS session", function() {
   var mockDataChannel :WebRtc.DataChannel;
   var mockBytesSent :Handler.Queue<number,void>;
   var mockBytesReceived :Handler.Queue<number,void>;
-  
+
   beforeEach(function() {
     session = new SocksToRtc.Session();
 
@@ -112,6 +112,8 @@ describe("SOCKS session", function() {
         'isClosed'
       ]);
     (<any>mockTcpConnection.close).and.returnValue(Promise.resolve(-1));
+    mockTcpConnection.onceClosed = Promise.resolve(
+        Tcp.SocketCloseKind.REMOTELY_CLOSED);
     mockDataChannel = <any>{
       getLabel: jasmine.createSpy('getLabel').and.returnValue('mock label'),
       onceOpened: noopPromise,
@@ -149,7 +151,7 @@ describe("SOCKS session", function() {
   });
 
   it('onceStopped fulfills on TCP connection termination', (done) => {
-    (<any>mockTcpConnection.onceClosed).and.returnValue(Promise.resolve());
+    mockTcpConnection.onceClosed = Promise.resolve();
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
@@ -160,7 +162,7 @@ describe("SOCKS session", function() {
 
   it('onceStopped fulfills on call to stop', (done) => {
     // Neither TCP connection nor datachannel close "naturally".
-    (<any>mockTcpConnection.onceClosed).and.returnValue(noopPromise);
+    mockTcpConnection.onceClosed = noopPromise;
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
