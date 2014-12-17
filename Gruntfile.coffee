@@ -250,6 +250,7 @@ module.exports = (grunt) ->
           'build/handler/queue.js'
           'build/logging/logging.js'
           'build/webrtc/*.js'
+          'build/tcp/tcp.js'
           'build/socks-to-rtc/socks-to-rtc.js'
         ])
         options:
