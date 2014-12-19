@@ -45,6 +45,7 @@ describe('SOCKS server', function() {
 
     mockPeerConnection = <any>{
       dataChannels: {},
+      signalForPeerQueue: new Handler.Queue<WebRtc.SignallingMessage, void>(),
       negotiateConnection: jasmine.createSpy('negotiateConnection'),
       onceConnecting: noopPromise,
       onceConnected: noopPromise,
@@ -59,7 +60,7 @@ describe('SOCKS server', function() {
     // We're not testing termination.
     (<any>mockTcpServer.onceShutdown).and.returnValue(noopPromise);
 
-    server.start(mockTcpServer, mockPeerConnection)
+    server.startInternal(mockTcpServer, mockPeerConnection)
       .then((result:Net.Endpoint) => {
         expect(result.address).toEqual(mockEndpoint.address);
         expect(result.port).toEqual(mockEndpoint.port);
@@ -72,7 +73,7 @@ describe('SOCKS server', function() {
         .and.returnValue(Promise.reject(new Error('could not allocate port')));
     (<any>mockTcpServer.onceShutdown).and.returnValue(Promise.resolve());
 
-    server.start(mockTcpServer, mockPeerConnection).catch(server.onceStopped).then(done);
+    server.startInternal(mockTcpServer, mockPeerConnection).catch(server.onceStopped).then(done);
   });
 
   it('onceStopped fulfills on peerconnection termination', (done) => {
@@ -81,7 +82,7 @@ describe('SOCKS server', function() {
     mockPeerConnection.onceConnected = voidPromise;
     mockPeerConnection.onceDisconnected = <any>(Promise.resolve());
 
-    server.start(mockTcpServer, mockPeerConnection).then(server.onceStopped).then(done);
+    server.startInternal(mockTcpServer, mockPeerConnection).then(server.onceStopped).then(done);
   });
 
   it('onceStopped fulfills on call to stop', (done) => {
@@ -90,7 +91,7 @@ describe('SOCKS server', function() {
     // Neither TCP connection nor datachannel close "naturally".
     (<any>mockTcpServer.onceShutdown).and.returnValue(noopPromise);
 
-    server.start(mockTcpServer, mockPeerConnection).then(
+    server.startInternal(mockTcpServer, mockPeerConnection).then(
         server.stop).then(server.onceStopped).then(done);
   });
 });
@@ -162,7 +163,7 @@ describe("SOCKS session", function() {
 
   it('onceStopped fulfills on call to stop', (done) => {
     // Neither TCP connection nor datachannel close "naturally".
-    mockTcpConnection.onceClosed = noopPromise;
+    mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));

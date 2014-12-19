@@ -24,10 +24,6 @@ module SocksToRtc {
   // TODO: rename this 'Server'.
   export class SocksToRtc {
 
-    // Fulfills with the address on which the SOCKS server is listening
-    // Rejects if either socket or peerconnection startup fails.
-    public onceReady :Promise<Net.Endpoint>;
-
     // Call this to initiate shutdown.
     private fulfillStopping_ :() => void;
     private onceStopping_ = new Promise((F, R) => {
@@ -44,9 +40,6 @@ module SocksToRtc {
     private onceStopped_ :Promise<void>;
     public onceStopped = () : Promise<void> => { return this.onceStopped_; }
 
-    // Message handler queues to/from the peer.
-    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
-
     // The two Queues below only count bytes transferred between the SOCKS
     // client and the remote host(s) the client wants to connect to. WebRTC
     // overhead (DTLS headers, ICE initiation, etc.) is not included (because
@@ -56,12 +49,12 @@ module SocksToRtc {
     // push numbers to the same queues (belonging to that instance of SocksToRtc).
     // Queue of the number of bytes received from the peer. Handler is typically
     // defined in the class that creates an instance of SocksToRtc.
-    public bytesReceivedFromPeer :Handler.Queue<number, void> =
+    private bytesReceivedFromPeer_ :Handler.Queue<number, void> =
         new Handler.Queue<number, void>();
 
     // Queue of the number of bytes sent to the peer. Handler is typically
     // defined in the class that creates an instance of SocktsToRtc.
-    public bytesSentToPeer :Handler.Queue<number,void> =
+    private bytesSentToPeer_ :Handler.Queue<number,void> =
         new Handler.Queue<number, void>();
 
     // Tcp server that is listening for SOCKS connections.
@@ -70,6 +63,15 @@ module SocksToRtc {
     // The connection to the peer that is acting as the endpoint for the proxy
     // connection.
     private peerConnection_  :WebRtc.PeerConnection;
+
+    // Event listener registration function.  When running in freedom, this is
+    // not defined, and the corresponding functionality is inserted by freedom
+    // on the consumer side.
+    public on : (t:string, f:(m:any) => void) => void;
+    // Database of event listeners for fallback implementation of |on|.
+    private listeners_ : { [s:string]: (m:any) => void };
+    // TODO: Remove |on| and |listeners_| once all users of this class do so
+    // via freedom.
 
     // From WebRTC data-channel labels to their TCP connections. Most of the
     // wiring to manage this relationship happens via promises of the
@@ -81,23 +83,33 @@ module SocksToRtc {
     // removed.
     private sessions_ :{ [channelLabel:string] : Session } = {};
 
-    // As configure() but handles creation of a TCP server and peerconnection.
-    constructor(
-        endpoint?:Net.Endpoint,
-        pcConfig?:WebRtc.PeerConnectionConfig,
-        obfuscate?:boolean) {
-      if (endpoint) {
-        this.start(
-            new Tcp.Server(endpoint),
-            obfuscate ?
-              new Churn.Connection(pcConfig) :
-              new WebRtc.PeerConnection(pcConfig));
+    constructor(private dispatchEvent_?:(t:string, m:any) => any) {
+      if (!this.dispatchEvent_) {
+        // TODO: Remove this code once all users of this class move to freedom.
+        this.listeners_ = {};
+        this.on = this.fallbackOn_;
+        this.dispatchEvent_ = this.fallbackDispatchEvent_;
       }
     }
 
-    // Starts the SOCKS server with the supplied TCP server and peerconnection.
-    // Returns this.onceReady.
+    // Handles creation of a TCP server and peerconnection.
+    // NOTE: Users of this class MUST add on-event listeners before calling this
+    // method.
     public start = (
+        endpoint:Net.Endpoint,
+        pcConfig:WebRtc.PeerConnectionConfig,
+        obfuscate?:boolean) : Promise<Net.Endpoint> => {
+      return this.startInternal(
+          new Tcp.Server(endpoint),
+          obfuscate ?
+              new Churn.Connection(pcConfig) :
+              new WebRtc.PeerConnection(pcConfig));
+    }
+
+    // Starts the SOCKS server with the supplied TCP server and peerconnection.
+    // Returns a promise that resolves when the server is ready to use.
+    // This method is public only for testing purposes.
+    public startInternal = (
         tcpServer:Tcp.Server,
         peerconnection:WebRtc.PeerConnectionInterface<WebRtc.SignallingMessage>)
         : Promise<Net.Endpoint> => {
@@ -106,14 +118,20 @@ module SocksToRtc {
       }
       this.tcpServer_ = tcpServer;
       this.tcpServer_.connectionsQueue
-          .setSyncHandler(this.makeTcpToRtcSession);
+          .setSyncHandler(this.makeTcpToRtcSession_);
       this.peerConnection_ = peerconnection;
 
-      this.signalsForPeer = this.peerConnection_.signalForPeerQueue;
+      this.peerConnection_.signalForPeerQueue.setSyncHandler(
+          this.dispatchEvent_.bind(this, 'signalForPeer'));
+
+      this.bytesSentToPeer_.setSyncHandler(
+          this.dispatchEvent_.bind(this, 'bytesSentToPeer'));
+      this.bytesReceivedFromPeer_.setSyncHandler(
+          this.dispatchEvent_.bind(this, 'bytesReceivedFromPeer'));
 
       // Start and listen for notifications.
       peerconnection.negotiateConnection();
-      this.onceReady =
+      var onceReady :Promise<Net.Endpoint> =
         Promise.all<any>([
           tcpServer.listen(),
           peerconnection.onceConnected
@@ -124,7 +142,7 @@ module SocksToRtc {
 
       // Shutdown if startup fails or when the server socket or
       // peerconnection terminates.
-      this.onceReady.catch(this.fulfillStopping_);
+      onceReady.catch(this.fulfillStopping_);
       this.tcpServer_.onceShutdown()
         .then(() => {
           log.debug('server socket closed');
@@ -141,7 +159,7 @@ module SocksToRtc {
         .then(this.fulfillStopping_);
       this.onceStopped_ = this.onceStopping_.then(this.stopResources_);
 
-      return this.onceReady;
+      return onceReady;
     }
 
     // Initiates shutdown of the TCP server and peerconnection.
@@ -150,6 +168,21 @@ module SocksToRtc {
       log.debug('stop requested');
       this.fulfillStopping_();
       return this.onceStopped_;
+    }
+
+    // An implementation of dispatchEvent to use if none has been provided
+    // (i.e. when this class is not being used as a freedom    // module).
+    // For simplicity, only one listener per message type is supported.
+    private fallbackDispatchEvent_ = (t:string, msg:any) : void => {
+      var listener = this.listeners_[t];
+      if (listener) {
+        listener(msg);
+      }
+    }
+
+    // Fallback implementation of |on|.
+    private fallbackOn_ = (t:string, f:(m:any) => void) : void => {
+      this.listeners_[t] = f;
     }
 
     // Shuts down the TCP server and peerconnection if they haven't already
@@ -170,7 +203,7 @@ module SocksToRtc {
 
     // Invoked when a SOCKS client establishes a connection with the TCP server.
     // Note that Session closes the TCP connection and datachannel on any error.
-    public makeTcpToRtcSession = (tcpConnection:Tcp.Connection) : void => {
+    private makeTcpToRtcSession_ = (tcpConnection:Tcp.Connection) : void => {
       var tag = obtainTag();
       log.info('created new session %1', [tag]);
 
@@ -180,8 +213,8 @@ module SocksToRtc {
         session.start(
             tcpConnection,
             channel,
-            this.bytesSentToPeer,
-            this.bytesReceivedFromPeer)
+            this.bytesSentToPeer_,
+            this.bytesReceivedFromPeer_)
         .then((endpoint:Net.Endpoint) => {
           log.debug('session %1 connected to remote endpoint %2', [
               tag, JSON.stringify(endpoint)]);
