@@ -49,29 +49,32 @@ var rtcNet:RtcToNet.RtcToNet;
 
 freedom().on('start', () => {
   var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port: 9999 };
-  socksRtc = new SocksToRtc.SocksToRtc(
-      localhostEndpoint,
-      socksRtcPcConfig,
-      false); // obfuscate
-  log.info('created socks-to-rtc');
+  socksRtc = new SocksToRtc.SocksToRtc();
 
   // Forward signalling channel messages to the UI.
-  socksRtc.signalsForPeer.setSyncHandler((signal:WebRtc.SignallingMessage) => {
+  socksRtc.on('signalForPeer', (signal:any) => {
       freedom().emit('signalForPeer', signal);
   });
 
   // SocksToRtc adds the number of bytes it sends/receives to its respective
   // queue as it proxies. When new numbers (of bytes) are added to these queues,
   // emit the number to the UI (look for corresponding freedom.on in main.html).
-  socksRtc.bytesReceivedFromPeer.setSyncHandler((numBytes:number) => {
+  socksRtc.on('bytesReceivedFromPeer', (numBytes:number) => {
       freedom().emit('bytesReceived', numBytes);
   });
 
-  socksRtc.bytesSentToPeer.setSyncHandler((numBytes:number) => {
+  socksRtc.on('bytesSentToPeer', (numBytes:number) => {
       freedom().emit('bytesSent', numBytes);
   });
 
-  socksRtc.onceReady
+  socksRtc.on('stopped', () => {
+    freedom().emit('proxyingStopped');
+  });
+
+  socksRtc.start(
+      localhostEndpoint,
+      socksRtcPcConfig,
+      false) // obfuscate
     .then((endpoint:Net.Endpoint) => {
       log.info('socksRtc ready. listening to SOCKS5 on: ' + JSON.stringify(endpoint));
       log.info('` curl -x socks5h://localhost:9999 www.google.com `')
@@ -80,10 +83,7 @@ freedom().on('start', () => {
     .catch((e) => {
       console.error('socksRtc Error: ' + e + '; ' + this.socksRtc.toString());
     });
-
-  socksRtc.onceStopped().then(() => {
-    freedom().emit('proxyingStopped');
-  });
+  log.info('created socks-to-rtc');
 });
 
 // Receive signalling channel messages from the UI.
