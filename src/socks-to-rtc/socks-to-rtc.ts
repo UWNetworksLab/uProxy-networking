@@ -38,7 +38,6 @@ module SocksToRtc {
     //  - manual invocation of stop()
     // Should never reject.
     private onceStopped_ :Promise<void>;
-    public onceStopped = () : Promise<void> => { return this.onceStopped_; }
 
     // The two Queues below only count bytes transferred between the SOCKS
     // client and the remote host(s) the client wants to connect to. WebRTC
@@ -158,6 +157,7 @@ module SocksToRtc {
         })
         .then(this.fulfillStopping_);
       this.onceStopped_ = this.onceStopping_.then(this.stopResources_);
+      this.onceStopped_.then(this.dispatchEvent_.bind(this, 'stopped'));
 
       return onceReady;
     }

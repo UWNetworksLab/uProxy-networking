@@ -45,8 +45,8 @@
         "type": "method",
         "value": []
       },
-      "onceStopped": {
-        "type": "method",
+      "stopped": {
+        "type": "event",
         "value": []
       },
       "signalForPeer": {

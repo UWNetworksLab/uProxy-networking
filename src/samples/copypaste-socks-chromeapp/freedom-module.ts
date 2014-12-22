@@ -67,6 +67,10 @@ freedom().on('start', () => {
       freedom().emit('bytesSent', numBytes);
   });
 
+  socksRtc.on('stopped', () => {
+    freedom().emit('proxyingStopped');
+  });
+
   socksRtc.start(
       localhostEndpoint,
       socksRtcPcConfig,
@@ -80,10 +84,6 @@ freedom().on('start', () => {
       console.error('socksRtc Error: ' + e + '; ' + this.socksRtc.toString());
     });
   log.info('created socks-to-rtc');
-
-  socksRtc.onceStopped().then(() => {
-    freedom().emit('proxyingStopped');
-  });
 });
 
 // Receive signalling channel messages from the UI.

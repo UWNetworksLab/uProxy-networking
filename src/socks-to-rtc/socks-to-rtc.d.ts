@@ -13,9 +13,9 @@ declare module SocksToRtc {
                    pcConfig:WebRtc.PeerConnectionConfig,
                    obfuscate?:boolean) => Promise<Net.Endpoint>;
     public stop :() => Promise<void>;
-    public onceStopped :() => Promise<void>;
 
     on(t:string, f:Function) : void;
+    on(t:'stopped', f:() => void) : void;
     on(t:'signalForPeer', f:(message:Object) => void) : void;
     on(t:'bytesReceivedFromPeer', f:(bytes:number) => void) : void;
     on(t:'bytesSentToPeer', f:(bytes:number) => void) : void;
