@@ -84,7 +84,7 @@ module SocksToRtc {
     // removed.
     private sessions_ :{ [channelLabel:string] : Session } = {};
 
-    constructor(private dispatchEvent_?:(t:string, m:any) => any) {
+    constructor(private dispatchEvent_?:(t:string, m:any) => void) {
       if (!this.dispatchEvent_) {
         // CONSIDER: Remove this code once all users of this class move to
         // freedom.  See https://github.com/uProxy/uproxy/issues/733 for
