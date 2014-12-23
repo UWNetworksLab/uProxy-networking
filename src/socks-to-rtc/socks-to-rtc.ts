@@ -69,8 +69,10 @@ module SocksToRtc {
     public on : (t:string, f:(m:any) => void) => void;
     // Database of event listeners for fallback implementation of |on|.
     private listeners_ : { [s:string]: (m:any) => void };
-    // TODO: Remove |on| and |listeners_| once all users of this class do so
-    // via freedom.
+    // CONSIDER: Remove |on| and |listeners_| once all users of this class use
+    // it via freedom, or determine a better long-term plan for supporting
+    // events compatibly with and without freedom
+    // (https://github.com/uProxy/uproxy/issues/733).
 
     // From WebRTC data-channel labels to their TCP connections. Most of the
     // wiring to manage this relationship happens via promises of the
@@ -84,7 +86,9 @@ module SocksToRtc {
 
     constructor(private dispatchEvent_?:(t:string, m:any) => any) {
       if (!this.dispatchEvent_) {
-        // TODO: Remove this code once all users of this class move to freedom.
+        // CONSIDER: Remove this code once all users of this class move to
+        // freedom.  See https://github.com/uProxy/uproxy/issues/733 for
+        // possible solutions.
         this.listeners_ = {};
         this.on = this.fallbackOn_;
         this.dispatchEvent_ = this.fallbackDispatchEvent_;
