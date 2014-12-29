@@ -7,7 +7,7 @@
 declare module SocksToRtc {
   class SocksToRtc {
     // TODO: make |dispatchEvent| non-optional once modularization is complete.
-    constructor(dispatchEvent?:(t:string, f:Function) => any);
+    constructor(dispatchEvent?:(t:string, f:Function) => void);
     // NOTE: The caller MUST set the on-event handlers before calling start().
     public start :(endpoint:Net.Endpoint,
                    pcConfig:WebRtc.PeerConnectionConfig,
