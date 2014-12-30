@@ -285,7 +285,7 @@ module Tcp {
                 .connect(connectionKind.endpoint.address,
                          connectionKind.endpoint.port)
                 .then(this.connectionSocket_.getInfo)
-                .then(endpointOfSocketInfo)
+                .then(endpointOfSocketInfo);
         this.state_ = Connection.State.CONNECTING;
         this.onceConnected
             .then(() => {
@@ -295,6 +295,12 @@ module Tcp {
               if(this.state_ !== Connection.State.CLOSED) {
                 this.state_ = Connection.State.CONNECTED;
               }
+            })
+            .catch((err) => {
+              log.error('Failed to connect to %1, err=%2',
+                        [JSON.stringify(connectionKind.endpoint),
+                         JSON.stringify(err)]);
+              this.close();
             });
       } else {
         throw(new Error(this.connectionId +
