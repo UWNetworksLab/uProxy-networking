@@ -18,4 +18,5 @@ RUN npm install
 
 ENV DISPLAY :10
 
+ENTRYPOINT ["/uproxy-networking/tools/docker-entrypoint.sh"]
 
