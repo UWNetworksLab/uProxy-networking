@@ -163,7 +163,10 @@ module SocksToRtc {
       this.onceStopped_ = this.onceStopping_.then(this.stopResources_);
       this.onceStopped_.then(this.dispatchEvent_.bind(this, 'stopped'));
 
-      return onceReady;
+      var rejectOnStopping = new Promise((F, R) => {
+        this.onceStopping_.then(R);
+      });
+      return Promise.race([onceReady, rejectOnStopping]);
     }
 
     // Initiates shutdown of the TCP server and peerconnection.
