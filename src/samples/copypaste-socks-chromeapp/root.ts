@@ -9,5 +9,8 @@ Polymer({
     // The application starts up without a set language.
     // Default to setting the language to the browser's language.
     changeLanguage(getBrowserLanguage());
-  }
+  },
+  useCrypto: function() {
+    model.usingCrypto = true;
+  },
 });

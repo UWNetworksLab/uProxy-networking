@@ -20,6 +20,11 @@ Logging.setConsoleFilter([
 
 var log :Logging.Log = new Logging.Log('copypaste-socks');
 var pgp :PgpProvider = freedom.pgp();
+// TODO interactive setup w/real passphrase
+pgp.setup('super passphrase', 'Joe <joe@test.com>');
+pgp.exportKey().then(function (publicKey) {
+  freedom().emit('publicKeyExport', publicKey);
+});
 
 var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
   webrtcPcConfig: {
@@ -52,12 +57,6 @@ var socksRtc:SocksToRtc.SocksToRtc;
 var rtcNet:RtcToNet.RtcToNet;
 
 freedom().on('start', () => {
-  // TODO interactive setup w/real passphrase
-  pgp.setup('super passphrase', 'Joe <joe@test.com>');
-  pgp.exportKey().then(function (publicKey) {
-    freedom().emit('publicKeyExport', publicKey);
-  });
-
   var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port: 9999 };
   socksRtc = new SocksToRtc.SocksToRtc(
       localhostEndpoint,

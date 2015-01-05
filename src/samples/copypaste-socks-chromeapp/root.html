@@ -1,4 +1,5 @@
 <link rel="import" href='lib/third_party/bower/polymer/polymer.html'>
+<link rel="import" href='crypto.html'>
 <link rel="import" href='start.html'>
 <link rel="import" href='giver.html'>
 <link rel="import" href='getter.html'>
@@ -26,11 +27,12 @@
       </select>
     </p></div>
 
-    <p class='centered'><bdi i18n-content='publickey'></bdi><br>
-    <textarea id='publicKey' value='{{ model.publicKey }}'></textarea>
-    </p><br><br>
+    <p class='centered'>
+      <button on-tap='{{ useCrypto }}' hidden?='{{ model.usingCrypto }}'><bdi i18n-content='useCrypto'></bdi></button>
+    </p>
+    <copypaste-crypto id='crypto' hidden?='{{ !model.usingCrypto }}'></copypaste-crypto>
 
-    <copypaste-start id='start' hidden?='{{ model.givingOrGetting != null }}'></copypaste-start>
+    <copypaste-start id='start' hidden?='{{ model.givingOrGetting !== null }}'></copypaste-start>
 
     <template if='{{ model.givingOrGetting === "giving" }}'>
       <copypaste-giver id='giver'></copypaste-giver>

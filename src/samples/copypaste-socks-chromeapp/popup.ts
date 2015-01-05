@@ -18,6 +18,7 @@ var copypastePromise :Promise<any> = freedom(
 // Polymer elements will bind to model so that the elements' style and
 // contents are up to date.
 var model = { givingOrGetting : <string>null,
+              usingCrypto : false,
               readyForStep2 : false,
               outboundMessageValue : '',
               inputIsWellFormed : false,

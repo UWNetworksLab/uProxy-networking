@@ -1,0 +1,25 @@
+<link rel="import" href='lib/third_party/bower/polymer/polymer.html'>
+
+<polymer-element name='copypaste-crypto'>
+
+  <template>
+    <style>
+      .centered {
+        text-align: center;
+      }
+    </style>
+
+    <div id='cryptoPanel'>
+      <p class='centered'><bdi i18n-content='userPublicKey'></bdi><br>
+        <textarea id='userPublicKey' value='{{ userPublicKey }}'></textarea>
+      </p><br><br>
+
+      <p class='centered'><bdi i18n-content='friendPublicKey'></bdi><br>
+        <textarea id='friendPublicKey' value='{{ friendPublicKey }}'></textarea>
+      </p><br><br>
+    </div>
+  </template>
+
+  <script src='crypto.js'></script>
+
+</polymer-element>
