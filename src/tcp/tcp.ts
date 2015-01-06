@@ -300,7 +300,9 @@ module Tcp {
               log.error('Failed to connect to %1, err=%2',
                         [JSON.stringify(connectionKind.endpoint),
                          JSON.stringify(err)]);
-              this.close();
+              this.dataToSocketQueue.stopHandling();
+              this.state_ = Connection.State.CLOSED;
+              this.fulfillClosed_(SocketCloseKind.NEVER_CONNECTED);
             });
       } else {
         throw(new Error(this.connectionId +
