@@ -116,8 +116,8 @@ describe('SOCKS server', function() {
         server.stop).then(onceServerStopped).then(done);
   });
 
-  it('stop works before the PeerConnection connects', (done) => {
-    (<any>mockTcpServer.onceListening).and.returnValue(Promise.resolve(mockEndpoint));
+  it('stop works before the PeerConnection or TcpServer connects', (done) => {
+    (<any>mockTcpServer.onceListening).and.returnValue(noopPromise);
     // PeerConnection never connects.
     mockPeerConnection.onceConnected = noopPromise;
     // Neither TCP connection nor datachannel close "naturally".
@@ -126,7 +126,7 @@ describe('SOCKS server', function() {
     var onceStartFailed :Promise<void> = new Promise<void>((F, R) => {
       server.startInternal(mockTcpServer, mockPeerConnection).then(R, F);
     });
-    Promise.all([onceStartFailed, server.stop(), onceServerStopped()]).then(done);
+    Promise.all([onceStartFailed, server.stop()]).then(done);
   });
 });
 
