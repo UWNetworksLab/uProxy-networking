@@ -149,7 +149,7 @@ module Churn {
     public peerName :string;
 
     public onceConnecting :Promise<void>;
-    public onceConnected :Promise<WebRtc.ConnectionAddresses>;
+    public onceConnected :Promise<void>;
     public onceDisconnected :Promise<void>;
 
     // A short-lived connection used to determine network addresses on which
@@ -229,10 +229,8 @@ module Churn {
           () => {
         this.pcState = WebRtc.State.CONNECTING;
       });
-      this.onceConnected = this.obfuscatedConnection_.onceConnected.then(
-          (addresses:WebRtc.ConnectionAddresses) => {
+      this.onceConnected = this.obfuscatedConnection_.onceConnected.then(() => {
         this.pcState = WebRtc.State.CONNECTED;
-        return addresses;
       });
       this.onceDisconnected = this.obfuscatedConnection_.onceDisconnected.then(
           () => { this.pcState = WebRtc.State.DISCONNECTED; });
@@ -248,6 +246,7 @@ module Churn {
       this.probeConnection_ = new WebRtc.PeerConnection(probeConfig);
       this.probeConnection_.signalForPeerQueue.setSyncHandler(
           (signal:WebRtc.SignallingMessage) => {
+        log.debug("probe connection emitted: " + JSON.stringify(signal));
         if (signal.type === WebRtc.SignalType.CANDIDATE) {
           this.probeCandidates_.push(signal.candidate);
         } else if (signal.type === WebRtc.SignalType.NO_MORE_CANDIDATES) {
@@ -298,10 +297,8 @@ module Churn {
             JSON.stringify({
               'plaintext_dfa': regex2dfa('^.*$'),
               'plaintext_max_len': 1400,
-              // TFTP read request for file with name "abc", by netascii.
-              // By default, Wireshark only looks for TFTP traffic if the packet's destination
-              // port is 69; you can change this in Preferences.
-              'ciphertext_dfa': regex2dfa('^\x00\x01\x61\x62\x63\x00netascii.*$'),
+              // This is equivalent to Rabbit cipher.
+              'ciphertext_dfa': regex2dfa('^.*$'),
               'ciphertext_max_len': 1450
             }))
         .then(() => {
@@ -381,10 +378,9 @@ module Churn {
           this.obfuscatedConnection_.peerOpenedChannelQueue;
     }
 
-    public negotiateConnection = () : Promise<WebRtc.ConnectionAddresses> => {
+    public negotiateConnection = () : Promise<void> => {
       // TODO: propagate errors.
-      log.debug('negotiating initial connection...');
-      this.probeConnection_.negotiateConnection();
+      log.debug('negotiating obfuscated connection...');
       return this.obfuscatedConnection_.negotiateConnection();
     }
 

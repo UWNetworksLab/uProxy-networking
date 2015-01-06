@@ -1,7 +1,7 @@
 {
   "name": "uproxy-networking",
   "description": "uProxy's networking library: SOCKS5 over WebRTC",
-  "version": "3.0.1",
+  "version": "5.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/uProxy/uproxy-networking"
@@ -25,8 +25,8 @@
     "cca": "~0.3.1",
     "chalk": "~0.5.1",
     "crypto": "0.0.3",
-    "freedom-for-chrome": "~0.4.1",
-    "freedom-for-firefox": "~0.5.1",
+    "freedom-for-chrome": "~0.4.7",
+    "freedom-for-firefox": "~0.6.4",
     "freedom-pgp-e2e": "^0.2.1",
     "fs-extra": "~0.12.0",
     "grunt": "~0.4.4",
@@ -41,14 +41,14 @@
     "selenium-standalone": "~2.44.0",
     "socks5-http-client": "^0.1.6",
     "typescript": "^1.1.0-1",
-    "uproxy-lib": "^16.0.0",
+    "uproxy-lib": "~17.0.0",
     "utransformers": "~0.2.1",
     "wd": "~0.3.10",
     "wup": "^1.0.0",
     "yargs": "^1.3.1"
   },
   "peerDependencies": {
-    "freedom": "^0.6.4"
+    "freedom": "^0.6.11"
   },
   "scripts": {
     "test": "grunt test",

@@ -12,12 +12,7 @@ var mockEndpoint :Net.Endpoint = {
   port: 1234
 };
 
-var mockConnectionAddresses : WebRtc.ConnectionAddresses = {
-  local: mockEndpoint,
-  localType: 'mock',
-  remote: mockEndpoint,
-  remoteType: 'mock'
-};
+var voidPromise = Promise.resolve<void>();
 
 // Neither fulfills nor rejects.
 // Useful in a bunch of tests where a promise must be returned
@@ -26,12 +21,18 @@ var noopPromise = new Promise<void>((F, R) => {});
 
 describe('SOCKS server', function() {
   var server :SocksToRtc.SocksToRtc;
+  var onceServerStopped :() => Promise<void>;
 
   var mockTcpServer :Tcp.Server;
   var mockPeerConnection :WebRtc.PeerConnection;
 
   beforeEach(function() {
     server = new SocksToRtc.SocksToRtc();
+
+    var serverStopped = new Promise<void>((F, R) => {
+      server.on('stopped', F);
+    });
+    onceServerStopped = () => { return serverStopped; };
 
     // TODO: create named more fleshed out TcpServer and PeerConnection mock
     // classes for testing. e.g. failing to listen mock, listen & gets
@@ -50,6 +51,7 @@ describe('SOCKS server', function() {
 
     mockPeerConnection = <any>{
       dataChannels: {},
+      signalForPeerQueue: new Handler.Queue<WebRtc.SignallingMessage, void>(),
       negotiateConnection: jasmine.createSpy('negotiateConnection'),
       onceConnecting: noopPromise,
       onceConnected: noopPromise,
@@ -60,11 +62,11 @@ describe('SOCKS server', function() {
 
   it('onceReady fulfills with server endpoint on server and peerconnection success', (done) => {
     (<any>mockTcpServer.onceListening).and.returnValue(Promise.resolve(mockEndpoint));
-    mockPeerConnection.onceConnected = Promise.resolve();
+    mockPeerConnection.onceConnected = voidPromise;
     // We're not testing termination.
     (<any>mockTcpServer.onceShutdown).and.returnValue(noopPromise);
 
-    server.start(mockTcpServer, mockPeerConnection)
+    server.startInternal(mockTcpServer, mockPeerConnection)
       .then((result:Net.Endpoint) => {
         expect(result.address).toEqual(mockEndpoint.address);
         expect(result.port).toEqual(mockEndpoint.port);
@@ -72,31 +74,31 @@ describe('SOCKS server', function() {
       .then(done);
   });
 
-  it('onceReady rejects and onceStopped fulfills on socket setup failure', (done) => {
+  it('onceReady rejects and \'stopped\' fires on socket setup failure', (done) => {
     (<any>mockTcpServer.onceListening)
         .and.returnValue(Promise.reject(new Error('could not allocate port')));
     (<any>mockTcpServer.onceShutdown).and.returnValue(Promise.resolve());
 
-    server.start(mockTcpServer, mockPeerConnection).catch(server.onceStopped).then(done);
+    server.startInternal(mockTcpServer, mockPeerConnection).catch(onceServerStopped).then(done);
   });
 
-  it('onceStopped fulfills on peerconnection termination', (done) => {
+  it('\'stopped\' fires on peerconnection termination', (done) => {
     (<any>mockTcpServer.onceListening).and.returnValue(Promise.resolve(mockEndpoint));
     (<any>mockTcpServer.onceShutdown).and.returnValue(Promise.resolve());
-    mockPeerConnection.onceConnected = Promise.resolve(mockConnectionAddresses);
+    mockPeerConnection.onceConnected = voidPromise;
     mockPeerConnection.onceDisconnected = <any>(Promise.resolve());
 
-    server.start(mockTcpServer, mockPeerConnection).then(server.onceStopped).then(done);
+    server.startInternal(mockTcpServer, mockPeerConnection).then(onceServerStopped).then(done);
   });
 
-  it('onceStopped fulfills on call to stop', (done) => {
+  it('\'stopped\' fires on call to stop', (done) => {
     (<any>mockTcpServer.onceListening).and.returnValue(Promise.resolve(mockEndpoint));
-    mockPeerConnection.onceConnected = Promise.resolve(mockConnectionAddresses);
+    mockPeerConnection.onceConnected = voidPromise;
     // Neither TCP connection nor datachannel close "naturally".
     (<any>mockTcpServer.onceShutdown).and.returnValue(noopPromise);
 
-    server.start(mockTcpServer, mockPeerConnection).then(
-        server.stop).then(server.onceStopped).then(done);
+    server.startInternal(mockTcpServer, mockPeerConnection).then(
+        server.stop).then(onceServerStopped).then(done);
   });
 });
 
@@ -107,7 +109,7 @@ describe("SOCKS session", function() {
   var mockDataChannel :WebRtc.DataChannel;
   var mockBytesSent :Handler.Queue<number,void>;
   var mockBytesReceived :Handler.Queue<number,void>;
-  
+
   beforeEach(function() {
     session = new SocksToRtc.Session();
 
@@ -117,6 +119,8 @@ describe("SOCKS session", function() {
         'isClosed'
       ]);
     (<any>mockTcpConnection.close).and.returnValue(Promise.resolve(-1));
+    mockTcpConnection.onceClosed = Promise.resolve(
+        Tcp.SocketCloseKind.REMOTELY_CLOSED);
     mockDataChannel = <any>{
       getLabel: jasmine.createSpy('getLabel').and.returnValue('mock label'),
       onceOpened: noopPromise,
@@ -154,7 +158,7 @@ describe("SOCKS session", function() {
   });
 
   it('onceStopped fulfills on TCP connection termination', (done) => {
-    (<any>mockTcpConnection.onceClosed).and.returnValue(Promise.resolve());
+    mockTcpConnection.onceClosed = Promise.resolve();
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
@@ -165,7 +169,7 @@ describe("SOCKS session", function() {
 
   it('onceStopped fulfills on call to stop', (done) => {
     // Neither TCP connection nor datachannel close "naturally".
-    (<any>mockTcpConnection.onceClosed).and.returnValue(noopPromise);
+    mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));

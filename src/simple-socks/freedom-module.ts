@@ -43,10 +43,20 @@ var socksRtcPcConfig :WebRtc.PeerConnectionConfig = {
     },
     peerName: 'socksRtc'
   };
-var socksRtc = new SocksToRtc.SocksToRtc(
+var socksRtc = new SocksToRtc.SocksToRtc();
+socksRtc.on('signalForPeer', rtcNet.handleSignalFromPeer);
+socksRtc.start(
     localhostEndpoint,
     socksRtcPcConfig,
-    false); // obfuscate
+    false) // obfuscate
+  .then((endpoint:Net.Endpoint) => {
+    log.info('SocksToRtc listening on: ' + JSON.stringify(endpoint));
+    log.info('curl -x socks5h://' + endpoint.address + ':' + endpoint.port +
+        ' www.example.com')
+  }, (e:Error) => {
+    log.error('failed to start SocksToRtc: ' + e.message);
+  });
+
 
 //-----------------------------------------------------------------------------
 
@@ -55,16 +65,15 @@ var getterBytesSent :number = 0;
 var giverBytesReceived :number = 0;
 var giverBytesSent :number = 0;
 
-socksRtc.signalsForPeer.setSyncHandler(rtcNet.handleSignalFromPeer);
 rtcNet.signalsForPeer.setSyncHandler(socksRtc.handleSignalFromPeer);
 
-socksRtc.bytesReceivedFromPeer.setSyncHandler((numBytes:number) => {
+socksRtc.on('bytesReceivedFromPeer', (numBytes:number) => {
   getterBytesReceived += numBytes;
   log.debug('Getter received ' + numBytes + ' bytes. (Total received: '
     + getterBytesReceived + ' bytes)');
 });
 
-socksRtc.bytesSentToPeer.setSyncHandler((numBytes:number) => {
+socksRtc.on('bytesSentToPeer', (numBytes:number) => {
   getterBytesSent += numBytes;
   log.debug('Getter sent ' + numBytes + ' bytes. (Total sent: '
     + getterBytesSent + ' bytes)');
@@ -82,16 +91,9 @@ rtcNet.bytesSentToPeer.setSyncHandler((numBytes:number) => {
     + giverBytesSent + ' bytes)');
 });
 
-socksRtc.onceReady
-  .then((endpoint:Net.Endpoint) => {
-    log.info('socksRtc ready. listening to SOCKS5 on: ' + JSON.stringify(endpoint));
-    log.info('` curl -x socks5h://localhost:9999 www.google.com `')
-  })
-  .catch((e) => {
-    console.error('socksRtc Error: ' + e +
-        '; ' + this.socksRtc.toString());
+rtcNet.onceReady
+  .then(() => {
+    log.info('RtcToNet ready');
+  }, (e:Error) => {
+    log.error('failed to start RtcToNet: ' + e.message);
   });
-
-rtcNet.onceReady.then(() => {
-  log.info('rtcNet ready.');
-});
