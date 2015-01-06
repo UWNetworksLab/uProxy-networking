@@ -112,6 +112,8 @@ module RtcToNet {
       this.peerConnection_.peerOpenedChannelQueue.setSyncHandler(
           this.onPeerOpenedChannel_);
 
+      // TODO: this.onceReady should reject if |this.onceStopping_|
+      // fulfills first.  https://github.com/uProxy/uproxy/issues/760
       this.onceReady = this.peerConnection_.onceConnected.then(() => {});
       this.onceReady.catch(this.fulfillStopping_);
       this.peerConnection_.onceDisconnected
