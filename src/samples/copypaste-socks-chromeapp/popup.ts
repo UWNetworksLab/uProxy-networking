@@ -116,6 +116,10 @@ copypastePromise.then(function(copypaste:any) {
     // unintended transformation.
     var oldConcatenatedJson = base64Decode(model.outboundMessageValue.trim());
     var newConcatenatedJson = oldConcatenatedJson + '\n' + JSON.stringify(signal);
+    if (model.usingCrypto) {
+      copypaste.emit('friendKey', model.friendPublicKey);
+      copypaste.emit('signEncrypt', base64Encode(newConcatenatedJson));
+    }
     model.outboundMessageValue = base64Encode(newConcatenatedJson);
   });
 
@@ -125,6 +129,10 @@ copypastePromise.then(function(copypaste:any) {
 
   copypaste.on('signed', (signed:boolean) => {
     model.signed = signed;
+  });
+
+  copypaste.on('ciphertext', (ciphertext:string) => {
+    model.outboundMessageValue = ciphertext;
   });
 
   copypaste.on('bytesReceived', (numNewBytesReceived:number) => {

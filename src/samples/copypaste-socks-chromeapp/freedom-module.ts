@@ -19,6 +19,7 @@ Logging.setConsoleFilter([
 
 var log :Logging.Log = new Logging.Log('copypaste-socks');
 var pgp :PgpProvider = freedom.pgp();
+var friendKey :string;
 // TODO interactive setup w/real passphrase
 pgp.setup('super passphrase', 'Joe <joe@test.com>');
 pgp.exportKey().then(function (publicKey) {
@@ -138,6 +139,31 @@ freedom().on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
     }
     rtcNet.handleSignalFromPeer(signal);
   }
+});
+
+// Crypto helper functions
+function ab2str(buf:ArrayBuffer) {
+  return String.fromCharCode.apply(null, new Uint16Array(buf));
+}
+
+function str2ab(str:string) {
+  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
+  var bufView = new Uint16Array(buf);
+  for (var i=0, strLen=str.length; i<strLen; i++) {
+    bufView[i] = str.charCodeAt(i);
+  }
+  return buf;
+}
+
+// Crypto request messages
+freedom().on('friendKey', (newFriendKey:string) => {
+  friendKey = newFriendKey;
+});
+
+freedom().on('signEncrypt', (message:string) => {
+  pgp.signEncrypt(str2ab(message), friendKey).then(function (ciphertext) {
+    freedom().emit('ciphertext', ab2str(ciphertext));
+  });
 });
 
 // Stops proxying.
