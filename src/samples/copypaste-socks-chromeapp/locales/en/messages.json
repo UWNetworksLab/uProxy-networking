@@ -11,6 +11,12 @@
   "friendPublicKey" : {
     "message" : "Your friend's public key is: "
   },
+  "signed" : {
+    "message" : "Signaling message has valid signature!"
+  },
+  "notSigned" : {
+    "message" : "Signaling message does not have valid signature!"
+  },
   "giveAccess" : {
     "message" : "Give access"
   },

@@ -24,6 +24,7 @@ pgp.setup('super passphrase', 'Joe <joe@test.com>');
 pgp.exportKey().then(function (publicKey) {
   freedom().emit('publicKeyExport', publicKey);
 });
+//freedom().emit('signed', true);
 
 var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
   webrtcPcConfig: {

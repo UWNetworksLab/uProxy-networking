@@ -4,6 +4,13 @@
 
   <template>
     <style>
+      textarea {
+        width: 30em;
+        height: 5em;
+      }
+      .warning {
+        color: red;
+      }
       .centered {
         text-align: center;
       }
@@ -11,11 +18,16 @@
 
     <div id='cryptoPanel'>
       <p class='centered'><bdi i18n-content='userPublicKey'></bdi><br>
-        <textarea id='userPublicKey' value='{{ model.userPublicKey }}'></textarea>
+        <textarea id='userPublicKey' disabled value='{{ model.userPublicKey }}'></textarea>
       </p><br><br>
 
       <p class='centered'><bdi i18n-content='friendPublicKey'></bdi><br>
         <textarea id='friendPublicKey' value='{{ model.friendPublicKey }}'></textarea>
+      </p><br><br>
+
+      <p class='centered'>
+        <bdi i18n-content='signed' hidden?='{{ !model.signed }}'></bdi>
+        <bdi i18n-content='notSigned' hidden?='{{ model.signed }}' class='warning'></bdi>
       </p><br><br>
     </div>
   </template>

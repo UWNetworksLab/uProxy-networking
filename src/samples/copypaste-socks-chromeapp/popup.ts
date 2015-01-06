@@ -27,7 +27,8 @@ var model = { givingOrGetting : <string>null,
               totalBytesReceived : 0,
               totalBytesSent : 0,
               userPublicKey : '',
-              friendPublicKey : ''
+              friendPublicKey : '',
+              signed : false
             };
 
 // Define basee64 helper functions that are type-annotated and meaningfully
@@ -120,6 +121,10 @@ copypastePromise.then(function(copypaste:any) {
 
   copypaste.on('publicKeyExport', (publicKey:string) => {
     model.userPublicKey = publicKey;
+  });
+
+  copypaste.on('signed', (signed:boolean) => {
+    model.signed = signed;
   });
 
   copypaste.on('bytesReceived', (numNewBytesReceived:number) => {
