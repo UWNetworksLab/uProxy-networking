@@ -1,4 +1,3 @@
 Polymer({
-  userPublicKey: model.publicKey,
-  friendPublicKey: ''
+  model: model
 });

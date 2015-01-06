@@ -26,7 +26,8 @@ var model = { givingOrGetting : <string>null,
               endpoint : <string>null,  // E.g., "127.0.0.1:9999"
               totalBytesReceived : 0,
               totalBytesSent : 0,
-              publicKey : '',
+              userPublicKey : '',
+              friendPublicKey : ''
             };
 
 // Define basee64 helper functions that are type-annotated and meaningfully
@@ -104,11 +105,7 @@ function consumeInboundMessage() : void {
 };
 
 copypastePromise.then(function(copypaste:any) {
-  copypaste.on('publicKeyExport', (publicKey:string) => {
-    model.publicKey = publicKey;
-  });
-
-  copypaste.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
+ copypaste.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
     model.readyForStep2 = true;
 
     // Append the new signalling message to the previous message(s), if any.
@@ -119,6 +116,10 @@ copypastePromise.then(function(copypaste:any) {
     var oldConcatenatedJson = base64Decode(model.outboundMessageValue.trim());
     var newConcatenatedJson = oldConcatenatedJson + '\n' + JSON.stringify(signal);
     model.outboundMessageValue = base64Encode(newConcatenatedJson);
+  });
+
+  copypaste.on('publicKeyExport', (publicKey:string) => {
+    model.userPublicKey = publicKey;
   });
 
   copypaste.on('bytesReceived', (numNewBytesReceived:number) => {
