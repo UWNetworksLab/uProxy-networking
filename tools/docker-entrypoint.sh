@@ -6,3 +6,4 @@ sleep 3
 cd /uproxy-networking 
 grunt build
 grunt integration 
+grunt test 
