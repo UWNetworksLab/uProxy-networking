@@ -30,8 +30,8 @@ declare module freedom_ChurnPipe {
 
     getLocalEndpoint() : Promise<freedom_ChurnPipe.Endpoint>;
 
-    on(t:string, f:Function) : void;
     on(t:'message', f:(message:freedom_ChurnPipe.Message) => any) : void;
+    on(t:string, f:Function) : void;
 
     providePromises(provider:any) : void;
   }

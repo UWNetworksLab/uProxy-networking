@@ -15,8 +15,8 @@ declare module freedom_TurnBackend {
   interface freedom_TurnBackend {
     handleIpc(data :ArrayBuffer) : Promise<void>;
 
-    on(t:string, f:Function) : void;
     on(t:'ipc', f:(message:freedom_TurnBackend.Ipc) => any) : void;
+    on(t:string, f:Function) : void;
 
     providePromises(provider:any) : void;
   }

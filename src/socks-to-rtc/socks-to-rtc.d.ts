@@ -14,11 +14,11 @@ declare module SocksToRtc {
                    obfuscate?:boolean) => Promise<Net.Endpoint>;
     public stop :() => Promise<void>;
 
-    on(t:string, f:Function) : void;
     on(t:'stopped', f:() => void) : void;
     on(t:'signalForPeer', f:(message:Object) => void) : void;
     on(t:'bytesReceivedFromPeer', f:(bytes:number) => void) : void;
     on(t:'bytesSentToPeer', f:(bytes:number) => void) : void;
+    on(t:string, f:Function) : void;
     public handleSignalFromPeer :(signal: WebRtc.SignallingMessage) => Promise<void>;
 
     // These methods are exposed here only for testing purposes, and are not
