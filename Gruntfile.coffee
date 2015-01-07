@@ -563,6 +563,7 @@ module.exports = (grunt) ->
   taskManager.add 'test', [
     'build'
     'jasmine'
+    'integration'
   ]
 
   taskManager.add 'default', [
