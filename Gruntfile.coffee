@@ -271,6 +271,19 @@ module.exports = (grunt) ->
           outfile: 'build/rtc-to-net/SpecRunner.html'
           keepRunner: true
           specs: 'build/rtc-to-net/*.spec.js'
+          # Coverage reporting
+          template: require('grunt-template-jasmine-istanbul')
+          templateOptions:
+            coverage: 'build/coverage/rtcToNet/coverage.json'
+            report:
+              type: 'lcovonly'
+              options:
+                dir: 'build/coverage/rtcToNet'
+
+    # Upload lcov files to coveralls.io
+    coveralls:
+      report:
+        src: 'build/coverage/**/*lcov.info'
 
     integration:
       tcp:
@@ -317,6 +330,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-ts'
   grunt.loadNpmTasks 'grunt-browserify'
+  grunt.loadNpmTasks 'grunt-coveralls'
 
   grunt.loadTasks 'node_modules/freedom-for-chrome/tasks'
 
@@ -563,6 +577,11 @@ module.exports = (grunt) ->
   taskManager.add 'test', [
     'build'
     'jasmine'
+  ]
+
+  taskManager.add 'ci', [
+    'test',
+    'coveralls'
   ]
 
   taskManager.add 'default', [
