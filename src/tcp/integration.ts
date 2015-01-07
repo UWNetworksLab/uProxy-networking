@@ -21,17 +21,15 @@ freedom().on('listen', () => {
 
   server.listen().then((endpoint:Net.Endpoint) => {
     var client = new Tcp.Connection({endpoint: endpoint});
-    client.send(ArrayBuffers.stringToArrayBuffer('ping'));
-
     client.dataFromSocketQueue.setSyncNextHandler((buffer:ArrayBuffer) => {
       var s = ArrayBuffers.arrayBufferToString(buffer);
       if (s == 'ping') {
         freedom().emit('listen');
       }
     });
-  }, (e:Error) => {
-    // Because this is flaky...
-    console.error('failed to listen!: ' + e.message);
+    client.onceConnected.then((endpoint:Net.Endpoint) => {
+      client.send(ArrayBuffers.stringToArrayBuffer('ping'));
+    });
   });
 });
 
