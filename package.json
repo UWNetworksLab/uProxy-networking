@@ -34,7 +34,6 @@
     "grunt-contrib-copy": "~0.5.0",
     "grunt-contrib-jasmine": "~0.7.0",
     "grunt-contrib-symlink": "~0.3.0",
-    "grunt-coveralls": "^1.0.0",
     "grunt-template-jasmine-istanbul": "^0.3.0",
     "grunt-ts": "^1.11",
     "regex2dfa": "~0.1.6",
@@ -52,7 +51,7 @@
     "freedom": "^0.6.11"
   },
   "scripts": {
-    "test": "grunt ci",
+    "test": "grunt test",
     "prepublish": "grunt test",
     "benchmark": "node bin/run-benchmark.js -n 1024 -v"
   }

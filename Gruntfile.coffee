@@ -280,11 +280,6 @@ module.exports = (grunt) ->
               options:
                 dir: 'build/coverage/rtcToNet'
 
-    # Upload lcov files to coveralls.io
-    coveralls:
-      report:
-        src: 'build/coverage/**/*lcov.info'
-
     integration:
       tcp:
         options:
@@ -330,7 +325,6 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-ts'
   grunt.loadNpmTasks 'grunt-browserify'
-  grunt.loadNpmTasks 'grunt-coveralls'
 
   grunt.loadTasks 'node_modules/freedom-for-chrome/tasks'
 
@@ -578,18 +572,6 @@ module.exports = (grunt) ->
     'build'
     'jasmine'
   ]
-
-  if process.env.TRAVIS_JOB_NUMBER
-    jobParts = process.env.TRAVIS_JOB_NUMBER.split('.')
-    #When run from Travis from jobs *.1
-    if jobParts.length > 1 and jobParts[1] == '1'
-      taskManager.add 'ci', [ 'test', 'coveralls' ]
-    #When run from Travis from jobs *.2, *.3, etc.
-    else
-      taskManager.add 'ci', [ 'test' ]
-  #When run from command-line
-  else
-    taskManager.add 'ci', [ 'test' ]
 
   taskManager.add 'default', [
     'build'
