@@ -579,10 +579,17 @@ module.exports = (grunt) ->
     'jasmine'
   ]
 
-  taskManager.add 'ci', [
-    'test',
-    'coveralls'
-  ]
+  if process.env.TRAVIS_JOB_NUMBER
+    jobParts = process.env.TRAVIS_JOB_NUMBER.split('.')
+    #When run from Travis from jobs *.1
+    if jobParts.length > 1 and jobParts[1] == '1'
+      taskManager.add 'ci', [ 'test', 'coveralls' ]
+    #When run from Travis from jobs *.2, *.3, etc.
+    else
+      taskManager.add 'ci', [ 'test' ]
+  #When run from command-line
+  else
+    taskManager.add 'ci', [ 'test' ]
 
   taskManager.add 'default', [
     'build'
