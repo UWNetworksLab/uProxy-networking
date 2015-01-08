@@ -5,7 +5,11 @@ Polymer({
     copypastePromise.then((copypaste:any) => { copypaste.emit('start', {}); });
   },
   parseInboundText: function() {
-    parsedInboundMessages = parseInboundMessages(this.inboundText);
+    if (model.usingCrypto && !model.decrypted) {
+      decryptInboundMessage(model.inboundText);
+    } else {
+      parsedInboundMessages = parseInboundMessages(model.inboundText);
+    }
   },
   consumeInboundText: function() {
     consumeInboundMessage();

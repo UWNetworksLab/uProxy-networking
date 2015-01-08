@@ -19,8 +19,10 @@ var copypastePromise :Promise<any> = freedom(
 // contents are up to date.
 var model = { givingOrGetting : <string>null,
               usingCrypto : false,
+              decrypted : false,
               readyForStep2 : false,
               outboundMessageValue : '',
+              inboundText: '',
               inputIsWellFormed : false,
               proxyingState : 'notYetAttempted',
               endpoint : <string>null,  // E.g., "127.0.0.1:9999"
@@ -105,6 +107,13 @@ function consumeInboundMessage() : void {
   // TODO: Report success/failure to the user.
 };
 
+function decryptInboundMessage(ciphertext:string) : void {
+  copypastePromise.then(function(copypaste:any) {
+    copypaste.emit('friendKey', model.friendPublicKey);
+    copypaste.emit('verifyDecrypt', ciphertext);
+  });
+};
+
 copypastePromise.then(function(copypaste:any) {
  copypaste.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
     model.readyForStep2 = true;
@@ -133,6 +142,12 @@ copypastePromise.then(function(copypaste:any) {
 
   copypaste.on('ciphertext', (ciphertext:string) => {
     model.outboundMessageValue = ciphertext;
+  });
+
+  copypaste.on('plaintext', (plaintext:string) => {
+    model.decrypted = true;
+    model.inboundText = plaintext;
+    parsedInboundMessages = parseInboundMessages(model.inboundText)
   });
 
   copypaste.on('bytesReceived', (numNewBytesReceived:number) => {

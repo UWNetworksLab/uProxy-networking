@@ -25,7 +25,6 @@ pgp.setup('super passphrase', 'Joe <joe@test.com>');
 pgp.exportKey().then(function (publicKey) {
   freedom().emit('publicKeyExport', publicKey);
 });
-//freedom().emit('signed', true);
 
 var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
   webrtcPcConfig: {
@@ -161,9 +160,24 @@ freedom().on('friendKey', (newFriendKey:string) => {
 });
 
 freedom().on('signEncrypt', (message:string) => {
-  pgp.signEncrypt(str2ab(message), friendKey).then(function (ciphertext) {
-    freedom().emit('ciphertext', ab2str(ciphertext));
-  });
+  pgp.signEncrypt(str2ab(message), friendKey, false).then(//, true).then(
+    function (cipherdata:ArrayBuffer) {
+      pgp.armor(cipherdata).then(
+        function (ciphertext:string) {
+          freedom().emit('ciphertext', ciphertext);
+        });
+    });
+});
+
+freedom().on('verifyDecrypt', (ciphertext:string) => {
+  pgp.dearmor(ciphertext).then(
+    function (cipherdata:ArrayBuffer) {
+      pgp.verifyDecrypt(cipherdata).then(//, friendKey).then(
+        function (result:VerifyDecryptResult) {
+          //freedom().emit('signed', result.signedBy[0] == 'Joe <joe@test.com>');
+          freedom().emit('plaintext', ab2str(result.data));
+        });
+    });
 });
 
 // Stops proxying.
