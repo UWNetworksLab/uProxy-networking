@@ -20,12 +20,13 @@ var copypastePromise :Promise<any> = freedom(
 var model = { givingOrGetting : <string>null,
               usingCrypto : false,
               decrypted : false,
+              friendUserId : 'Joe <joe@test.com>',  // TODO actual interaction
               readyForStep2 : false,
               outboundMessageValue : '',
               inboundText: '',
               inputIsWellFormed : false,
               proxyingState : 'notYetAttempted',
-              endpoint : <string>null,  // E.g., "127.0.0.1:9999"
+              endpoint : <string>null,  // E.g., '127.0.0.1:9999'
               totalBytesReceived : 0,
               totalBytesSent : 0,
               userPublicKey : '',
@@ -136,8 +137,8 @@ copypastePromise.then(function(copypaste:any) {
     model.userPublicKey = publicKey;
   });
 
-  copypaste.on('signed', (signed:boolean) => {
-    model.signed = signed;
+  copypaste.on('signed', (signature:string) => {
+    model.signed = signature == model.friendUserId;
   });
 
   copypaste.on('ciphertext', (ciphertext:string) => {

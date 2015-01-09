@@ -160,7 +160,7 @@ freedom().on('friendKey', (newFriendKey:string) => {
 });
 
 freedom().on('signEncrypt', (message:string) => {
-  pgp.signEncrypt(str2ab(message), friendKey, false).then(//, true).then(
+  pgp.signEncrypt(str2ab(message), friendKey, true).then(
     function (cipherdata:ArrayBuffer) {
       pgp.armor(cipherdata).then(
         function (ciphertext:string) {
@@ -172,9 +172,9 @@ freedom().on('signEncrypt', (message:string) => {
 freedom().on('verifyDecrypt', (ciphertext:string) => {
   pgp.dearmor(ciphertext).then(
     function (cipherdata:ArrayBuffer) {
-      pgp.verifyDecrypt(cipherdata).then(//, friendKey).then(
+      pgp.verifyDecrypt(cipherdata, friendKey).then(
         function (result:VerifyDecryptResult) {
-          //freedom().emit('signed', result.signedBy[0] == 'Joe <joe@test.com>');
+          freedom().emit('signed', result.signedBy[0]);
           freedom().emit('plaintext', ab2str(result.data));
         });
     });
