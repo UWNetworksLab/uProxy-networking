@@ -231,6 +231,13 @@ module.exports = (grunt) ->
         ])
         options:
           specs: 'build/turn-frontend/*.spec.js'
+          template: require('grunt-template-jasmine-istanbul')
+          templateOptions:
+            coverage: 'build/coverage/turn-frontend/coverage.json'
+            report:
+              type: 'html'
+              options:
+                dir: 'build/coverage/turn-frontend'
       # TODO: churn tests require peerconnection
       #       https://github.com/uProxy/uproxy/issues/430
       churn:
@@ -242,6 +249,13 @@ module.exports = (grunt) ->
         ]),
         options:
           specs: 'build/churn/*.spec.js'
+          template: require('grunt-template-jasmine-istanbul')
+          templateOptions:
+            coverage: 'build/coverage/churn/coverage.json'
+            report:
+              type: 'html'
+              options:
+                dir: 'build/coverage/churn'
       # TODO: socksToRtc tests require a bunch of other modules
       #       https://github.com/uProxy/uproxy/issues/430
       socksToRtc:
@@ -254,9 +268,16 @@ module.exports = (grunt) ->
           'build/socks-to-rtc/socks-to-rtc.js'
         ])
         options:
-          outfile: 'build/socks-to-rtc/SpecRunner.html'
-          keepRunner: true
           specs: 'build/socks-to-rtc/*.spec.js'
+          #outfile: 'build/socks-to-rtc/SpecRunner.html'
+          #keepRunner: true
+          template: require('grunt-template-jasmine-istanbul')
+          templateOptions:
+            coverage: 'build/coverage/socksToRtc/coverage.json'
+            report:
+              type: 'html'
+              options:
+                dir: 'build/coverage/socksToRtc'
       # TODO: rtcToNet tests require a bunch of other modules
       #       https://github.com/uProxy/uproxy/issues/430
       rtcToNet:
@@ -268,9 +289,16 @@ module.exports = (grunt) ->
           'build/rtc-to-net/rtc-to-net.js'
         ])
         options:
-          outfile: 'build/rtc-to-net/SpecRunner.html'
-          keepRunner: true
           specs: 'build/rtc-to-net/*.spec.js'
+          #outfile: 'build/rtc-to-net/SpecRunner.html'
+          #keepRunner: true
+          template: require('grunt-template-jasmine-istanbul')
+          templateOptions:
+            coverage: 'build/coverage/rtcToNet/coverage.json'
+            report:
+              type: 'html'
+              options:
+                dir: 'build/coverage/rtcToNet'
 
     integration:
       tcp:
