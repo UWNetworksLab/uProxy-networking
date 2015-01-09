@@ -52,7 +52,7 @@
     "freedom": "^0.6.11"
   },
   "scripts": {
-    "test": "grunt build jasmine",
+    "test": "grunt unit_test",
     "benchmark": "node bin/run-benchmark.js -n 1024 -v"
   }
 }

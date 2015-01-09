@@ -560,10 +560,19 @@ module.exports = (grunt) ->
     'churn'
   ]
 
-  taskManager.add 'test', [
+  taskManager.add 'unit_test', [
     'build'
     'jasmine'
+  ]
+
+  taskManager.add 'integration_test', [
+    'build'
     'integration'
+  ]
+
+  taskManager.add 'test', [
+    'unit_test'
+    'integration_test'
   ]
 
   taskManager.add 'default', [
