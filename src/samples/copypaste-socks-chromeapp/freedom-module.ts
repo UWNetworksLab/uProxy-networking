@@ -1,7 +1,7 @@
 /// <reference path='../../rtc-to-net/rtc-to-net.d.ts' />
 /// <reference path='../../socks-to-rtc/socks-to-rtc.d.ts' />
 
-/// <reference path='../..//third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../../freedom/typings/pgp.d.ts' />
 /// <reference path='../../logging/logging.d.ts' />
 /// <reference path='../../freedom/typings/freedom.d.ts' />
@@ -146,9 +146,9 @@ function ab2str(buf:ArrayBuffer) {
 }
 
 function str2ab(str:string) {
-  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
+  var buf = new ArrayBuffer(str.length * 2);  // 2 bytes for each char
   var bufView = new Uint16Array(buf);
-  for (var i=0, strLen=str.length; i<strLen; i++) {
+  for (var i = 0, strLen = str.length; i < strLen; i++) {
     bufView[i] = str.charCodeAt(i);
   }
   return buf;
@@ -160,23 +160,23 @@ freedom().on('friendKey', (newFriendKey:string) => {
 });
 
 freedom().on('signEncrypt', (message:string) => {
-  pgp.signEncrypt(str2ab(message), friendKey, true).then(
-    function (cipherdata:ArrayBuffer) {
-      pgp.armor(cipherdata).then(
-        function (ciphertext:string) {
-          freedom().emit('ciphertext', ciphertext);
-        });
+  pgp.signEncrypt(str2ab(message), friendKey, true)
+    .then(function (cipherdata:ArrayBuffer) {
+      return pgp.armor(cipherdata);
+    })
+    .then(function (ciphertext:string) {
+      freedom().emit('ciphertext', ciphertext);
     });
 });
 
 freedom().on('verifyDecrypt', (ciphertext:string) => {
-  pgp.dearmor(ciphertext).then(
-    function (cipherdata:ArrayBuffer) {
-      pgp.verifyDecrypt(cipherdata, friendKey).then(
-        function (result:VerifyDecryptResult) {
-          freedom().emit('signed', result.signedBy[0]);
-          freedom().emit('plaintext', ab2str(result.data));
-        });
+  pgp.dearmor(ciphertext)
+    .then(function (cipherdata:ArrayBuffer) {
+      return pgp.verifyDecrypt(cipherdata, friendKey);
+    })
+    .then(function (result:VerifyDecryptResult) {
+      freedom().emit('signed', result.signedBy[0]);
+      freedom().emit('plaintext', ab2str(result.data));
     });
 });
 
