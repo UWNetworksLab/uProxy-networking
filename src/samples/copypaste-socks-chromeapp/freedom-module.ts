@@ -141,11 +141,11 @@ freedom().on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
 });
 
 // Crypto helper functions
-function ab2str(buf:ArrayBuffer) {
+function ab2str(buf:ArrayBuffer) :string {
   return String.fromCharCode.apply(null, new Uint16Array(buf));
 }
 
-function str2ab(str:string) {
+function str2ab(str:string) :ArrayBuffer {
   var buf = new ArrayBuffer(str.length * 2);  // 2 bytes for each char
   var bufView = new Uint16Array(buf);
   for (var i = 0, strLen = str.length; i < strLen; i++) {
@@ -161,20 +161,20 @@ freedom().on('friendKey', (newFriendKey:string) => {
 
 freedom().on('signEncrypt', (message:string) => {
   pgp.signEncrypt(str2ab(message), friendKey, true)
-    .then(function (cipherdata:ArrayBuffer) {
+    .then((cipherdata:ArrayBuffer) => {
       return pgp.armor(cipherdata);
     })
-    .then(function (ciphertext:string) {
+    .then((ciphertext:string) => {
       freedom().emit('ciphertext', ciphertext);
     });
 });
 
 freedom().on('verifyDecrypt', (ciphertext:string) => {
   pgp.dearmor(ciphertext)
-    .then(function (cipherdata:ArrayBuffer) {
+    .then((cipherdata:ArrayBuffer) => {
       return pgp.verifyDecrypt(cipherdata, friendKey);
     })
-    .then(function (result:VerifyDecryptResult) {
+    .then((result:VerifyDecryptResult) => {
       freedom().emit('signed', result.signedBy[0]);
       freedom().emit('plaintext', ab2str(result.data));
     });
