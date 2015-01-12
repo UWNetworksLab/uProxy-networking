@@ -34,6 +34,23 @@ describe("socks", function() {
     }).toThrow();
   });
 
+  it('compose ipv4 tcp request', () => {
+    var request : Socks.Request = {
+      version: Socks.VERSION5,
+      command: Socks.Command.TCP_CONNECT,
+      destination: {
+        addressType: Socks.AddressType.IP_V4,
+        endpoint: {
+          address: '192.168.1.1',
+          port: 1200
+        },
+        addressByteLength: 7
+      }
+    };
+    var requestArray = Socks.composeRequest(request);
+    expect(requestArray).toEqual(ipv4RequestArray);
+  });
+
   it('parse ipv4 request', () => {
     var result :Socks.Request =
         Socks.interpretRequest(ipv4RequestArray);
@@ -42,6 +59,42 @@ describe("socks", function() {
     expect(result.destination.addressType).toEqual(Socks.AddressType.IP_V4);
     expect(result.destination.endpoint.address).toEqual('192.168.1.1');
     expect(result.destination.endpoint.port).toEqual(1200);
+  });
+
+  it('roundtrip ipv6 tcp request', () => {
+    var request : Socks.Request = {
+      version: Socks.VERSION5,
+      command: Socks.Command.TCP_CONNECT,
+      destination: {
+        addressType: Socks.AddressType.IP_V6,
+        endpoint: {
+          address: '2620::1003:1003:a84f:9831:df45:5420',
+          port: 1200
+        },
+        addressByteLength: 19
+      }
+    };
+    var requestArray = Socks.composeRequest(request);
+    var requestAgain = Socks.interpretRequest(requestArray);
+    expect(requestAgain).toEqual(request);
+  });
+
+  it('roundtrip DNS tcp request', () => {
+    var request : Socks.Request = {
+      version: Socks.VERSION5,
+      command: Socks.Command.TCP_CONNECT,
+      destination: {
+        addressType: Socks.AddressType.DNS,
+        endpoint: {
+          address: 'www.example.com',
+          port: 1200
+        },
+        addressByteLength: 19
+      }
+    };
+    var requestArray = Socks.composeRequest(request);
+    var requestAgain = Socks.interpretRequest(requestArray);
+    expect(requestAgain).toEqual(request);
   });
 
   it('wrong socks version', () => {

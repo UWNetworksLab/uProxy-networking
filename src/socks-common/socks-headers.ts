@@ -3,6 +3,7 @@
     http://tools.ietf.org/html/rfc1928
 */
 /// <reference path='../networking-typings/communications.d.ts' />
+/// <reference path='../ipaddrjs/ipaddrjs.d.ts' />
 
 module Socks {
 
@@ -110,6 +111,14 @@ module Socks {
     return authMethods;
   }
 
+  export function composeAuthHandshake(auths:Auth[]) : Uint8Array {
+    var handshakeBytes = new Uint8Array(auths.length + 2);
+    handshakeBytes[0] = Socks.VERSION5;
+    handshakeBytes[1] = auths.length;
+    handshakeBytes.set(auths, 2);
+    return handshakeBytes;
+  }
+
   // Server to Client (Step 2)
   //
   // Given an initial authentication query, compose a response with the support
@@ -121,6 +130,10 @@ module Socks {
     bytes[0] = Socks.VERSION5;
     bytes[1] = authType;
     return buffer;
+  }
+
+  export function interpretAuthResponse(byteArray:Uint8Array) : Socks.Auth {
+    return byteArray[1];
   }
 
   // Client to Server (Step 3-A)
@@ -166,6 +179,16 @@ module Socks {
       command: command,
       destination: destination
     };
+  }
+
+  export function composeRequest(request:Request) : Uint8Array {
+    // The header is 3 bytes
+    var byteArray = new Uint8Array(3 + request.destination.addressByteLength);
+    byteArray[0] = request.version;
+    byteArray[1] = request.command;
+    byteArray[2] = 0;  // reserved
+    byteArray.set(composeDestination(request.destination), 3);
+    return byteArray;
   }
 
   // Client to Server (Step 3-B)
@@ -224,8 +247,10 @@ module Socks {
     addressType = byteArray[0];
     if (AddressType.IP_V4 == addressType) {
       addressSize = 4;
-      address = Array.prototype.join.call(
-          byteArray.subarray(1, 1 + addressSize), '.');
+      var addressArray =
+          Array.prototype.slice.call(byteArray, 1, 1 + addressSize);
+      var ipAddress = new ipaddr.IPv4(addressArray);
+      address = ipAddress.toString();
       portOffset = addressSize + 1;
     } else if (AddressType.DNS == addressType) {
       addressSize = byteArray[1];
@@ -237,7 +262,7 @@ module Socks {
     } else if (AddressType.IP_V6 == addressType) {
       addressSize = 16;
       address = Socks.interpretIpv6Address(
-          new Uint16Array(byteArray.buffer, byteArray.byteOffset + 1, 8));
+          byteArray.subarray(1, 1 + addressSize));
       portOffset = addressSize + 1;
     } else {
       throw new Error('Unsupported SOCKS address type: ' + addressType);
@@ -253,12 +278,52 @@ module Socks {
     }
   }
 
-  // Heler function for parsing an IPv6 address from an Uint16Array portion of
+  // Heler function for parsing an IPv6 address from an Uint8Array portion of
   // a socks address in an arraybuffer.
-  export function interpretIpv6Address(uint16View:Uint16Array) : string {
-    return Array.prototype.map.call(uint16View, (i:number) => {
-        return (((i & 0xFF) << 8) | ((i >> 8) & 0xFF)).toString(16);
-      }).join(':');
+  export function interpretIpv6Address(byteArray:Uint8Array) : string {
+    // |byteArray| contains big-endian shorts, but Uint16Array will read it
+    // as little-endian on most platforms, so we have to read it manually.
+    var parts :number[] = [];
+    for (var i = 0; i < 16; i += 2) {
+      parts.push(byteArray[i] << 8 | byteArray[i + 1]);
+    }
+    var ipAddress = new ipaddr.IPv6(parts);
+    return ipAddress.toString();
+  }
+
+  export function composeDestination(destination:Destination) : Uint8Array {
+    var endpoint = destination.endpoint;
+    var address = new Uint8Array(destination.addressByteLength);
+    address[0] = destination.addressType;
+    var addressSize :number;
+    switch (destination.addressType) {
+      case AddressType.IP_V4:
+        addressSize = 4;
+        var ipv4 = ipaddr.IPv4.parse(endpoint.address);
+        address.set(ipv4.octets, 1);
+        break;
+      case AddressType.DNS:
+        addressSize = endpoint.address.length + 1;
+        address[1] = endpoint.address.length;
+        for (var i = 0; i < endpoint.address.length; ++i) {
+          address[i + 2] = endpoint.address.charCodeAt(i);
+        }
+        break;
+      case AddressType.IP_V6:
+        addressSize = 16;
+        var ipv6 = ipaddr.IPv6.parse(endpoint.address);
+        address.set(ipv6.toByteArray(), 1);
+        break;
+      default:
+        throw new Error(
+            'Unsupported SOCKS address type: ' + destination.addressType);
+    }
+
+    var portOffset = addressSize + 1;
+    address[portOffset] = endpoint.port >> 8;
+    address[portOffset + 1] = endpoint.port & 0xFF;
+
+    return address;
   }
 
   // Server to Client (Step 4-A)
@@ -276,16 +341,9 @@ module Socks {
     bytes[3] = Socks.AddressType.IP_V4;
 
     // Parse IPv4 values.
-    var v4 = '([\\d]{1,3})';
-    var v4d = '\\.';
-    var v4complete = v4+v4d+v4+v4d+v4+v4d+v4
-    var v4regex = new RegExp(v4complete);
-    var ipv4 = endpoint.address.match(v4regex);
-    if (ipv4) {
-      bytes[4] = parseInt(ipv4[1]);
-      bytes[5] = parseInt(ipv4[2]);
-      bytes[6] = parseInt(ipv4[3]);
-      bytes[7] = parseInt(ipv4[4]);
+    var address = ipaddr.parse(endpoint.address);
+    if (address.kind() == 'ipv4') {
+      bytes.set(address.toByteArray(), 4);
     } else {
       console.warn('composeRequestResponse: got non-ipv4: ' +
           JSON.stringify(endpoint) +

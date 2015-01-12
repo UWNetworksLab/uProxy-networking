@@ -218,7 +218,21 @@ module.exports = (grunt) ->
             standalone: 'sha1'
 
     jasmine:
-      socksCommon: Rule.jasmineSpec 'socks-common'
+      socksCommon:
+        src: FILES.jasmine_helpers.concat([
+          'build/ipaddrjs/ipaddr.min.js'
+          'build/socks-common/socks-headers.js'
+        ])
+        options:
+          specs: 'build/socks-common/*.spec.js'
+          template: require('grunt-template-jasmine-istanbul')
+          templateOptions:
+            coverage: 'build/coverage/socks-common/coverage.json'
+            report:
+              type: 'html'
+              options:
+                dir: 'build/coverage/socks-common'
+
       simpleTransformers: Rule.jasmineSpec 'simple-transformers'
       # TODO: turn tests require arraybuffers
       #       https://github.com/uProxy/uproxy/issues/430
@@ -385,6 +399,7 @@ module.exports = (grunt) ->
     'base'
     'ts:socksCommon'
     'ts:socksCommonSpecDecl'
+    'ipaddrjs'
     'copy:socksCommon'
   ]
 
