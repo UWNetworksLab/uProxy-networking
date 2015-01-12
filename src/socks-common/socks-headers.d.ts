@@ -46,11 +46,15 @@ declare module Socks {
     }
     // The interpret functions fail by throwing an error.
     function interpretAuthHandshakeBuffer(buffer :ArrayBuffer) : Auth[];
+    function composeAuthHandshake(auths:Auth[]) : Uint8Array;
     function composeAuthResponse(auth :Auth) : ArrayBuffer;
+    function interpretAuthResponse(byteArray:Uint8Array) : Auth;
     function interpretRequestBuffer(buffer :ArrayBuffer) : Request;
     function interpretRequest(byteArray :Uint8Array) : Request;
+    function composeRequest(request:Request) : Uint8Array;
     function interpretUdpMessage(byteArray :Uint8Array) : UdpMessage;
     function interpretDestination(byteArray :Uint8Array) : Destination;
+    function composeDestination(destination:Destination) : Uint8Array;
     function interpretIpv6Address(uint16View :Uint16Array) : string;
     function composeRequestResponse(endpoint :Net.Endpoint) : ArrayBuffer;
 }
