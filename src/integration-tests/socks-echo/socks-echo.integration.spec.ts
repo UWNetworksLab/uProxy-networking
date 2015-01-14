@@ -65,7 +65,7 @@ describe('proxy integration tests', function() {
     ];
     var testBuffers = testStrings.map(str2ab);
     var testArrays = testBuffers.map((b) => { return new Uint8Array(b); });
-    testModule.parallelEchoTest(testBuffers).then((outputs:ArrayBuffer[]) => {
+    testModule.serialEchoTest(testBuffers).then((outputs:ArrayBuffer[]) => {
       var outputArrays = outputs.map((b) => { return new Uint8Array(b); });
       // Order should be preserved in this test.
       expect(outputArrays).toEqual(testArrays);
