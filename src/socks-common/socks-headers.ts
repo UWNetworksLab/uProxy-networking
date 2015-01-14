@@ -112,6 +112,9 @@ module Socks {
   }
 
   export function composeAuthHandshakeBuffer(auths:Auth[]) : ArrayBuffer {
+    if (auths.length == 0) {
+      throw new Error('At least one authentication method must be specified.');
+    }
     var handshakeBytes = new Uint8Array(auths.length + 2);
     handshakeBytes[0] = Socks.VERSION5;
     handshakeBytes[1] = auths.length;
@@ -133,7 +136,16 @@ module Socks {
   }
 
   export function interpretAuthResponse(buffer:ArrayBuffer) : Socks.Auth {
+    if (buffer.byteLength != 2) {
+      throw new Error('Auth response must be exactly 2 bytes long');
+    }
     var byteArray = new Uint8Array(buffer);
+
+    // Only SOCKS Version 5 is supported.
+    var socksVersion = byteArray[0];
+    if (socksVersion != Socks.VERSION5) {
+      throw new Error('unsupported SOCKS version: ' + socksVersion);
+    }
     return byteArray[1];
   }
 
@@ -282,7 +294,10 @@ module Socks {
   // Heler function for parsing an IPv6 address from an Uint8Array portion of
   // a socks address in an arraybuffer.
   export function interpretIpv6Address(byteArray:Uint8Array) : string {
-    // |byteArray| contains big-endian shorts, but Uint16Array will read it
+    if (byteArray.length != 16) {
+      throw new Error('IPv6 addresses must be exactly 16 bytes long');
+    }
+    // |byteArray| contains big-endian shorts, but Uint16Array would read it
     // as little-endian on most platforms, so we have to read it manually.
     var parts :number[] = [];
     for (var i = 0; i < 16; i += 2) {
