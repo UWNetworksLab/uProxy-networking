@@ -111,12 +111,12 @@ module Socks {
     return authMethods;
   }
 
-  export function composeAuthHandshake(auths:Auth[]) : Uint8Array {
+  export function composeAuthHandshakeBuffer(auths:Auth[]) : ArrayBuffer {
     var handshakeBytes = new Uint8Array(auths.length + 2);
     handshakeBytes[0] = Socks.VERSION5;
     handshakeBytes[1] = auths.length;
     handshakeBytes.set(auths, 2);
-    return handshakeBytes;
+    return handshakeBytes.buffer;
   }
 
   // Server to Client (Step 2)
@@ -132,7 +132,8 @@ module Socks {
     return buffer;
   }
 
-  export function interpretAuthResponse(byteArray:Uint8Array) : Socks.Auth {
+  export function interpretAuthResponse(buffer:ArrayBuffer) : Socks.Auth {
+    var byteArray = new Uint8Array(buffer);
     return byteArray[1];
   }
 
@@ -181,14 +182,14 @@ module Socks {
     };
   }
 
-  export function composeRequest(request:Request) : Uint8Array {
+  export function composeRequestBuffer(request:Request) : ArrayBuffer {
     // The header is 3 bytes
     var byteArray = new Uint8Array(3 + request.destination.addressByteLength);
     byteArray[0] = request.version;
     byteArray[1] = request.command;
     byteArray[2] = 0;  // reserved
     byteArray.set(composeDestination(request.destination), 3);
-    return byteArray;
+    return byteArray.buffer;
   }
 
   // Client to Server (Step 3-B)
