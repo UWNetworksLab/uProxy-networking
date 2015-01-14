@@ -28,10 +28,48 @@ describe("socks", function() {
       12]); // datagram (byte 2/2)
   });
 
+  it('roundtrip auth request', () => {
+    var auths = [
+      Socks.Auth.GSSAPI,
+      Socks.Auth.NOAUTH,
+      Socks.Auth.NONE,
+      Socks.Auth.USERPASS
+    ];
+
+    var buffer = Socks.composeAuthHandshakeBuffer(auths);
+    var authsAgain = Socks.interpretAuthHandshakeBuffer(buffer);
+    expect(authsAgain).toEqual(auths);
+  });
+
+  it('roundtrip auth response', () => {
+    var auth = Socks.Auth.USERPASS;
+    var buffer = Socks.composeAuthResponse(auth);
+    var authAgain = Socks.interpretAuthResponse(buffer);
+    expect(authAgain).toEqual(auth);
+  });
+
   it('reject wrongly sized requests', () => {
     expect(() => {
       Socks.interpretRequestBuffer(new ArrayBuffer(8));
     }).toThrow();
+  });
+
+  it('compose ipv4 tcp request', () => {
+    var request : Socks.Request = {
+      version: Socks.VERSION5,
+      command: Socks.Command.TCP_CONNECT,
+      destination: {
+        addressType: Socks.AddressType.IP_V4,
+        endpoint: {
+          address: '192.168.1.1',
+          port: 1200
+        },
+        addressByteLength: 7
+      }
+    };
+    var requestBuffer = Socks.composeRequestBuffer(request);
+    var requestArray = new Uint8Array(requestBuffer);
+    expect(requestArray).toEqual(ipv4RequestArray);
   });
 
   it('parse ipv4 request', () => {
@@ -42,6 +80,78 @@ describe("socks", function() {
     expect(result.destination.addressType).toEqual(Socks.AddressType.IP_V4);
     expect(result.destination.endpoint.address).toEqual('192.168.1.1');
     expect(result.destination.endpoint.port).toEqual(1200);
+  });
+
+  it('roundtrip ipv6 tcp request', () => {
+    var request : Socks.Request = {
+      version: Socks.VERSION5,
+      command: Socks.Command.TCP_CONNECT,
+      destination: {
+        addressType: Socks.AddressType.IP_V6,
+        endpoint: {
+          address: '2620::1003:1003:a84f:9831:df45:5420',
+          port: 1200
+        },
+        addressByteLength: 19
+      }
+    };
+    var requestBuffer = Socks.composeRequestBuffer(request);
+    var requestAgain = Socks.interpretRequestBuffer(requestBuffer);
+    expect(requestAgain).toEqual(request);
+  });
+
+  it('roundtrip DNS tcp request', () => {
+    var request : Socks.Request = {
+      version: Socks.VERSION5,
+      command: Socks.Command.TCP_CONNECT,
+      destination: {
+        addressType: Socks.AddressType.DNS,
+        endpoint: {
+          address: 'www.example.com',
+          port: 1200
+        },
+        addressByteLength: 19
+      }
+    };
+    var requestBuffer = Socks.composeRequestBuffer(request);
+    var requestAgain = Socks.interpretRequestBuffer(requestBuffer);
+    expect(requestAgain).toEqual(request);
+  });
+
+  it('roundtrip IPv4 request response', () => {
+    var ipv4Endpoint :Net.Endpoint = {
+      address: '255.0.1.77',
+      port: 65535
+    };
+    var responseBuffer = Socks.composeRequestResponse(ipv4Endpoint);
+    var responseArray = new Uint8Array(responseBuffer);
+    expect(responseArray[3]).toEqual(Socks.AddressType.IP_V4);
+    var endpointAgain = Socks.interpretRequestResponse(responseBuffer);
+    expect(endpointAgain).toEqual(ipv4Endpoint);
+  });
+
+  it('roundtrip IPv6 request response', () => {
+    var ipv6Endpoint :Net.Endpoint = {
+      address: '2620::1003:1003:a84f:9831:df45:5420',
+      port: 40000
+    };
+    var responseBuffer = Socks.composeRequestResponse(ipv6Endpoint);
+    var responseArray = new Uint8Array(responseBuffer);
+    expect(responseArray[3]).toEqual(Socks.AddressType.IP_V6);
+    var endpointAgain = Socks.interpretRequestResponse(responseBuffer);
+    expect(endpointAgain).toEqual(ipv6Endpoint);
+  });
+
+  it('roundtrip DNS request response', () => {
+    var dnsEndpoint :Net.Endpoint = {
+      address: 'www.subdomain.example.com',
+      port: 45654
+    };
+    var responseBuffer = Socks.composeRequestResponse(dnsEndpoint);
+    var responseArray = new Uint8Array(responseBuffer);
+    expect(responseArray[3]).toEqual(Socks.AddressType.DNS);
+    var endpointAgain = Socks.interpretRequestResponse(responseBuffer);
+    expect(endpointAgain).toEqual(dnsEndpoint);
   });
 
   it('wrong socks version', () => {

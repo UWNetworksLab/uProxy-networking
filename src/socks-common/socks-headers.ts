@@ -3,6 +3,7 @@
     http://tools.ietf.org/html/rfc1928
 */
 /// <reference path='../networking-typings/communications.d.ts' />
+/// <reference path='../ipaddrjs/ipaddrjs.d.ts' />
 
 module Socks {
 
@@ -110,6 +111,17 @@ module Socks {
     return authMethods;
   }
 
+  export function composeAuthHandshakeBuffer(auths:Auth[]) : ArrayBuffer {
+    if (auths.length == 0) {
+      throw new Error('At least one authentication method must be specified.');
+    }
+    var handshakeBytes = new Uint8Array(auths.length + 2);
+    handshakeBytes[0] = Socks.VERSION5;
+    handshakeBytes[1] = auths.length;
+    handshakeBytes.set(auths, 2);
+    return handshakeBytes.buffer;
+  }
+
   // Server to Client (Step 2)
   //
   // Given an initial authentication query, compose a response with the support
@@ -121,6 +133,20 @@ module Socks {
     bytes[0] = Socks.VERSION5;
     bytes[1] = authType;
     return buffer;
+  }
+
+  export function interpretAuthResponse(buffer:ArrayBuffer) : Socks.Auth {
+    if (buffer.byteLength != 2) {
+      throw new Error('Auth response must be exactly 2 bytes long');
+    }
+    var byteArray = new Uint8Array(buffer);
+
+    // Only SOCKS Version 5 is supported.
+    var socksVersion = byteArray[0];
+    if (socksVersion != Socks.VERSION5) {
+      throw new Error('unsupported SOCKS version: ' + socksVersion);
+    }
+    return byteArray[1];
   }
 
   // Client to Server (Step 3-A)
@@ -166,6 +192,16 @@ module Socks {
       command: command,
       destination: destination
     };
+  }
+
+  export function composeRequestBuffer(request:Request) : ArrayBuffer {
+    // The header is 3 bytes
+    var byteArray = new Uint8Array(3 + request.destination.addressByteLength);
+    byteArray[0] = request.version;
+    byteArray[1] = request.command;
+    byteArray[2] = 0;  // reserved
+    byteArray.set(composeDestination(request.destination), 3);
+    return byteArray.buffer;
   }
 
   // Client to Server (Step 3-B)
@@ -224,8 +260,8 @@ module Socks {
     addressType = byteArray[0];
     if (AddressType.IP_V4 == addressType) {
       addressSize = 4;
-      address = Array.prototype.join.call(
-          byteArray.subarray(1, 1 + addressSize), '.');
+      address = interpretIpv4Address(
+          byteArray.subarray(1, 1 + addressSize));
       portOffset = addressSize + 1;
     } else if (AddressType.DNS == addressType) {
       addressSize = byteArray[1];
@@ -237,7 +273,7 @@ module Socks {
     } else if (AddressType.IP_V6 == addressType) {
       addressSize = 16;
       address = Socks.interpretIpv6Address(
-          new Uint16Array(byteArray.buffer, byteArray.byteOffset + 1, 8));
+          byteArray.subarray(1, 1 + addressSize));
       portOffset = addressSize + 1;
     } else {
       throw new Error('Unsupported SOCKS address type: ' + addressType);
@@ -253,12 +289,85 @@ module Socks {
     }
   }
 
-  // Heler function for parsing an IPv6 address from an Uint16Array portion of
+  function interpretIpv4Address(byteArray:Uint8Array) : string {
+    if (byteArray.length != 4) {
+      throw new Error('IPv4 addresses must be exactly 4 bytes long');
+    }
+    var ipAddress = new ipaddr.IPv4(Array.prototype.slice.call(byteArray));
+    return ipAddress.toString();
+  }
+
+  // Heler function for parsing an IPv6 address from an Uint8Array portion of
   // a socks address in an arraybuffer.
-  export function interpretIpv6Address(uint16View:Uint16Array) : string {
-    return Array.prototype.map.call(uint16View, (i:number) => {
-        return (((i & 0xFF) << 8) | ((i >> 8) & 0xFF)).toString(16);
-      }).join(':');
+  export function interpretIpv6Address(byteArray:Uint8Array) : string {
+    if (byteArray.length != 16) {
+      throw new Error('IPv6 addresses must be exactly 16 bytes long');
+    }
+    // |byteArray| contains big-endian shorts, but Uint16Array would read it
+    // as little-endian on most platforms, so we have to read it manually.
+    var parts :number[] = [];
+    for (var i = 0; i < 16; i += 2) {
+      parts.push(byteArray[i] << 8 | byteArray[i + 1]);
+    }
+    var ipAddress = new ipaddr.IPv6(parts);
+    return ipAddress.toString();
+  }
+
+  export function composeDestination(destination:Destination) : Uint8Array {
+    var endpoint = destination.endpoint;
+    var address = new Uint8Array(destination.addressByteLength);
+    address[0] = destination.addressType;
+    var addressSize :number;
+    switch (destination.addressType) {
+      case AddressType.IP_V4:
+        addressSize = 4;
+        var ipv4 = ipaddr.IPv4.parse(endpoint.address);
+        address.set(ipv4.octets, 1);
+        break;
+      case AddressType.DNS:
+        addressSize = endpoint.address.length + 1;
+        address[1] = endpoint.address.length;
+        for (var i = 0; i < endpoint.address.length; ++i) {
+          address[i + 2] = endpoint.address.charCodeAt(i);
+        }
+        break;
+      case AddressType.IP_V6:
+        addressSize = 16;
+        var ipv6 = ipaddr.IPv6.parse(endpoint.address);
+        address.set(ipv6.toByteArray(), 1);
+        break;
+      default:
+        throw new Error(
+            'Unsupported SOCKS address type: ' + destination.addressType);
+    }
+
+    var portOffset = addressSize + 1;
+    address[portOffset] = endpoint.port >> 8;
+    address[portOffset + 1] = endpoint.port & 0xFF;
+
+    return address;
+  }
+
+  function makeDestinationFromEndpoint(endpoint:Net.Endpoint) : Destination {
+    var type :Socks.AddressType;
+    var byteLength :number;
+    if (ipaddr.IPv4.isValid(endpoint.address)) {
+      type = AddressType.IP_V4;
+      byteLength = 7;  // 1 (type) + 4 (address) + 2 (port)
+    } else if (ipaddr.IPv6.isValid(endpoint.address)) {
+      type = AddressType.IP_V6;
+      byteLength = 19;  // 1 (type) + 16 (address) + 2 (port)
+    } else {
+      // TODO: Fail if the string is not a valid DNS name.
+      type = AddressType.DNS;
+      // 4 = 1 (type) + 1 (length) + 2 (port)
+      byteLength = endpoint.address.length + 4;
+    }
+    return {
+      addressType: type,
+      endpoint: endpoint,
+      addressByteLength: byteLength
+    };
   }
 
   // Server to Client (Step 4-A)
@@ -268,49 +377,34 @@ module Socks {
   // Given a destination reached, compose a response.
   export function composeRequestResponse(endpoint:Net.Endpoint)
       : ArrayBuffer {
-    var buffer:ArrayBuffer = new ArrayBuffer(10);
-    var bytes:Uint8Array = new Uint8Array(buffer);
+    var destination = makeDestinationFromEndpoint(endpoint);
+    var destinationArray = composeDestination(destination);
+
+    var bytes :Uint8Array = new Uint8Array(destinationArray.length + 3);
     bytes[0] = Socks.VERSION5;
     bytes[1] = Socks.Response.SUCCEEDED;
     bytes[2] = 0x00;
-    bytes[3] = Socks.AddressType.IP_V4;
-
-    // Parse IPv4 values.
-    var v4 = '([\\d]{1,3})';
-    var v4d = '\\.';
-    var v4complete = v4+v4d+v4+v4d+v4+v4d+v4
-    var v4regex = new RegExp(v4complete);
-    var ipv4 = endpoint.address.match(v4regex);
-    if (ipv4) {
-      bytes[4] = parseInt(ipv4[1]);
-      bytes[5] = parseInt(ipv4[2]);
-      bytes[6] = parseInt(ipv4[3]);
-      bytes[7] = parseInt(ipv4[4]);
-    } else {
-      console.warn('composeRequestResponse: got non-ipv4: ' +
-          JSON.stringify(endpoint) +
-          'returning false resolution address of 0.0.0.0');
-      bytes[4] = 0;
-      bytes[5] = 0;
-      bytes[6] = 0;
-      bytes[7] = 0;
-    }
-    // TODO: support IPv6
-    bytes[8] = endpoint.port >> 8;
-    bytes[9] = endpoint.port & 0xFF;
-    // TODO: support DNS
-    /* var j = 4;
-    if (this.request.atyp == ATYP.DNS) {
-      response[j] = this.request.addressSize;
-      j++;
-    }
-    for (var i = 0; i < this.request.addressSize; ++i) {
-      response[i + j] = this.request.address[i];
-    }
-    response[this.request.addressSize + j] = this.request.portByte1;
-    response[this.request.addressSize + j + 1] = this.request.portByte2;
-    */
-    return buffer;
+    bytes.set(destinationArray, 3);
+        
+    return bytes.buffer;
   }
 
+
+  export function interpretRequestResponse(buffer:ArrayBuffer) : Net.Endpoint {
+    var bytes = new Uint8Array(buffer);
+
+    // Only SOCKS Version 5 is supported.
+    var socksVersion = bytes[0];
+    if (socksVersion != Socks.VERSION5) {
+      throw new Error('unsupported SOCKS version: ' + socksVersion);
+    }
+
+    var response = bytes[1];
+    if (response != Response.SUCCEEDED) {
+      throw new Error('Response must be SUCCEEDED, not ' + response);
+    }
+
+    var destination = interpretDestination(bytes.subarray(3));
+    return destination.endpoint;
+  }
 }

@@ -64,6 +64,8 @@ declare module ipaddr {
   }
 
   export interface VersionSpecificIpUtils<T> {
+    // Construct an IPv4 or IPv6 object from a raw numeric representation.
+    new(octetsOrParts:number[]) : T;
     isValid(address: string): boolean;
     parse(address: string): T;
   }
