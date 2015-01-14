@@ -15,3 +15,4 @@ data/*
 dist
 third_party/bower
 .build
+*~
