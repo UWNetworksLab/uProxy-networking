@@ -260,10 +260,8 @@ module Socks {
     addressType = byteArray[0];
     if (AddressType.IP_V4 == addressType) {
       addressSize = 4;
-      var addressArray =
-          Array.prototype.slice.call(byteArray, 1, 1 + addressSize);
-      var ipAddress = new ipaddr.IPv4(addressArray);
-      address = ipAddress.toString();
+      address = interpretIpv4Address(
+          byteArray.subarray(1, 1 + addressSize));
       portOffset = addressSize + 1;
     } else if (AddressType.DNS == addressType) {
       addressSize = byteArray[1];
@@ -289,6 +287,14 @@ module Socks {
       endpoint: { address: address, port: port },
       addressByteLength: portOffset + 2
     }
+  }
+
+  function interpretIpv4Address(byteArray:Uint8Array) : string {
+    if (byteArray.length != 4) {
+      throw new Error('IPv4 addresses must be exactly 4 bytes long');
+    }
+    var ipAddress = new ipaddr.IPv4(Array.prototype.slice.call(byteArray));
+    return ipAddress.toString();
   }
 
   // Heler function for parsing an IPv6 address from an Uint8Array portion of
@@ -342,6 +348,28 @@ module Socks {
     return address;
   }
 
+  function makeDestinationFromEndpoint(endpoint:Net.Endpoint) : Destination {
+    var type :Socks.AddressType;
+    var byteLength :number;
+    if (ipaddr.IPv4.isValid(endpoint.address)) {
+      type = AddressType.IP_V4;
+      byteLength = 7;  // 1 (type) + 4 (address) + 2 (port)
+    } else if (ipaddr.IPv6.isValid(endpoint.address)) {
+      type = AddressType.IP_V6;
+      byteLength = 19;  // 1 (type) + 16 (address) + 2 (port)
+    } else {
+      // TODO: Fail if the string is not a valid DNS name.
+      type = AddressType.DNS;
+      // 4 = 1 (type) + 1 (length) + 2 (port)
+      byteLength = endpoint.address.length + 4;
+    }
+    return {
+      addressType: type,
+      endpoint: endpoint,
+      addressByteLength: byteLength
+    };
+  }
+
   // Server to Client (Step 4-A)
   //
   // TODO: support failure (https://github.com/uProxy/uproxy/issues/321)
@@ -349,42 +377,34 @@ module Socks {
   // Given a destination reached, compose a response.
   export function composeRequestResponse(endpoint:Net.Endpoint)
       : ArrayBuffer {
-    var buffer:ArrayBuffer = new ArrayBuffer(10);
-    var bytes:Uint8Array = new Uint8Array(buffer);
+    var destination = makeDestinationFromEndpoint(endpoint);
+    var destinationArray = composeDestination(destination);
+
+    var bytes :Uint8Array = new Uint8Array(destinationArray.length + 3);
     bytes[0] = Socks.VERSION5;
     bytes[1] = Socks.Response.SUCCEEDED;
     bytes[2] = 0x00;
-    bytes[3] = Socks.AddressType.IP_V4;
-
-    // Parse IPv4 values.
-    var address = ipaddr.parse(endpoint.address);
-    if (address.kind() == 'ipv4') {
-      bytes.set(address.toByteArray(), 4);
-    } else {
-      console.warn('composeRequestResponse: got non-ipv4: ' +
-          JSON.stringify(endpoint) +
-          'returning false resolution address of 0.0.0.0');
-      bytes[4] = 0;
-      bytes[5] = 0;
-      bytes[6] = 0;
-      bytes[7] = 0;
-    }
-    // TODO: support IPv6
-    bytes[8] = endpoint.port >> 8;
-    bytes[9] = endpoint.port & 0xFF;
-    // TODO: support DNS
-    /* var j = 4;
-    if (this.request.atyp == ATYP.DNS) {
-      response[j] = this.request.addressSize;
-      j++;
-    }
-    for (var i = 0; i < this.request.addressSize; ++i) {
-      response[i + j] = this.request.address[i];
-    }
-    response[this.request.addressSize + j] = this.request.portByte1;
-    response[this.request.addressSize + j + 1] = this.request.portByte2;
-    */
-    return buffer;
+    bytes.set(destinationArray, 3);
+        
+    return bytes.buffer;
   }
 
+
+  export function interpretRequestResponse(buffer:ArrayBuffer) : Net.Endpoint {
+    var bytes = new Uint8Array(buffer);
+
+    // Only SOCKS Version 5 is supported.
+    var socksVersion = bytes[0];
+    if (socksVersion != Socks.VERSION5) {
+      throw new Error('unsupported SOCKS version: ' + socksVersion);
+    }
+
+    var response = bytes[1];
+    if (response != Response.SUCCEEDED) {
+      throw new Error('Response must be SUCCEEDED, not ' + response);
+    }
+
+    var destination = interpretDestination(bytes.subarray(3));
+    return destination.endpoint;
+  }
 }

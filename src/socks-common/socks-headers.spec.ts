@@ -118,6 +118,42 @@ describe("socks", function() {
     expect(requestAgain).toEqual(request);
   });
 
+  it('roundtrip IPv4 request response', () => {
+    var ipv4Endpoint :Net.Endpoint = {
+      address: '255.0.1.77',
+      port: 65535
+    };
+    var responseBuffer = Socks.composeRequestResponse(ipv4Endpoint);
+    var responseArray = new Uint8Array(responseBuffer);
+    expect(responseArray[3]).toEqual(Socks.AddressType.IP_V4);
+    var endpointAgain = Socks.interpretRequestResponse(responseBuffer);
+    expect(endpointAgain).toEqual(ipv4Endpoint);
+  });
+
+  it('roundtrip IPv6 request response', () => {
+    var ipv6Endpoint :Net.Endpoint = {
+      address: '2620::1003:1003:a84f:9831:df45:5420',
+      port: 40000
+    };
+    var responseBuffer = Socks.composeRequestResponse(ipv6Endpoint);
+    var responseArray = new Uint8Array(responseBuffer);
+    expect(responseArray[3]).toEqual(Socks.AddressType.IP_V6);
+    var endpointAgain = Socks.interpretRequestResponse(responseBuffer);
+    expect(endpointAgain).toEqual(ipv6Endpoint);
+  });
+
+  it('roundtrip DNS request response', () => {
+    var dnsEndpoint :Net.Endpoint = {
+      address: 'www.subdomain.example.com',
+      port: 45654
+    };
+    var responseBuffer = Socks.composeRequestResponse(dnsEndpoint);
+    var responseArray = new Uint8Array(responseBuffer);
+    expect(responseArray[3]).toEqual(Socks.AddressType.DNS);
+    var endpointAgain = Socks.interpretRequestResponse(responseBuffer);
+    expect(endpointAgain).toEqual(dnsEndpoint);
+  });
+
   it('wrong socks version', () => {
     ipv4RequestArray[0] = 4;
     expect(function() {

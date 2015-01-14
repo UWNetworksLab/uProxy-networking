@@ -57,4 +57,5 @@ declare module Socks {
     function composeDestination(destination:Destination) : Uint8Array;
     function interpretIpv6Address(byteArray:Uint8Array) : string;
     function composeRequestResponse(endpoint :Net.Endpoint) : ArrayBuffer;
+    function interpretRequestResponse(buffer:ArrayBuffer) : Net.Endpoint;
 }
