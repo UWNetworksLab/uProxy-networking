@@ -28,6 +28,26 @@ describe("socks", function() {
       12]); // datagram (byte 2/2)
   });
 
+  it('roundtrip auth request', () => {
+    var auths = [
+      Socks.Auth.GSSAPI,
+      Socks.Auth.NOAUTH,
+      Socks.Auth.NONE,
+      Socks.Auth.USERPASS
+    ];
+
+    var buffer = Socks.composeAuthHandshakeBuffer(auths);
+    var authsAgain = Socks.interpretAuthHandshakeBuffer(buffer);
+    expect(authsAgain).toEqual(auths);
+  });
+
+  it('roundtrip auth response', () => {
+    var auth = Socks.Auth.USERPASS;
+    var buffer = Socks.composeAuthResponse(auth);
+    var authAgain = Socks.interpretAuthResponse(buffer);
+    expect(authAgain).toEqual(auth);
+  });
+
   it('reject wrongly sized requests', () => {
     expect(() => {
       Socks.interpretRequestBuffer(new ArrayBuffer(8));
@@ -47,7 +67,8 @@ describe("socks", function() {
         addressByteLength: 7
       }
     };
-    var requestArray = Socks.composeRequest(request);
+    var requestBuffer = Socks.composeRequestBuffer(request);
+    var requestArray = new Uint8Array(requestBuffer);
     expect(requestArray).toEqual(ipv4RequestArray);
   });
 
@@ -74,8 +95,8 @@ describe("socks", function() {
         addressByteLength: 19
       }
     };
-    var requestArray = Socks.composeRequest(request);
-    var requestAgain = Socks.interpretRequest(requestArray);
+    var requestBuffer = Socks.composeRequestBuffer(request);
+    var requestAgain = Socks.interpretRequestBuffer(requestBuffer);
     expect(requestAgain).toEqual(request);
   });
 
@@ -92,8 +113,8 @@ describe("socks", function() {
         addressByteLength: 19
       }
     };
-    var requestArray = Socks.composeRequest(request);
-    var requestAgain = Socks.interpretRequest(requestArray);
+    var requestBuffer = Socks.composeRequestBuffer(request);
+    var requestAgain = Socks.interpretRequestBuffer(requestBuffer);
     expect(requestAgain).toEqual(request);
   });
 
