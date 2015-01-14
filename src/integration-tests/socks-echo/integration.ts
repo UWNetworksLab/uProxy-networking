@@ -129,7 +129,7 @@ class ProxyIntegrationTest {
     }
   }
 
-  public parallelEchoTest = (contents:ArrayBuffer[]) : Promise<ArrayBuffer[]> => {
+  public serialEchoTest = (contents:ArrayBuffer[]) : Promise<ArrayBuffer[]> => {
     try {
       return Promise.all([this.startSocksPair_(), this.startEchoServer_()])
           .then((endpoints:Net.Endpoint[]) : Promise<Tcp.Connection> => {
