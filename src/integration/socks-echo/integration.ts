@@ -1,4 +1,3 @@
-/// <reference path='../../arraybuffers/arraybuffers.d.ts' />
 /// <reference path="../../networking-typings/communications.d.ts" />
 /// <reference path="../../rtc-to-net/rtc-to-net.d.ts" />
 /// <reference path="../../socks-common/socks-headers.d.ts" />
@@ -7,25 +6,31 @@
 /// <reference path="../../webrtc/peerconnection.d.ts" />
 
 class ProxyIntegrationTest {
-  constructor(private dispatchEvent_:(name:string, args:any) => void) {}
-
   private socksToRtc_ :SocksToRtc.SocksToRtc;
   private rtcToNet_ :RtcToNet.RtcToNet;
-  private echoServer_ :Tcp.Server;
+  private socksEndpoint_ : Promise<Net.Endpoint>;
+  private echoServers_ :{ [index:string]: Tcp.Server; } = {};
+  private connections_ :{ [index:string]: Tcp.Connection; } = {};
 
-  private startEchoServer_ = () : Promise<Net.Endpoint> => {
-    this.echoServer_ = new Tcp.Server({
+  constructor(private dispatchEvent_:(name:string, args:any) => void) {
+    this.socksEndpoint_ = this.startSocksPair_();
+  }
+
+  public startEchoServer = (name:string) : Promise<void> => {
+    var server = new Tcp.Server({
       address: '127.0.0.1',
       port: 0
     });
 
-    this.echoServer_.connectionsQueue.setSyncHandler((tcpConnection:Tcp.Connection) => {
+    server.connectionsQueue.setSyncHandler((tcpConnection:Tcp.Connection) => {
       tcpConnection.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
         tcpConnection.send(buffer);
       });
     });
 
-    return this.echoServer_.listen();
+    // Discard endpoint info; we'll get it again later via .onceListening().
+    this.echoServers_[name] = server;
+    return server.listen().then((endpoint:Net.Endpoint) => {});
   }
 
   private startSocksPair_ = () : Promise<Net.Endpoint> => {
@@ -93,70 +98,38 @@ class ProxyIntegrationTest {
     });
   }
 
-  public singleEchoTest = (contents:ArrayBuffer) : Promise<ArrayBuffer> => {
+  public connect = (echoServerName:string) : Promise<string> => {
     try {
-      return Promise.all([this.startSocksPair_(), this.startEchoServer_()])
-          .then((endpoints:Net.Endpoint[]) : Promise<Tcp.Connection> => {
-            var socksEndpoint = endpoints[0];
-            var echoEndpoint = endpoints[1];
-            return this.connectThroughSocks_(socksEndpoint, echoEndpoint);
-          }).then((connection:Tcp.Connection) => {
-            connection.send(contents);
-            return connection.receiveNext();
-          });
+      return Promise.all([
+        this.socksEndpoint_,
+        this.echoServers_[echoServerName].onceListening()
+      ]).then((endpoints:Net.Endpoint[]) : Promise<Tcp.Connection> => {
+        var socksEndpoint = endpoints[0];
+        var echoEndpoint = endpoints[1];
+        return this.connectThroughSocks_(socksEndpoint, echoEndpoint);
+      }).then((connection:Tcp.Connection) => {
+        this.connections_[connection.connectionId] = connection;
+        return connection.connectionId;
+      });
     } catch (e) {
       return Promise.reject(e.message + ' ' + e.stack);
     }
   }
 
-  public parallelEchoTest = (contents:ArrayBuffer[]) : Promise<ArrayBuffer[]> => {
+  public echo = (connectionId:string, contents:ArrayBuffer[]) : Promise<ArrayBuffer[]> => {
     try {
-      return Promise.all([this.startSocksPair_(), this.startEchoServer_()])
-          .then((endpoints:Net.Endpoint[]) : Promise<Tcp.Connection> => {
-            var socksEndpoint = endpoints[0];
-            var echoEndpoint = endpoints[1];
-            return this.connectThroughSocks_(socksEndpoint, echoEndpoint);
-          }).then((connection:Tcp.Connection) => {
-            contents.forEach(connection.send);
-            var received :ArrayBuffer[] = [];
-            return new Promise<ArrayBuffer[]>((F, R) => {
-              connection.dataFromSocketQueue.setSyncHandler((echo:ArrayBuffer) => {
-                received.push(echo);
-                if (received.length == contents.length) {
-                  F(received);
-                }
-              });
-            });
-          });
-    } catch (e) {
-      return Promise.reject(e.message + ' ' + e.stack);
-    }
-  }
+      var connection = this.connections_[connectionId];
+      contents.forEach(connection.send);
 
-  public serialEchoTest = (contents:ArrayBuffer[]) : Promise<ArrayBuffer[]> => {
-    try {
-      return Promise.all([this.startSocksPair_(), this.startEchoServer_()])
-          .then((endpoints:Net.Endpoint[]) : Promise<Tcp.Connection> => {
-            var socksEndpoint = endpoints[0];
-            var echoEndpoint = endpoints[1];
-            return this.connectThroughSocks_(socksEndpoint, echoEndpoint);
-          }).then((connection:Tcp.Connection) => {
-            var received :ArrayBuffer[] = [];
-            return new Promise<ArrayBuffer[]>((F, R) => {
-              var step = (echo?:ArrayBuffer) => {
-                if (echo) {
-                  received.push(echo);
-                }
-                if (received.length == contents.length) {
-                  F(received);
-                  return;
-                }
-                connection.send(contents[received.length]);
-                connection.receiveNext().then(step);
-              };
-              step();
-            });
-          });
+      var received :ArrayBuffer[] = [];
+      return new Promise<ArrayBuffer[]>((F, R) => {
+        connection.dataFromSocketQueue.setSyncHandler((echo:ArrayBuffer) => {
+          received.push(echo);
+          if (received.length == contents.length) {
+            F(received);
+          }
+        });
+      });
     } catch (e) {
       return Promise.reject(e.message + ' ' + e.stack);
     }

@@ -322,8 +322,10 @@ module.exports = (grunt) ->
           template: 'node_modules/freedom-for-chrome/spec/helper/'
           spec: ['build/integration/*/*.integration.spec.js']
           helper: [
+            # "include: true" is needed for dependencies that are used by
+            # the jasmine tests in the core environment.
             {path: 'build/freedom/freedom-for-chrome.js', include: true}
-            {path: 'build/arraybuffers/arraybuffers.js', include: false}
+            {path: 'build/arraybuffers/arraybuffers.js', include: true}
             {path: 'build/logging/logging.js', include: false}
             {path: 'build/handler/queue.js', include: false}
             {path: 'build/ipaddrjs/ipaddr.min.js', include: false}

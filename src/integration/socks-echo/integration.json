@@ -21,19 +21,19 @@
   "default": "ProxyIntegrationTest",
   "api": {
     "ProxyIntegrationTest": {
-      "singleEchoTest": {
+      "startEchoServer": {
         "type": "method",
-        "value": ["buffer"],
-        "ret": "buffer"
+        "value": ["string"],
+        "ret": []
       },
-      "parallelEchoTest": {
+      "connect": {
         "type": "method",
-        "value": [["array", "buffer"]],
-        "ret": ["array", "buffer"]
+        "value": ["string"],
+        "ret": "string"
       },
-      "serialEchoTest": {
+      "echo": {
         "type": "method",
-        "value": [["array", "buffer"]],
+        "value": ["string", ["array", "buffer"]],
         "ret": ["array", "buffer"]
       }
     }
