@@ -7,6 +7,14 @@
 describe('proxy integration tests', function() {
   var testModule :any;
 
+  var testStrings = [
+    'foo',
+    'bar',
+    'longer string',
+    '1',
+    'that seems like enough'
+  ];
+
   beforeEach(function(done) {
     freedom('scripts/build/integration/socks-echo/integration.json',
             { 'debug': 'log' })
@@ -32,13 +40,6 @@ describe('proxy integration tests', function() {
 
   it('run multiple echo tests in a batch on one connection', (done) => {
     var name = 'echo';
-    var testStrings = [
-      'foo',
-      'bar',
-      'longer string',
-      '1',
-      'that seems like enough'
-    ];
     var testBuffers = testStrings.map(ArrayBuffers.stringToArrayBuffer);
     testModule.startEchoServer(name).then(() => {
       return testModule.connect(name);
@@ -53,15 +54,8 @@ describe('proxy integration tests', function() {
     }).then(done);
   });
 
-  it('run multiple echo tests in series', (done) => {
+  it('run multiple echo tests in series on one connection', (done) => {
     var name = 'echo';
-    var testStrings = [
-      'foo',
-      'bar',
-      'longer string',
-      '1',
-      'that seems like enough'
-    ];
     var testBuffers = testStrings.map(ArrayBuffers.stringToArrayBuffer);
     testModule.startEchoServer(name).then(() => {
       return testModule.connect(name);
@@ -82,6 +76,43 @@ describe('proxy integration tests', function() {
         step();
       });
     }).catch((e:any) => {
+      expect(e).toBeUndefined();
+    }).then(done);
+  });
+
+  it('connect to the same server multiple times in parallel', (done) => {
+    var name = 'echo';
+    testModule.startEchoServer(name).then(() : Promise<any> => {
+      var promises = testStrings.map((s:string) : Promise<void> => {
+        var buffer = ArrayBuffers.stringToArrayBuffer(s);
+        return testModule.connect(name).then((connectionId:string) => {
+          return testModule.echo(connectionId, [buffer]);
+        }).then((response:ArrayBuffer[]) => {
+          expect(ArrayBuffers.byteEquality(buffer, response[0])).toBe(true);
+        });
+      });
+      return Promise.all(promises);
+    }).catch((e:any) => {
+      expect(e).toBeUndefined();
+    }).then(done);
+  });
+
+  it('connect to many different servers in parallel', (done) => {
+    var promises = testStrings.map((s:string) : Promise<void> => {
+      var buffer = ArrayBuffers.stringToArrayBuffer(s);
+
+      // For each string, start a new echo server with that name, and
+      // then echo that string from that server.
+      return testModule.startEchoServer(s).then(() => {
+        return testModule.connect(s);
+      }).then((connectionId:string) => {
+        return testModule.echo(connectionId, [buffer]);
+      }).then((response:ArrayBuffer[]) => {
+        expect(ArrayBuffers.byteEquality(buffer, response[0])).toBe(true);
+      });
+    });
+
+    Promise.all(promises).catch((e:any) => {
       expect(e).toBeUndefined();
     }).then(done);
   });
