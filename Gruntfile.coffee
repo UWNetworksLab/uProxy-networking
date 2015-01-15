@@ -186,8 +186,8 @@ module.exports = (grunt) ->
       simpleSocksFirefoxApp: Rule.typescriptSrc 'samples/simple-socks-firefoxapp'
       copypasteSocksChromeApp: Rule.typescriptSrc 'samples/copypaste-socks-chromeapp'
 
-      integrationTests: Rule.typescriptSrc 'integration-tests/*'
-      integrationTestsSpecDecl: Rule.typescriptSpecDecl 'integration-tests/*'
+      integrationTests: Rule.typescriptSrc 'integration/*'
+      integrationTestsSpecDecl: Rule.typescriptSpecDecl 'integration/*'
 
       # Churn.
       turnFrontend: Rule.typescriptSrc 'turn-frontend'
@@ -320,7 +320,7 @@ module.exports = (grunt) ->
       all:
         options:
           template: 'node_modules/freedom-for-chrome/spec/helper/'
-          spec: ['build/integration-tests/*/*.integration.spec.js']
+          spec: ['build/integration/*/*.integration.spec.js']
           helper: [
             {path: 'build/freedom/freedom-for-chrome.js', include: true}
             {path: 'build/arraybuffers/arraybuffers.js', include: false}
@@ -332,7 +332,7 @@ module.exports = (grunt) ->
             {path: 'build/socks-to-rtc/socks-to-rtc.js', include: false}
             {path: 'build/webrtc/*.js', include: false}
             {path: 'build/tcp/tcp.js', include: false}
-            {path: 'build/integration-tests/*/integration.*', include: false}
+            {path: 'build/integration/*/integration.*', include: false}
           ]
           keepBrowser: false
 

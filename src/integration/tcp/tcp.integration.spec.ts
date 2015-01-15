@@ -23,7 +23,7 @@ describe('core.tcpsocket wrapper', function() {
   // Loads the testing Freedom module, emits a signal and returns
   // a promise which fulfills once the signal is echoed.
   function loadFreedom(name:string) : Promise<void> {
-    return freedom('scripts/build/integration-tests/tcp/integration.json', { 'debug': 'log' })
+    return freedom('scripts/build/integration/tcp/integration.json', { 'debug': 'log' })
       .then((interface:any) => {
         return new Promise((F, R) => {
           var testModule = interface();

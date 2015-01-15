@@ -15,7 +15,7 @@ describe('proxy integration tests', function() {
   };
 
   beforeEach(function(done) {
-    freedom('scripts/build/integration-tests/socks-echo/integration.json',
+    freedom('scripts/build/integration/socks-echo/integration.json',
             { 'debug': 'log' })
         .then((interface:any) => {
           testModule = interface();
