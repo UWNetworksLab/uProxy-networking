@@ -62,7 +62,8 @@ class ProxyIntegrationTest {
     return connection.receiveNext().then((buffer:ArrayBuffer) : Promise<ArrayBuffer> => {
       var auth = Socks.interpretAuthResponse(buffer);
       if (auth != Socks.Auth.NOAUTH) {
-        throw new Error('Unexpected auth value: ' + auth);
+        throw new Error('SOCKS server returned unexpected AUTH response.  ' +
+                        'Expected NOAUTH (' + Socks.Auth.NOAUTH + ') but got ' + auth);
       }
 
       var request :Socks.Request = {
@@ -79,11 +80,14 @@ class ProxyIntegrationTest {
     }).then((buffer:ArrayBuffer) : Tcp.Connection => {
       var responseEndpoint = Socks.interpretRequestResponse(buffer);
       if (responseEndpoint.address != webEndpoint.address) {
-        throw new Error('unexpected address: ' + responseEndpoint.address);
+        throw new Error('SOCKS server connected to wrong address.  ' +
+                        'Expected ' + webEndpoint.address +
+                        ' but got ' + responseEndpoint.address);
       }
       if (responseEndpoint.port != webEndpoint.port) {
-        throw new Error('response indicates incorrect port: ' +
-                        responseEndpoint.port);
+        throw new Error('SOCKS server connected to wrong port.  ' +
+                        'Expected ' + webEndpoint.port +
+                        ' but got ' + responseEndpoint.port);
       }
       return connection;
     });
