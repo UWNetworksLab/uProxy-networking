@@ -156,7 +156,6 @@ module.exports = (grunt) ->
     ts:
       # SOCKS.
       tcp: Rule.typescriptSrc 'tcp'
-      tcpSpecDecl: Rule.typescriptSpecDecl 'tcp'
 
       udp: Rule.typescriptSrc 'udp'
 
@@ -186,6 +185,9 @@ module.exports = (grunt) ->
       simpleSocksChromeApp: Rule.typescriptSrc 'samples/simple-socks-chromeapp'
       simpleSocksFirefoxApp: Rule.typescriptSrc 'samples/simple-socks-firefoxapp'
       copypasteSocksChromeApp: Rule.typescriptSrc 'samples/copypaste-socks-chromeapp'
+
+      integrationTests: Rule.typescriptSrc 'integration/*'
+      integrationTestsSpecDecl: Rule.typescriptSpecDecl 'integration/*'
 
       # Churn.
       turnFrontend: Rule.typescriptSrc 'turn-frontend'
@@ -315,17 +317,24 @@ module.exports = (grunt) ->
                 dir: 'build/coverage/rtcToNet'
 
     integration:
-      tcp:
+      all:
         options:
           template: 'node_modules/freedom-for-chrome/spec/helper/'
-          spec: ['build/tcp/*.integration.spec.js']
+          spec: ['build/integration/*/*.integration.spec.js']
           helper: [
+            # "include: true" is needed for dependencies that are used by
+            # the jasmine tests in the core environment.
             {path: 'build/freedom/freedom-for-chrome.js', include: true}
-            {path: 'build/arraybuffers/arraybuffers.js', include: false}
+            {path: 'build/arraybuffers/arraybuffers.js', include: true}
             {path: 'build/logging/logging.js', include: false}
             {path: 'build/handler/queue.js', include: false}
+            {path: 'build/ipaddrjs/ipaddr.min.js', include: false}
+            {path: 'build/rtc-to-net/rtc-to-net.js', include: false}
+            {path: 'build/socks-common/socks-headers.js', include: false}
+            {path: 'build/socks-to-rtc/socks-to-rtc.js', include: false}
+            {path: 'build/webrtc/*.js', include: false}
             {path: 'build/tcp/tcp.js', include: false}
-            {path: 'build/tcp/integration.*', include: false}
+            {path: 'build/integration/*/integration.*', include: false}
           ]
           keepBrowser: false
 
@@ -379,7 +388,6 @@ module.exports = (grunt) ->
   taskManager.add 'tcp', [
     'base'
     'ts:tcp'
-    'ts:tcpSpecDecl'
     'copy:tcp'
   ]
 
@@ -610,6 +618,8 @@ module.exports = (grunt) ->
 
   taskManager.add 'integration_test', [
     'build'
+    'ts:integrationTests'
+    'ts:integrationTestsSpecDecl'
     'integration'
   ]
 

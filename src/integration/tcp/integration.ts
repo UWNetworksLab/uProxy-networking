@@ -1,6 +1,6 @@
-/// <reference path="tcp.ts" />
-/// <reference path='../arraybuffers/arraybuffers.d.ts' />
-/// <reference path='../freedom/typings/freedom.d.ts' />
+/// <reference path="../../tcp/tcp.d.ts" />
+/// <reference path='../../arraybuffers/arraybuffers.d.ts' />
+/// <reference path='../../freedom/typings/freedom.d.ts' />
 
 // Starts an echo server on a free port and verifies that the server
 // is listening on that port. Tests:
