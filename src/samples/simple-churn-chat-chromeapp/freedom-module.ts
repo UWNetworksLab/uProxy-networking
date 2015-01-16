@@ -3,7 +3,7 @@
 /// <reference path="../../freedom/typings/freedom.d.ts" />
 /// <reference path='../../logging/logging.d.ts' />
 
-Logging.setConsoleFilter(['*:D']);
+freedom['loggingprovider']().setConsoleFilter(['*:D']);
 
 var log :Logging.Log = new Logging.Log('simple churn chat');
 
