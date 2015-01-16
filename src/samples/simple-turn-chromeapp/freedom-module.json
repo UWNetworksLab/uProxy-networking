@@ -10,6 +10,10 @@
     ]
   },
   "dependencies": {
+    "loggingprovider": {
+      "url": "lib/loggingprovider/loggingprovider.json",
+      "api": "loggingprovider"
+    },
     "turnFrontend": {
       "url": "lib/turn-frontend/freedom.json",
       "api": "turnFrontend"
