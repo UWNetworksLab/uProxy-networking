@@ -22,8 +22,5 @@
       "url": "lib/turn-backend/freedom.json",
       "api": "turnBackend"
     }
-  },
-  "permissions": [
-    "core.console"
-  ]
+  }
 }
