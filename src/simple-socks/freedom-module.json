@@ -30,7 +30,6 @@
     }
   },
   "permissions": [
-    "core.console",
     "core.tcpsocket",
     "core.udpsocket",
     "core.rtcdatachannel",
