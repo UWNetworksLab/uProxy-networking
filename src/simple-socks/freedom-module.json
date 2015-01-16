@@ -20,6 +20,10 @@
     ]
   },
   "dependencies": {
+    "loggingprovider": {
+      "url": "../loggingprovider/loggingprovider.json",
+      "api": "loggingprovider"
+    },
     "churnPipe": {
       "url": "../churn-pipe/freedom.json",
       "api": "churnPipe"
