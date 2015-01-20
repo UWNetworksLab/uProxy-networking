@@ -5,6 +5,10 @@ script.src = 'lib/freedom/freedom-for-chrome.js';
 document.head.appendChild(script);
 
 script.onload = () => {
+  function keepAlive() {
+    setTimeout(keepAlive, 5000);
+  }
+  keepAlive();
   freedom('lib/simple-socks/freedom-module.json', { 'debug': 'log' }).then(function(interface:any) {
     var simpleSocks :any = interface();
   }, (e:Error) => {
