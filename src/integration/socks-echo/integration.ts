@@ -116,7 +116,14 @@ class ProxyIntegrationTest {
     }
   }
 
-  public echo = (connectionId:string, contents:ArrayBuffer[]) : Promise<ArrayBuffer[]> => {
+  public echo = (connectionId:string, content:ArrayBuffer) : Promise<ArrayBuffer> => {
+    return this.echoMultiple(connectionId, [content])
+        .then((responses:ArrayBuffer[]) : ArrayBuffer => {
+          return responses[0];
+        });
+  }
+
+  public echoMultiple = (connectionId:string, contents:ArrayBuffer[]) : Promise<ArrayBuffer[]> => {
     try {
       var connection = this.connections_[connectionId];
       contents.forEach(connection.send);
