@@ -10,7 +10,6 @@
     ]
   },
   "permissions": [
-    "core.console",
     "core.tcpsocket"
   ]
 }
