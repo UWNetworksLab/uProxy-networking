@@ -10,6 +10,8 @@ var argv = require('yargs')
     .alias('c', 'concurrency')
     .default('speed', 1)
     .alias('s', 'speed')
+    .default('maxtimeouts', 10)
+    .alias('m', 'maxtimeouts')
     .argv;
 
 var should_sleep = true;
@@ -17,9 +19,12 @@ var num_tests = argv.n;
 var verbosity = argv.verbose;
 var concurrency = argv.concurrency
 var tail_lat = 1000 / argv.speed;
+var max_timeouts = argv.maxtimeouts;
+console.log("Configured arguments: num tests: " + num_tests + ", concurrency: " + concurrency + 
+            ", max timeouts: " + max_timeouts);
 
 // 500ms window for the histogram, broken into 64 buckets.
-runner.configureDefaults(concurrency, 64, tail_lat, verbosity);
+runner.configureDefaults(concurrency, 64, tail_lat, verbosity, max_timeouts);
 runner.runTests(num_tests, function (results) {
     console.log("-------------------------------------------------------");
     console.log("  BENCHMARK COMPLETE");
