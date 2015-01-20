@@ -25,7 +25,6 @@
     }
   },
   "permissions": [
-    "core.console",
     "core.udpsocket",
     "core.rtcdatachannel",
     "core.rtcpeerconnection"
