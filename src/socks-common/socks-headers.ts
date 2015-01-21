@@ -61,9 +61,55 @@ module Socks {
   // Represents a SOCKS request.
   // @see interpretSocksRequest
   export interface Request {
-    version        :number;
     command        :Command;
-    destination    :Destination;
+    endpoint       :Net.Endpoint;
+  }
+
+  function assertType<T>(typeName:string, value:any) : T {
+    if (typeof value != typeName) {
+      throw new Error('Assertion failed: expected ' + typeName +
+                      ' but got ' + typeof value);
+    }
+    return <T>value;
+  }
+
+  function assertEnum<T extends number>(theEnum:{ [index: number]: string},
+                                        value:number) : T {
+    if (typeof theEnum[value] != 'string') {
+      throw new Error('Value ' + value + ' is not in the enum');
+    }
+    return <T>(<any>value);
+  }
+
+  // Equivalent to JSON.parse(), but also throws an exception if the contents
+  // are not conformant.
+  export function parseRequest(json:string) : Request {
+    var request :any = JSON.parse(json);
+    return {
+      command: assertEnum<Command>(Command, request.command),
+      endpoint: {
+        address: assertType<string>('string', request.endpoint.address),
+        port: assertType<number>('number', request.endpoint.port)
+      }
+    };
+  }
+
+  export interface Reply {
+    replyField: Response;
+    endpoint: Net.Endpoint;
+  }
+
+  // Equivalent to JSON.parse(), but also throws an exception if the contents
+  // are not conformant.
+  export function parseReply(json:string) : Reply {
+    var reply :any = JSON.parse(json);
+    return {
+      replyField: assertEnum<Response>(Response, reply.replyField),
+      endpoint: {
+        address: assertType<string>('string', reply.endpoint.address),
+        port: assertType<number>('number', reply.endpoint.port)
+      }
+    };
   }
 
   // Represents a UDP request message.
@@ -188,19 +234,19 @@ module Socks {
     destination = interpretDestination(byteArray.subarray(3));
 
     return {
-      version: version,
       command: command,
-      destination: destination
+      endpoint: destination.endpoint
     };
   }
 
   export function composeRequestBuffer(request:Request) : ArrayBuffer {
+    var destination = makeDestinationFromEndpoint(request.endpoint);
     // The header is 3 bytes
-    var byteArray = new Uint8Array(3 + request.destination.addressByteLength);
-    byteArray[0] = request.version;
+    var byteArray = new Uint8Array(3 + destination.addressByteLength);
+    byteArray[0] = VERSION5;
     byteArray[1] = request.command;
     byteArray[2] = 0;  // reserved
-    byteArray.set(composeDestination(request.destination), 3);
+    byteArray.set(composeDestination(destination), 3);
     return byteArray.buffer;
   }
 
@@ -375,22 +421,20 @@ module Socks {
   // TODO: support failure (https://github.com/uProxy/uproxy/issues/321)
   //
   // Given a destination reached, compose a response.
-  export function composeRequestResponse(endpoint:Net.Endpoint)
-      : ArrayBuffer {
-    var destination = makeDestinationFromEndpoint(endpoint);
+  export function composeReplyBuffer(reply:Reply) : ArrayBuffer {
+    var destination = makeDestinationFromEndpoint(reply.endpoint);
     var destinationArray = composeDestination(destination);
 
     var bytes :Uint8Array = new Uint8Array(destinationArray.length + 3);
     bytes[0] = Socks.VERSION5;
-    bytes[1] = Socks.Response.SUCCEEDED;
+    bytes[1] = reply.replyField;
     bytes[2] = 0x00;
     bytes.set(destinationArray, 3);
         
     return bytes.buffer;
   }
 
-
-  export function interpretRequestResponse(buffer:ArrayBuffer) : Net.Endpoint {
+  export function interpretReplyBuffer(buffer:ArrayBuffer) : Reply {
     var bytes = new Uint8Array(buffer);
 
     // Only SOCKS Version 5 is supported.
@@ -399,12 +443,15 @@ module Socks {
       throw new Error('unsupported SOCKS version: ' + socksVersion);
     }
 
-    var response = bytes[1];
-    if (response != Response.SUCCEEDED) {
-      throw new Error('Response must be SUCCEEDED, not ' + response);
+    var replyField = bytes[1];
+    if (typeof Response[replyField] != 'string') {
+      throw new Error('Unexpected reply field: ' + replyField);
     }
 
     var destination = interpretDestination(bytes.subarray(3));
-    return destination.endpoint;
+    return {
+      replyField: replyField,
+      endpoint: destination.endpoint
+    };
   }
 }

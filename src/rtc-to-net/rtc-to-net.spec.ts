@@ -3,7 +3,7 @@
 /// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
 
-var mockEndpoint :Net.Endpoint = {
+var mockBoundEndpoint :Net.Endpoint = {
   address: '127.0.0.1',
   port: 1234
 };
@@ -14,10 +14,15 @@ var mockProxyConfig :RtcToNet.ProxyConfig = {
   allowNonUnicast: false
 };
 
-var mockEndpoint :Net.Endpoint = {
-  address: '127.0.0.1',
-  port: 1234
+var mockRemoteEndpoint :Net.Endpoint = {
+  address: '192.0.2.111',
+  port: 1023
 };
+
+var mockConnectionInfo :Tcp.ConnectionInfo = {
+  bound: mockBoundEndpoint,
+  remote: mockRemoteEndpoint
+}
 
 // Neither fulfills nor rejects.
 // Useful in a bunch of tests where a promise must be returned
@@ -113,11 +118,11 @@ describe("RtcToNet session", function() {
   });
 
   it('onceReady fulfills with listening endpoint on successful negotiation', (done) => {
-    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockEndpoint));
-    spyOn(session, 'returnEndpointToPeer_').and.returnValue(Promise.resolve());
+    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockRemoteEndpoint));
+    spyOn(session, 'replyToPeer_').and.returnValue(Promise.resolve());
     spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
 
-    mockTcpConnection.onceConnected = Promise.resolve(mockEndpoint);
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
     mockTcpConnection.onceClosed = noopPromise;
 
     session.start().then(done);
@@ -125,21 +130,21 @@ describe("RtcToNet session", function() {
 
   it('onceReady rejects and onceStopped fulfills on unsuccessful endpoint negotiation', (done) => {
     spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.reject(new Error('bad format')));
-    spyOn(session, 'returnEndpointToPeer_').and.returnValue(Promise.resolve());
+    spyOn(session, 'replyToPeer_').and.returnValue(Promise.resolve());
     spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
 
-    mockTcpConnection.onceConnected = Promise.resolve(mockEndpoint);
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
     mockTcpConnection.onceClosed = noopPromise;
 
     session.start().catch(session.onceStopped).then(done);
   });
 
   it('onceStopped fulfills on datachannel termination', (done) => {
-    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockEndpoint));
-    spyOn(session, 'returnEndpointToPeer_').and.returnValue(Promise.resolve());
+    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockRemoteEndpoint));
+    spyOn(session, 'replyToPeer_').and.returnValue(Promise.resolve());
     spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
 
-    mockTcpConnection.onceConnected = Promise.resolve(mockEndpoint);
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
     mockTcpConnection.onceClosed = noopPromise;
     mockDataChannel.onceClosed = Promise.resolve<void>();
 
@@ -147,22 +152,22 @@ describe("RtcToNet session", function() {
   });
 
   it('onceStopped fulfills on TCP connection termination', (done) => {
-    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockEndpoint));
-    spyOn(session, 'returnEndpointToPeer_').and.returnValue(Promise.resolve());
+    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockRemoteEndpoint));
+    spyOn(session, 'replyToPeer_').and.returnValue(Promise.resolve());
     spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
 
-    mockTcpConnection.onceConnected = Promise.resolve(mockEndpoint);
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
     mockTcpConnection.onceClosed = Promise.resolve();
 
     session.start().then(session.onceStopped).then(done);
   });
 
   it('onceStopped fulfills on call to stop', (done) => {
-    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockEndpoint));
-    spyOn(session, 'returnEndpointToPeer_').and.returnValue(Promise.resolve());
+    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockRemoteEndpoint));
+    spyOn(session, 'replyToPeer_').and.returnValue(Promise.resolve());
     spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
 
-    mockTcpConnection.onceConnected = Promise.resolve(mockEndpoint);
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
     mockTcpConnection.onceClosed = noopPromise;
 
     session.start().then(session.stop).then(session.onceStopped).then(done);

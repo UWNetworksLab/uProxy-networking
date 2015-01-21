@@ -230,7 +230,7 @@ module RtcToNet {
           this.tcpConnection_.onceClosed.then(this.fulfillStopping_);
           return this.tcpConnection_.onceConnected;
         })
-        .then(this.returnEndpointToPeer_);
+        .then(this.replyToPeer_);
       this.onceReady.then(this.linkTcpAndPeerConnectionData_);
 
       this.onceReady.catch(this.fulfillStopping_);
@@ -276,12 +276,12 @@ module RtcToNet {
             return;
           }
           try {
-            var request :Socks.Request = JSON.parse(data.str);
+            var request :Socks.Request = Socks.parseRequest(data.str);
             if (request.command != Socks.Command.TCP_CONNECT) {
               R(new Error('unexpected type for endpoint message'));
               return;
             }
-            F(request.destination.endpoint);
+            F(request.endpoint);
             return;
           } catch (e) {
             R(new Error('could not parse requested endpoint: ' + e.message));
@@ -297,9 +297,19 @@ module RtcToNet {
 
     // Fulfills once the connected endpoint has been returned to the SOCKS client.
     // Rejects if the endpoint cannot be sent to the SOCKS client.
-    private returnEndpointToPeer_ = (endpoint:Net.Endpoint) : Promise<void> => {
+    private replyToPeer_ = (info:Tcp.ConnectionInfo) : Promise<void> => {
+      var replyField :Socks.Response = this.isAllowedAddress_(info.remote.address) ?
+          Socks.Response.SUCCEEDED : Socks.Response.NOT_ALLOWED;
+      var reply :Socks.Reply = {
+        replyField: replyField,
+        endpoint: info.bound
+      };
       return this.dataChannel_.send({
-        str: JSON.stringify(endpoint)
+        str: JSON.stringify(reply)
+      }).then(() => {
+        if (replyField != Socks.Response.SUCCEEDED) {
+          this.stop();
+        }
       });
     }
 

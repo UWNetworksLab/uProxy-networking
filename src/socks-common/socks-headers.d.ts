@@ -35,10 +35,15 @@ declare module Socks {
         addressByteLength :number;
     }
     interface Request {
-        version :number;
         command :Command;
-        destination :Destination;
+        endpoint :Net.Endpoint;
     }
+    function parseRequest(request:string) : Request;
+    interface Reply {
+        replyField: Response;
+        endpoint: Net.Endpoint;
+    }
+    function parseReply(reply:string) : Reply;
     interface UdpMessage {
         frag :number;
         destination :Destination;
@@ -56,6 +61,6 @@ declare module Socks {
     function interpretDestination(byteArray :Uint8Array) : Destination;
     function composeDestination(destination:Destination) : Uint8Array;
     function interpretIpv6Address(byteArray:Uint8Array) : string;
-    function composeRequestResponse(endpoint :Net.Endpoint) : ArrayBuffer;
-    function interpretRequestResponse(buffer:ArrayBuffer) : Net.Endpoint;
+    function composeReplyBuffer(reply:Reply) : ArrayBuffer;
+    function interpretReplyBuffer(buffer:ArrayBuffer) : Reply;
 }

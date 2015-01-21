@@ -21,14 +21,17 @@
   "default": "ProxyIntegrationTest",
   "api": {
     "ProxyIntegrationTest": {
+      "constructor": {
+        "value": ["boolean"]
+      },
       "startEchoServer": {
         "type": "method",
-        "value": ["string"],
-        "ret": []
+        "value": [],
+        "ret": "number"
       },
       "connect": {
         "type": "method",
-        "value": ["string"],
+        "value": ["number", "string"],
         "ret": "string"
       },
       "echo": {

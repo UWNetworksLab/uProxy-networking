@@ -1,6 +1,7 @@
 /// <reference path='../../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../../freedom/typings/freedom.d.ts' />
 /// <reference path='../../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path="../../socks-common/socks-headers.d.ts" />
 
 // Integration test for the whole proxying system.
 // The real work is done in the Freedom module which performs each test.
@@ -25,10 +26,9 @@ describe('proxy integration tests', function() {
   });
 
   it('run a simple echo test', (done) => {
-    var name = 'echo';
     var input = ArrayBuffers.stringToArrayBuffer('arbitrary test string');
-    testModule.startEchoServer(name).then(() => {
-      return testModule.connect(name);
+    testModule.startEchoServer().then((port:number) => {
+      return testModule.connect(port);
     }).then((connectionId:string) => {
       return testModule.echo(connectionId, input);
     }).then((output:ArrayBuffer) => {
@@ -39,10 +39,9 @@ describe('proxy integration tests', function() {
   });
 
   it('run multiple echo tests in a batch on one connection', (done) => {
-    var name = 'echo';
     var testBuffers = testStrings.map(ArrayBuffers.stringToArrayBuffer);
-    testModule.startEchoServer(name).then(() => {
-      return testModule.connect(name);
+    testModule.startEchoServer().then((port:number) => {
+      return testModule.connect(port);
     }).then((connectionId:string) => {
       return testModule.echoMultiple(connectionId, testBuffers);
     }).then((outputs:ArrayBuffer[]) => {
@@ -55,10 +54,9 @@ describe('proxy integration tests', function() {
   });
 
   it('run multiple echo tests in series on one connection', (done) => {
-    var name = 'echo';
     var testBuffers = testStrings.map(ArrayBuffers.stringToArrayBuffer);
-    testModule.startEchoServer(name).then(() => {
-      return testModule.connect(name);
+    testModule.startEchoServer(name).then((port:number) => {
+      return testModule.connect(port);
     }).then((connectionId:string) => {
       var i = 0;
       return new Promise<void>((F, R) => {
@@ -81,11 +79,10 @@ describe('proxy integration tests', function() {
   });
 
   it('connect to the same server multiple times in parallel', (done) => {
-    var name = 'echo';
-    testModule.startEchoServer(name).then(() : Promise<any> => {
+    testModule.startEchoServer().then((port:number) : Promise<any> => {
       var promises = testStrings.map((s:string) : Promise<void> => {
         var buffer = ArrayBuffers.stringToArrayBuffer(s);
-        return testModule.connect(name).then((connectionId:string) => {
+        return testModule.connect(port).then((connectionId:string) => {
           return testModule.echo(connectionId, buffer);
         }).then((response:ArrayBuffer) => {
           expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
@@ -103,8 +100,8 @@ describe('proxy integration tests', function() {
 
       // For each string, start a new echo server with that name, and
       // then echo that string from that server.
-      return testModule.startEchoServer(s).then(() => {
-        return testModule.connect(s);
+      return testModule.startEchoServer().then((port:number) => {
+        return testModule.connect(port);
       }).then((connectionId:string) => {
         return testModule.echo(connectionId, buffer);
       }).then((response:ArrayBuffer) => {
@@ -114,6 +111,122 @@ describe('proxy integration tests', function() {
 
     Promise.all(promises).catch((e:any) => {
       expect(e).toBeUndefined();
+    }).then(done);
+  });
+
+  it('run a localhost echo test while localhost is blocked.', (done) => {
+    // Replace the test module with one that doesn't allow localhost access.
+    freedom('scripts/build/integration/socks-echo/integration.json',
+            { 'debug': 'log' })
+        .then((interface:any) => {
+          testModule = interface(true);  // Block localhost
+          var input = ArrayBuffers.stringToArrayBuffer('arbitrary test string');
+          testModule.startEchoServer().then((port:number) => {
+            return testModule.connect(port);
+          }).then((connectionId:string) => {
+            // This code should not run, because testModule.connect() should
+            // reject with a NOT_ALLOWED error.
+            expect(connectionId).toBeUndefined();
+          }, (e:any) => {
+            expect(e.replyField).toEqual(Socks.Response.NOT_ALLOWED);
+          }).then(done);
+        });
+  });
+
+  // This test is disabled because echo.nmap.org appears to be broken, so we
+  // will need to run our own echo server.
+  xit('run a simple echo test to echo.nmap.org', (done) => {
+    var input = ArrayBuffers.stringToArrayBuffer('arbitrary test string');
+    testModule.connect(7, 'echo.nmap.org').then((connectionId:string) => {
+      return testModule.echo(connectionId, [input]);
+    }).then((outputs:ArrayBuffer[]) => {
+      expect(ArrayBuffers.byteEquality(input, outputs[0])).toBe(true);
+    }).catch((e:any) => {
+      expect(e).toBeUndefined();
+    }).then(done);
+  });
+
+  // Same as above.
+  xit('connect to echo.nmap.org while localhost is blocked.', (done) => {
+    // Replace the test module with one that doesn't allow localhost access.
+    freedom('scripts/build/integration/socks-echo/integration.json',
+            { 'debug': 'log' })
+        .then((interface:any) => {
+          testModule = interface(true);  // Block localhost
+          var input = ArrayBuffers.stringToArrayBuffer('arbitrary test string');
+          testModule.connect(7, 'echo.nmap.org').then((connectionId:string) => {
+            return testModule.echo(connectionId, [input]);
+          }).then((outputs:ArrayBuffer[]) => {
+            expect(ArrayBuffers.byteEquality(input, outputs[0])).toBe(true);
+          }).catch((e:any) => {
+            expect(e).toBeUndefined();
+          }).then(done);
+        });
+  });
+
+  // This test is disabled because the 'localhost' name seems to result in ECONNREFUSED,
+  // and corporate DNS somehow blocks DNS names that resolve to nonpublic IP addresses.
+  // Outside of a corporate firewall, this test ought to pass.
+  xit('run a simple echo test to a DNS name that resolves to localhost', (done) => {
+    var input = ArrayBuffers.stringToArrayBuffer('arbitrary test string');
+    testModule.startEchoServer().then((port:number) => {
+      return testModule.connect(port, 'www.127.0.0.1.xip.io');
+    }).then((connectionId:string) => {
+      return testModule.echo(connectionId, [input]);
+    }).then((outputs:ArrayBuffer[]) => {
+      expect(ArrayBuffers.byteEquality(input, outputs[0])).toBe(true);
+    }).catch((e:any) => {
+      expect(e).toBeUndefined();
+    }).then(done);
+  });
+
+  // Disabled for the same reason as above.
+  xit('run a localhost-resolving DNS name echo test while localhost is blocked.', (done) => {
+    // Replace the test module with one that doesn't allow localhost access.
+    freedom('scripts/build/integration/socks-echo/integration.json',
+            { 'debug': 'log' })
+        .then((interface:any) => {
+          testModule = interface(true);  // Block localhost
+          var input = ArrayBuffers.stringToArrayBuffer('arbitrary test string');
+          testModule.startEchoServer().then((port:number) => {
+            return testModule.connect(port, 'www.127.0.0.1.xip.io');
+          }).then((connectionId:string) => {
+            // This code should not run, because testModule.connect() should
+            // reject with a NOT_ALLOWED error.
+            expect(connectionId).toBeUndefined();
+          }, (e:any) => {
+            expect(e.replyField).toEqual(Socks.Response.NOT_ALLOWED);
+          }).then(done);
+        });
+  });
+
+  // Disabled because CONNECTION_REFUSED is not yet implemented in RtcToNet.
+  xit('attempt to connect to a nonexistent echo daemon', (done) => {
+    testModule.connect(1023).then((connectionId:string) => {
+      // This code should not run, because there is no server on this port.
+      expect(connectionId).toBeUndefined();
+    }).catch((e:any) => {
+      expect(e.replyField).toEqual(Socks.Response.CONNECTION_REFUSED);
+    }).then(done);
+  });
+
+  // Disabled because HOST_UNREACHABLE is not yet implemented in RtcToNet.
+  xit('attempt to connect to a nonexistent DNS name', (done) => {
+    testModule.connect(80, 'www.nonexistentdomain.gov').then((connectionId:string) => {
+      // This code should not run, because there is no such DNS name.
+      expect(connectionId).toBeUndefined();
+    }).catch((e:any) => {
+      expect(e.replyField).toEqual(Socks.Response.HOST_UNREACHABLE);
+    }).then(done);
+  });
+
+  // Disabled because HOST_UNREACHABLE is not yet implemented in RtcToNet.
+  xit('attempt to connect to a nonexistent IP address', (done) => {
+    testModule.connect(80, '192.0.2.111').then((connectionId:string) => {
+      // This code should not run, because this is a reserved IP address.
+      expect(connectionId).toBeUndefined();
+    }).catch((e:any) => {
+      expect(e.replyField).toEqual(Socks.Response.HOST_UNREACHABLE);
     }).then(done);
   });
 });

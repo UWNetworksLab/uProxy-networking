@@ -9,16 +9,18 @@ class ProxyIntegrationTest {
   private socksToRtc_ :SocksToRtc.SocksToRtc;
   private rtcToNet_ :RtcToNet.RtcToNet;
   private socksEndpoint_ : Promise<Net.Endpoint>;
-  private echoServers_ :{ [index:string]: Tcp.Server; } = {};
+  private echoServers_ :Tcp.Server[] = [];
   private connections_ :{ [index:string]: Tcp.Connection; } = {};
+  private localhost_ :string = '127.0.0.1';
 
-  constructor(private dispatchEvent_:(name:string, args:any) => void) {
-    this.socksEndpoint_ = this.startSocksPair_();
+  constructor(private dispatchEvent_:(name:string, args:any) => void,
+                                      denyLocalhost?:boolean) {
+    this.socksEndpoint_ = this.startSocksPair_(denyLocalhost);
   }
 
-  public startEchoServer = (name:string) : Promise<void> => {
+  public startEchoServer = () : Promise<number> => {
     var server = new Tcp.Server({
-      address: '127.0.0.1',
+      address: this.localhost_,
       port: 0
     });
 
@@ -29,13 +31,13 @@ class ProxyIntegrationTest {
     });
 
     // Discard endpoint info; we'll get it again later via .onceListening().
-    this.echoServers_[name] = server;
-    return server.listen().then((endpoint:Net.Endpoint) => {});
+    this.echoServers_.push(server);
+    return server.listen().then((endpoint:Net.Endpoint) => { return endpoint.port; });
   }
 
-  private startSocksPair_ = () : Promise<Net.Endpoint> => {
+  private startSocksPair_ = (denyLocalhost?:boolean) : Promise<Net.Endpoint> => {
     var socksToRtcEndpoint :Net.Endpoint = {
-      address: '127.0.0.1',
+      address: this.localhost_,
       port: 0
     };
     var socksToRtcPcConfig :WebRtc.PeerConnectionConfig = {
@@ -49,7 +51,7 @@ class ProxyIntegrationTest {
       initiateConnection: false
     };
     var rtcToNetProxyConfig :RtcToNet.ProxyConfig = {
-      allowNonUnicast: true  // Allow RtcToNet to contact the localhost server.
+      allowNonUnicast: !denyLocalhost  // Allow RtcToNet to contact the localhost server.
     };
 
     this.socksToRtc_ = new SocksToRtc.SocksToRtc();
@@ -64,7 +66,14 @@ class ProxyIntegrationTest {
     var connection = new Tcp.Connection({endpoint: socksEndpoint});
     var authRequest = Socks.composeAuthHandshakeBuffer([Socks.Auth.NOAUTH]);
     connection.send(authRequest);
-    return connection.receiveNext().then((buffer:ArrayBuffer) : Promise<ArrayBuffer> => {
+    var connected = new Promise<Tcp.ConnectionInfo>((F, R) => {
+      connection.onceConnected.then(F);
+      connection.onceClosed.then(R);
+    });
+    var firstBufferPromise :Promise<ArrayBuffer> = connection.receiveNext();
+    return connected.then((i:Tcp.ConnectionInfo) => {
+      return firstBufferPromise;
+    }).then((buffer:ArrayBuffer) : Promise<ArrayBuffer> => {
       var auth = Socks.interpretAuthResponse(buffer);
       if (auth != Socks.Auth.NOAUTH) {
         throw new Error('SOCKS server returned unexpected AUTH response.  ' +
@@ -72,40 +81,27 @@ class ProxyIntegrationTest {
       }
 
       var request :Socks.Request = {
-        version: Socks.VERSION5,
         command: Socks.Command.TCP_CONNECT,
-        destination: {
-          addressType: Socks.AddressType.IP_V4,
-          endpoint: webEndpoint,
-          addressByteLength: 7
-        }
+        endpoint: webEndpoint,
       };
       connection.send(Socks.composeRequestBuffer(request));
       return connection.receiveNext();
-    }).then((buffer:ArrayBuffer) : Tcp.Connection => {
-      var responseEndpoint = Socks.interpretRequestResponse(buffer);
-      if (responseEndpoint.address != webEndpoint.address) {
-        throw new Error('SOCKS server connected to wrong address.  ' +
-                        'Expected ' + webEndpoint.address +
-                        ' but got ' + responseEndpoint.address);
+    }).then((buffer:ArrayBuffer) : Promise<Tcp.Connection> => {
+      var reply = Socks.interpretReplyBuffer(buffer);
+      if (reply.replyField != Socks.Response.SUCCEEDED) {
+        return Promise.reject(reply);
       }
-      if (responseEndpoint.port != webEndpoint.port) {
-        throw new Error('SOCKS server connected to wrong port.  ' +
-                        'Expected ' + webEndpoint.port +
-                        ' but got ' + responseEndpoint.port);
-      }
-      return connection;
+      return Promise.resolve(connection);
     });
   }
 
-  public connect = (echoServerName:string) : Promise<string> => {
+  public connect = (port:number, address?:string) : Promise<string> => {
     try {
-      return Promise.all([
-        this.socksEndpoint_,
-        this.echoServers_[echoServerName].onceListening()
-      ]).then((endpoints:Net.Endpoint[]) : Promise<Tcp.Connection> => {
-        var socksEndpoint = endpoints[0];
-        var echoEndpoint = endpoints[1];
+      return this.socksEndpoint_.then((socksEndpoint:Net.Endpoint) : Promise<Tcp.Connection> => {
+        var echoEndpoint :Net.Endpoint = {
+          address: address || this.localhost_,
+          port: port
+        };
         return this.connectThroughSocks_(socksEndpoint, echoEndpoint);
       }).then((connection:Tcp.Connection) => {
         this.connections_[connection.connectionId] = connection;
