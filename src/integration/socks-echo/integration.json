@@ -33,6 +33,11 @@
       },
       "echo": {
         "type": "method",
+        "value": ["string", "buffer"],
+        "ret": "buffer"
+      },
+      "echoMultiple": {
+        "type": "method",
         "value": ["string", ["array", "buffer"]],
         "ret": ["array", "buffer"]
       }

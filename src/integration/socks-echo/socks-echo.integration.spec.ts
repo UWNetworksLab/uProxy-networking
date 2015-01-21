@@ -30,9 +30,9 @@ describe('proxy integration tests', function() {
     testModule.startEchoServer(name).then(() => {
       return testModule.connect(name);
     }).then((connectionId:string) => {
-      return testModule.echo(connectionId, [input]);
-    }).then((outputs:ArrayBuffer[]) => {
-      expect(ArrayBuffers.byteEquality(input, outputs[0])).toBe(true);
+      return testModule.echo(connectionId, input);
+    }).then((output:ArrayBuffer) => {
+      expect(ArrayBuffers.byteEquality(input, output)).toBe(true);
     }).catch((e:any) => {
       expect(e).toBeUndefined();
     }).then(done);
@@ -44,7 +44,7 @@ describe('proxy integration tests', function() {
     testModule.startEchoServer(name).then(() => {
       return testModule.connect(name);
     }).then((connectionId:string) => {
-      return testModule.echo(connectionId, testBuffers);
+      return testModule.echoMultiple(connectionId, testBuffers);
     }).then((outputs:ArrayBuffer[]) => {
       for (var i = 0; i < testBuffers.length; ++i) {
         expect(ArrayBuffers.byteEquality(testBuffers[i], outputs[i])).toBe(true);
@@ -67,9 +67,9 @@ describe('proxy integration tests', function() {
             F();
             return;
           }
-          testModule.echo(connectionId, [testBuffers[i]])
-              .then((echoes:ArrayBuffer[]) => {
-            expect(ArrayBuffers.byteEquality(testBuffers[i], echoes[0])).toBe(true);
+          testModule.echo(connectionId, testBuffers[i])
+              .then((echo:ArrayBuffer) => {
+            expect(ArrayBuffers.byteEquality(testBuffers[i], echo)).toBe(true);
             ++i;
           }).then(step);
         };
@@ -86,9 +86,9 @@ describe('proxy integration tests', function() {
       var promises = testStrings.map((s:string) : Promise<void> => {
         var buffer = ArrayBuffers.stringToArrayBuffer(s);
         return testModule.connect(name).then((connectionId:string) => {
-          return testModule.echo(connectionId, [buffer]);
-        }).then((response:ArrayBuffer[]) => {
-          expect(ArrayBuffers.byteEquality(buffer, response[0])).toBe(true);
+          return testModule.echo(connectionId, buffer);
+        }).then((response:ArrayBuffer) => {
+          expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
         });
       });
       return Promise.all(promises);
@@ -106,9 +106,9 @@ describe('proxy integration tests', function() {
       return testModule.startEchoServer(s).then(() => {
         return testModule.connect(s);
       }).then((connectionId:string) => {
-        return testModule.echo(connectionId, [buffer]);
-      }).then((response:ArrayBuffer[]) => {
-        expect(ArrayBuffers.byteEquality(buffer, response[0])).toBe(true);
+        return testModule.echo(connectionId, buffer);
+      }).then((response:ArrayBuffer) => {
+        expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
       });
     });
 
