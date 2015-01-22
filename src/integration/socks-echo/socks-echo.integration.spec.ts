@@ -133,31 +133,36 @@ describe('proxy integration tests', function() {
         });
   });
 
-  // This test is disabled because echo.nmap.org appears to be broken, so we
-  // will need to run our own echo server.
-  xit('run a simple echo test to echo.nmap.org', (done) => {
-    var input = ArrayBuffers.stringToArrayBuffer('arbitrary test string');
-    testModule.connect(7, 'echo.nmap.org').then((connectionId:string) => {
-      return testModule.echo(connectionId, [input]);
-    }).then((outputs:ArrayBuffer[]) => {
-      expect(ArrayBuffers.byteEquality(input, outputs[0])).toBe(true);
+  it('Get a 404 from uproxy.org', (done) => {
+    var nonExistentPath = '/noSuchPath';
+    var input = ArrayBuffers.stringToArrayBuffer(
+      'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
+    testModule.connect(80, 'uproxy.org').then((connectionId:string) => {
+      return testModule.echo(connectionId, input);
+    }).then((output:ArrayBuffer) => {
+      var outputString = ArrayBuffers.arrayBufferToString(output);
+      expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
+      expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
     }).catch((e:any) => {
       expect(e).toBeUndefined();
     }).then(done);
   });
 
-  // Same as above.
-  xit('connect to echo.nmap.org while localhost is blocked.', (done) => {
+  it('Get a 404 from uproxy.org while localhost is blocked.', (done) => {
     // Replace the test module with one that doesn't allow localhost access.
     freedom('scripts/build/integration/socks-echo/integration.json',
             { 'debug': 'log' })
         .then((interface:any) => {
           testModule = interface(true);  // Block localhost
-          var input = ArrayBuffers.stringToArrayBuffer('arbitrary test string');
-          testModule.connect(7, 'echo.nmap.org').then((connectionId:string) => {
-            return testModule.echo(connectionId, [input]);
-          }).then((outputs:ArrayBuffer[]) => {
-            expect(ArrayBuffers.byteEquality(input, outputs[0])).toBe(true);
+          var nonExistentPath = '/noSuchPath';
+          var input = ArrayBuffers.stringToArrayBuffer(
+            'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
+          testModule.connect(80, 'uproxy.org').then((connectionId:string) => {
+            return testModule.echo(connectionId, input);
+          }).then((output:ArrayBuffer) => {
+            var outputString = ArrayBuffers.arrayBufferToString(output);
+            expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
+            expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
           }).catch((e:any) => {
             expect(e).toBeUndefined();
           }).then(done);
