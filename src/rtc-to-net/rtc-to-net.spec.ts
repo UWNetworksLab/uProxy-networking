@@ -15,6 +15,7 @@ var mockProxyConfig :RtcToNet.ProxyConfig = {
 };
 
 var mockRemoteEndpoint :Net.Endpoint = {
+  // This address and port are both reserved for testing.
   address: '192.0.2.111',
   port: 1023
 };

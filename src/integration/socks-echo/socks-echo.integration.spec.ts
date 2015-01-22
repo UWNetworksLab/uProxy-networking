@@ -194,7 +194,7 @@ describe('proxy integration tests', function() {
   // Disabled because CONNECTION_REFUSED is not yet implemented in RtcToNet.
   xit('attempt to connect to a nonexistent echo daemon', (done) => {
     getTestModule(true).then((testModule:any) => {
-      return testModule.connect(1023);
+      return testModule.connect(1023);  // 1023 is a reserved port.
     }).then((connectionId:string) => {
       // This code should not run, because there is no server on this port.
       expect(connectionId).toBeUndefined();
@@ -218,6 +218,7 @@ describe('proxy integration tests', function() {
   // Disabled because HOST_UNREACHABLE is not yet implemented in RtcToNet.
   xit('attempt to connect to a nonexistent IP address', (done) => {
     getTestModule(true).then((testModule:any) => {
+      // 192.0.2.0/24 is a reserved IP address range.
       return testModule.connect(80, '192.0.2.111');
     }).then((connectionId:string) => {
       // This code should not run, because this is a reserved IP address.
