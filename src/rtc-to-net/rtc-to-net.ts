@@ -223,14 +223,17 @@ module RtcToNet {
     // Returns onceReady.
     public start = () : Promise<void> => {
       this.onceReady = this.receiveEndpointFromPeer_()
-        .then(this.getTcpConnection_)
-        .then((tcpConnection:Tcp.Connection) => {
+        .then(this.getTcpConnection_,
+            (e:Error) => {
+          this.replyToPeer_(Socks.Reply.UNSUPPORTED_COMMAND);
+          throw e;
+        }).then((tcpConnection:Tcp.Connection) => {
           this.tcpConnection_ = tcpConnection;
           // Shutdown once the TCP connection terminates.
           this.tcpConnection_.onceClosed.then(this.fulfillStopping_);
           return this.tcpConnection_.onceConnected;
         })
-        .then(this.replyToPeer_);
+        .then(this.reportSuccessToPeer_, this.reportFailureToPeer_);
       this.onceReady.then(this.linkTcpAndPeerConnectionData_);
 
       this.onceReady.catch(this.fulfillStopping_);
@@ -297,17 +300,27 @@ module RtcToNet {
     }
 
     private getTcpConnection_ = (endpoint:Net.Endpoint) : Tcp.Connection => {
+      if (ipaddr.isValid(endpoint.address) &&
+          !this.isAllowedAddress_(endpoint.address)) {
+        this.replyToPeer_(Socks.Reply.NOT_ALLOWED);
+        throw new Error('Tried to connect to disallowed address: ' +
+                        endpoint.address);
+      }
       return new Tcp.Connection({endpoint: endpoint});
     }
 
     // Fulfills once the connected endpoint has been returned to the SOCKS client.
     // Rejects if the endpoint cannot be sent to the SOCKS client.
-    private replyToPeer_ = (info:Tcp.ConnectionInfo) : Promise<void> => {
-      var reply :Socks.Reply = this.isAllowedAddress_(info.remote.address) ?
-          Socks.Reply.SUCCEEDED : Socks.Reply.NOT_ALLOWED;
+    private replyToPeer_ = (reply:Socks.Reply, info?:Tcp.ConnectionInfo)
+        : Promise<void> => {
+      var fakeBoundAddress :Net.Endpoint = {
+        address: '0.0.0.0',
+        port: 0
+      };
+      var boundAddress = info ? info.bound : fakeBoundAddress;
       var response :Socks.Response = {
         reply: reply,
-        endpoint: info.bound
+        endpoint: boundAddress
       };
       return this.dataChannel_.send({
         str: JSON.stringify(response)
@@ -316,6 +329,37 @@ module RtcToNet {
           this.stop();
         }
       });
+    }
+
+    private reportSuccessToPeer_ = (info:Tcp.ConnectionInfo)
+        : Promise<void> => {
+      // TODO: This code should really return Socks.Reply.NOT_ALLOWED,
+      // but due to port-scanning concerns we return a generic error instead.
+      // See https://github.com/uProxy/uproxy/issues/809
+      var reply :Socks.Reply = this.isAllowedAddress_(info.remote.address) ?
+          Socks.Reply.SUCCEEDED : Socks.Reply.FAILURE;
+      return this.replyToPeer_(reply, info);
+    }
+
+    private reportFailureToPeer_ = (e:any) : Promise<void> => {
+      var reply :Socks.Reply = Socks.Reply.FAILURE;
+      if (e.errcode == 'TIMED_OUT') {
+        reply = Socks.Reply.TTL_EXPIRED;
+      } else if (e.errcode == 'NETWORK_CHANGED') {
+        reply = Socks.Reply.NETWORK_UNREACHABLE;
+      } else if (e.errcode == 'CONNECTION_RESET' ||
+                 e.errcode == 'CONNECTION_REFUSED') {
+        // Due to port-scanning concerns, we return a generic error if the user
+        // has blocked local network access and we are not sure if the requested
+        // address might be on the local network.
+        // See https://github.com/uProxy/uproxy/issues/809
+        if (this.proxyConfig_.allowNonUnicast) {
+          reply = Socks.Reply.CONNECTION_REFUSED;
+        }
+      }
+      // TODO: report ConnectionInfo in cases where a port was bound.
+      // Blocked by https://github.com/uProxy/uproxy/issues/803
+      return this.replyToPeer_(reply);
     }
 
     // Assumes that |receiveEndpointFromPeer| and |getTcpConnection_|
