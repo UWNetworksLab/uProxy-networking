@@ -35,7 +35,7 @@ module Socks {
   }
 
   // REP - Reply Field
-  export enum Response {
+  export enum Reply {
     SUCCEEDED           = 0x00,  // Succeeded
     FAILURE             = 0x01,  // General SOCKS server failure
     NOT_ALLOWED         = 0x02,  // Connection not allowed by ruleset
@@ -94,20 +94,20 @@ module Socks {
     };
   }
 
-  export interface Reply {
-    replyField: Response;
+  export interface Response {
+    reply: Reply;
     endpoint: Net.Endpoint;
   }
 
   // Equivalent to JSON.parse(), but also throws an exception if the contents
   // are not conformant.
-  export function parseReply(json:string) : Reply {
-    var reply :any = JSON.parse(json);
+  export function parseResponse(json:string) : Response {
+    var response :any = JSON.parse(json);
     return {
-      replyField: assertEnum<Response>(Response, reply.replyField),
+      reply: assertEnum<Reply>(Reply, response.reply),
       endpoint: {
-        address: assertType<string>('string', reply.endpoint.address),
-        port: assertType<number>('number', reply.endpoint.port)
+        address: assertType<string>('string', response.endpoint.address),
+        port: assertType<number>('number', response.endpoint.port)
       }
     };
   }
@@ -421,20 +421,20 @@ module Socks {
   // TODO: support failure (https://github.com/uProxy/uproxy/issues/321)
   //
   // Given a destination reached, compose a response.
-  export function composeReplyBuffer(reply:Reply) : ArrayBuffer {
-    var destination = makeDestinationFromEndpoint(reply.endpoint);
+  export function composeResponseBuffer(response:Response) : ArrayBuffer {
+    var destination = makeDestinationFromEndpoint(response.endpoint);
     var destinationArray = composeDestination(destination);
 
     var bytes :Uint8Array = new Uint8Array(destinationArray.length + 3);
     bytes[0] = Socks.VERSION5;
-    bytes[1] = reply.replyField;
+    bytes[1] = response.reply;
     bytes[2] = 0x00;
     bytes.set(destinationArray, 3);
         
     return bytes.buffer;
   }
 
-  export function interpretReplyBuffer(buffer:ArrayBuffer) : Reply {
+  export function interpretResponseBuffer(buffer:ArrayBuffer) : Response {
     var bytes = new Uint8Array(buffer);
 
     // Only SOCKS Version 5 is supported.
@@ -443,14 +443,14 @@ module Socks {
       throw new Error('unsupported SOCKS version: ' + socksVersion);
     }
 
-    var replyField = bytes[1];
-    if (typeof Response[replyField] != 'string') {
-      throw new Error('Unexpected reply field: ' + replyField);
+    var reply = bytes[1];
+    if (typeof Reply[reply] != 'string') {
+      throw new Error('Unexpected reply: ' + reply);
     }
 
     var destination = interpretDestination(bytes.subarray(3));
     return {
-      replyField: replyField,
+      reply: reply,
       endpoint: destination.endpoint
     };
   }

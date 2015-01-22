@@ -17,7 +17,7 @@ declare module Socks {
         DNS = 3,
         IP_V6 = 4,
     }
-    enum Response {
+    enum Reply {
         SUCCEEDED = 0,
         FAILURE = 1,
         NOT_ALLOWED = 2,
@@ -39,11 +39,11 @@ declare module Socks {
         endpoint :Net.Endpoint;
     }
     function parseRequest(request:string) : Request;
-    interface Reply {
-        replyField: Response;
+    interface Response {
+        reply: Reply;
         endpoint: Net.Endpoint;
     }
-    function parseReply(reply:string) : Reply;
+    function parseResponse(response:string) : Response;
     interface UdpMessage {
         frag :number;
         destination :Destination;
@@ -61,6 +61,6 @@ declare module Socks {
     function interpretDestination(byteArray :Uint8Array) : Destination;
     function composeDestination(destination:Destination) : Uint8Array;
     function interpretIpv6Address(byteArray:Uint8Array) : string;
-    function composeReplyBuffer(reply:Reply) : ArrayBuffer;
-    function interpretReplyBuffer(buffer:ArrayBuffer) : Reply;
+    function composeResponseBuffer(response:Response) : ArrayBuffer;
+    function interpretResponseBuffer(buffer:ArrayBuffer) : Response;
 }

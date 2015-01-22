@@ -87,9 +87,9 @@ class ProxyIntegrationTest {
       connection.send(Socks.composeRequestBuffer(request));
       return connection.receiveNext();
     }).then((buffer:ArrayBuffer) : Promise<Tcp.Connection> => {
-      var reply = Socks.interpretReplyBuffer(buffer);
-      if (reply.replyField != Socks.Response.SUCCEEDED) {
-        return Promise.reject(reply);
+      var response = Socks.interpretResponseBuffer(buffer);
+      if (response.reply != Socks.Reply.SUCCEEDED) {
+        return Promise.reject(response);
       }
       return Promise.resolve(connection);
     });

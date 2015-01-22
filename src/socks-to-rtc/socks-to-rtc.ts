@@ -386,7 +386,7 @@ module SocksToRtc {
     // Sets the next data hanlder to get next data from peer, assuming it's
     // stringified version of the destination.
     // TODO: Needs unit tests badly since it's mocked by several other tests.
-    private receiveReplyFromPeer_ = () : Promise<Socks.Reply> => {
+    private receiveResponseFromPeer_ = () : Promise<Socks.Response> => {
       return new Promise((F,R) => {
         this.dataChannel_.dataFromPeerQueue.setSyncNextHandler((data:WebRtc.Data) => {
           if (!data.str) {
@@ -394,11 +394,11 @@ module SocksToRtc {
                 JSON.stringify(data)));
             return;
           }
-          var reply :Socks.Reply;
+          var response :Socks.Response;
           try {
-            F(Socks.parseReply(data.str));
+            F(Socks.parseResponse(data.str));
           } catch(e) {
-            R(new Error('received malformed reply during handshake: ' +
+            R(new Error('received malformed response during handshake: ' +
                 data.str));
           }
         });
@@ -413,15 +413,15 @@ module SocksToRtc {
         .then(Socks.interpretRequestBuffer)
         .then((request:Socks.Request) => {
           this.dataChannel_.send({ str: JSON.stringify(request) });
-          return this.receiveReplyFromPeer_();
+          return this.receiveResponseFromPeer_();
         })
-        .then((reply:Socks.Reply) => {
+        .then((response:Socks.Response) => {
           // TODO: test and close: https://github.com/uProxy/uproxy/issues/324
-          this.tcpConnection_.send(Socks.composeReplyBuffer(reply));
-          if (reply.replyField != Socks.Response.SUCCEEDED) {
+          this.tcpConnection_.send(Socks.composeResponseBuffer(response));
+          if (response.reply != Socks.Reply.SUCCEEDED) {
             this.stop();
           }
-          return reply.endpoint;
+          return response.endpoint;
         });
     }
 

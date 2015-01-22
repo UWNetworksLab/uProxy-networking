@@ -105,49 +105,49 @@ describe("socks", function() {
     expect(requestAgain).toEqual(request);
   });
 
-  it('roundtrip IPv4 reply', () => {
-    var reply :Socks.Reply = {
-      replyField: Socks.Response.SUCCEEDED,
+  it('roundtrip IPv4 response', () => {
+    var response :Socks.Response = {
+      reply: Socks.Reply.SUCCEEDED,
       endpoint: {
         address: '255.0.1.77',
         port: 65535
       }
     };
-    var replyBuffer = Socks.composeReplyBuffer(reply);
-    var replyArray = new Uint8Array(replyBuffer);
-    expect(replyArray[3]).toEqual(Socks.AddressType.IP_V4);
-    var replyAgain = Socks.interpretReplyBuffer(replyBuffer);
-    expect(replyAgain).toEqual(reply);
+    var responseBuffer = Socks.composeResponseBuffer(response);
+    var responseArray = new Uint8Array(responseBuffer);
+    expect(responseArray[3]).toEqual(Socks.AddressType.IP_V4);
+    var responseAgain = Socks.interpretResponseBuffer(responseBuffer);
+    expect(responseAgain).toEqual(response);
   });
 
   it('roundtrip IPv6 request response', () => {
-    var reply :Socks.Reply = {
-      replyField: Socks.Response.FAILURE,
+    var response :Socks.Response = {
+      reply: Socks.Reply.FAILURE,
       endpoint: {
         address: '2620::1003:1003:a84f:9831:df45:5420',
         port: 40000
       }
     };
-    var replyBuffer = Socks.composeReplyBuffer(reply);
-    var replyArray = new Uint8Array(replyBuffer);
-    expect(replyArray[3]).toEqual(Socks.AddressType.IP_V6);
-    var replyAgain = Socks.interpretReplyBuffer(replyBuffer);
-    expect(replyAgain).toEqual(reply);
+    var responseBuffer = Socks.composeResponseBuffer(response);
+    var responseArray = new Uint8Array(responseBuffer);
+    expect(responseArray[3]).toEqual(Socks.AddressType.IP_V6);
+    var responseAgain = Socks.interpretResponseBuffer(responseBuffer);
+    expect(responseAgain).toEqual(response);
   });
 
   it('roundtrip DNS request response', () => {
-    var reply :Socks.Reply = {
-      replyField: Socks.Response.NOT_ALLOWED,
+    var response :Socks.Response = {
+      reply: Socks.Reply.NOT_ALLOWED,
       endpoint: {
         address: 'www.subdomain.example.com',
         port: 45654
       }
     };
-    var replyBuffer = Socks.composeReplyBuffer(reply);
-    var replyArray = new Uint8Array(replyBuffer);
-    expect(replyArray[3]).toEqual(Socks.AddressType.DNS);
-    var replyAgain = Socks.interpretReplyBuffer(replyBuffer);
-    expect(replyAgain).toEqual(reply);
+    var responseBuffer = Socks.composeResponseBuffer(response);
+    var responseArray = new Uint8Array(responseBuffer);
+    expect(responseArray[3]).toEqual(Socks.AddressType.DNS);
+    var responseAgain = Socks.interpretResponseBuffer(responseBuffer);
+    expect(responseAgain).toEqual(response);
   });
 
   it('wrong socks version', () => {
