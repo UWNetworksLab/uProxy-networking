@@ -192,6 +192,7 @@ describe('proxy integration tests', function() {
   });
 
   // Disabled because CONNECTION_REFUSED is not yet implemented in RtcToNet.
+  // Tracked by https://github.com/uProxy/uproxy/issues/800
   xit('attempt to connect to a nonexistent echo daemon', (done) => {
     getTestModule(true).then((testModule:any) => {
       return testModule.connect(1023);  // 1023 is a reserved port.
