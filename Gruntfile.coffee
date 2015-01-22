@@ -336,7 +336,7 @@ module.exports = (grunt) ->
             {path: 'build/tcp/tcp.js', include: false}
             {path: 'build/integration/*/integration.*', include: false}
           ]
-          keepBrowser: true
+          keepBrowser: false
 
     clean: ['build/', 'dist/', '.tscache/']
 
