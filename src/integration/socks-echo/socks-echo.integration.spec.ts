@@ -136,7 +136,7 @@ describe('proxy integration tests', function() {
     }).then(done);
   });
 
-  it('Get a 404 from uproxy.org', (done) => {
+  it('fetch from non-localhost address', (done) => {
     var nonExistentPath = '/noSuchPath';
     var input = ArrayBuffers.stringToArrayBuffer(
         'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
@@ -153,7 +153,7 @@ describe('proxy integration tests', function() {
     }).then(done);
   });
 
-  it('Get a 404 from uproxy.org while localhost is blocked.', (done) => {
+  it('fetch from non-localhost address while localhost is blocked.', (done) => {
     var nonExistentPath = '/noSuchPath';
     var input = ArrayBuffers.stringToArrayBuffer(
         'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
