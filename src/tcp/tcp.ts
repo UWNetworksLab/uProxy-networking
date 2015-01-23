@@ -20,13 +20,27 @@ module Tcp {
     UNKOWN
   }
 
+  export interface ConnectionInfo {
+    bound: Net.Endpoint;
+    remote: Net.Endpoint;
+  }
+
   // A limit on the max number of TCP connections before we start rejecting
   // new ones.
   var DEFAULT_MAX_CONNECTIONS = 1048576;
 
   function endpointOfSocketInfo(info:freedom_TcpSocket.SocketInfo)
-      : Net.Endpoint {
-     return { address: info.peerAddress, port: info.peerPort }
+      : ConnectionInfo {
+     return {
+       bound: {
+         address: info.localAddress,
+         port: info.localPort
+       },
+       remote: {
+         address: info.peerAddress,
+         port: info.peerPort
+       }
+     };
   }
 
   // A static helper function to close a freedom socket object and then
@@ -228,7 +242,7 @@ module Tcp {
     private static globalConnectionId_ :number = 0;
 
     // Promise for when this connection is closed.
-    public onceConnected :Promise<Net.Endpoint>;
+    public onceConnected :Promise<ConnectionInfo>;
     public onceClosed :Promise<SocketCloseKind>;
     // Queue of data to be handled, and the capacity to set a handler and
     // handle the data.
