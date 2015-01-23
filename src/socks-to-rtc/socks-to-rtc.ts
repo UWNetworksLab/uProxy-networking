@@ -394,9 +394,13 @@ module SocksToRtc {
                 JSON.stringify(data)));
             return;
           }
-          var response :Socks.Response;
           try {
-            F(Socks.parseResponse(data.str));
+            var r :any = JSON.parse(data.str);
+            if (!Socks.isValidResponse(r)) {
+              R(new Error('invalid response:' + data.str));
+              return;
+            }
+            F(r);
           } catch(e) {
             R(new Error('received malformed response during handshake: ' +
                 data.str));

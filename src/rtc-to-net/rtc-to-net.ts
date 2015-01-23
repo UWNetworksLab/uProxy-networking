@@ -276,7 +276,12 @@ module RtcToNet {
             return;
           }
           try {
-            var request :Socks.Request = Socks.parseRequest(data.str);
+            var r :any = JSON.parse(data.str);
+            if (!Socks.isValidRequest(r)) {
+              R(new Error('invalid request: ' + data.str));
+              return;
+            }
+            var request :Socks.Request = r;
             if (request.command != Socks.Command.TCP_CONNECT) {
               R(new Error('unexpected type for endpoint message'));
               return;

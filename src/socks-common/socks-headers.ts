@@ -65,33 +65,38 @@ module Socks {
     endpoint       :Net.Endpoint;
   }
 
-  function assertType<T>(typeName:string, value:any) : T {
-    if (typeof value != typeName) {
-      throw new Error('Assertion failed: expected ' + typeName +
-                      ' but got ' + typeof value);
+  function isValidEndpoint(e:any) : boolean {
+    if (typeof e != 'object') {
+      return false;
     }
-    return <T>value;
+    if (typeof e.address != 'string') {
+      return false;
+    }
+    if (typeof e.port != 'number' ||
+        e.port < 0 || e.port > 65535) {
+      return false;
+    }
+    if (Object.keys(e).length > 2) {
+      return false;
+    }
+    return true;
   }
 
-  function assertEnum<T extends number>(theEnum:{ [index: number]: string},
-                                        value:number) : T {
-    if (typeof theEnum[value] != 'string') {
-      throw new Error('Value ' + value + ' is not in the enum');
+  export function isValidRequest(r:any) : boolean {
+    if (typeof r != 'object') {
+      return false;
     }
-    return <T>(<any>value);
-  }
-
-  // Equivalent to JSON.parse(), but also throws an exception if the contents
-  // are not conformant.
-  export function parseRequest(json:string) : Request {
-    var request :any = JSON.parse(json);
-    return {
-      command: assertEnum<Command>(Command, request.command),
-      endpoint: {
-        address: assertType<string>('string', request.endpoint.address),
-        port: assertType<number>('number', request.endpoint.port)
-      }
-    };
+    if (typeof r.command != 'number' ||
+        typeof Command[r.command] != 'string') {
+      return false;
+    }
+    if (!isValidEndpoint(r.endpoint)) {
+      return false;
+    }
+    if (Object.keys(r).length > 2) {
+      return false;
+    }
+    return true;
   }
 
   export interface Response {
@@ -99,17 +104,21 @@ module Socks {
     endpoint: Net.Endpoint;
   }
 
-  // Equivalent to JSON.parse(), but also throws an exception if the contents
-  // are not conformant.
-  export function parseResponse(json:string) : Response {
-    var response :any = JSON.parse(json);
-    return {
-      reply: assertEnum<Reply>(Reply, response.reply),
-      endpoint: {
-        address: assertType<string>('string', response.endpoint.address),
-        port: assertType<number>('number', response.endpoint.port)
-      }
-    };
+  export function isValidResponse(r:any) : boolean {
+    if (typeof r != 'object') {
+      return false;
+    }
+    if (typeof r.reply != 'number' ||
+        typeof Reply[r.reply] != 'string') {
+      return false;
+    }
+    if (!isValidEndpoint(r.endpoint)) {
+      return false;
+    }
+    if (Object.keys(r).length > 2) {
+      return false;
+    }
+    return true;
   }
 
   // Represents a UDP request message.

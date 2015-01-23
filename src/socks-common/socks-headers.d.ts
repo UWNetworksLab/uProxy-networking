@@ -38,12 +38,12 @@ declare module Socks {
         command :Command;
         endpoint :Net.Endpoint;
     }
-    function parseRequest(request:string) : Request;
+    function isValidRequest(r:any) : boolean;
     interface Response {
         reply: Reply;
         endpoint: Net.Endpoint;
     }
-    function parseResponse(response:string) : Response;
+    function isValidResponse(r:any) : boolean;
     interface UdpMessage {
         frag :number;
         destination :Destination;
