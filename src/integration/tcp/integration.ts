@@ -27,7 +27,7 @@ freedom().on('listen', () => {
         freedom().emit('listen');
       }
     });
-    client.onceConnected.then((endpoint:Net.Endpoint) => {
+    client.onceConnected.then((info:Tcp.ConnectionInfo) => {
       client.send(ArrayBuffers.stringToArrayBuffer('ping'));
     });
   });
