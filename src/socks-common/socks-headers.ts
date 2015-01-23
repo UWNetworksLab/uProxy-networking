@@ -242,10 +242,17 @@ module Socks {
 
     destination = interpretDestination(byteArray.subarray(3));
 
-    return {
+    var request = {
       command: command,
       endpoint: destination.endpoint
     };
+
+    if (!isValidRequest(request)) {
+      throw new Error('Constructed invalid request object: ' +
+                      JSON.stringify(request));
+    }
+
+    return request;
   }
 
   export function composeRequestBuffer(request:Request) : ArrayBuffer {
@@ -453,14 +460,17 @@ module Socks {
     }
 
     var reply = bytes[1];
-    if (typeof Reply[reply] != 'string') {
-      throw new Error('Unexpected reply: ' + reply);
-    }
-
     var destination = interpretDestination(bytes.subarray(3));
-    return {
+    var response = {
       reply: reply,
       endpoint: destination.endpoint
     };
+
+    if (!isValidResponse(response)) {
+      throw new Error('Constructed invalid response object: ' +
+                      JSON.stringify(response));
+    }
+
+    return response;
   }
 }
