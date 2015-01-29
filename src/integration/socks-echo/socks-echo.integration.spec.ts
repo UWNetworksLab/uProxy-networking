@@ -170,9 +170,35 @@ describe('proxy integration tests', function() {
     }).then(done);
   });
 
-  // This test is disabled because it times out instead of returning an error.
-  // TODO: Re-enable when fixing https://github.com/uProxy/uproxy/issues/800
-  xit('run a localhost-resolving DNS name echo test while localhost is blocked.', (done) => {
+  it('do a request that gets blocked, then another that succeeds.', (done) => {
+    var nonExistentPath = '/noSuchPath';
+    var input = ArrayBuffers.stringToArrayBuffer(
+        'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
+    // Get a test module that doesn't allow localhost access.
+    getTestModule(true).then((testModule:any) => {
+      // Try to connect to localhost, and fail
+      testModule.connect(1023).then((connectionId:string) => {
+        // This code should not run, because testModule.connect() should
+        // reject with a NOT_ALLOWED error.
+        expect(connectionId).toBeUndefined();
+      }, (e:any) => {
+        expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
+      }).then(() => {
+        // After the first request fails, try to fetch uproxy.org.
+        return testModule.connect(80, 'uproxy.org');
+      }).then((connectionId:string) => {
+        return testModule.echo(connectionId, input);
+      }).then((output:ArrayBuffer) => {
+        var outputString = ArrayBuffers.arrayBufferToString(output);
+        expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
+        expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
+      }).catch((e:any) => {
+        expect(e).toBeUndefined();
+      }).then(done);
+    });
+  });
+
+  it('run a localhost-resolving DNS name echo test while localhost is blocked.', (done) => {
     // Get a test module with one that doesn't allow localhost access.
     getTestModule(true).then((testModule:any) => {
       return testModule.startEchoServer().then((port:number) => {
@@ -187,16 +213,15 @@ describe('proxy integration tests', function() {
       // corporate DNS can drop responses that resolve to local network
       // addresses.  Accordingly, the error code may either indicate
       // a generic failure (if resolution fails) or NOT_ALLOWED if name
-      // resolution succeeds.
-      var expectedReplies = [Socks.Reply.NOT_ALLOWED, Socks.Reply.FAILURE];
-      expect(expectedReplies).toContain(e.reply);
+      // resolution succeeds.  However, to avoid portscanning leaks
+      // (https://github.com/uProxy/uproxy/issues/809) both will be reported
+      // as FAILURE
+      expect(e.reply).toEqual(Socks.Reply.FAILURE);
     }).then(done);
   });
 
-  // Disabled because CONNECTION_REFUSED is not yet implemented in RtcToNet.
-  // Tracked by https://github.com/uProxy/uproxy/issues/800
-  xit('attempt to connect to a nonexistent echo daemon', (done) => {
-    getTestModule(true).then((testModule:any) => {
+  it('attempt to connect to a nonexistent echo daemon', (done) => {
+    getTestModule().then((testModule:any) => {
       return testModule.connect(1023);  // 1023 is a reserved port.
     }).then((connectionId:string) => {
       // This code should not run, because there is no server on this port.
@@ -206,25 +231,91 @@ describe('proxy integration tests', function() {
     }).then(done);
   });
 
-  // Disabled because HOST_UNREACHABLE is not yet implemented in RtcToNet.
+  it('attempt to connect to a nonexistent echo daemon while localhost is blocked', (done) => {
+    getTestModule(true).then((testModule:any) => {
+      return testModule.connect(1023);  // 1023 is a reserved port.
+    }).then((connectionId:string) => {
+      // This code should not run, because localhost is blocked.
+      expect(connectionId).toBeUndefined();
+    }).catch((e:any) => {
+      expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
+    }).then(done);
+  });
+
+  it('attempt to connect to a nonexistent local echo daemon while localhost is blocked as 0.0.0.0', (done) => {
+    getTestModule(true).then((testModule:any) => {
+      return testModule.connect(1023, '0.0.0.0');  // 1023 is a reserved port.
+    }).then((connectionId:string) => {
+      // This code should not run because the destination is invalid.
+      expect(connectionId).toBeUndefined();
+    }).catch((e:any) => {
+      // TODO: Make this just NOT_ALLOWED once this bug in ipadddr.js is fixed:
+      // https://github.com/whitequark/ipaddr.js/issues/9
+      expect([Socks.Reply.NOT_ALLOWED, Socks.Reply.FAILURE]).toContain(e.reply);
+    }).then(done);
+  });
+
+  it('attempt to connect to a nonexistent local echo daemon while localhost is blocked as IPv6', (done) => {
+    getTestModule(true).then((testModule:any) => {
+      return testModule.connect(1023, '::1');  // 1023 is a reserved port.
+    }).then((connectionId:string) => {
+      // This code should not run, because localhost is blocked.
+      expect(connectionId).toBeUndefined();
+    }).catch((e:any) => {
+      expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
+    }).then(done);
+  });
+
+  it('attempt to connect to a local network IP address while it is blocked', (done) => {
+    getTestModule(true).then((testModule:any) => {
+      return testModule.connect(1023, '10.5.5.5');  // 1023 is a reserved port.
+    }).then((connectionId:string) => {
+      // This code should not run, because local network access is blocked.
+      expect(connectionId).toBeUndefined();
+    }).catch((e:any) => {
+      expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
+    }).then(done);
+  });
+
+  it('connection refused from DNS name', (done) => {
+    getTestModule().then((testModule:any) => {
+      // Many sites (such as uproxy.org) seem to simply ignore SYN packets on
+      // unmonitored ports, but openbsd.org actually refuses the connection as
+      // expected.
+      return testModule.connect(1023, 'openbsd.org');
+    }).then((connectionId:string) => {
+      // This code should not run, because there is no server on this port.
+      expect(connectionId).toBeUndefined();
+    }).catch((e:any) => {
+      expect(e.reply).toEqual(Socks.Reply.CONNECTION_REFUSED);
+    }).then(done);
+  });
+
+  it('connection refused from DNS name while localhost is blocked', (done) => {
+    getTestModule(true).then((testModule:any) => {
+      // Many sites (such as uproxy.org) seem to simply ignore SYN packets on
+      // unmonitored ports, but openbsd.org actually refuses the connection as
+      // expected.
+      return testModule.connect(1023, 'openbsd.org');
+    }).then((connectionId:string) => {
+      // This code should not run, because there is no server on this port.
+      expect(connectionId).toBeUndefined();
+    }).catch((e:any) => {
+      // This should be CONNECTION_REFUSED, but since we can't be sure that the
+      // domain isn't on the local network, and we're concerned about port
+      // scanning, we return the generic FAILURE code instead.
+      // See https://github.com/uProxy/uproxy/issues/809.
+      expect(e.reply).toEqual(Socks.Reply.FAILURE);
+    }).then(done);
+  });
+
+  // Disabled because HOST_UNREACHABLE is not yet exposed in freedom-for-chrome's
+  // implementation of the core.tcpsocket API.
   xit('attempt to connect to a nonexistent DNS name', (done) => {
     getTestModule(true).then((testModule:any) => {
       return testModule.connect(80, 'www.nonexistentdomain.gov');
     }).then((connectionId:string) => {
       // This code should not run, because there is no such DNS name.
-      expect(connectionId).toBeUndefined();
-    }).catch((e:any) => {
-      expect(e.reply).toEqual(Socks.Reply.HOST_UNREACHABLE);
-    }).then(done);
-  });
-
-  // Disabled because HOST_UNREACHABLE is not yet implemented in RtcToNet.
-  xit('attempt to connect to a nonexistent IP address', (done) => {
-    getTestModule(true).then((testModule:any) => {
-      // 192.0.2.0/24 is a reserved IP address range.
-      return testModule.connect(80, '192.0.2.111');
-    }).then((connectionId:string) => {
-      // This code should not run, because this is a reserved IP address.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
       expect(e.reply).toEqual(Socks.Reply.HOST_UNREACHABLE);

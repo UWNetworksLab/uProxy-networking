@@ -317,7 +317,7 @@ module.exports = (grunt) ->
                 dir: 'build/coverage/rtcToNet'
 
     integration:
-      all:
+      base:
         options:
           template: 'node_modules/freedom-for-chrome/spec/helper/'
           spec: ['build/integration/*/*.integration.spec.js']
@@ -326,6 +326,26 @@ module.exports = (grunt) ->
             # the jasmine tests in the core environment.
             {path: 'build/freedom/freedom-for-chrome.js', include: true}
             {path: 'build/arraybuffers/arraybuffers.js', include: true}
+            {path: 'build/logging/logging.js', include: false}
+            {path: 'build/handler/queue.js', include: false}
+            {path: 'build/ipaddrjs/ipaddr.min.js', include: false}
+            {path: 'build/rtc-to-net/rtc-to-net.js', include: false}
+            {path: 'build/socks-common/socks-headers.js', include: false}
+            {path: 'build/socks-to-rtc/socks-to-rtc.js', include: false}
+            {path: 'build/webrtc/*.js', include: false}
+            {path: 'build/tcp/tcp.js', include: false}
+            {path: 'build/integration/*/integration.*', include: false}
+          ]
+          keepBrowser: false
+      slow:
+        options:
+          template: 'node_modules/freedom-for-chrome/spec/helper/'
+          spec: ['build/integration/*/*.slow_integration.spec.js']
+          helper: [
+            # "include: true" is needed for dependencies that are used by
+            # the jasmine tests in the core environment.
+            {path: 'build/freedom/freedom-for-chrome.js', include: true}
+            {path: 'build/arraybuffers/arraybuffers.js', include: false}
             {path: 'build/logging/logging.js', include: false}
             {path: 'build/handler/queue.js', include: false}
             {path: 'build/ipaddrjs/ipaddr.min.js', include: false}
@@ -620,7 +640,12 @@ module.exports = (grunt) ->
     'build'
     'ts:integrationTests'
     'ts:integrationTestsSpecDecl'
-    'integration'
+    'integration:base'
+  ]
+
+  taskManager.add 'slow_integration_test', [
+    'integration_test'
+    'integration:slow'
   ]
 
   taskManager.add 'test', [

@@ -41,7 +41,7 @@ declare module Socks {
     function isValidRequest(r:any) : boolean;
     interface Response {
         reply: Reply;
-        endpoint: Net.Endpoint;
+        endpoint?: Net.Endpoint;
     }
     function isValidResponse(r:any) : boolean;
     interface UdpMessage {
