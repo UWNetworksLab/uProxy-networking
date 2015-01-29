@@ -60,11 +60,16 @@ declare module Tcp {
     UNKOWN
   }
 
+  interface ConnectionInfo {
+    bound: Net.Endpoint;
+    remote: Net.Endpoint;
+  }
+
   // Wraps up a single TCP connection to a client
   class Connection {
     constructor(connectionKind :Connection.Kind);
 
-    public onceConnected :Promise<Net.Endpoint>;
+    public onceConnected :Promise<ConnectionInfo>;
     public onceClosed :Promise<SocketCloseKind>;
     // The |close| method will cause onceClosed to be fulfilled.
     public close :() => Promise<SocketCloseKind>;

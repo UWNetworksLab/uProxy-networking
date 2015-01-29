@@ -35,7 +35,7 @@ module Socks {
   }
 
   // REP - Reply Field
-  export enum Response {
+  export enum Reply {
     SUCCEEDED           = 0x00,  // Succeeded
     FAILURE             = 0x01,  // General SOCKS server failure
     NOT_ALLOWED         = 0x02,  // Connection not allowed by ruleset
@@ -61,9 +61,64 @@ module Socks {
   // Represents a SOCKS request.
   // @see interpretSocksRequest
   export interface Request {
-    version        :number;
     command        :Command;
-    destination    :Destination;
+    endpoint       :Net.Endpoint;
+  }
+
+  function isValidEndpoint(e:any) : boolean {
+    if (typeof e != 'object') {
+      return false;
+    }
+    if (typeof e.address != 'string') {
+      return false;
+    }
+    if (typeof e.port != 'number' ||
+        e.port < 0 || e.port > 65535) {
+      return false;
+    }
+    if (Object.keys(e).length > 2) {
+      return false;
+    }
+    return true;
+  }
+
+  export function isValidRequest(r:any) : boolean {
+    if (typeof r != 'object') {
+      return false;
+    }
+    if (typeof r.command != 'number' ||
+        typeof Command[r.command] != 'string') {
+      return false;
+    }
+    if (!isValidEndpoint(r.endpoint)) {
+      return false;
+    }
+    if (Object.keys(r).length > 2) {
+      return false;
+    }
+    return true;
+  }
+
+  export interface Response {
+    reply: Reply;
+    endpoint: Net.Endpoint;
+  }
+
+  export function isValidResponse(r:any) : boolean {
+    if (typeof r != 'object') {
+      return false;
+    }
+    if (typeof r.reply != 'number' ||
+        typeof Reply[r.reply] != 'string') {
+      return false;
+    }
+    if (!isValidEndpoint(r.endpoint)) {
+      return false;
+    }
+    if (Object.keys(r).length > 2) {
+      return false;
+    }
+    return true;
   }
 
   // Represents a UDP request message.
@@ -187,20 +242,27 @@ module Socks {
 
     destination = interpretDestination(byteArray.subarray(3));
 
-    return {
-      version: version,
+    var request = {
       command: command,
-      destination: destination
+      endpoint: destination.endpoint
     };
+
+    if (!isValidRequest(request)) {
+      throw new Error('Constructed invalid request object: ' +
+                      JSON.stringify(request));
+    }
+
+    return request;
   }
 
   export function composeRequestBuffer(request:Request) : ArrayBuffer {
+    var destination = makeDestinationFromEndpoint(request.endpoint);
     // The header is 3 bytes
-    var byteArray = new Uint8Array(3 + request.destination.addressByteLength);
-    byteArray[0] = request.version;
+    var byteArray = new Uint8Array(3 + destination.addressByteLength);
+    byteArray[0] = VERSION5;
     byteArray[1] = request.command;
     byteArray[2] = 0;  // reserved
-    byteArray.set(composeDestination(request.destination), 3);
+    byteArray.set(composeDestination(destination), 3);
     return byteArray.buffer;
   }
 
@@ -375,22 +437,20 @@ module Socks {
   // TODO: support failure (https://github.com/uProxy/uproxy/issues/321)
   //
   // Given a destination reached, compose a response.
-  export function composeRequestResponse(endpoint:Net.Endpoint)
-      : ArrayBuffer {
-    var destination = makeDestinationFromEndpoint(endpoint);
+  export function composeResponseBuffer(response:Response) : ArrayBuffer {
+    var destination = makeDestinationFromEndpoint(response.endpoint);
     var destinationArray = composeDestination(destination);
 
     var bytes :Uint8Array = new Uint8Array(destinationArray.length + 3);
     bytes[0] = Socks.VERSION5;
-    bytes[1] = Socks.Response.SUCCEEDED;
+    bytes[1] = response.reply;
     bytes[2] = 0x00;
     bytes.set(destinationArray, 3);
         
     return bytes.buffer;
   }
 
-
-  export function interpretRequestResponse(buffer:ArrayBuffer) : Net.Endpoint {
+  export function interpretResponseBuffer(buffer:ArrayBuffer) : Response {
     var bytes = new Uint8Array(buffer);
 
     // Only SOCKS Version 5 is supported.
@@ -399,12 +459,18 @@ module Socks {
       throw new Error('unsupported SOCKS version: ' + socksVersion);
     }
 
-    var response = bytes[1];
-    if (response != Response.SUCCEEDED) {
-      throw new Error('Response must be SUCCEEDED, not ' + response);
+    var reply = bytes[1];
+    var destination = interpretDestination(bytes.subarray(3));
+    var response = {
+      reply: reply,
+      endpoint: destination.endpoint
+    };
+
+    if (!isValidResponse(response)) {
+      throw new Error('Constructed invalid response object: ' +
+                      JSON.stringify(response));
     }
 
-    var destination = interpretDestination(bytes.subarray(3));
-    return destination.endpoint;
+    return response;
   }
 }

@@ -9,6 +9,13 @@ script.onload = () => {
       'logger': 'lib/loggingprovider/loggingprovider.json',
       'debug': 'log'
   }).then(function(interface:any) {
+    // Keep a background timeout running continuously, to prevent chrome from
+    // putting the app to sleep.
+    function keepAlive() {
+      setTimeout(keepAlive, 5000);
+    }
+    keepAlive();
+
     var simpleSocks :any = interface();
   }, (e:Error) => {
     console.error('could not load freedom: ' + e.message);
