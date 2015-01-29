@@ -2,9 +2,13 @@
 // We do this in a non-TypeScript file because the ambient module declaration
 // prevents us creating any variable called freedom in TypeScript-land.
 var freedom = {
-  core: jasmine.createSpy().and.returnValue(
-    jasmine.createSpyObj('core', ['getLogger'])),
   churn: jasmine.createSpy().and.returnValue(
     jasmine.createSpyObj('churn', ['providePromises']))
 };
-
+freedom['core'] = function() {
+  return {
+    'getLogger': function() {
+      return jasmine.createSpyObj('logger', ['then']);
+    }
+  };
+};
