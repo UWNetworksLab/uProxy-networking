@@ -237,8 +237,13 @@ module RtcToNet {
           var reply = this.getReplyFromInfo_(info);
           this.replyToPeer_(reply, info);
         }, (e:any) => {
-          var reply = this.getReplyFromError_(e);
-          this.replyToPeer_(reply);
+          // If this.tcpConnection_ is not defined, then getTcpConnection_
+          // failed and we've already replied with UNSUPPORTED_COMMAND.
+          if (this.tcpConnection_) {
+            var reply = this.getReplyFromError_(e);
+            this.replyToPeer_(reply);
+          }
+          throw e;
         });
       this.onceReady.then(this.linkTcpAndPeerConnectionData_);
 
@@ -319,10 +324,9 @@ module RtcToNet {
     // Rejects if the endpoint cannot be sent to the SOCKS client.
     private replyToPeer_ = (reply:Socks.Reply, info?:Tcp.ConnectionInfo)
         : Promise<void> => {
-      var boundAddress = info ? info.bound : undefined;
       var response :Socks.Response = {
         reply: reply,
-        endpoint: boundAddress
+        endpoint: info ? info.bound : undefined
       };
       return this.dataChannel_.send({
         str: JSON.stringify(response)

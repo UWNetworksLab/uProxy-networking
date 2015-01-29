@@ -170,6 +170,34 @@ describe('proxy integration tests', function() {
     }).then(done);
   });
 
+  it('do a request that gets blocked, then another that succeeds.', (done) => {
+    var nonExistentPath = '/noSuchPath';
+    var input = ArrayBuffers.stringToArrayBuffer(
+        'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
+    // Get a test module that doesn't allow localhost access.
+    getTestModule(true).then((testModule:any) => {
+      // Try to connect to localhost, and fail
+      testModule.connect(1023).then((connectionId:string) => {
+        // This code should not run, because testModule.connect() should
+        // reject with a NOT_ALLOWED error.
+        expect(connectionId).toBeUndefined();
+      }, (e:any) => {
+        expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
+      }).then(() => {
+        // After the first request fails, try to fetch uproxy.org.
+        return testModule.connect(80, 'uproxy.org');
+      }).then((connectionId:string) => {
+        return testModule.echo(connectionId, input);
+      }).then((output:ArrayBuffer) => {
+        var outputString = ArrayBuffers.arrayBufferToString(output);
+        expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
+        expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
+      }).catch((e:any) => {
+        expect(e).toBeUndefined();
+      }).then(done);
+    });
+  });
+
   it('run a localhost-resolving DNS name echo test while localhost is blocked.', (done) => {
     // Get a test module with one that doesn't allow localhost access.
     getTestModule(true).then((testModule:any) => {
