@@ -6,7 +6,7 @@ Polymer({
   },
   parseInboundText: function() {
     if (model.usingCrypto && !model.decrypted) {
-      decryptInboundMessage(model.inboundText);
+      verifyDecryptInboundMessage(model.inboundText);
     } else {
       parsedInboundMessages = parseInboundMessages(model.inboundText);
     }

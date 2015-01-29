@@ -22,7 +22,7 @@ var pgp :PgpProvider = freedom.pgp();
 var friendKey :string;
 // TODO interactive setup w/real passphrase
 pgp.setup('super passphrase', 'Joe <joe@test.com>');
-pgp.exportKey().then(function (publicKey) {
+pgp.exportKey().then((publicKey:string) => {
   freedom().emit('publicKeyExport', publicKey);
 });
 
@@ -140,12 +140,9 @@ freedom().on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
   }
 });
 
-// Crypto helper functions
-function ab2str(buf:ArrayBuffer) :string {
-  return String.fromCharCode.apply(null, new Uint16Array(buf));
-}
-
+// Helper function to convert strings to array buffers
 function str2ab(str:string) :ArrayBuffer {
+  // TODO: test more thoroughly w/unicode, standardize function across codebase
   var buf = new ArrayBuffer(str.length * 2);  // 2 bytes for each char
   var bufView = new Uint16Array(buf);
   for (var i = 0, strLen = str.length; i < strLen; i++) {
@@ -160,7 +157,7 @@ freedom().on('friendKey', (newFriendKey:string) => {
 });
 
 freedom().on('signEncrypt', (message:string) => {
-  pgp.signEncrypt(str2ab(message), friendKey, true)
+  pgp.signEncrypt(str2ab(message), friendKey)
     .then((cipherdata:ArrayBuffer) => {
       return pgp.armor(cipherdata);
     })
@@ -175,8 +172,7 @@ freedom().on('verifyDecrypt', (ciphertext:string) => {
       return pgp.verifyDecrypt(cipherdata, friendKey);
     })
     .then((result:VerifyDecryptResult) => {
-      freedom().emit('signed', result.signedBy[0]);
-      freedom().emit('plaintext', ab2str(result.data));
+      freedom().emit('verifyDecryptResult', result);
     });
 });
 

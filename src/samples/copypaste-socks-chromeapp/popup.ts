@@ -19,7 +19,10 @@ var copypastePromise :Promise<any> = freedom(
 // contents are up to date.
 var model = { givingOrGetting : <string>null,
               usingCrypto : false,
-              decrypted : false,
+              inputDecrypted : false,
+              inputSigned : false,
+              userPublicKey : '',
+              friendPublicKey : '',
               friendUserId : 'Joe <joe@test.com>',  // TODO actual interaction
               readyForStep2 : false,
               outboundMessageValue : '',
@@ -28,10 +31,7 @@ var model = { givingOrGetting : <string>null,
               proxyingState : 'notYetAttempted',
               endpoint : <string>null,  // E.g., '127.0.0.1:9999'
               totalBytesReceived : 0,
-              totalBytesSent : 0,
-              userPublicKey : '',
-              friendPublicKey : '',
-              signed : false
+              totalBytesSent : 0
             };
 
 // Define basee64 helper functions that are type-annotated and meaningfully
@@ -43,6 +43,11 @@ function base64Encode(unencoded:string): string {
 // Throws an exception if the input is malformed.
 function base64Decode(encoded:string): string {
   return window.atob(encoded);
+}
+
+// Helper function to translate array buffers to strings, used for crypto
+function ab2str(buf:ArrayBuffer) :string {
+  return String.fromCharCode.apply(null, new Uint16Array(buf));
 }
 
 // Stores the parsed messages for use later, if & when the user clicks the
@@ -108,7 +113,7 @@ function consumeInboundMessage() : void {
   // TODO: Report success/failure to the user.
 };
 
-function decryptInboundMessage(ciphertext:string) : void {
+function verifyDecryptInboundMessage(ciphertext:string) : void {
   copypastePromise.then(function(copypaste:any) {
     copypaste.emit('friendKey', model.friendPublicKey);
     copypaste.emit('verifyDecrypt', ciphertext);
@@ -137,18 +142,15 @@ copypastePromise.then(function(copypaste:any) {
     model.userPublicKey = publicKey;
   });
 
-  copypaste.on('signed', (signature:string) => {
-    model.signed = signature == model.friendUserId;
-  });
-
   copypaste.on('ciphertext', (ciphertext:string) => {
     model.outboundMessageValue = ciphertext;
   });
 
-  copypaste.on('plaintext', (plaintext:string) => {
+  copypaste.on('verifyDecryptResult', (result:VerifyDecryptResult) => {
     model.decrypted = true;
-    model.inboundText = plaintext;
-    parsedInboundMessages = parseInboundMessages(model.inboundText)
+    model.signed = result.signedBy[0] == model.friendUserId;
+    model.inboundText = ab2str(result.data);
+    parsedInboundMessages = parseInboundMessages(model.inboundText);
   });
 
   copypaste.on('bytesReceived', (numNewBytesReceived:number) => {

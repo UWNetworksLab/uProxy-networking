@@ -6,12 +6,12 @@ separate machines or on the same machine via Chrome profiles.
 
 By default the signaling messages are unencrypted - if you click `Use
 cryptography to sign/encrypt exchange?` before you get/give access,
-then the messages will automatically be encrypted with a randomly
-generated keypair. You must then exchange (copy/paste) the public keys
-between the users before you exchange the signaling messages. The
-signaling messages should have a PGP Message header before you send
-them (this will happen automatically a moment after generation if you've
-opted to use cryptography).
+then the messages will automatically be encrypted and signed with randomly
+generated keypairs (one for each peer). You must then exchange
+(copy/paste)  the public keys between the users before you exchange
+the signaling messages. The signaling messages should have a PGP
+Message header before you send them (this will happen automatically a
+moment after generation if you've opted to use cryptography).
 
 Note that for testing this does mean an increase from 2 total messages
 to 4, but in actual use the public key exchange should only happen
