@@ -101,7 +101,7 @@ module Socks {
 
   export interface Response {
     reply: Reply;
-    endpoint: Net.Endpoint;
+    endpoint?: Net.Endpoint;
   }
 
   export function isValidResponse(r:any) : boolean {
@@ -112,7 +112,10 @@ module Socks {
         typeof Reply[r.reply] != 'string') {
       return false;
     }
-    if (!isValidEndpoint(r.endpoint)) {
+    if (r.reply == Reply.SUCCEEDED && !r.endpoint) {
+      return false;
+    }
+    if (r.endpoint && !isValidEndpoint(r.endpoint)) {
       return false;
     }
     if (Object.keys(r).length > 2) {
@@ -438,7 +441,12 @@ module Socks {
   //
   // Given a destination reached, compose a response.
   export function composeResponseBuffer(response:Response) : ArrayBuffer {
-    var destination = makeDestinationFromEndpoint(response.endpoint);
+    var fakeEndpoint :Net.Endpoint = {
+      address: '0.0.0.0',
+      port: 0
+    };
+    var endpoint :Net.Endpoint = response.endpoint || fakeEndpoint;
+    var destination = makeDestinationFromEndpoint(endpoint);
     var destinationArray = composeDestination(destination);
 
     var bytes :Uint8Array = new Uint8Array(destinationArray.length + 3);
