@@ -3,7 +3,7 @@
 /// <reference path='../../freedom/typings/freedom.d.ts' />
 /// <reference path='../../logging/logging.d.ts' />
 
-Logging.setConsoleFilter(['*:I']);
+freedom['loggingprovider']().setConsoleFilter(['*:I']);
 
 var log :Logging.Log = new Logging.Log('simple TURN');
 

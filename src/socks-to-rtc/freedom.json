@@ -69,7 +69,6 @@
   },
   "permissions": [
     "churnPipe",
-    "core.console",
     "core.rtcdatachannel",
     "core.rtcpeerconnection",
     "core.tcpsocket"
