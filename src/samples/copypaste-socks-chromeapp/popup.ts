@@ -1,6 +1,7 @@
 /// <reference path='../../freedom/typings/freedom.d.ts' />
 /// <reference path='../../third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../../freedom/typings/pgp.d.ts' />
+/// <reference path='../../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../../networking-typings/communications.d.ts' />
 /// <reference path='../../networking-typings/polymer.d.ts' />
 /// <reference path='../../networking-typings/i18n.d.ts' />
@@ -43,11 +44,6 @@ function base64Encode(unencoded:string): string {
 // Throws an exception if the input is malformed.
 function base64Decode(encoded:string): string {
   return window.atob(encoded);
-}
-
-// Helper function to translate array buffers to strings, used for crypto
-function ab2str(buf:ArrayBuffer) :string {
-  return String.fromCharCode.apply(null, new Uint16Array(buf));
 }
 
 // Stores the parsed messages for use later, if & when the user clicks the
@@ -114,13 +110,14 @@ function consumeInboundMessage() : void {
 };
 
 function verifyDecryptInboundMessage(ciphertext:string) : void {
-  copypastePromise.then(function(copypaste:any) {
+  copypastePromise.then(function(copypaste) {
     copypaste.emit('friendKey', model.friendPublicKey);
     copypaste.emit('verifyDecrypt', ciphertext);
   });
 };
 
 copypastePromise.then(function(copypaste:any) {
+  console.log(copypaste);
  copypaste.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
     model.readyForStep2 = true;
 
@@ -149,7 +146,7 @@ copypastePromise.then(function(copypaste:any) {
   copypaste.on('verifyDecryptResult', (result:VerifyDecryptResult) => {
     model.decrypted = true;
     model.signed = result.signedBy[0] == model.friendUserId;
-    model.inboundText = ab2str(result.data);
+    model.inboundText = ArrayBuffers.arrayBufferToString(result.data);
     parsedInboundMessages = parseInboundMessages(model.inboundText);
   });
 

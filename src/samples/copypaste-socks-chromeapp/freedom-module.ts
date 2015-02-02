@@ -3,6 +3,7 @@
 
 /// <reference path='../../third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../../freedom/typings/pgp.d.ts' />
+/// <reference path='../../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../../logging/logging.d.ts' />
 /// <reference path='../../freedom/typings/freedom.d.ts' />
 /// <reference path='../../networking-typings/communications.d.ts' />
@@ -140,24 +141,13 @@ freedom().on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
   }
 });
 
-// Helper function to convert strings to array buffers
-function str2ab(str:string) :ArrayBuffer {
-  // TODO: test more thoroughly w/unicode, standardize function across codebase
-  var buf = new ArrayBuffer(str.length * 2);  // 2 bytes for each char
-  var bufView = new Uint16Array(buf);
-  for (var i = 0, strLen = str.length; i < strLen; i++) {
-    bufView[i] = str.charCodeAt(i);
-  }
-  return buf;
-}
-
 // Crypto request messages
 freedom().on('friendKey', (newFriendKey:string) => {
   friendKey = newFriendKey;
 });
 
 freedom().on('signEncrypt', (message:string) => {
-  pgp.signEncrypt(str2ab(message), friendKey)
+  pgp.signEncrypt(ArrayBuffers.stringToArrayBuffer(message), friendKey)
     .then((cipherdata:ArrayBuffer) => {
       return pgp.armor(cipherdata);
     })
