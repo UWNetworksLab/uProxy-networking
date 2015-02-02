@@ -4,7 +4,7 @@
 /// <reference path='../freedom/typings/freedom.d.ts' />
 /// <reference path='../logging/logging.d.ts' />
 /// <reference path='../freedom/typings/udp-socket.d.ts' />
-/// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 
 module Turn {
 

@@ -10,7 +10,7 @@
 /// <reference path='../webrtc/datachannel.d.ts' />
 /// <reference path='../webrtc/peerconnection.d.ts' />
 /// <reference path='../tcp/tcp.d.ts' />
-/// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 
 module RtcToNet {
 

@@ -1,10 +1,12 @@
 // benchmark.ts benchmarks the proxy.  It should be running on localhost:9999
 
-/// <reference path="../third_party/typings/tsd.d.ts" />
-/// <reference path="./agent.d.ts" />
+/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../build/third_party/typings/request/request.d.ts' />
+//// <reference path='../../build/third_party/typings/node/node.d.ts' />
 
 import request = require('request');
 import util = require('util');
+import Agent = require('../../build/third_party/socks5-http-client/agent');
 var shttpagent : Agent.Socks5ClientHttpAgent = require('socks5-http-client/lib/Agent');
 
 export module Benchmark {

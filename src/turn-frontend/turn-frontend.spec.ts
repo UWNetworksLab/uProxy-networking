@@ -1,6 +1,6 @@
 /// <reference path='turn-frontend.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
-/// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
 
 describe("turn frontend", function() {

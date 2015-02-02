@@ -1,4 +1,6 @@
-/// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../build/third_party/typings/jasmine/jasmine.d.ts' />
+
+import Socks = require('socks-headers');
 
 // TODO: add tests for IPv6 address parsing
 describe("socks", function() {
@@ -85,7 +87,7 @@ describe("socks", function() {
     };
     var requestBuffer = Socks.composeRequestBuffer(request);
     var requestArray = new Uint8Array(requestBuffer);
-    expect(requestArray[3]).toEqual(Socks.AddressType.IP_V6);    
+    expect(requestArray[3]).toEqual(Socks.AddressType.IP_V6);
     var requestAgain = Socks.interpretRequestBuffer(requestBuffer);
     expect(requestAgain).toEqual(request);
   });
@@ -100,7 +102,7 @@ describe("socks", function() {
     };
     var requestBuffer = Socks.composeRequestBuffer(request);
     var requestArray = new Uint8Array(requestBuffer);
-    expect(requestArray[3]).toEqual(Socks.AddressType.DNS);    
+    expect(requestArray[3]).toEqual(Socks.AddressType.DNS);
     var requestAgain = Socks.interpretRequestBuffer(requestBuffer);
     expect(requestAgain).toEqual(request);
   });

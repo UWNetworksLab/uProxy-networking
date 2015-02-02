@@ -1,15 +1,20 @@
 // SocksToRtc.Peer passes socks requests over WebRTC datachannels.
 
-/// <reference path='../socks-common/socks-headers.d.ts' />
-/// <reference path='../logging/logging.d.ts' />
-/// <reference path='../freedom/typings/freedom.d.ts' />
-/// <reference path='../handler/queue.d.ts' />
-/// <reference path='../networking-typings/communications.d.ts' />
 /// <reference path="../churn/churn.d.ts" />
-/// <reference path='../webrtc/datachannel.d.ts' />
-/// <reference path='../webrtc/peerconnection.d.ts' />
-/// <reference path='../tcp/tcp.d.ts' />
-/// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
+
+/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
+
+import WebRtc = require('../../build/dev/webrtc/webrtc');
+import WebRtcTypes = require('../../build/dev/webrtc/webrtc.types');
+import WebRtcEnums = require('../../build/dev/webrtc/webrtc.types');
+import Logging = require('../../build/dev/logging/logging');
+import Handler = require('../../build/dev/handler/queue');
+
+import Net = require('../networking-typings/net.types');
+import Tcp = require('../tcp/tcp');
+import Socks = require('../socks-headers/socks-headers');
+
 
 module SocksToRtc {
   var log :Logging.Log = new Logging.Log('SocksToRtc');

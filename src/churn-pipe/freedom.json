@@ -3,14 +3,7 @@
   "description": "Obfuscating network pipe.",
   "app": {
     "script": [
-      "../arraybuffers/arraybuffers.js",
-      "../logging/logging.js",
-      "../simple-transformers/caesar.js",
-      "../simple-transformers/passthrough.js",
-      "../regex2dfa/regex2dfa.js",
-      "../utransformers/transformers/uTransformers.rabbit.js",
-      "../utransformers/transformers/uTransformers.fte.js",
-      "churn-pipe.js"
+      "churn-pipe.static.js"
     ]
   },
   "provides": [

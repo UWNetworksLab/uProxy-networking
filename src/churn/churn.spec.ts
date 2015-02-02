@@ -1,7 +1,7 @@
-/// <reference path='churn.d.ts' />
-/// <reference path='../churn-pipe/churn-pipe.d.ts' />
-/// <reference path='../webrtc/peerconnection.d.ts' />
-/// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../build/third_party/typings/jasmine/jasmine.d.ts' />
+
+import Churn = require('./churn');
 
 describe("filterCandidatesFromSdp", function() {
   it('with candidates', () => {
@@ -58,13 +58,13 @@ describe("extractEndpointFromCandidateLine", function() {
 });
 
 describe("setCandidateLineEndpoint", function() {
-  var endpoint :freedom_ChurnPipe.Endpoint = {
+  var endpoint :Net.Endpoint = {
     address: '127.0.0.1',
     port: 5000
   };
 
   it('garbage test', () => {
-    var endpoint :freedom_ChurnPipe.Endpoint = {
+    var endpoint :Net.Endpoint = {
       address: '127.0.0.1',
       port: 5000
     };
@@ -91,12 +91,12 @@ describe("setCandidateLineEndpoint", function() {
 });
 
 describe("selectPublicAddress", function() {
-  var srflxEndpoint :freedom_ChurnPipe.Endpoint = {
+  var srflxEndpoint :Net.Endpoint = {
     address: '172.26.108.25',
     port: 40762
   };
 
-  var baseEndpoint :freedom_ChurnPipe.Endpoint = {
+  var baseEndpoint :Net.Endpoint = {
     address: '192.168.0.28',
     port: 56635
   };
