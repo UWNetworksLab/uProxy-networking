@@ -22,7 +22,7 @@ var log :Logging.Log = new Logging.Log('copypaste-socks');
 var pgp :PgpProvider = freedom.pgp();
 var friendKey :string;
 // TODO interactive setup w/real passphrase
-pgp.setup('super passphrase', 'Joe <joe@test.com>');
+pgp.setup('', 'uProxy user <noreply@uproxy.org>');
 pgp.exportKey().then((publicKey:string) => {
   freedom().emit('publicKeyExport', publicKey);
 });

@@ -119,6 +119,7 @@ module.exports = (grunt) ->
 
     copy:
       # SOCKS.
+      arraybuffers: Rule.copyModule 'arraybuffers'
       tcp: Rule.copyModule 'udp'
       udp: Rule.copyModule 'tcp'
       socksCommon: Rule.copyModule 'socks-common'
@@ -453,6 +454,7 @@ module.exports = (grunt) ->
     'base'
     'socks'
     'ts:copypasteSocksChromeApp'
+    'copy:arraybuffers'
     'copy:copypasteSocksChromeApp'
     'copy:copypasteSocksChromeAppLib'
   ]
