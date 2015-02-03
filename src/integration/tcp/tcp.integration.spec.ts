@@ -20,6 +20,10 @@ describe('core.tcpsocket wrapper', function() {
     loadFreedom('shutdown').then(done);
   });
 
+  it('sends onceClosed notifications', (done) => {
+    loadFreedom('onceclosed').then(done);
+  });
+
   // Loads the testing Freedom module, emits a signal and returns
   // a promise which fulfills once the signal is echoed.
   function loadFreedom(name:string) : Promise<void> {

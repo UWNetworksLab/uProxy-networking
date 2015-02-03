@@ -62,3 +62,29 @@ freedom().on('shutdown', () => {
       });
   });
 });
+
+// Starts a server on a free port and makes a connection to that
+// port before closing that connection.
+// Tests:
+//  - server sockets receive connectionsQueue events
+//  - client sockets receive onceConnected and onceClosed events
+//  - sockets supplied to connectionsQueue receive onceClosed events
+freedom().on('onceclosed', () => {
+  var server = new Tcp.Server({
+    address: '127.0.0.1',
+    port: 0
+  });
+
+  server.listen().then((endpoint:Net.Endpoint) => {
+    var client = new Tcp.Connection({endpoint: endpoint});
+    server.connectionsQueue.setSyncHandler((connection:Tcp.Connection) => {
+      client.onceConnected.then(() => {
+        client.close();
+        return Promise.all<any>([connection.onceClosed, client.onceClosed]);
+      })
+      .then((values:any) => {
+        freedom().emit('onceclosed');
+      });
+    });
+  });
+});
