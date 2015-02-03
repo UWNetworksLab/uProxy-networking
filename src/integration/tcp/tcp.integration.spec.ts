@@ -30,7 +30,9 @@ describe('core.tcpsocket wrapper', function() {
 
   // TODO: test connectionsCount
 
-  // TODO: test connecting to an unbound port, e.g. 1023
+  it('onceClosed returns NEVER_CONNECTED when client connection fails', (done) => {
+    loadFreedom('neverconnected').then(done);
+  });
 
   // TODO: test multiple client sockets connecting to single server port
 

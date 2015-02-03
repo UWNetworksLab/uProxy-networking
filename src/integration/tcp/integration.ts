@@ -126,3 +126,24 @@ freedom().on('onceclosedbyclient', () => {
     });
   });
 });
+
+// Attempts to connect to an address which is not bound.
+// Tests:
+//  - client sockets' onceConnected fails when CONNECTION_REFUSED
+//  - client sockets' onceClosed returns NEVER_CONNECTED when
+//    CONNECTION_REFUSED
+freedom().on('neverconnected', () => {
+  var client = new Tcp.Connection({
+    endpoint: {
+      address: '127.0.0.1',
+      port: 1023 // Reserved port.
+    }
+  });
+  client.onceConnected.catch((e:Error) => {
+    return client.onceClosed;
+  }).then((kind:Tcp.SocketCloseKind) => {
+    if (kind === Tcp.SocketCloseKind.NEVER_CONNECTED) {
+      freedom().emit('neverconnected');
+    }
+  });
+});
