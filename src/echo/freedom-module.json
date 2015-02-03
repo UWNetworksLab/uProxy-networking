@@ -11,8 +11,13 @@
       "freedom-module.js"
     ]
   },
+  "dependencies": {
+    "loggingprovider": {
+      "url": "../loggingprovider/loggingprovider.json",
+      "api": "loggingprovider"
+    }
+  },
   "permissions": [
-    "core.tcpsocket",
-    "core.console"
+    "core.tcpsocket"
   ]
 }

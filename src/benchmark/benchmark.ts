@@ -42,15 +42,15 @@ export module Benchmark {
       this.mean = sum / n;
     }
 
-    private calcMedian(n : number[]) : number {
-      var sorted = n.sort();
-      var len = n.length;
+    private calcMedian(values : number[]) : number {
+      var sorted = values.sort();
+      var len = values.length;
       if (len < 2) {
-        return n[0];
+        return values[0];
       }
       if (len % 2) {
         // Odd number of elements, choose center.
-        return sorted[ (len/2) + 1 ];
+        return sorted[ Math.floor((len/2) + 1) ];
       } else {
         // Even number of elements, average two middle ones.
         return (sorted[len/2] + sorted[(len/2)+1]) / 2;
@@ -199,7 +199,7 @@ export module Benchmark {
     private concurrency = 1;
     private histoNumBuckets = 16;
     private histoMax = 100;
-    private kTimeoutMS = 2000;  // 2 sec timeout.
+    private kTimeoutMS = 30000;  // 30 sec timeout.
     private kMaxTimeouts = 10;  // max number of timeouts before
     // aborting.
     private kWatchdogInterval = 500;  // check 2 times/sec.
@@ -232,11 +232,13 @@ export module Benchmark {
     public configureDefaults(conc: number,
                              nbuckets: number,
                              max: number,
-                             verbosity: number) {
+                             verbosity: number,
+                             max_timeouts: number) {
       this.concurrency = conc;
       this.histoNumBuckets = nbuckets;
       this.histoMax = max;
       this.verbosity_ = verbosity;
+      this.kMaxTimeouts = max_timeouts;
     }
 
     private finishRequest(requestIndex: number, err: any, response: any, body: any) {
@@ -252,9 +254,9 @@ export module Benchmark {
       var latency_ms = result_time - req.requestTime;
 
       // first verify that the body is fully-formed
-      //if (!request_in_error && (!body || body.length != req.requestSize)) {
-      //    request_in_error = true;
-      // }
+      if (!request_in_error && (!body || body.length != req.requestSize)) {
+          request_in_error = true;
+      }
 
       if (req.requestTime < 0) {
         this.latencies_[req.requestSizeIndex].addValue(this.kTimeoutMS,
@@ -263,6 +265,10 @@ export module Benchmark {
         // TODO: Look up error codes for this.
         this.latencies_[req.requestSizeIndex].addValue(latency_ms,
                                                        Result.RES_FAILURE);
+        var body_length = -1;
+        if (body) {
+          body_length = body.length;
+        }
         console.log("--> finishRequest: got err: " + err + ", body length was "
                     + body.length + ", wanted size: " + req.requestSize +
                     ", on url " + req.url);

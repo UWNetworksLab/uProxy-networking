@@ -17,7 +17,7 @@ declare module Socks {
         DNS = 3,
         IP_V6 = 4,
     }
-    enum Response {
+    enum Reply {
         SUCCEEDED = 0,
         FAILURE = 1,
         NOT_ALLOWED = 2,
@@ -35,10 +35,15 @@ declare module Socks {
         addressByteLength :number;
     }
     interface Request {
-        version :number;
         command :Command;
-        destination :Destination;
+        endpoint :Net.Endpoint;
     }
+    function isValidRequest(r:any) : boolean;
+    interface Response {
+        reply: Reply;
+        endpoint?: Net.Endpoint;
+    }
+    function isValidResponse(r:any) : boolean;
     interface UdpMessage {
         frag :number;
         destination :Destination;
@@ -46,11 +51,16 @@ declare module Socks {
     }
     // The interpret functions fail by throwing an error.
     function interpretAuthHandshakeBuffer(buffer :ArrayBuffer) : Auth[];
+    function composeAuthHandshakeBuffer(auths:Auth[]) : ArrayBuffer;
     function composeAuthResponse(auth :Auth) : ArrayBuffer;
+    function interpretAuthResponse(buffer:ArrayBuffer) : Auth;
     function interpretRequestBuffer(buffer :ArrayBuffer) : Request;
     function interpretRequest(byteArray :Uint8Array) : Request;
+    function composeRequestBuffer(request:Request) : ArrayBuffer;
     function interpretUdpMessage(byteArray :Uint8Array) : UdpMessage;
     function interpretDestination(byteArray :Uint8Array) : Destination;
-    function interpretIpv6Address(uint16View :Uint16Array) : string;
-    function composeRequestResponse(endpoint :Net.Endpoint) : ArrayBuffer;
+    function composeDestination(destination:Destination) : Uint8Array;
+    function interpretIpv6Address(byteArray:Uint8Array) : string;
+    function composeResponseBuffer(response:Response) : ArrayBuffer;
+    function interpretResponseBuffer(buffer:ArrayBuffer) : Response;
 }

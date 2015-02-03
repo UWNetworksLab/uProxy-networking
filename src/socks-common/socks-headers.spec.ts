@@ -28,20 +28,126 @@ describe("socks", function() {
       12]); // datagram (byte 2/2)
   });
 
+  it('roundtrip auth request', () => {
+    var auths = [
+      Socks.Auth.GSSAPI,
+      Socks.Auth.NOAUTH,
+      Socks.Auth.NONE,
+      Socks.Auth.USERPASS
+    ];
+
+    var buffer = Socks.composeAuthHandshakeBuffer(auths);
+    var authsAgain = Socks.interpretAuthHandshakeBuffer(buffer);
+    expect(authsAgain).toEqual(auths);
+  });
+
+  it('roundtrip auth response', () => {
+    var auth = Socks.Auth.USERPASS;
+    var buffer = Socks.composeAuthResponse(auth);
+    var authAgain = Socks.interpretAuthResponse(buffer);
+    expect(authAgain).toEqual(auth);
+  });
+
   it('reject wrongly sized requests', () => {
     expect(() => {
       Socks.interpretRequestBuffer(new ArrayBuffer(8));
     }).toThrow();
   });
 
+  it('compose ipv4 tcp request', () => {
+    var request : Socks.Request = {
+      command: Socks.Command.TCP_CONNECT,
+      endpoint: {
+        address: '192.168.1.1',
+        port: 1200
+      }
+    };
+    var requestBuffer = Socks.composeRequestBuffer(request);
+    var requestArray = new Uint8Array(requestBuffer);
+    expect(requestArray).toEqual(ipv4RequestArray);
+  });
+
   it('parse ipv4 request', () => {
     var result :Socks.Request =
         Socks.interpretRequest(ipv4RequestArray);
-    expect(result.version).toEqual(Socks.VERSION5);
     expect(result.command).toEqual(Socks.Command.TCP_CONNECT);
-    expect(result.destination.addressType).toEqual(Socks.AddressType.IP_V4);
-    expect(result.destination.endpoint.address).toEqual('192.168.1.1');
-    expect(result.destination.endpoint.port).toEqual(1200);
+    expect(result.endpoint.address).toEqual('192.168.1.1');
+    expect(result.endpoint.port).toEqual(1200);
+  });
+
+  it('roundtrip ipv6 tcp request', () => {
+    var request : Socks.Request = {
+      command: Socks.Command.TCP_CONNECT,
+      endpoint: {
+        address: '2620::1003:1003:a84f:9831:df45:5420',
+        port: 1200
+      }
+    };
+    var requestBuffer = Socks.composeRequestBuffer(request);
+    var requestArray = new Uint8Array(requestBuffer);
+    expect(requestArray[3]).toEqual(Socks.AddressType.IP_V6);    
+    var requestAgain = Socks.interpretRequestBuffer(requestBuffer);
+    expect(requestAgain).toEqual(request);
+  });
+
+  it('roundtrip DNS tcp request', () => {
+    var request : Socks.Request = {
+      command: Socks.Command.TCP_CONNECT,
+      endpoint: {
+        address: 'www.example.com',
+        port: 1200
+      }
+    };
+    var requestBuffer = Socks.composeRequestBuffer(request);
+    var requestArray = new Uint8Array(requestBuffer);
+    expect(requestArray[3]).toEqual(Socks.AddressType.DNS);    
+    var requestAgain = Socks.interpretRequestBuffer(requestBuffer);
+    expect(requestAgain).toEqual(request);
+  });
+
+  it('roundtrip IPv4 response', () => {
+    var response :Socks.Response = {
+      reply: Socks.Reply.SUCCEEDED,
+      endpoint: {
+        address: '255.0.1.77',
+        port: 65535
+      }
+    };
+    var responseBuffer = Socks.composeResponseBuffer(response);
+    var responseArray = new Uint8Array(responseBuffer);
+    expect(responseArray[3]).toEqual(Socks.AddressType.IP_V4);
+    var responseAgain = Socks.interpretResponseBuffer(responseBuffer);
+    expect(responseAgain).toEqual(response);
+  });
+
+  it('roundtrip IPv6 request response', () => {
+    var response :Socks.Response = {
+      reply: Socks.Reply.FAILURE,
+      endpoint: {
+        address: '2620::1003:1003:a84f:9831:df45:5420',
+        port: 40000
+      }
+    };
+    var responseBuffer = Socks.composeResponseBuffer(response);
+    var responseArray = new Uint8Array(responseBuffer);
+    expect(responseArray[3]).toEqual(Socks.AddressType.IP_V6);
+    var responseAgain = Socks.interpretResponseBuffer(responseBuffer);
+    expect(responseAgain).toEqual(response);
+  });
+
+  it('roundtrip DNS request response', () => {
+    var response :Socks.Response = {
+      reply: Socks.Reply.NOT_ALLOWED,
+      endpoint: {
+        address: 'www.subdomain.example.com',
+        port: 45654
+      }
+    };
+    var responseBuffer = Socks.composeResponseBuffer(response);
+    var responseArray = new Uint8Array(responseBuffer);
+    expect(responseArray[3]).toEqual(Socks.AddressType.DNS);
+    var responseAgain = Socks.interpretResponseBuffer(responseBuffer);
+    expect(responseAgain).toEqual(response);
   });
 
   it('wrong socks version', () => {

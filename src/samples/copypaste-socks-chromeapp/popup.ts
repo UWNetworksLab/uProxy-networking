@@ -7,9 +7,10 @@
 /// <reference path='../../networking-typings/i18n.d.ts' />
 /// <reference path='../../webrtc/peerconnection.d.ts' />
 
-var copypastePromise :Promise<any> = freedom(
-    'freedom-module.json', { 'debug': 'log' })
-.then((interface:any) => {
+var copypastePromise :Promise<any> = freedom('freedom-module.json', {
+    'logger': 'lib/loggingprovider/loggingprovider.json',
+    'debug': 'log'
+}).then((interface:any) => {
   return interface();
 }, (e:Error) => {
   console.error('could not load freedom: ' + e.message);

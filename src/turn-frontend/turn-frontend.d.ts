@@ -21,8 +21,8 @@ declare module freedom_TurnFrontend {
     bind(address :string, port :number) : Promise<freedom_TurnFrontend.EndpointInfo>;
     handleIpc(data :ArrayBuffer) : Promise<void>;
 
-    on(t:string, f:Function) : void;
     on(t:'ipc', f:(message:freedom_TurnFrontend.Ipc) => any) : void;
+    on(t:string, f:Function) : void;
 
     providePromises(provider:any) : void;
   }

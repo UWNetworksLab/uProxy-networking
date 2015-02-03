@@ -1,6 +1,6 @@
-/// <reference path="tcp.ts" />
-/// <reference path='../arraybuffers/arraybuffers.d.ts' />
-/// <reference path='../freedom/typings/freedom.d.ts' />
+/// <reference path="../../tcp/tcp.d.ts" />
+/// <reference path='../../arraybuffers/arraybuffers.d.ts' />
+/// <reference path='../../freedom/typings/freedom.d.ts' />
 
 // Starts an echo server on a free port and verifies that the server
 // is listening on that port. Tests:
@@ -21,17 +21,15 @@ freedom().on('listen', () => {
 
   server.listen().then((endpoint:Net.Endpoint) => {
     var client = new Tcp.Connection({endpoint: endpoint});
-    client.send(ArrayBuffers.stringToArrayBuffer('ping'));
-
     client.dataFromSocketQueue.setSyncNextHandler((buffer:ArrayBuffer) => {
       var s = ArrayBuffers.arrayBufferToString(buffer);
       if (s == 'ping') {
         freedom().emit('listen');
       }
     });
-  }, (e:Error) => {
-    // Because this is flaky...
-    console.error('failed to listen!: ' + e.message);
+    client.onceConnected.then((info:Tcp.ConnectionInfo) => {
+      client.send(ArrayBuffers.stringToArrayBuffer('ping'));
+    });
   });
 });
 

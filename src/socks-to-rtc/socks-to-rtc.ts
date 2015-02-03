@@ -163,7 +163,10 @@ module SocksToRtc {
       this.onceStopped_ = this.onceStopping_.then(this.stopResources_);
       this.onceStopped_.then(this.dispatchEvent_.bind(this, 'stopped'));
 
-      return onceReady;
+      var rejectOnStopping = new Promise((F, R) => {
+        this.onceStopping_.then(R);
+      });
+      return Promise.race([onceReady, rejectOnStopping]);
     }
 
     // Initiates shutdown of the TCP server and peerconnection.
@@ -220,7 +223,7 @@ module SocksToRtc {
             this.bytesSentToPeer_,
             this.bytesReceivedFromPeer_)
         .then((endpoint:Net.Endpoint) => {
-          log.debug('session %1 connected to remote endpoint %2', [
+          log.debug('session %1 connected via bound endpoint %2', [
               tag, JSON.stringify(endpoint)]);
           this.sessions_[tag] = session;
         }, (e:Error) => {
@@ -272,7 +275,7 @@ module SocksToRtc {
     private bytesSentToPeer_ :Handler.Queue<number,void>;
     private bytesReceivedFromPeer_ :Handler.Queue<number,void>;
 
-    // Fulfills with the address on which RtcToNet is connecting to the
+    // Fulfills with the bound endpoint which RtcToNet is using to connect to the
     // remote host. Rejects if RtcToNet could not connect to the remote host
     // or if there is some error negotiating the SOCKS session.
     public onceReady :Promise<Net.Endpoint>;
@@ -383,7 +386,7 @@ module SocksToRtc {
     // Sets the next data hanlder to get next data from peer, assuming it's
     // stringified version of the destination.
     // TODO: Needs unit tests badly since it's mocked by several other tests.
-    private receiveEndpointFromPeer_ = () : Promise<Net.Endpoint> => {
+    private receiveResponseFromPeer_ = () : Promise<Socks.Response> => {
       return new Promise((F,R) => {
         this.dataChannel_.dataFromPeerQueue.setSyncNextHandler((data:WebRtc.Data) => {
           if (!data.str) {
@@ -391,34 +394,38 @@ module SocksToRtc {
                 JSON.stringify(data)));
             return;
           }
-          var endpoint :Net.Endpoint;
-          try { endpoint = JSON.parse(data.str); }
-          catch(e) {
-            R(new Error('received malformed endpoint during handshake: ' +
+          try {
+            var r :any = JSON.parse(data.str);
+            if (!Socks.isValidResponse(r)) {
+              R(new Error('invalid response:' + data.str));
+              return;
+            }
+            F(r);
+          } catch(e) {
+            R(new Error('received malformed response during handshake: ' +
                 data.str));
-            return;
           }
-          // CONSIDER: do more sanitization of the data passed back?
-          F(endpoint);
-          return;
         });
       });
     }
 
     // Assumes that |doAuthHandshake_| has completed and that a peer-conneciton
-    // has been established. Promise returns the destination site connected to.
+    // has been established. Promise returns the bound address used to connect.
     private doRequestHandshake_ = ()
         : Promise<Net.Endpoint> => {
       return this.tcpConnection_.receiveNext()
         .then(Socks.interpretRequestBuffer)
         .then((request:Socks.Request) => {
           this.dataChannel_.send({ str: JSON.stringify(request) });
-          return this.receiveEndpointFromPeer_();
+          return this.receiveResponseFromPeer_();
         })
-        .then((endpoint:Net.Endpoint) => {
+        .then((response:Socks.Response) => {
           // TODO: test and close: https://github.com/uProxy/uproxy/issues/324
-          this.tcpConnection_.send(Socks.composeRequestResponse(endpoint));
-          return endpoint;
+          this.tcpConnection_.send(Socks.composeResponseBuffer(response));
+          if (response.reply != Socks.Reply.SUCCEEDED) {
+            this.stop();
+          }
+          return response.endpoint;
         });
     }
 

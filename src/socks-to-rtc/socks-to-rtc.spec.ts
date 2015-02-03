@@ -82,13 +82,28 @@ describe('SOCKS server', function() {
     server.startInternal(mockTcpServer, mockPeerConnection).catch(onceServerStopped).then(done);
   });
 
-  it('\'stopped\' fires on peerconnection termination', (done) => {
+  it('\'stopped\' fires, and start fails, on early peerconnection termination', (done) => {
     (<any>mockTcpServer.onceListening).and.returnValue(Promise.resolve(mockEndpoint));
-    (<any>mockTcpServer.onceShutdown).and.returnValue(Promise.resolve());
+    (<any>mockTcpServer.onceShutdown).and.returnValue(voidPromise);
     mockPeerConnection.onceConnected = voidPromise;
-    mockPeerConnection.onceDisconnected = <any>(Promise.resolve());
+    mockPeerConnection.onceDisconnected = voidPromise;
+
+    server.startInternal(mockTcpServer, mockPeerConnection).catch(onceServerStopped).then(done);
+  });
+
+  it('\'stopped\' fires on peerconnection termination', (done) => {
+    var terminate :() => void;
+    var terminatePromise = new Promise<void>((F, R) => {
+      terminate = F;
+    });
+
+    (<any>mockTcpServer.onceListening).and.returnValue(Promise.resolve(mockEndpoint));
+    (<any>mockTcpServer.onceShutdown).and.returnValue(terminatePromise);
+    mockPeerConnection.onceConnected = voidPromise;
+    mockPeerConnection.onceDisconnected = terminatePromise;
 
     server.startInternal(mockTcpServer, mockPeerConnection).then(onceServerStopped).then(done);
+    terminate();
   });
 
   it('\'stopped\' fires on call to stop', (done) => {
@@ -99,6 +114,19 @@ describe('SOCKS server', function() {
 
     server.startInternal(mockTcpServer, mockPeerConnection).then(
         server.stop).then(onceServerStopped).then(done);
+  });
+
+  it('stop works before the PeerConnection or TcpServer connects', (done) => {
+    (<any>mockTcpServer.onceListening).and.returnValue(noopPromise);
+    // PeerConnection never connects.
+    mockPeerConnection.onceConnected = noopPromise;
+    // Neither TCP connection nor datachannel close "naturally".
+    (<any>mockTcpServer.onceShutdown).and.returnValue(noopPromise);
+
+    var onceStartFailed :Promise<void> = new Promise<void>((F, R) => {
+      server.startInternal(mockTcpServer, mockPeerConnection).then(R, F);
+    });
+    Promise.all([onceStartFailed, server.stop()]).then(done);
   });
 });
 

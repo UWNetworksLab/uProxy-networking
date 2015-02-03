@@ -167,7 +167,6 @@ module.exports = (grunt) ->
     ts:
       # SOCKS.
       tcp: Rule.typescriptSrc 'tcp'
-      tcpSpecDecl: Rule.typescriptSpecDecl 'tcp'
 
       udp: Rule.typescriptSrc 'udp'
 
@@ -198,6 +197,9 @@ module.exports = (grunt) ->
       simpleSocksFirefoxApp: Rule.typescriptSrc 'samples/simple-socks-firefoxapp'
       copypasteSocksChromeApp: Rule.typescriptSrc 'samples/copypaste-socks-chromeapp'
 
+      integrationTests: Rule.typescriptSrc 'integration/*'
+      integrationTestsSpecDecl: Rule.typescriptSpecDecl 'integration/*'
+
       # Churn.
       turnFrontend: Rule.typescriptSrc 'turn-frontend'
       turnFrontendSpecDecl: Rule.typescriptSpecDecl 'turn-frontend'
@@ -227,7 +229,21 @@ module.exports = (grunt) ->
             standalone: 'sha1'
 
     jasmine:
-      socksCommon: Rule.jasmineSpec 'socks-common'
+      socksCommon:
+        src: FILES.jasmine_helpers.concat([
+          'build/ipaddrjs/ipaddr.min.js'
+          'build/socks-common/socks-headers.js'
+        ])
+        options:
+          specs: 'build/socks-common/*.spec.js'
+          template: require('grunt-template-jasmine-istanbul')
+          templateOptions:
+            coverage: 'build/coverage/socks-common/coverage.json'
+            report:
+              type: 'html'
+              options:
+                dir: 'build/coverage/socks-common'
+
       simpleTransformers: Rule.jasmineSpec 'simple-transformers'
       # TODO: turn tests require arraybuffers
       #       https://github.com/uProxy/uproxy/issues/430
@@ -242,6 +258,13 @@ module.exports = (grunt) ->
         ])
         options:
           specs: 'build/turn-frontend/*.spec.js'
+          template: require('grunt-template-jasmine-istanbul')
+          templateOptions:
+            coverage: 'build/coverage/turn-frontend/coverage.json'
+            report:
+              type: 'html'
+              options:
+                dir: 'build/coverage/turn-frontend'
       # TODO: churn tests require peerconnection
       #       https://github.com/uProxy/uproxy/issues/430
       churn:
@@ -253,6 +276,13 @@ module.exports = (grunt) ->
         ]),
         options:
           specs: 'build/churn/*.spec.js'
+          template: require('grunt-template-jasmine-istanbul')
+          templateOptions:
+            coverage: 'build/coverage/churn/coverage.json'
+            report:
+              type: 'html'
+              options:
+                dir: 'build/coverage/churn'
       # TODO: socksToRtc tests require a bunch of other modules
       #       https://github.com/uProxy/uproxy/issues/430
       socksToRtc:
@@ -265,9 +295,16 @@ module.exports = (grunt) ->
           'build/socks-to-rtc/socks-to-rtc.js'
         ])
         options:
-          outfile: 'build/socks-to-rtc/SpecRunner.html'
-          keepRunner: true
           specs: 'build/socks-to-rtc/*.spec.js'
+          #outfile: 'build/socks-to-rtc/SpecRunner.html'
+          #keepRunner: true
+          template: require('grunt-template-jasmine-istanbul')
+          templateOptions:
+            coverage: 'build/coverage/socksToRtc/coverage.json'
+            report:
+              type: 'html'
+              options:
+                dir: 'build/coverage/socksToRtc'
       # TODO: rtcToNet tests require a bunch of other modules
       #       https://github.com/uProxy/uproxy/issues/430
       rtcToNet:
@@ -279,22 +316,56 @@ module.exports = (grunt) ->
           'build/rtc-to-net/rtc-to-net.js'
         ])
         options:
-          outfile: 'build/rtc-to-net/SpecRunner.html'
-          keepRunner: true
           specs: 'build/rtc-to-net/*.spec.js'
+          #outfile: 'build/rtc-to-net/SpecRunner.html'
+          #keepRunner: true
+          template: require('grunt-template-jasmine-istanbul')
+          templateOptions:
+            coverage: 'build/coverage/rtcToNet/coverage.json'
+            report:
+              type: 'html'
+              options:
+                dir: 'build/coverage/rtcToNet'
 
     integration:
-      tcp:
+      base:
         options:
           template: 'node_modules/freedom-for-chrome/spec/helper/'
-          spec: ['build/tcp/*.integration.spec.js']
+          spec: ['build/integration/*/*.integration.spec.js']
           helper: [
+            # "include: true" is needed for dependencies that are used by
+            # the jasmine tests in the core environment.
+            {path: 'build/freedom/freedom-for-chrome.js', include: true}
+            {path: 'build/arraybuffers/arraybuffers.js', include: true}
+            {path: 'build/logging/logging.js', include: false}
+            {path: 'build/handler/queue.js', include: false}
+            {path: 'build/ipaddrjs/ipaddr.min.js', include: false}
+            {path: 'build/rtc-to-net/rtc-to-net.js', include: false}
+            {path: 'build/socks-common/socks-headers.js', include: false}
+            {path: 'build/socks-to-rtc/socks-to-rtc.js', include: false}
+            {path: 'build/webrtc/*.js', include: false}
+            {path: 'build/tcp/tcp.js', include: false}
+            {path: 'build/integration/*/integration.*', include: false}
+          ]
+          keepBrowser: false
+      slow:
+        options:
+          template: 'node_modules/freedom-for-chrome/spec/helper/'
+          spec: ['build/integration/*/*.slow_integration.spec.js']
+          helper: [
+            # "include: true" is needed for dependencies that are used by
+            # the jasmine tests in the core environment.
             {path: 'build/freedom/freedom-for-chrome.js', include: true}
             {path: 'build/arraybuffers/arraybuffers.js', include: false}
             {path: 'build/logging/logging.js', include: false}
             {path: 'build/handler/queue.js', include: false}
+            {path: 'build/ipaddrjs/ipaddr.min.js', include: false}
+            {path: 'build/rtc-to-net/rtc-to-net.js', include: false}
+            {path: 'build/socks-common/socks-headers.js', include: false}
+            {path: 'build/socks-to-rtc/socks-to-rtc.js', include: false}
+            {path: 'build/webrtc/*.js', include: false}
             {path: 'build/tcp/tcp.js', include: false}
-            {path: 'build/tcp/integration.*', include: false}
+            {path: 'build/integration/*/integration.*', include: false}
           ]
           keepBrowser: false
 
@@ -349,7 +420,6 @@ module.exports = (grunt) ->
   taskManager.add 'tcp', [
     'base'
     'ts:tcp'
-    'ts:tcpSpecDecl'
     'copy:tcp'
   ]
 
@@ -363,6 +433,7 @@ module.exports = (grunt) ->
     'base'
     'ts:socksCommon'
     'ts:socksCommonSpecDecl'
+    'ipaddrjs'
     'copy:socksCommon'
   ]
 
@@ -573,9 +644,26 @@ module.exports = (grunt) ->
     'churn'
   ]
 
-  taskManager.add 'test', [
+  taskManager.add 'unit_test', [
     'build'
     'jasmine'
+  ]
+
+  taskManager.add 'integration_test', [
+    'build'
+    'ts:integrationTests'
+    'ts:integrationTestsSpecDecl'
+    'integration:base'
+  ]
+
+  taskManager.add 'slow_integration_test', [
+    'integration_test'
+    'integration:slow'
+  ]
+
+  taskManager.add 'test', [
+    'unit_test'
+    'integration_test'
   ]
 
   taskManager.add 'default', [
