@@ -20,9 +20,16 @@ describe('core.tcpsocket wrapper', function() {
     loadFreedom('shutdown').then(done);
   });
 
+  // TODO: test SocketKind
   it('sends onceClosed notifications', (done) => {
     loadFreedom('onceclosed').then(done);
   });
+
+  // TODO: test connectionsCount
+
+  // TODO: test connecting to an unbound port, e.g. 1023
+
+  // TODO: test multiple client sockets connecting to single server port
 
   // Loads the testing Freedom module, emits a signal and returns
   // a promise which fulfills once the signal is echoed.
