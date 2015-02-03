@@ -28,8 +28,8 @@
       </p><br><br>
 
       <p class='centered'>
-        <bdi i18n-content='signed' hidden?='{{ !model.signed }}'></bdi>
-        <bdi i18n-content='notSigned' hidden?='{{ model.signed }}' class='warning'></bdi>
+        <bdi i18n-content='signed' hidden?='{{ !model.inputSigned || !inputIsWellFormed }}'></bdi>
+        <bdi i18n-content='incorrectlySigned' hidden?='{{ model.inputSigned || !inputIsWellFormed }}' class='warning'></bdi>
       </p><br><br>
     </div>
   </template>

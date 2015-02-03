@@ -14,7 +14,7 @@
   "signed" : {
     "message" : "Signaling message has valid signature!"
   },
-  "notSigned" : {
+  "incorrectlySigned" : {
     "message" : "Signaling message does not have valid signature!"
   },
   "giveAccess" : {

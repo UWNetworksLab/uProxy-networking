@@ -100,7 +100,7 @@ function parseInboundMessages(inboundMessageFieldValue:string)
 // or rtc-to-net module. Disables the form field.
 function consumeInboundMessage() : void {
   // Forward the signalling messages to the Freedom app.
-  copypastePromise.then(function(copypaste:any) {
+  copypastePromise.then(function(copypaste:OnAndEmit<any,any>) {
     for (var i = 0; i < parsedInboundMessages.length; i++) {
       copypaste.emit('handleSignalMessage', parsedInboundMessages[i]);
     }
@@ -116,8 +116,7 @@ function verifyDecryptInboundMessage(ciphertext:string) : void {
   });
 };
 
-copypastePromise.then(function(copypaste:any) {
-  console.log(copypaste);
+copypastePromise.then(function(copypaste:OnAndEmit<any,any>) {
  copypaste.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
     model.readyForStep2 = true;
 
@@ -144,8 +143,8 @@ copypastePromise.then(function(copypaste:any) {
   });
 
   copypaste.on('verifyDecryptResult', (result:VerifyDecryptResult) => {
-    model.decrypted = true;
-    model.signed = result.signedBy[0] == model.friendUserId;
+    model.inputDecrypted = true;
+    model.inputSigned = result.signedBy[0] == model.friendUserId;
     model.inboundText = ArrayBuffers.arrayBufferToString(result.data);
     parsedInboundMessages = parseInboundMessages(model.inboundText);
   });
