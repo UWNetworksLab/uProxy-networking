@@ -2,6 +2,8 @@
 /// <reference path='../logging/logging.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
 
+freedom['loggingprovider']().setConsoleFilter(['*:D']);
+
 var log :Logging.Log = new Logging.Log('echo-server');
 
 var tcpServer :TcpEchoServer;

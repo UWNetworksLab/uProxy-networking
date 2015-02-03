@@ -27,7 +27,6 @@
     }
   },
   "permissions": [
-    "core.console",
     "core.udpsocket"
   ]
 }

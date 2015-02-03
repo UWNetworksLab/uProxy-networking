@@ -8,7 +8,10 @@ var sendAreaB = <HTMLInputElement>document.getElementById("sendAreaB");
 var receiveAreaA = <HTMLInputElement>document.getElementById("receiveAreaA");
 var receiveAreaB = <HTMLInputElement>document.getElementById("receiveAreaB");
 
-freedom('freedom-module.json', { 'debug': 'log' }).then(function(interface:any) {
+freedom('freedom-module.json', {
+    'logger': 'lib/loggingprovider/loggingprovider.json',
+    'debug': 'debug'
+}).then(function(interface:any) {
   var simpleChurnChat :any = interface();
 
   simpleChurnChat.on('ready', function() {

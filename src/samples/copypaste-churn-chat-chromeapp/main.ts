@@ -6,7 +6,10 @@ var copyTextarea = <HTMLInputElement>document.getElementById("copy");
 var pasteTextarea = <HTMLInputElement>document.getElementById("paste");
 var receiveButton = document.getElementById("receiveButton");
 
-freedom('freedom-module.json', { 'debug': 'log' }).then(function(interface:any) {
+freedom('freedom-module.json', {
+    'logger': 'lib/loggingprovider/loggingprovider.json',
+    'debug': 'log'
+}).then(function(interface:any) {
   var copypasteChurnChat :any = interface();
 
   // Dispatches each line from the paste box as a signalling channel message.
