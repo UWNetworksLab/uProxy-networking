@@ -20,9 +20,12 @@ describe('core.tcpsocket wrapper', function() {
     loadFreedom('shutdown').then(done);
   });
 
-  // TODO: test SocketKind
-  it('sends onceClosed notifications', (done) => {
-    loadFreedom('onceclosed').then(done);
+  it('onceClosed by server', (done) => {
+    loadFreedom('onceclosedbyserver').then(done);
+  });
+
+  it('onceClosed by client', (done) => {
+    loadFreedom('onceclosedbyclient').then(done);
   });
 
   // TODO: test connectionsCount
