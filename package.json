@@ -41,7 +41,7 @@
     "selenium-standalone": "~2.44.0",
     "socks5-http-client": "^0.1.6",
     "typescript": "^1.1.0-1",
-    "uproxy-lib": "~18.0.0",
+    "uproxy-lib": "~19.0.0",
     "utransformers": "~0.2.1",
     "wd": "~0.3.10",
     "wup": "^1.0.0",

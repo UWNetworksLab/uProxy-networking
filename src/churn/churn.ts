@@ -189,15 +189,9 @@ module Churn {
       this.haveForwardingSocketEndpoint_ = F;
     });
 
-    constructor(config:WebRtc.PeerConnectionConfig) {
-      // TODO: Remove when objects-for-constructors is fixed in Freedom:
-      //         https://github.com/freedomjs/freedom/issues/87
-      if (Array.isArray(config)) {
-        // Extract the first element of this single element array.
-        config = (<WebRtc.PeerConnectionConfig[]><any> config)[0];
-      }
-
-      this.peerName = config.peerName ||
+    constructor(probeRtcPc:freedom_RTCPeerConnection.RTCPeerConnection,
+                peerName?:string) {
+      this.peerName = peerName ||
           'churn-connection-' + crypto.randomUint32();
 
       this.signalForPeerQueue = new Handler.Queue<Churn.ChurnSignallingMessage,void>();
@@ -211,12 +205,12 @@ module Churn {
       });
 
       // Start the obfuscated connection.
-      this.configureObfuscatedConnection_(config);
+      this.configureObfuscatedConnection_();
 
       // Once the obfuscated connection's local endpoint is known, the remote
       // peer has sent us its public endpoint, and probing is complete, we can
       // configure the obfuscating pipe and allow traffic to flow.
-      this.configureProbeConnection_(config);
+      this.configureProbeConnection_(probeRtcPc);
       Promise.all([this.onceHaveWebRtcEndpoint_,
                    this.onceHaveRemoteEndpoint_,
                    this.onceProbingComplete_]).then((answers:any[]) => {
@@ -237,13 +231,10 @@ module Churn {
     }
 
     private configureProbeConnection_ = (
-        config:WebRtc.PeerConnectionConfig) => {
-      var probeConfig :WebRtc.PeerConnectionConfig = {
-        webrtcPcConfig: config.webrtcPcConfig,
-        peerName: this.peerName + '-probe',
-        initiateConnection: true
-      };
-      this.probeConnection_ = new WebRtc.PeerConnection(probeConfig);
+        freedomPc:freedom_RTCPeerConnection.RTCPeerConnection) => {
+      var probePeerName = this.peerName + '-probe';
+      this.probeConnection_ = WebRtc.PeerConnection.fromRtcPeerConnectionWithName(
+          freedomPc, probePeerName);
       this.probeConnection_.signalForPeerQueue.setSyncHandler(
           (signal:WebRtc.SignallingMessage) => {
         log.debug("probe connection emitted: " + JSON.stringify(signal));
@@ -254,6 +245,7 @@ module Churn {
           this.probingComplete_(selectPublicAddress(this.probeCandidates_));
         }
       });
+      this.probeConnection_.negotiateConnection();
     }
 
     // Establishes the two pipes required to sustain the obfuscated
@@ -322,17 +314,16 @@ module Churn {
       });
     }
 
-    private configureObfuscatedConnection_ =
-        (config:WebRtc.PeerConnectionConfig) => {
+    private configureObfuscatedConnection_ = () => {
       // We use an empty configuration to ensure that no STUN servers are pinged.
-      var obfConfig :WebRtc.PeerConnectionConfig = {
-        webrtcPcConfig: {
-          iceServers: []
-        },
-        peerName: this.peerName + '-obfuscated',
-        initiateConnection: config.initiateConnection
+      var obfConfig :freedom_RTCPeerConnection.RTCConfiguration = {
+        iceServers: []
       };
-      this.obfuscatedConnection_ = new WebRtc.PeerConnection(obfConfig);
+      var obfPeerName = this.peerName + '-obfuscated';
+      var freedomPc = freedom['core.rtcpeerconnection'](obfConfig);
+      this.obfuscatedConnection_ =
+          WebRtc.PeerConnection.fromRtcPeerConnectionWithName(
+              freedomPc, obfPeerName);
       this.obfuscatedConnection_.signalForPeerQueue.setSyncHandler(
           (signal:WebRtc.SignallingMessage) => {
         // Super-paranoid check: remove candidates from SDP messages.
