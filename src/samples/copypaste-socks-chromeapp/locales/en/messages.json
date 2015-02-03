@@ -2,6 +2,21 @@
   "intro" : {
     "message" : "This sample app establishes SOCKS proxying between two users. The initial exchange of signalling messages occurs manually (e.g., via email or chat), while the subsequent proxying uses WebRTC."
   },
+  "useCrypto" : {
+    "message" : "Use cryptography to sign/encrypt exchange?"
+  },
+  "userPublicKey" : {
+    "message" : "Your public key is: "
+  },
+  "friendPublicKey" : {
+    "message" : "Your friend's public key is: "
+  },
+  "signed" : {
+    "message" : "Signaling message has valid signature!"
+  },
+  "incorrectlySigned" : {
+    "message" : "Signaling message does not have valid signature!"
+  },
   "giveAccess" : {
     "message" : "Give access"
   },

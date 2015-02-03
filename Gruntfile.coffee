@@ -8,6 +8,7 @@ ipaddrjsPath = path.dirname(require.resolve('ipaddr.js/package.json'))
 utransformersPath = path.dirname(require.resolve('utransformers/package.json'))
 regex2dfaPath = path.dirname(require.resolve('regex2dfa/package.json'))
 ccaPath = path.dirname(require.resolve('cca/package.json'))
+pgpPath = path.dirname(require.resolve('freedom-pgp-e2e/package.json'))
 
 FILES =
   # Help Jasmine's PhantomJS understand promises.
@@ -84,6 +85,15 @@ module.exports = (grunt) ->
           dest: 'build/regex2dfa/'
         ]
 
+      # .js and .json for freedom pgp module, plus compiled crypto lib .js
+      freedomPgpE2e:
+        files: [
+          expand: true
+          cwd: pgpPath
+          src: ['build/*.js', 'build/pgpapi.json']
+          dest: 'build/freedom-pgp-e2e/'
+        ]
+
       # Symlink the Chrome and Firefox builds of Freedom under build/freedom/.
       freedom:
         files: [ {
@@ -109,6 +119,7 @@ module.exports = (grunt) ->
 
     copy:
       # SOCKS.
+      arraybuffers: Rule.copyModule 'arraybuffers'
       tcp: Rule.copyModule 'udp'
       udp: Rule.copyModule 'tcp'
       socksCommon: Rule.copyModule 'socks-common'
@@ -402,6 +413,7 @@ module.exports = (grunt) ->
     'symlink:uproxyLibThirdParty'
     'symlink:utransformers'
     'symlink:regex2dfa'
+    'symlink:freedomPgpE2e'
     'symlink:freedom'
   ]
 
@@ -513,6 +525,7 @@ module.exports = (grunt) ->
     'base'
     'socks'
     'ts:copypasteSocksChromeApp'
+    'copy:arraybuffers'
     'copy:copypasteSocksChromeApp'
     'copy:copypasteSocksChromeAppLib'
   ]
