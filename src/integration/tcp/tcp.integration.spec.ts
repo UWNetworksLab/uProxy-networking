@@ -16,7 +16,7 @@ describe('core.tcpsocket wrapper', function() {
     loadFreedom('listen').then(done);
   });
 
-  it('shutdown notifications', (done) => {
+  it('sends onceShutdown notifications', (done) => {
     loadFreedom('shutdown').then(done);
   });
 

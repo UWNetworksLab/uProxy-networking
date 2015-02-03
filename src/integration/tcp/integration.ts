@@ -33,13 +33,15 @@ freedom().on('listen', () => {
   });
 });
 
-// Starts an echo server on a free port and makes two connections to that
+// Starts a server on a free port and makes a connection to that
 // port before shutting down the server.
 // Tests:
-//  - client sockets receive connection events
-//  - server and client sockets receive disconnected events
+//  - server sockets receive connectionsQueue events
+//  - client sockets receive onceConnected events
+//  - client sockets receive onceClosed events on server shutdown
+//  - sockets supplied to connectionsQueue receive onceClosed events
+//    on server shutdown
 //  - onceShutdown fulfills
-// TODO: verify server receives connection events
 freedom().on('shutdown', () => {
   var server = new Tcp.Server({
     address: '127.0.0.1',
@@ -47,19 +49,17 @@ freedom().on('shutdown', () => {
   });
 
   server.listen().then((endpoint:Net.Endpoint) => {
-    var client1 = new Tcp.Connection({endpoint: endpoint});
-    var client2 = new Tcp.Connection({endpoint: endpoint});
-    Promise.all([client1.onceConnected, client2.onceConnected])
-      .then(server.shutdown)
-      .then(() => {
-        return Promise.all<any>([
-            server.onceShutdown(),
-            client1.onceClosed,
-            client2.onceClosed]);
+    var client = new Tcp.Connection({endpoint: endpoint});
+    server.connectionsQueue.setSyncHandler((connection:Tcp.Connection) => {
+      client.onceConnected.then(() => {
+        server.shutdown();
+        return Promise.all<any>([connection.onceClosed, client.onceClosed,
+            server.onceShutdown()]);
       })
       .then((values:any) => {
         freedom().emit('shutdown');
       });
+    });
   });
 });
 
