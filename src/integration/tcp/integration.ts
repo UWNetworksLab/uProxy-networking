@@ -5,8 +5,10 @@
 // Starts an echo server on a free port and verifies that the server
 // is listening on that port. Tests:
 //  - a free port is chosen when port zero is requested
-//  - the server is listening on that port
-//  - data can be sent and received on that socket
+//  - server sockets receive connectionsQueue events
+//  - client sockets receive onceConnected and dataFromSocketQueue events
+//  - sockets supplied to connectionsQueue events can receive data
+//  - client sockets can send data
 freedom().on('listen', () => {
   var server = new Tcp.Server({
     address: '127.0.0.1',
