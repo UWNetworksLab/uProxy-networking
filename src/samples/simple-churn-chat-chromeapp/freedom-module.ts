@@ -1,21 +1,22 @@
 /// <reference path="../../churn/churn.d.ts" />
 /// <reference path="../../webrtc/peerconnection.d.ts" />
 /// <reference path="../../freedom/typings/freedom.d.ts" />
+/// <reference path="../../freedom/typings/rtcpeerconnection.d.ts" />
 /// <reference path='../../logging/logging.d.ts' />
 
 freedom['loggingprovider']().setConsoleFilter(['*:D']);
 
 var log :Logging.Log = new Logging.Log('simple churn chat');
 
-var config :WebRtc.PeerConnectionConfig = {
-  webrtcPcConfig: {
-    iceServers: [{urls: ['stun:stun.l.google.com:19302']},
-                 {urls: ['stun:stun1.l.google.com:19302']}]
-  }
+var config :freedom_RTCPeerConnection.RTCConfiguration = {
+  iceServers: [{urls: ['stun:stun.l.google.com:19302']},
+               {urls: ['stun:stun1.l.google.com:19302']}]
 };
 
-var a :Churn.Connection = new Churn.Connection(config);
-var b :Churn.Connection = new Churn.Connection(config);
+var pcA = freedom['core.rtcpeerconnection'](config);
+var a :Churn.Connection = new Churn.Connection(pcA);
+var pcB = freedom['core.rtcpeerconnection'](config);
+var b :Churn.Connection = new Churn.Connection(pcB);
 
 // Connect the two signalling channels.
 // Normally, these messages would be sent over the internet.

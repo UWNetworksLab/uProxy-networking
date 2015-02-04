@@ -1,4 +1,5 @@
 /// <reference path="../handler/queue.d.ts" />
+/// <reference path='../freedom/typings/rtcpeerconnection.d.ts' />
 /// <reference path="../webrtc/datachannel.d.ts" />
 /// <reference path="../webrtc/peerconnection.d.ts" />
 /// <reference path="../tcp/tcp.d.ts" />
@@ -9,7 +10,7 @@ declare module RtcToNet {
     allowNonUnicast :boolean;
   }
   class RtcToNet {
-    constructor(pcConfig?:WebRtc.PeerConnectionConfig,
+    constructor(pcConfig?:freedom_RTCPeerConnection.RTCConfiguration,
                 proxyConfig?:ProxyConfig,
                 obfuscate?:boolean);
     public start :(

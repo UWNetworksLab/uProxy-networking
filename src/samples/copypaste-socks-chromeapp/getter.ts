@@ -1,11 +1,17 @@
+/// <reference path='../../freedom/typings/freedom.d.ts' />
+
 Polymer({
   model: model,
   generateIceCandidates: function() {
     this.$.generateIceCandidatesButton.disabled = true;
-    copypastePromise.then((copypaste:any) => { copypaste.emit('start', {}); });
+    copypastePromise.then((copypaste:OnAndEmit<any,any>) => { copypaste.emit('start', {}); });
   },
   parseInboundText: function() {
-    parsedInboundMessages = parseInboundMessages(this.inboundText);
+    if (model.usingCrypto && !model.inputDecrypted) {
+      verifyDecryptInboundMessage(model.inboundText);
+    } else {
+      parsedInboundMessages = parseInboundMessages(model.inboundText);
+    }
   },
   consumeInboundText: function() {
     consumeInboundMessage();

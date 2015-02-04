@@ -1,7 +1,11 @@
 Polymer({
   model: model,
   parseInboundText: function() {
-    parsedInboundMessages = parseInboundMessages(this.inboundText);
+    if (model.usingCrypto && !model.inputDecrypted) {
+      verifyDecryptInboundMessage(model.inboundText);
+    } else {
+      parsedInboundMessages = parseInboundMessages(model.inboundText);
+    }
   },
   consumeInboundText: function() {
     consumeInboundMessage();

@@ -21,33 +21,23 @@ var log :Logging.Log = new Logging.Log('simple-socks');
 var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port:9999 };
 
 //-----------------------------------------------------------------------------
-var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
-    webrtcPcConfig: {
-      iceServers: [{urls: ['stun:stun.l.google.com:19302']},
-                   {urls: ['stun:stun1.l.google.com:19302']}]
-    },
-    peerName: 'rtcNet'
-  };
+var pcConfig :freedom_RTCPeerConnection.RTCConfiguration = {
+  iceServers: [{urls: ['stun:stun.l.google.com:19302']},
+               {urls: ['stun:stun1.l.google.com:19302']}]
+};
 var rtcNet = new RtcToNet.RtcToNet(
-    rtcNetPcConfig,
+    pcConfig,
     {
       allowNonUnicast: true
     },
     false); // obfuscate
 
 //-----------------------------------------------------------------------------
-var socksRtcPcConfig :WebRtc.PeerConnectionConfig = {
-    webrtcPcConfig: {
-      iceServers: [{urls: ['stun:stun.l.google.com:19302']},
-                   {urls: ['stun:stun1.l.google.com:19302']}]
-    },
-    peerName: 'socksRtc'
-  };
 var socksRtc = new SocksToRtc.SocksToRtc();
 socksRtc.on('signalForPeer', rtcNet.handleSignalFromPeer);
 socksRtc.start(
     localhostEndpoint,
-    socksRtcPcConfig,
+    pcConfig,
     false) // obfuscate
   .then((endpoint:Net.Endpoint) => {
     log.info('SocksToRtc listening on: ' + JSON.stringify(endpoint));

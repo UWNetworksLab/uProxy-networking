@@ -2,6 +2,7 @@
 
 /// <reference path='../socks-common/socks-headers.d.ts' />
 /// <reference path='../freedom/typings/freedom.d.ts' />
+/// <reference path='../freedom/typings/rtcpeerconnection.d.ts' />
 /// <reference path='../handler/queue.d.ts' />
 /// <reference path='../logging/logging.d.ts' />
 /// <reference path='../ipaddrjs/ipaddrjs.d.ts' />
@@ -84,15 +85,17 @@ module RtcToNet {
 
     // As configure() but handles creation of peerconnection.
     constructor(
-        pcConfig?:WebRtc.PeerConnectionConfig,
+        pcConfig?:freedom_RTCPeerConnection.RTCConfiguration,
         proxyConfig?:ProxyConfig,
         obfuscate?:boolean) {
       if (pcConfig) {
+        var pc :freedom_RTCPeerConnection.RTCPeerConnection =
+            freedom['core.rtcpeerconnection'](pcConfig);
         this.start(
             proxyConfig,
             obfuscate ?
-                new Churn.Connection(pcConfig) :
-                new WebRtc.PeerConnection(pcConfig));
+                new Churn.Connection(pc) :
+                WebRtc.PeerConnection.fromRtcPeerConnection(pc));
       }
     }
 

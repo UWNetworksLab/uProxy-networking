@@ -7,12 +7,13 @@ freedom['loggingprovider']().setConsoleFilter(['*:D']);
 
 var log :Logging.Log = new Logging.Log('copypaste churn chat');
 
-var pc = new Churn.Connection({
-  webrtcPcConfig: {
-    iceServers: [{urls: ['stun:stun.l.google.com:19302']},
-                 {urls: ['stun:stun1.l.google.com:19302']}]
-  }
-});
+var config :freedom_RTCPeerConnection.RTCConfiguration = {
+  iceServers: [{urls: ['stun:stun.l.google.com:19302']},
+               {urls: ['stun:stun1.l.google.com:19302']}]
+};
+
+var freedomPc = freedom['core.rtcpeerconnection'](config);
+var pc = new Churn.Connection(freedomPc);
 
 // Forward signalling channel messages to the UI.
 pc.signalForPeerQueue.setSyncHandler((signal:WebRtc.SignallingMessage) => {

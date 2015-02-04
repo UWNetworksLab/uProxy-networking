@@ -1,4 +1,5 @@
 <link rel="import" href='lib/third_party/bower/polymer/polymer.html'>
+<link rel="import" href='crypto.html'>
 <link rel="import" href='start.html'>
 <link rel="import" href='giver.html'>
 <link rel="import" href='getter.html'>
@@ -7,6 +8,18 @@
 
   <template>
     <style>
+      button {
+        text-decoration: none;
+        padding: 0.5em;
+        color: white;
+        background-color: #50C0E0;
+        border: 1px solid #40B0D0;
+        border-radius: 0.5em;
+      }
+      button:hover {
+        background-color: #60D0F0;
+        border: 1px solid #50C0E0;
+      }
       :host {
         position: absolute;
         width: 450px; height: 525px;
@@ -26,7 +39,12 @@
       </select>
     </p></div>
 
-    <copypaste-start id='start' hidden?='{{ model.givingOrGetting != null }}'></copypaste-start>
+    <p class='centered'>
+      <button on-tap='{{ useCrypto }}' hidden?='{{ model.usingCrypto }}'><bdi i18n-content='useCrypto'></bdi></button>
+    </p>
+    <copypaste-crypto id='crypto' hidden?='{{ !model.usingCrypto }}'></copypaste-crypto>
+
+    <copypaste-start id='start' hidden?='{{ model.givingOrGetting !== null }}'></copypaste-start>
 
     <template if='{{ model.givingOrGetting === "giving" }}'>
       <copypaste-giver id='giver'></copypaste-giver>
