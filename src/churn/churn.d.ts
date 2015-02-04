@@ -61,7 +61,10 @@ declare module Churn {
   // transparently obfuscates the actual traffic.
   class Connection implements
       WebRtc.PeerConnectionInterface<ChurnSignallingMessage> {
-    constructor(config:WebRtc.PeerConnectionConfig);
+      // This peer connection must be "fresh".  It is used for probing,
+      // not for communication.
+      constructor(probeRtcPc:freedom_RTCPeerConnection.RTCPeerConnection,
+                  peerName?:string);
 
     // The state of this peer connection.
     public pcState :WebRtc.State;

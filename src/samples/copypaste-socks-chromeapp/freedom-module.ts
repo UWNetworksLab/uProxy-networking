@@ -27,20 +27,9 @@ pgp.exportKey().then((publicKey:string) => {
   freedom().emit('publicKeyExport', publicKey);
 });
 
-var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
-  webrtcPcConfig: {
-    iceServers: [{urls: ['stun:stun.l.google.com:19302']},
-                 {urls: ['stun:stun1.l.google.com:19302']}]
-  },
-  peerName: 'rtcNet'
-};
-
-var socksRtcPcConfig :WebRtc.PeerConnectionConfig = {
-  webrtcPcConfig: {
-    iceServers: [{urls: ['stun:stun.l.google.com:19302']},
-                 {urls: ['stun:stun1.l.google.com:19302']}]
-  },
-  peerName: 'socksRtc'
+var pcConfig :freedom_RTCPeerConnection.RTCConfiguration = {
+  iceServers: [{urls: ['stun:stun.l.google.com:19302']},
+               {urls: ['stun:stun1.l.google.com:19302']}]
 };
 
 // These two modules together comprise a SOCKS server:
@@ -83,7 +72,7 @@ freedom().on('start', () => {
 
   socksRtc.start(
       localhostEndpoint,
-      socksRtcPcConfig,
+      pcConfig,
       false) // obfuscate
     .then((endpoint:Net.Endpoint) => {
       log.info('socksRtc ready. listening to SOCKS5 on: ' + JSON.stringify(endpoint));
@@ -106,7 +95,7 @@ freedom().on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
   } else {
     if (rtcNet === undefined) {
       rtcNet = new RtcToNet.RtcToNet(
-          rtcNetPcConfig,
+          pcConfig,
           {
             allowNonUnicast:true
           },

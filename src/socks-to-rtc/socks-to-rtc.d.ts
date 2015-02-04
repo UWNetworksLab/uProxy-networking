@@ -1,4 +1,5 @@
 /// <reference path="../handler/queue.d.ts" />
+/// <reference path='../freedom/typings/rtcpeerconnection.d.ts' />
 /// <reference path="../networking-typings/communications.d.ts" />
 /// <reference path="../webrtc/datachannel.d.ts" />
 /// <reference path="../webrtc/peerconnection.d.ts" />
@@ -10,7 +11,7 @@ declare module SocksToRtc {
     constructor(dispatchEvent?:(t:string, f:Function) => void);
     // NOTE: The caller MUST set the on-event handlers before calling start().
     public start :(endpoint:Net.Endpoint,
-                   pcConfig:WebRtc.PeerConnectionConfig,
+                   pcConfig:freedom_RTCPeerConnection.RTCConfiguration,
                    obfuscate?:boolean) => Promise<Net.Endpoint>;
     public stop :() => Promise<void>;
 

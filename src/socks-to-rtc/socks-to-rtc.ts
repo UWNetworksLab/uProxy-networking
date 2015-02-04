@@ -100,13 +100,15 @@ module SocksToRtc {
     // method.
     public start = (
         endpoint:Net.Endpoint,
-        pcConfig:WebRtc.PeerConnectionConfig,
+        pcConfig:freedom_RTCPeerConnection.RTCConfiguration,
         obfuscate?:boolean) : Promise<Net.Endpoint> => {
+      var pc :freedom_RTCPeerConnection.RTCPeerConnection =
+          freedom['core.rtcpeerconnection'](pcConfig);
       return this.startInternal(
           new Tcp.Server(endpoint),
           obfuscate ?
-              new Churn.Connection(pcConfig) :
-              new WebRtc.PeerConnection(pcConfig));
+              new Churn.Connection(pc) :
+              WebRtc.PeerConnection.fromRtcPeerConnection(pc));
     }
 
     // Starts the SOCKS server with the supplied TCP server and peerconnection.
