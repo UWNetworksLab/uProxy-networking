@@ -16,7 +16,7 @@ describe('proxy integration tests', function() {
 
   var getTestModule = function(denyLocalhost?:boolean) : any {
     return freedom('scripts/build/integration/socks-echo/integration.json',
-            { 'debug': 'log' })
+            { 'debug': 'debug' })
         .then((interface:any) => {
           return interface(denyLocalhost);
         });

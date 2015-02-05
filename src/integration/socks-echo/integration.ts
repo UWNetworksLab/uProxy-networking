@@ -5,6 +5,8 @@
 /// <reference path="../../tcp/tcp.d.ts" />
 /// <reference path="../../webrtc/peerconnection.d.ts" />
 
+freedom['loggingprovider']().setConsoleFilter(['*:D']);
+
 class ProxyIntegrationTest {
   private socksToRtc_ :SocksToRtc.SocksToRtc;
   private rtcToNet_ :RtcToNet.RtcToNet;
@@ -48,10 +50,14 @@ class ProxyIntegrationTest {
     };
 
     this.socksToRtc_ = new SocksToRtc.SocksToRtc();
-    this.rtcToNet_ = new RtcToNet.RtcToNet(rtcPcConfig, rtcToNetProxyConfig);
-    this.socksToRtc_.on('signalForPeer', this.rtcToNet_.handleSignalFromPeer);
-    this.rtcToNet_.signalsForPeer.setSyncHandler(this.socksToRtc_.handleSignalFromPeer);
-    return this.socksToRtc_.start(socksToRtcEndpoint, rtcPcConfig);
+    this.rtcToNet_ = new RtcToNet.RtcToNet(rtcPcConfig, rtcToNetProxyConfig, true);
+    this.socksToRtc_.on('signalForPeer', (signal) => {
+      this.rtcToNet_.handleSignalFromPeer(signal);
+    });
+    this.rtcToNet_.signalsForPeer.setSyncHandler((signal) => {
+      this.socksToRtc_.handleSignalFromPeer(signal);
+    });
+    return this.socksToRtc_.start(socksToRtcEndpoint, rtcPcConfig, true);
   }
 
   // Assumes webEndpoint is IPv4.

@@ -6,14 +6,26 @@
       "../../handler/queue.js",
       "../../ipaddrjs/ipaddr.min.js",
       "../../logging/logging.js",
+      "../../regex2dfa/regex2dfa.js",
       "../../tcp/tcp.js",
       "../../webrtc/datachannel.js",
       "../../webrtc/peerconnection.js",
+      "../../churn/churn.js",
       "../../socks-common/socks-headers.js",
       "../../socks-to-rtc/socks-to-rtc.js",
       "../../rtc-to-net/rtc-to-net.js",
       "integration.js"
     ]
+  },
+  "dependencies": {
+    "loggingprovider": {
+      "url": "../../loggingprovider/loggingprovider.json",
+      "api": "loggingprovider"
+    },
+    "churnPipe": {
+      "url": "../../churn-pipe/freedom.json",
+      "api": "churnPipe"
+    }
   },
   "provides": [
     "ProxyIntegrationTest"
