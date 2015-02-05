@@ -34,7 +34,7 @@
   "api": {
     "ProxyIntegrationTest": {
       "constructor": {
-        "value": ["boolean"]
+        "value": ["boolean", "boolean"]
       },
       "startEchoServer": {
         "type": "method",

@@ -333,6 +333,7 @@ module.exports = (grunt) ->
           'build/freedom/freedom-for-chrome.js'
           'build/arraybuffers/arraybuffers.js'
           'build/loggingprovider/loggingprovider.js'
+          'build/loggingprovider/loggingprovider.json'
           'build/logging/logging.js'
           'build/handler/queue.js'
           'build/ipaddrjs/ipaddr.min.js'
@@ -347,6 +348,8 @@ module.exports = (grunt) ->
           'build/churn-pipe/freedom.json'
           'build/churn/churn.js'
           'build/webrtc/*.js'
+          # spec_base.js is listed first so that it can be used by spec.js
+          'build/integration/**/*.integration.spec_base.js'
           'build/integration/**/*.js'
           'build/integration/**/integration.json'
         ]
@@ -354,7 +357,41 @@ module.exports = (grunt) ->
           paths: [
             'build/freedom/freedom-for-chrome.js'
             'build/arraybuffers/arraybuffers.js'
+            'build/integration/**/*.integration.spec_base.js'
             'build/integration/**/*.integration.spec.js'
+          ]
+          keepRunner: true
+      churn:
+        src: [
+          'build/freedom/freedom-for-chrome.js'
+          'build/arraybuffers/arraybuffers.js'
+          'build/loggingprovider/loggingprovider.js'
+          'build/loggingprovider/loggingprovider.json'
+          'build/logging/logging.js'
+          'build/handler/queue.js'
+          'build/ipaddrjs/ipaddr.min.js'
+          'build/tcp/tcp.js'
+          'build/rtc-to-net/rtc-to-net.js'
+          'build/socks-common/socks-headers.js'
+          'build/socks-to-rtc/socks-to-rtc.js'
+          'build/simple-transformers/*.js'
+          'build/regex2dfa/*.js'
+          'build/utransformers/**/*.js'
+          'build/churn-pipe/churn-pipe.js'
+          'build/churn-pipe/freedom.json'
+          'build/churn/churn.js'
+          'build/webrtc/*.js'
+          # spec_base.js is listed first so that it can be used by spec.js
+          'build/integration/**/*.integration.spec_base.js'
+          'build/integration/**/*.js'
+          'build/integration/**/integration.json'
+        ]
+        options:
+          paths: [
+            'build/freedom/freedom-for-chrome.js'
+            'build/arraybuffers/arraybuffers.js'
+            'build/integration/**/*.integration.spec_base.js'
+            'build/integration/**/*.churn_integration.spec.js'
           ]
           keepRunner: false
       slow:
