@@ -2,13 +2,8 @@
 /// <reference path='../../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../../freedom/typings/freedom.d.ts' />
 
-// Starts an echo server on a free port and verifies that the server
-// is listening on that port. Tests:
-//  - a free port is chosen when port zero is requested
-//  - server sockets receive connectionsQueue events
-//  - client sockets receive onceConnected and dataFromSocketQueue events
-//  - sockets supplied to connectionsQueue events can receive data
-//  - client sockets can send data
+// Starts an echo server on a free port and sends some data to the server,
+// verifying that an echo is received.
 freedom().on('listen', () => {
   var server = new Tcp.Server({
     address: '127.0.0.1',
@@ -36,14 +31,8 @@ freedom().on('listen', () => {
 });
 
 // Starts a server on a free port and makes a connection to that
-// port before shutting down the server.
-// Tests:
-//  - server sockets receive connectionsQueue events
-//  - client sockets receive onceConnected events
-//  - client sockets receive onceClosed events on server shutdown
-//  - sockets supplied to connectionsQueue receive onceClosed events
-//    on server shutdown
-//  - onceShutdown fulfills
+// port before shutting down the server, verifying that onceShutdown
+// fulfills.
 freedom().on('shutdown', () => {
   var server = new Tcp.Server({
     address: '127.0.0.1',
@@ -66,13 +55,8 @@ freedom().on('shutdown', () => {
 });
 
 // Starts a server on a free port and makes a connection to that
-// port before closing that connection.
-// Tests:
-//  - server sockets receive connectionsQueue events
-//  - client sockets receive onceConnected and onceClosed events
-//  - sockets supplied to connectionsQueue receive onceClosed events
-//  - the correct SocketCloseKind value is sent by onceClosed events
-//    when the server closes the connection
+// port before closing that connection, verifying that each side
+// of the socket receives the appropriate SocketCloseKind event.
 freedom().on('onceclosedbyserver', () => {
   var server = new Tcp.Server({
     address: '127.0.0.1',
@@ -97,13 +81,8 @@ freedom().on('onceclosedbyserver', () => {
 });
 
 // Starts a server on a free port and makes a connection to that
-// port before closing that connection.
-// Tests:
-//  - server sockets receive connectionsQueue events
-//  - client sockets receive onceConnected and onceClosed events
-//  - sockets supplied to connectionsQueue receive onceClosed events
-//  - the correct SocketCloseKind value is sent by onceClosed events
-//    when the remote client closes the connection
+// port before closing that connection, verifying that each side
+// of the socket receives the appropriate SocketCloseKind event.
 freedom().on('onceclosedbyclient', () => {
   var server = new Tcp.Server({
     address: '127.0.0.1',
@@ -128,10 +107,6 @@ freedom().on('onceclosedbyclient', () => {
 });
 
 // Attempts to connect to an address which is not bound.
-// Tests:
-//  - client sockets' onceConnected fails when CONNECTION_REFUSED
-//  - client sockets' onceClosed returns NEVER_CONNECTED when
-//    CONNECTION_REFUSED
 freedom().on('neverconnected', () => {
   var client = new Tcp.Connection({
     endpoint: {
