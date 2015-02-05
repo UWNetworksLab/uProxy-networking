@@ -28,13 +28,15 @@ describe('core.tcpsocket wrapper', function() {
     loadFreedom('onceclosedbyclient').then(done);
   });
 
-  // TODO: test connectionsCount
-
   it('onceClosed returns NEVER_CONNECTED when client connection fails', (done) => {
     loadFreedom('neverconnected').then(done);
   });
 
-  // TODO: test multiple client sockets connecting to single server port
+  it('serves multiple clients', (done) => {
+    loadFreedom('multipleclients').then(done);
+  });
+
+  // TODO: test connectionsCount
 
   // Loads the testing Freedom module, emits a signal and returns
   // a promise which fulfills once the signal is echoed.

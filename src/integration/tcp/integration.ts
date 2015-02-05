@@ -147,3 +147,44 @@ freedom().on('neverconnected', () => {
     }
   });
 });
+
+// Starts an echo server on a free port and verifies that five echo clients
+// can send and receive data from the server.
+freedom().on('multipleclients', () => {
+  var server = new Tcp.Server({
+    address: '127.0.0.1',
+    port: 0
+  });
+
+  server.connectionsQueue.setSyncHandler((tcpConnection:Tcp.Connection) => {
+    tcpConnection.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
+      tcpConnection.send(buffer);
+    });
+  });
+
+  server.listen().then((endpoint:Net.Endpoint) => {
+    var addEchoClient = (i:number) : Promise<void> => {
+      var fulfill :() => void;
+      var client = new Tcp.Connection({endpoint: endpoint});
+      client.dataFromSocketQueue.setSyncNextHandler((buffer:ArrayBuffer) => {
+        var bytes = new Uint8Array(buffer);
+        if (bytes.length == 1 && bytes[0] == i) {
+          fulfill();
+        }
+      });
+      client.onceConnected.then((info:Tcp.ConnectionInfo) => {
+        var bytes = new Uint8Array([i]);
+        client.send(bytes.buffer);
+      });
+      return new Promise<void>((F, R) => { fulfill = F; });
+    };
+
+    var promises :Promise<void>[] = [];
+    for (var i = 0; i < 5; i++) {
+      promises.push(addEchoClient(i));
+    }
+    Promise.all(promises).then((answers:any) => {
+      freedom().emit('multipleclients');
+    });
+  });
+});
