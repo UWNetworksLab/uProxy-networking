@@ -2,13 +2,17 @@
 /// <reference path='../../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../../freedom/typings/freedom.d.ts' />
 
-// Starts an echo server on a free port and sends some data to the server,
-// verifying that an echo is received.
-freedom().on('listen', () => {
-  var server = new Tcp.Server({
+var getServerOnFreePort = () : Tcp.Server => {
+  return new Tcp.Server({
     address: '127.0.0.1',
     port: 0
   });
+}
+
+// Starts an echo server on a free port and sends some data to the server,
+// verifying that an echo is received.
+freedom().on('listen', () => {
+  var server = getServerOnFreePort();
 
   server.connectionsQueue.setSyncHandler((tcpConnection:Tcp.Connection) => {
     tcpConnection.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
@@ -34,10 +38,7 @@ freedom().on('listen', () => {
 // port before shutting down the server, verifying that onceShutdown
 // fulfills.
 freedom().on('shutdown', () => {
-  var server = new Tcp.Server({
-    address: '127.0.0.1',
-    port: 0
-  });
+  var server = getServerOnFreePort();
 
   server.listen().then((endpoint:Net.Endpoint) => {
     var client = new Tcp.Connection({endpoint: endpoint});
@@ -58,10 +59,7 @@ freedom().on('shutdown', () => {
 // port before closing that connection, verifying that each side
 // of the socket receives the appropriate SocketCloseKind event.
 freedom().on('onceclosedbyserver', () => {
-  var server = new Tcp.Server({
-    address: '127.0.0.1',
-    port: 0
-  });
+  var server = getServerOnFreePort();
 
   server.listen().then((endpoint:Net.Endpoint) => {
     var client = new Tcp.Connection({endpoint: endpoint});
@@ -84,10 +82,7 @@ freedom().on('onceclosedbyserver', () => {
 // port before closing that connection, verifying that each side
 // of the socket receives the appropriate SocketCloseKind event.
 freedom().on('onceclosedbyclient', () => {
-  var server = new Tcp.Server({
-    address: '127.0.0.1',
-    port: 0
-  });
+  var server = getServerOnFreePort();
 
   server.listen().then((endpoint:Net.Endpoint) => {
     var client = new Tcp.Connection({endpoint: endpoint});
@@ -126,10 +121,7 @@ freedom().on('neverconnected', () => {
 // Starts an echo server on a free port and verifies that five echo clients
 // can send and receive data from the server.
 freedom().on('multipleclients', () => {
-  var server = new Tcp.Server({
-    address: '127.0.0.1',
-    port: 0
-  });
+  var server = getServerOnFreePort();
 
   server.connectionsQueue.setSyncHandler((tcpConnection:Tcp.Connection) => {
     tcpConnection.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
@@ -167,10 +159,7 @@ freedom().on('multipleclients', () => {
 // Starts an echo server on a free port and verifies that its connectionsCount
 // is correct once five clients have connected to it.
 freedom().on('connectionscount', () => {
-  var server = new Tcp.Server({
-    address: '127.0.0.1',
-    port: 0
-  });
+  var server = getServerOnFreePort();
 
   server.listen().then((endpoint:Net.Endpoint) => {
     var clients :Tcp.Connection[] = [];
