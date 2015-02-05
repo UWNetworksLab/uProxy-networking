@@ -188,3 +188,29 @@ freedom().on('multipleclients', () => {
     });
   });
 });
+
+// Starts an echo server on a free port and verifies that its connectionsCount
+// is correct once five clients have connected to it.
+freedom().on('connectionscount', () => {
+  var server = new Tcp.Server({
+    address: '127.0.0.1',
+    port: 0
+  });
+
+  server.listen().then((endpoint:Net.Endpoint) => {
+    var clients :Tcp.Connection[] = [];
+    for (var i = 0; i < 5; i++) {
+      clients.push(new Tcp.Connection({endpoint: endpoint}));
+    }
+
+    Promise.all(clients.map((client:Tcp.Connection) => {
+      return client.onceConnected;
+    })).then((answers:any) => {
+      if (server.connectionsCount() != clients.length) {
+        throw new Error();
+      }
+    }).then(() => {
+      freedom().emit('connectionscount');
+    });
+  });
+});

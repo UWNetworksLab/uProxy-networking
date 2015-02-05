@@ -36,7 +36,9 @@ describe('core.tcpsocket wrapper', function() {
     loadFreedom('multipleclients').then(done);
   });
 
-  // TODO: test connectionsCount
+  it('connectionsCount', (done) => {
+    loadFreedom('connectionscount').then(done);
+  });
 
   // Loads the testing Freedom module, emits a signal and returns
   // a promise which fulfills once the signal is echoed.
