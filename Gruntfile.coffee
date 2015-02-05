@@ -327,47 +327,50 @@ module.exports = (grunt) ->
               options:
                 dir: 'build/coverage/rtcToNet'
 
-    integration:
+    jasmine_chromeapp:
       base:
+        src: [
+          'build/freedom/freedom-for-chrome.js'
+          'build/arraybuffers/arraybuffers.js'
+          'build/logging/logging.js'
+          'build/handler/queue.js'
+          'build/ipaddrjs/ipaddr.min.js'
+          'build/tcp/tcp.js'
+          'build/rtc-to-net/rtc-to-net.js'
+          'build/socks-common/socks-headers.js'
+          'build/socks-to-rtc/socks-to-rtc.js'
+          'build/webrtc/*.js'
+          'build/integration/**/*.js'
+          'build/integration/**/integration.json'
+        ]
         options:
-          template: 'node_modules/freedom-for-chrome/spec/helper/'
-          spec: ['build/integration/*/*.integration.spec.js']
-          helper: [
-            # "include: true" is needed for dependencies that are used by
-            # the jasmine tests in the core environment.
-            {path: 'build/freedom/freedom-for-chrome.js', include: true}
-            {path: 'build/arraybuffers/arraybuffers.js', include: true}
-            {path: 'build/logging/logging.js', include: false}
-            {path: 'build/handler/queue.js', include: false}
-            {path: 'build/ipaddrjs/ipaddr.min.js', include: false}
-            {path: 'build/rtc-to-net/rtc-to-net.js', include: false}
-            {path: 'build/socks-common/socks-headers.js', include: false}
-            {path: 'build/socks-to-rtc/socks-to-rtc.js', include: false}
-            {path: 'build/webrtc/*.js', include: false}
-            {path: 'build/tcp/tcp.js', include: false}
-            {path: 'build/integration/*/integration.*', include: false}
+          paths: [
+            'build/freedom/freedom-for-chrome.js'
+            'build/arraybuffers/arraybuffers.js'
+            'build/integration/**/*.integration.spec.js'
           ]
-          keepBrowser: false
+          keepRunner: false
       slow:
+        src: [
+          'build/freedom/freedom-for-chrome.js'
+          'build/arraybuffers/arraybuffers.js'
+          'build/logging/logging.js'
+          'build/handler/queue.js'
+          'build/ipaddrjs/ipaddr.min.js'
+          'build/tcp/tcp.js'
+          'build/rtc-to-net/rtc-to-net.js'
+          'build/socks-common/socks-headers.js'
+          'build/socks-to-rtc/socks-to-rtc.js'
+          'build/webrtc/*.js'
+          'build/integration/**/*.js'
+          'build/integration/**/integration.json'
+        ]
         options:
-          template: 'node_modules/freedom-for-chrome/spec/helper/'
-          spec: ['build/integration/*/*.slow_integration.spec.js']
-          helper: [
-            # "include: true" is needed for dependencies that are used by
-            # the jasmine tests in the core environment.
-            {path: 'build/freedom/freedom-for-chrome.js', include: true}
-            {path: 'build/arraybuffers/arraybuffers.js', include: false}
-            {path: 'build/logging/logging.js', include: false}
-            {path: 'build/handler/queue.js', include: false}
-            {path: 'build/ipaddrjs/ipaddr.min.js', include: false}
-            {path: 'build/rtc-to-net/rtc-to-net.js', include: false}
-            {path: 'build/socks-common/socks-headers.js', include: false}
-            {path: 'build/socks-to-rtc/socks-to-rtc.js', include: false}
-            {path: 'build/webrtc/*.js', include: false}
-            {path: 'build/tcp/tcp.js', include: false}
-            {path: 'build/integration/*/integration.*', include: false}
+          paths: [
+            'build/freedom/freedom-for-chrome.js'
+            'build/integration/**/*.slow_integration.spec.js'
           ]
-          keepBrowser: false
+          keepRunner: false
 
     clean: ['build/', 'dist/', '.tscache/']
 
@@ -399,8 +402,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-ts'
   grunt.loadNpmTasks 'grunt-browserify'
-
-  grunt.loadTasks 'node_modules/freedom-for-chrome/tasks'
+  grunt.loadNpmTasks 'grunt-jasmine-chromeapp'
 
   #-------------------------------------------------------------------------
   # Define the tasks
@@ -653,12 +655,12 @@ module.exports = (grunt) ->
     'build'
     'ts:integrationTests'
     'ts:integrationTestsSpecDecl'
-    'integration:base'
+    'jasmine_chromeapp:base'
   ]
 
   taskManager.add 'slow_integration_test', [
     'integration_test'
-    'integration:slow'
+    'jasmine_chromeapp:slow'
   ]
 
   taskManager.add 'test', [
