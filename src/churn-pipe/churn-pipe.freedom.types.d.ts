@@ -6,7 +6,7 @@ import Net = require('../networking-typings/net.types');
 
 export interface Message {
   data: ArrayBuffer
-  source: Net.Endpoint
+  source: net.Endpoint
 }
 
 // TODO: uncomment once https://github.com/Microsoft/TypeScript/issues/52 is fixed

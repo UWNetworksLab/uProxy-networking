@@ -1,7 +1,7 @@
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
 
-import Net = require('../networking-typings/net.types');
+import net = require('../networking-typings/net.types');
 
 import UdpLib = freedom_UdpSocket;
 
@@ -10,7 +10,7 @@ import UdpLib = freedom_UdpSocket;
  * TODO: this is so similar to udprelay.ts that they can almost certainly
  *       be merged into one
  */
-export class UdpClient {
+class UdpClient {
 
   /**
    * Socket on which we are sending and receiving messages.
@@ -33,10 +33,10 @@ export class UdpClient {
    * port, and start relaying events. Specify port zero to have the system
    * choose a free port.
    */
-  public bind() : Promise<Net.Endpoint> {
+  public bind() : Promise<net.Endpoint> {
     // TODO: not sure what else this should be?
     return this.socket.bind('127.0.0.1', 0)
-        .then((endpoint:Net.Endpoint) => {
+        .then((endpoint:net.Endpoint) => {
           // Record the address and port on which our socket is listening.
           this.address_ = endpoint.address;
           this.port_ = endpoint.port;
@@ -83,6 +83,8 @@ export class UdpClient {
     return this.port_;
   }
 }
+
+export = UdpClient;
 
 var modulePrefix_ = '[Net.UdpClient] ';
 function dbg(msg:string) { console.log(modulePrefix_ + msg); }

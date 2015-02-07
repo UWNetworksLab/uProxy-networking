@@ -12,7 +12,7 @@ class TcpEchoServer {
   // connection.
   public static CTRL_D_HEX_STR_CODE = '4'
 
-  constructor(public endpoint:Net.Endpoint) {
+  constructor(public endpoint:net.Endpoint) {
     log.info('Starting TcpEchoServer(' + JSON.stringify(endpoint) + ')...');
     this.server = new Tcp.Server(endpoint);
 

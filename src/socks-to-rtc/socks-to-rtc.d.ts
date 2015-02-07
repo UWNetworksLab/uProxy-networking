@@ -9,9 +9,9 @@ declare module SocksToRtc {
     // TODO: make |dispatchEvent| non-optional once modularization is complete.
     constructor(dispatchEvent?:(t:string, f:Function) => void);
     // NOTE: The caller MUST set the on-event handlers before calling start().
-    public start :(endpoint:Net.Endpoint,
+    public start :(endpoint:net.Endpoint,
                    pcConfig:WebRtc.PeerConnectionConfig,
-                   obfuscate?:boolean) => Promise<Net.Endpoint>;
+                   obfuscate?:boolean) => Promise<net.Endpoint>;
     public stop :() => Promise<void>;
 
     on(t:'stopped', f:() => void) : void;
@@ -27,7 +27,7 @@ declare module SocksToRtc {
     public startInternal :(
         tcpServer:Tcp.Server,
         peerconnection:WebRtc.PeerConnection)
-        => Promise<Net.Endpoint>;
+        => Promise<net.Endpoint>;
   }
 
   // This class is exposed here only for testing purposes, and is not
@@ -39,10 +39,10 @@ declare module SocksToRtc {
         dataChannel:WebRtc.DataChannel,
         bytesSentToPeer:Handler.Queue<number,void>,
         bytesReceivedFromPeer:Handler.Queue<number,void>)
-        => Promise<Net.Endpoint>;
+        => Promise<net.Endpoint>;
     public stop :() => Promise<void>;
     public tcpConnection :Tcp.Connection;
-    public onceReady :Promise<Net.Endpoint>;
+    public onceReady :Promise<net.Endpoint>;
     public onceStopped :Promise<void>;
     public longId :() => string;
     public channelLabel :() => string;

@@ -5,11 +5,11 @@
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/tcp-socket.d.ts' />
 
-import Logging = require('../../build/dev/logging/logging');
-import Handler = require('../../build/dev/handler/queue');
-import Net = require('../networking-typings/net.types');
+import logging = require('../../build/dev/logging/logging');
+import handler = require('../../build/dev/handler/queue');
+import net = require('../networking-typings/net.types');
 
-var log :Logging.Log = new Logging.Log('tcp');
+var log :logging.Log = new logging.Log('tcp');
 
 // Code for how a Tcp Connection is closed.
 export enum SocketCloseKind {
@@ -20,8 +20,8 @@ export enum SocketCloseKind {
 }
 
 export interface ConnectionInfo {
-  bound: Net.Endpoint;
-  remote: Net.Endpoint;
+  bound: net.Endpoint;
+  remote: net.Endpoint;
 }
 
 // A limit on the max number of TCP connections before we start rejecting
@@ -64,14 +64,14 @@ export class Server {
   // TODO: index by connectionId not socketID. More stable & string based.
   private conns:{[socketId:number] : Connection} = {};
 
-  public connectionsQueue :Handler.Queue<Connection, void>;
+  public connectionsQueue :handler.Queue<Connection, void>;
 
   // The address and port that the tcp server is told to listening on. The
   // initial assignment may set the port to 0, which indicates that the port
   // is being dynamically allocated. When the port is actually assigned
   // (right before the listen promise fulfills), the endpoint is set to the
   // port that is actually being listened on.
-  private endpoint_ :Net.Endpoint;
+  private endpoint_ :net.Endpoint;
 
   // The |onceShutdown| promise is fulfilled when the server is shutdown and
   // no longer listening.
@@ -82,11 +82,11 @@ export class Server {
   private isShutdown_ :boolean = false;
   public isShutdown = () : boolean => { return this.isShutdown_; }
 
-  private onceListening_ :Promise<Net.Endpoint>;
-  public onceListening = () : Promise<Net.Endpoint> => {
+  private onceListening_ :Promise<net.Endpoint>;
+  public onceListening = () : Promise<net.Endpoint> => {
     return this.onceListening_;
   }
-  private fulfillListening_ :(endpoint:Net.Endpoint) => void;
+  private fulfillListening_ :(endpoint:net.Endpoint) => void;
   private isListening_ :boolean = false;
   public isListening = () : boolean => { return this.isListening_; };
 
@@ -97,7 +97,7 @@ export class Server {
   // `onConnection` = the handler for new TCP Connections.
   // `maxConnections` = the number of connections after which all new ones
   // will be closed as soon as they connect.
-  constructor(endpoint :Net.Endpoint,
+  constructor(endpoint :net.Endpoint,
               public maxConnections ?:number) {
     this.endpoint_ = endpoint;
     this.maxConnections = maxConnections || DEFAULT_MAX_CONNECTIONS;
@@ -105,14 +105,14 @@ export class Server {
     // When `serverSocket_` gets new connections, handle them. This only
     // happens after the server's listen function is called.
     this.serverSocket_.on('onConnection', this.onConnectionHandler_);
-    this.connectionsQueue = new Handler.Queue<Connection, void>();
+    this.connectionsQueue = new handler.Queue<Connection, void>();
     this.onceShutdown_ = new Promise<void>((F,R) => {
       this.serverSocket_.on('onDisconnect', () => {
         F();
         this.isShutdown_ = true;
       });
     });
-    this.onceListening_ = new Promise<Net.Endpoint>((F,R) => {
+    this.onceListening_ = new Promise<net.Endpoint>((F,R) => {
       this.fulfillListening_ = F;
     });
   }
@@ -133,7 +133,7 @@ export class Server {
   // Listens on the serverSocket_ to `address:port` for new TCP connections.
   // Returns a Promise that this server is now listening with the endpoint it
   // is listening on. If 0 was passed as the port, a dynamic port is chosen.
-  public listen = () : Promise<Net.Endpoint> => {
+  public listen = () : Promise<net.Endpoint> => {
     if (this.isShutdown_) {
       return Promise.reject(new Error('Cannot listen on a shutdown server.'));
     }
@@ -245,8 +245,8 @@ export class Connection {
   public onceClosed :Promise<SocketCloseKind>;
   // Queue of data to be handled, and the capacity to set a handler and
   // handle the data.
-  public dataFromSocketQueue :Handler.Queue<ArrayBuffer,void>;
-  public dataToSocketQueue :Handler.Queue<ArrayBuffer, freedom_TcpSocket.WriteInfo>;
+  public dataFromSocketQueue :handler.Queue<ArrayBuffer,void>;
+  public dataToSocketQueue :handler.Queue<ArrayBuffer, freedom_TcpSocket.WriteInfo>;
 
   // Public unique connectionId.
   public connectionId :string;
@@ -264,9 +264,9 @@ export class Connection {
   constructor(connectionKind:Connection.Kind) {
     this.connectionId = 'N' + Connection.globalConnectionId_++;
 
-    this.dataFromSocketQueue = new Handler.Queue<ArrayBuffer,void>();
+    this.dataFromSocketQueue = new handler.Queue<ArrayBuffer,void>();
     this.dataToSocketQueue =
-        new Handler.Queue<ArrayBuffer,freedom_TcpSocket.WriteInfo>();
+        new handler.Queue<ArrayBuffer,freedom_TcpSocket.WriteInfo>();
 
     if(Object.keys(connectionKind).length !== 1) {
       //log.error(this.connectionId + ': Bad New Tcp Connection Kind:' +
@@ -417,7 +417,7 @@ export module Connection {
     // To wrap up a connection for an existing socket
     existingSocketId ?:number;
     // TO create a new TCP connection to this target address and port.
-    endpoint         ?:Net.Endpoint;
+    endpoint         ?:net.Endpoint;
   }
 
   // Describes the state of a connection.

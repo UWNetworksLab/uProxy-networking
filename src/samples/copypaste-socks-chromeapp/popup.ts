@@ -122,7 +122,7 @@ copypastePromise.then(function(copypaste:any) {
     model.totalBytesSent += numNewBytesSent;
   });
 
-  copypaste.on('proxyingStarted', (listeningEndpoint:Net.Endpoint) => {
+  copypaste.on('proxyingStarted', (listeningEndpoint:net.Endpoint) => {
     if (listeningEndpoint !== null) {
       model.endpoint = listeningEndpoint.address + ':' + listeningEndpoint.port;
     }

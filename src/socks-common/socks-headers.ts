@@ -5,7 +5,7 @@
 /// <reference path='../../build/third_party/ipaddrjs/ipaddrjs.d.ts' />
 
 import ipaddr = require('ipaddr');
-import Net = require('../networking-typings/net.types');
+import net = require('../networking-typings/net.types');
 
 // version 5 of socks
 export var VERSION5 = 0x05;
@@ -52,7 +52,7 @@ export enum Reply {
 // @see interpretDestination
 export interface Destination {
   addressType    :AddressType;
-  endpoint       :Net.Endpoint;
+  endpoint       :net.Endpoint;
   // The length, in bytes, of the address in an arraybuffer. Used to know far
   // to move in the arraybuffer to get to the next bit of data to interpret.
   addressByteLength     :number;
@@ -62,7 +62,7 @@ export interface Destination {
 // @see interpretSocksRequest
 export interface Request {
   command        :Command;
-  endpoint       :Net.Endpoint;
+  endpoint       :net.Endpoint;
 }
 
 function isValidEndpoint(e:any) : boolean {
@@ -101,7 +101,7 @@ export function isValidRequest(r:any) : boolean {
 
 export interface Response {
   reply: Reply;
-  endpoint?: Net.Endpoint;
+  endpoint?: net.Endpoint;
 }
 
 export function isValidResponse(r:any) : boolean {
@@ -413,7 +413,7 @@ export function composeDestination(destination:Destination) : Uint8Array {
   return address;
 }
 
-function makeDestinationFromEndpoint(endpoint:Net.Endpoint) : Destination {
+function makeDestinationFromEndpoint(endpoint:net.Endpoint) : Destination {
   var type :AddressType;
   var byteLength :number;
   if (ipaddr.IPv4.isValid(endpoint.address)) {
@@ -441,11 +441,11 @@ function makeDestinationFromEndpoint(endpoint:Net.Endpoint) : Destination {
 //
 // Given a destination reached, compose a response.
 export function composeResponseBuffer(response:Response) : ArrayBuffer {
-  var fakeEndpoint :Net.Endpoint = {
+  var fakeEndpoint :net.Endpoint = {
     address: '0.0.0.0',
     port: 0
   };
-  var endpoint :Net.Endpoint = response.endpoint || fakeEndpoint;
+  var endpoint :net.Endpoint = response.endpoint || fakeEndpoint;
   var destination = makeDestinationFromEndpoint(endpoint);
   var destinationArray = composeDestination(destination);
 

@@ -104,9 +104,9 @@ module SocksToRtc {
     // NOTE: Users of this class MUST add on-event listeners before calling this
     // method.
     public start = (
-        endpoint:Net.Endpoint,
+        endpoint:net.Endpoint,
         pcConfig:WebRtc.PeerConnectionConfig,
-        obfuscate?:boolean) : Promise<Net.Endpoint> => {
+        obfuscate?:boolean) : Promise<net.Endpoint> => {
       return this.startInternal(
           new Tcp.Server(endpoint),
           obfuscate ?
@@ -120,7 +120,7 @@ module SocksToRtc {
     public startInternal = (
         tcpServer:Tcp.Server,
         peerconnection:WebRtc.PeerConnectionInterface<WebRtc.SignallingMessage>)
-        : Promise<Net.Endpoint> => {
+        : Promise<net.Endpoint> => {
       if (this.tcpServer_) {
         throw new Error('already configured');
       }
@@ -139,7 +139,7 @@ module SocksToRtc {
 
       // Start and listen for notifications.
       peerconnection.negotiateConnection();
-      var onceReady :Promise<Net.Endpoint> =
+      var onceReady :Promise<net.Endpoint> =
         Promise.all<any>([
           tcpServer.listen(),
           peerconnection.onceConnected
@@ -227,7 +227,7 @@ module SocksToRtc {
             channel,
             this.bytesSentToPeer_,
             this.bytesReceivedFromPeer_)
-        .then((endpoint:Net.Endpoint) => {
+        .then((endpoint:net.Endpoint) => {
           log.debug('session %1 connected via bound endpoint %2', [
               tag, JSON.stringify(endpoint)]);
           this.sessions_[tag] = session;
@@ -283,7 +283,7 @@ module SocksToRtc {
     // Fulfills with the bound endpoint which RtcToNet is using to connect to the
     // remote host. Rejects if RtcToNet could not connect to the remote host
     // or if there is some error negotiating the SOCKS session.
-    public onceReady :Promise<Net.Endpoint>;
+    public onceReady :Promise<net.Endpoint>;
 
     // Call this to initiate shutdown.
     private fulfillStopping_ :() => void;
@@ -308,7 +308,7 @@ module SocksToRtc {
         dataChannel:WebRtc.DataChannel,
         bytesSentToPeer:Handler.Queue<number,void>,
         bytesReceivedFromPeer:Handler.Queue<number,void>)
-        : Promise<Net.Endpoint> => {
+        : Promise<net.Endpoint> => {
       this.tcpConnection_ = tcpConnection;
       this.dataChannel_ = dataChannel;
       this.bytesSentToPeer_ = bytesSentToPeer;
@@ -417,7 +417,7 @@ module SocksToRtc {
     // Assumes that |doAuthHandshake_| has completed and that a peer-conneciton
     // has been established. Promise returns the bound address used to connect.
     private doRequestHandshake_ = ()
-        : Promise<Net.Endpoint> => {
+        : Promise<net.Endpoint> => {
       return this.tcpConnection_.receiveNext()
         .then(Socks.interpretRequestBuffer)
         .then((request:Socks.Request) => {

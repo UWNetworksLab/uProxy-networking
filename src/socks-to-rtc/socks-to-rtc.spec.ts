@@ -7,7 +7,7 @@
 /// <reference path='../webrtc/datachannel.d.ts' />
 /// <reference path='../webrtc/peerconnection.d.ts' />
 
-var mockEndpoint :Net.Endpoint = {
+var mockEndpoint :net.Endpoint = {
   address: '127.0.0.1',
   port: 1234
 };
@@ -67,7 +67,7 @@ describe('SOCKS server', function() {
     (<any>mockTcpServer.onceShutdown).and.returnValue(noopPromise);
 
     server.startInternal(mockTcpServer, mockPeerConnection)
-      .then((result:Net.Endpoint) => {
+      .then((result:net.Endpoint) => {
         expect(result.address).toEqual(mockEndpoint.address);
         expect(result.port).toEqual(mockEndpoint.port);
       })
@@ -170,7 +170,7 @@ describe("SOCKS session", function() {
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
 
     session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived)
-      .then((result:Net.Endpoint) => {
+      .then((result:net.Endpoint) => {
         expect(result.address).toEqual(mockEndpoint.address);
         expect(result.port).toEqual(mockEndpoint.port);
       })

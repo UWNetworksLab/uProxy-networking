@@ -19,7 +19,7 @@ freedom().on('listen', () => {
     });
   });
 
-  server.listen().then((endpoint:Net.Endpoint) => {
+  server.listen().then((endpoint:net.Endpoint) => {
     var client = new Tcp.Connection({endpoint: endpoint});
     client.dataFromSocketQueue.setSyncNextHandler((buffer:ArrayBuffer) => {
       var s = ArrayBuffers.arrayBufferToString(buffer);
@@ -46,7 +46,7 @@ freedom().on('shutdown', () => {
     port: 0
   });
 
-  server.listen().then((endpoint:Net.Endpoint) => {
+  server.listen().then((endpoint:net.Endpoint) => {
     var client1 = new Tcp.Connection({endpoint: endpoint});
     var client2 = new Tcp.Connection({endpoint: endpoint});
     Promise.all([client1.onceConnected, client2.onceConnected])

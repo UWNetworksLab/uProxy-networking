@@ -8,7 +8,7 @@
 class ProxyIntegrationTest {
   private socksToRtc_ :SocksToRtc.SocksToRtc;
   private rtcToNet_ :RtcToNet.RtcToNet;
-  private socksEndpoint_ : Promise<Net.Endpoint>;
+  private socksEndpoint_ : Promise<net.Endpoint>;
   private echoServers_ :Tcp.Server[] = [];
   private connections_ :{ [index:string]: Tcp.Connection; } = {};
   private localhost_ :string = '127.0.0.1';
@@ -32,11 +32,11 @@ class ProxyIntegrationTest {
 
     // Discard endpoint info; we'll get it again later via .onceListening().
     this.echoServers_.push(server);
-    return server.listen().then((endpoint:Net.Endpoint) => { return endpoint.port; });
+    return server.listen().then((endpoint:net.Endpoint) => { return endpoint.port; });
   }
 
-  private startSocksPair_ = (denyLocalhost?:boolean) : Promise<Net.Endpoint> => {
-    var socksToRtcEndpoint :Net.Endpoint = {
+  private startSocksPair_ = (denyLocalhost?:boolean) : Promise<net.Endpoint> => {
+    var socksToRtcEndpoint :net.Endpoint = {
       address: this.localhost_,
       port: 0
     };
@@ -62,7 +62,7 @@ class ProxyIntegrationTest {
   }
 
   // Assumes webEndpoint is IPv4.
-  private connectThroughSocks_ = (socksEndpoint:Net.Endpoint, webEndpoint:Net.Endpoint) : Promise<Tcp.Connection> => {
+  private connectThroughSocks_ = (socksEndpoint:net.Endpoint, webEndpoint:net.Endpoint) : Promise<Tcp.Connection> => {
     var connection = new Tcp.Connection({endpoint: socksEndpoint});
     var authRequest = Socks.composeAuthHandshakeBuffer([Socks.Auth.NOAUTH]);
     connection.send(authRequest);
@@ -97,8 +97,8 @@ class ProxyIntegrationTest {
 
   public connect = (port:number, address?:string) : Promise<string> => {
     try {
-      return this.socksEndpoint_.then((socksEndpoint:Net.Endpoint) : Promise<Tcp.Connection> => {
-        var echoEndpoint :Net.Endpoint = {
+      return this.socksEndpoint_.then((socksEndpoint:net.Endpoint) : Promise<Tcp.Connection> => {
+        var echoEndpoint :net.Endpoint = {
           address: address || this.localhost_,
           port: port
         };

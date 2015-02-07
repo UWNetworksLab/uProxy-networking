@@ -3,7 +3,7 @@
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
 
-var mockBoundEndpoint :Net.Endpoint = {
+var mockBoundEndpoint :net.Endpoint = {
   address: '127.0.0.1',
   port: 1234
 };
@@ -14,7 +14,7 @@ var mockProxyConfig :RtcToNet.ProxyConfig = {
   allowNonUnicast: false
 };
 
-var mockRemoteEndpoint :Net.Endpoint = {
+var mockRemoteEndpoint :net.Endpoint = {
   // This address and port are both reserved for testing.
   address: '192.0.2.111',
   port: 1023

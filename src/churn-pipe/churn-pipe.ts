@@ -9,11 +9,11 @@ import Fte = require('../../build/third_party/uproxy-obfuscators/utransformers.f
 import PassThrough = require('../simple-transformers/passthrough');
 import CaesarCipher = require('../simple-transformers/caesar');
 
-import Logging = require('../../build/dev/logging/logging');
+import logging = require('../../build/dev/logging/logging');
 
-import Net = require('../networking-typings/net.types');
+import net = require('../networking-typings/net.types');
 
-var log :Logging.Log = new Logging.Log('churn pipe');
+var log :logging.Log = new logging.Log('churn pipe');
 
 /**
  * Listens on a port for UDP datagrams -- emitting a Freedom message for each
@@ -34,7 +34,7 @@ export class Pipe {
   private transformer_ :Transformer;
 
   // Endpoint to which all messages are sent.
-  private remoteEndpoint_ :Net.Endpoint;
+  private remoteEndpoint_ :net.Endpoint;
 
   // TODO: define a type for event dispatcher in freedom-typescript-api
   constructor (private dispatchEvent_ ?:(name:string, args:any) => void) {
@@ -118,7 +118,7 @@ export class Pipe {
    * Sends a message over the network to the specified destination.
    * The message is obfuscated before it hits the wire.
    */
-  public sendTo = (buffer:ArrayBuffer, to:Net.Endpoint) => {
+  public sendTo = (buffer:ArrayBuffer, to:net.Endpoint) => {
     var transformedBuffer = this.transformer_.transform(buffer);
     return this.socket_.sendTo(
       transformedBuffer,
@@ -128,7 +128,7 @@ export class Pipe {
       });
   }
 
-  public getLocalEndpoint = () : Promise<Net.Endpoint> => {
+  public getLocalEndpoint = () : Promise<net.Endpoint> => {
     return this.socket_.getInfo().then((socketInfo:freedom_UdpSocket.SocketInfo) => {
       return {
         address: socketInfo.localAddress,

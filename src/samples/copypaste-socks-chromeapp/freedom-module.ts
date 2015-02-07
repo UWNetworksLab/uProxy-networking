@@ -48,7 +48,7 @@ var socksRtc:SocksToRtc.SocksToRtc;
 var rtcNet:RtcToNet.RtcToNet;
 
 freedom().on('start', () => {
-  var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port: 9999 };
+  var localhostEndpoint:net.Endpoint = { address: '127.0.0.1', port: 9999 };
   socksRtc = new SocksToRtc.SocksToRtc();
 
   // Forward signalling channel messages to the UI.
@@ -75,7 +75,7 @@ freedom().on('start', () => {
       localhostEndpoint,
       socksRtcPcConfig,
       false) // obfuscate
-    .then((endpoint:Net.Endpoint) => {
+    .then((endpoint:net.Endpoint) => {
       log.info('socksRtc ready. listening to SOCKS5 on: ' + JSON.stringify(endpoint));
       log.info('` curl -x socks5h://localhost:9999 www.google.com `')
       freedom().emit('proxyingStarted', endpoint);

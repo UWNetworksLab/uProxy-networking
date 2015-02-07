@@ -282,7 +282,7 @@ module RtcToNet {
     // Rejects if the received message is not for an endpoint
     // or if the received endpoint cannot be parsed.
     // TODO: needs tests (mocked by several tests)
-    private receiveEndpointFromPeer_ = () : Promise<Net.Endpoint> => {
+    private receiveEndpointFromPeer_ = () : Promise<net.Endpoint> => {
       return new Promise((F,R) => {
         this.dataChannel_.dataFromPeerQueue.setSyncNextHandler((data:WebRtc.Data) => {
           if (!data.str) {
@@ -310,7 +310,7 @@ module RtcToNet {
       });
     }
 
-    private getTcpConnection_ = (endpoint:Net.Endpoint) : Tcp.Connection => {
+    private getTcpConnection_ = (endpoint:net.Endpoint) : Tcp.Connection => {
       if (ipaddr.isValid(endpoint.address) &&
           !this.isAllowedAddress_(endpoint.address)) {
         this.replyToPeer_(Socks.Reply.NOT_ALLOWED);

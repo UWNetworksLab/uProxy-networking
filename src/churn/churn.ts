@@ -7,25 +7,22 @@ import Transformer = require('../../build/third_party/uproxy-obfuscators/utransf
 import Rabbit = require('../../build/third_party/uproxy-obfuscators/utransformers.rabbit');
 import Fte = require('../../build/third_party/uproxy-obfuscators/utransformers.fte');
 
-import Logging = require('../../build/dev/logging/logging');
-import WebRtc = require('../../build/dev/webrtc/webrtc');
-import WebRtcTypes = require('../../build/dev/webrtc/webrtc.types');
-import WebRtcEnums = require('../../build/dev/webrtc/webrtc.types');
-import Handler = require('../../build/dev/handler/queue');
-import Random = require('../../build/dev/crypto/random');
+import peerconnection = require('../../build/dev/webrtc/peerconnection');
+import handler = require('../../build/dev/handler/queue');
+import random = require('../../build/dev/crypto/random');
 
-import Net = require('../networking-typings/net.types');
+import net = require('../networking-typings/net.types');
 
+import logging = require('../../build/dev/logging/logging');
+var log :logging.Log = new logging.Log('churn');
 
 // TODO: https://github.com/uProxy/uproxy-obfuscators/issues/35
 var regex2dfa :any;
 
-var log :Logging.Log = new Logging.Log('churn');
-
 // Adds the notion of a stage (first or second) to signalling messages.
 export interface ChurnSignallingMessage {
-  webrtcMessage ?:WebRtc.SignallingMessage;
-  publicEndpoint ?:WebRtc.Endpoint;
+  webrtcMessage ?:peerconnection.SignallingMessage;
+  publicEndpoint ?:net.Endpoint;
 }
 
 // Strips candidate lines from an SDP.
@@ -71,7 +68,7 @@ var splitHostCandidateLine_ = (candidate:string) : string[] => {
 // For more information on candidate lines, see section 15.1 of the RFC:
 //   http://tools.ietf.org/html/rfc5245#section-15.1
 export var extractEndpointFromCandidateLine = (
-    candidate:string) : Net.Endpoint => {
+    candidate:string) : net.Endpoint => {
   var lines = splitHostCandidateLine_(candidate);
   var address = lines[4];
   var port = parseInt(lines[5]);
@@ -91,7 +88,7 @@ export var extractEndpointFromCandidateLine = (
 //
 // See #extractEndpointFromCandidateLine.
 export var setCandidateLineEndpoint = (
-    candidate:string, endpoint:Net.Endpoint) : string => {
+    candidate:string, endpoint:net.Endpoint) : string => {
   var lines = splitHostCandidateLine_(candidate);
   lines[4] = endpoint.address;
   lines[5] = endpoint.port.toString();
@@ -101,8 +98,8 @@ export var setCandidateLineEndpoint = (
 // Represents a UDP NAT mapping "five-tuple": protocol (UDP), internal
 // address and port, and external address and port.
 export interface NatPair {
-  internal: Net.Endpoint;
-  external: Net.Endpoint;
+  internal: net.Endpoint;
+  external: net.Endpoint;
 }
 
 // Given the list of candidates, selects a NAT mapping to use.
@@ -183,13 +180,13 @@ export var selectPublicAddress =
  * TODO: Give the uproxypeerconnections name, to help debugging.
  * TODO: Allow obfuscation parameters be configured.
  */
-export class Connection implements WebRtc.PeerConnectionInterface<ChurnSignallingMessage> {
+export class Connection implements peerconnection.PeerConnection<ChurnSignallingMessage> {
 
   // The state of this peer connection.
-  public pcState :WebRtc.State;
+  public pcState :peerconnection.State;
 
-  public dataChannels :{[channelLabel:string] : WebRtc.DataChannel};
-  public peerOpenedChannelQueue :Handler.Queue<WebRtc.DataChannel, void>;
+  public dataChannels :{[channelLabel:string] : peerconnection.DataChannel};
+  public peerOpenedChannelQueue :Handler.Queue<peerconnection.DataChannel, void>;
   public signalForPeerQueue :Handler.Queue<Churn.ChurnSignallingMessage, void>;
   public peerName :string;
 
@@ -203,7 +200,7 @@ export class Connection implements WebRtc.PeerConnectionInterface<ChurnSignallin
 
   // A short-lived connection used to determine network addresses on which
   // we might be able to communicate with the remote host.
-  private probeConnection_ :WebRtc.PeerConnection;
+  private probeConnection_ :peerconnection.PeerConnection;
 
   // The list of all candidates returned by the probe connection.
   private probeCandidates_ :freedom_RTCPeerConnection.RTCIceCandidate[] = [];
@@ -215,17 +212,17 @@ export class Connection implements WebRtc.PeerConnectionInterface<ChurnSignallin
   });
 
   // The obfuscated connection.
-  private obfuscatedConnection_ :WebRtc.PeerConnection;
+  private obfuscatedConnection_ :peerconnection.PeerConnection;
 
   // Fulfills once we know on which port the local obfuscated RTCPeerConnection
   // is listening.
-  private haveWebRtcEndpoint_ :(endpoint:Net.Endpoint) => void;
+  private haveWebRtcEndpoint_ :(endpoint:net.Endpoint) => void;
   private onceHaveWebRtcEndpoint_ = new Promise((F, R) => {
     this.haveWebRtcEndpoint_ = F;
   });
 
   // Fulfills once we know on which port the remote CHURN pipe is listening.
-  private haveRemoteEndpoint_ :(endpoint:Net.Endpoint) => void;
+  private haveRemoteEndpoint_ :(endpoint:net.Endpoint) => void;
   private onceHaveRemoteEndpoint_ = new Promise((F, R) => {
     this.haveRemoteEndpoint_ = F;
   });
@@ -233,17 +230,17 @@ export class Connection implements WebRtc.PeerConnectionInterface<ChurnSignallin
   // Fulfills once we've successfully allocated the forwarding socket.
   // At that point, we can inject its address into candidate messages destined
   // for the local RTCPeerConnection.
-  private haveForwardingSocketEndpoint_ :(endpoint:Net.Endpoint) => void;
+  private haveForwardingSocketEndpoint_ :(endpoint:net.Endpoint) => void;
   private onceHaveForwardingSocketEndpoint_ = new Promise((F, R) => {
     this.haveForwardingSocketEndpoint_ = F;
   });
 
-  constructor(config:WebRtc.PeerConnectionConfig) {
+  constructor(config:peerconnection.PeerConnectionConfig) {
     // TODO: Remove when objects-for-constructors is fixed in Freedom:
     //         https://github.com/freedomjs/freedom/issues/87
     if (Array.isArray(config)) {
       // Extract the first element of this single element array.
-      config = (<WebRtc.PeerConnectionConfig[]><any> config)[0];
+      config = (<peerconnection.PeerConnectionConfig[]><any> config)[0];
     }
 
     this.peerName = config.peerName ||
@@ -273,32 +270,32 @@ export class Connection implements WebRtc.PeerConnectionInterface<ChurnSignallin
     });
 
     // Handle |pcState| and related promises.
-    this.pcState = WebRtc.State.WAITING;
+    this.pcState = peerconnection.State.WAITING;
     this.onceConnecting = this.obfuscatedConnection_.onceConnecting.then(
         () => {
-      this.pcState = WebRtc.State.CONNECTING;
+      this.pcState = peerconnection.State.CONNECTING;
     });
     this.onceConnected = this.obfuscatedConnection_.onceConnected.then(() => {
-      this.pcState = WebRtc.State.CONNECTED;
+      this.pcState = peerconnection.State.CONNECTED;
     });
     this.onceDisconnected = this.obfuscatedConnection_.onceDisconnected.then(
-        () => { this.pcState = WebRtc.State.DISCONNECTED; });
+        () => { this.pcState = peerconnection.State.DISCONNECTED; });
   }
 
   private configureProbeConnection_ = (
-      config:WebRtc.PeerConnectionConfig) => {
-    var probeConfig :WebRtc.PeerConnectionConfig = {
+      config:peerconnection.PeerConnectionConfig) => {
+    var probeConfig :peerconnection.PeerConnectionConfig = {
       webrtcPcConfig: config.webrtcPcConfig,
       peerName: this.peerName + '-probe',
       initiateConnection: true
     };
-    this.probeConnection_ = new WebRtc.PeerConnection(probeConfig);
+    this.probeConnection_ = new peerconnection.PeerConnection(probeConfig);
     this.probeConnection_.signalForPeerQueue.setSyncHandler(
-        (signal:WebRtc.SignallingMessage) => {
+        (signal:peerconnection.SignallingMessage) => {
       log.debug("probe connection emitted: " + JSON.stringify(signal));
-      if (signal.type === WebRtc.SignalType.CANDIDATE) {
+      if (signal.type === peerconnection.SignalType.CANDIDATE) {
         this.probeCandidates_.push(signal.candidate);
-      } else if (signal.type === WebRtc.SignalType.NO_MORE_CANDIDATES) {
+      } else if (signal.type === peerconnection.SignalType.NO_MORE_CANDIDATES) {
         this.probeConnection_.close();
         this.probingComplete_(selectPublicAddress(this.probeCandidates_));
       }
@@ -311,8 +308,8 @@ export class Connection implements WebRtc.PeerConnectionInterface<ChurnSignallin
   //    automatically allocated, port
   //  - remote, obfuscated, port
   private configurePipes_ = (
-      webRtcEndpoint:Net.Endpoint,
-      remoteEndpoint:Net.Endpoint,
+      webRtcEndpoint:net.Endpoint,
+      remoteEndpoint:net.Endpoint,
       natEndpoints:NatPair) : void => {
     log.debug('configuring pipes...');
     // TODO: close the pipe?
@@ -329,7 +326,7 @@ export class Connection implements WebRtc.PeerConnectionInterface<ChurnSignallin
       log.error('error setting up local pipe: ' + e.message);
     })
     .then(localPipe.getLocalEndpoint)
-    .then((forwardingSocketEndpoint:Net.Endpoint) => {
+    .then((forwardingSocketEndpoint:net.Endpoint) => {
       this.haveForwardingSocketEndpoint_(forwardingSocketEndpoint);
       log.info('configured local pipe between forwarding socket at ' +
           forwardingSocketEndpoint.address + ':' +
@@ -373,28 +370,28 @@ export class Connection implements WebRtc.PeerConnectionInterface<ChurnSignallin
   }
 
   private configureObfuscatedConnection_ =
-      (config:WebRtc.PeerConnectionConfig) => {
+      (config:peerconnection.PeerConnectionConfig) => {
     // We use an empty configuration to ensure that no STUN servers are pinged.
-    var obfConfig :WebRtc.PeerConnectionConfig = {
+    var obfConfig :peerconnection.PeerConnectionConfig = {
       webrtcPcConfig: {
         iceServers: []
       },
       peerName: this.peerName + '-obfuscated',
       initiateConnection: config.initiateConnection
     };
-    this.obfuscatedConnection_ = new WebRtc.PeerConnection(obfConfig);
+    this.obfuscatedConnection_ = new peerconnection.PeerConnection(obfConfig);
     this.obfuscatedConnection_.signalForPeerQueue.setSyncHandler(
-        (signal:WebRtc.SignallingMessage) => {
+        (signal:peerconnection.SignallingMessage) => {
       // Super-paranoid check: remove candidates from SDP messages.
       // This can happen if a connection is re-negotiated.
       // TODO: We can safely remove this once we can reliably interrogate
       //       peerconnection endpoints.
-      if (signal.type === WebRtc.SignalType.OFFER ||
-          signal.type === WebRtc.SignalType.ANSWER) {
+      if (signal.type === peerconnection.SignalType.OFFER ||
+          signal.type === peerconnection.SignalType.ANSWER) {
         signal.description.sdp =
             filterCandidatesFromSdp(signal.description.sdp);
       }
-      if (signal.type === WebRtc.SignalType.CANDIDATE) {
+      if (signal.type === peerconnection.SignalType.CANDIDATE) {
         if (!signal.candidate || !signal.candidate.candidate) {
           log.error('null candidate!');
           return;
@@ -422,7 +419,7 @@ export class Connection implements WebRtc.PeerConnectionInterface<ChurnSignallin
     // If the caller or |obfuscatedConnection_| applies the same approach,
     // the code will break in hard-to-debug fashion.  This could be
     // addressed by using a javascript "getter", or by changing the
-    // WebRtc.PeerConnection API.
+    // peerconnection.PeerConnection API.
     this.dataChannels = this.obfuscatedConnection_.dataChannels;
     this.peerOpenedChannelQueue =
         this.obfuscatedConnection_.peerOpenedChannelQueue;
@@ -444,16 +441,16 @@ export class Connection implements WebRtc.PeerConnectionInterface<ChurnSignallin
     }
     if (message.webrtcMessage) {
       var signal = message.webrtcMessage;
-      if (signal.type === WebRtc.SignalType.CANDIDATE) {
+      if (signal.type === peerconnection.SignalType.CANDIDATE) {
         this.onceHaveForwardingSocketEndpoint_.then(
-            (forwardingSocketEndpoint:Net.Endpoint) => {
+            (forwardingSocketEndpoint:net.Endpoint) => {
           signal.candidate.candidate =
               setCandidateLineEndpoint(
                   signal.candidate.candidate, forwardingSocketEndpoint);
           this.obfuscatedConnection_.handleSignalMessage(signal);
         });
-      } else if (signal.type == WebRtc.SignalType.OFFER ||
-                 signal.type == WebRtc.SignalType.ANSWER) {
+      } else if (signal.type == peerconnection.SignalType.OFFER ||
+                 signal.type == peerconnection.SignalType.ANSWER) {
         // Remove candidates from the SDP.  This is redundant, but ensures
         // that a bug in the remote client won't cause us to send
         // unobfuscated traffic.
@@ -466,7 +463,7 @@ export class Connection implements WebRtc.PeerConnectionInterface<ChurnSignallin
 
   public openDataChannel = (channelLabel:string,
       options?:freedom_RTCPeerConnection.RTCDataChannelInit)
-      : Promise<WebRtc.DataChannel> => {
+      : Promise<peerconnection.DataChannel> => {
     return this.obfuscatedConnection_.openDataChannel(channelLabel);
   }
 

@@ -9,7 +9,7 @@ var log :Logging.Log = new Logging.Log('echo-server');
 var tcpServer :TcpEchoServer;
 
 // TODO: smarter encapsulation logic for echo server.
-freedom().on('start', (endpoint:Net.Endpoint) => {
+freedom().on('start', (endpoint:net.Endpoint) => {
   if(tcpServer) { tcpServer.server.closeAll(); }
   tcpServer = new TcpEchoServer(endpoint);
 });

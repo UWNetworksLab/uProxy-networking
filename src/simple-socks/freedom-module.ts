@@ -18,7 +18,7 @@ freedom['loggingprovider']().setConsoleFilter([
 var log :Logging.Log = new Logging.Log('simple-socks');
 
 //-----------------------------------------------------------------------------
-var localhostEndpoint:Net.Endpoint = { address: '127.0.0.1', port:9999 };
+var localhostEndpoint:net.Endpoint = { address: '127.0.0.1', port:9999 };
 
 //-----------------------------------------------------------------------------
 var rtcNetPcConfig :WebRtc.PeerConnectionConfig = {
@@ -49,7 +49,7 @@ socksRtc.start(
     localhostEndpoint,
     socksRtcPcConfig,
     false) // obfuscate
-  .then((endpoint:Net.Endpoint) => {
+  .then((endpoint:net.Endpoint) => {
     log.info('SocksToRtc listening on: ' + JSON.stringify(endpoint));
     log.info('curl -x socks5h://' + endpoint.address + ':' + endpoint.port +
         ' www.example.com')
