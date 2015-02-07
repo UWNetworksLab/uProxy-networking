@@ -164,10 +164,10 @@ export var selectPublicAddress =
   throw new Error('no srflx or host candidate found');
 };
 
-// Churn.Connection is an implemention of the PeerConnectionInterface that
+// Connection is an implemention of the PeerConnection interface that
 // transparently obfuscates the actual traffic.
 /**
- * A uproxypeerconnection-like Freedom module which establishes obfuscated
+ * A peerconnection-like Freedom module which establishes obfuscated
  * connections.
  *
  * DTLS packets are intercepted by pointing WebRTC at a local "forwarding"
@@ -186,9 +186,8 @@ export class Connection implements peerconnection.PeerConnection<ChurnSignalling
   public pcState :peerconnection.State;
 
   public dataChannels :{[channelLabel:string] : peerconnection.DataChannel};
-  public peerOpenedChannelQueue :Handler.Queue<peerconnection.DataChannel, void>;
-  public signalForPeerQueue :Handler.Queue<Churn.ChurnSignallingMessage, void>;
-  public peerName :string;
+  public peerOpenedChannelQueue :handler.Queue<peerconnection.DataChannel, void>;
+  public signalForPeerQueue :handler.Queue<ChurnSignallingMessage, void>;
 
   // The |onceConnecting| promise is fulfilled when |pcState === CONNECTING|.
   // i.e. when either |handleSignalMessage| is called with an offer message,
@@ -198,9 +197,12 @@ export class Connection implements peerconnection.PeerConnection<ChurnSignalling
   public onceConnected :Promise<void>;
   public onceDisconnected :Promise<void>;
 
+  // Access to this is only for debugging.
+  public peerName_ :string;
+
   // A short-lived connection used to determine network addresses on which
   // we might be able to communicate with the remote host.
-  private probeConnection_ :peerconnection.PeerConnection;
+  private probeConnection_ :peerconnection.PeerConnection<ChurnSignallingMessage>;
 
   // The list of all candidates returned by the probe connection.
   private probeCandidates_ :freedom_RTCPeerConnection.RTCIceCandidate[] = [];
@@ -212,7 +214,7 @@ export class Connection implements peerconnection.PeerConnection<ChurnSignalling
   });
 
   // The obfuscated connection.
-  private obfuscatedConnection_ :peerconnection.PeerConnection;
+  private obfuscatedConnection_ :peerconnection.PeerConnection<ChurnSignallingMessage>;
 
   // Fulfills once we know on which port the local obfuscated RTCPeerConnection
   // is listening.
@@ -235,18 +237,8 @@ export class Connection implements peerconnection.PeerConnection<ChurnSignalling
     this.haveForwardingSocketEndpoint_ = F;
   });
 
-  constructor(config:peerconnection.PeerConnectionConfig) {
-    // TODO: Remove when objects-for-constructors is fixed in Freedom:
-    //         https://github.com/freedomjs/freedom/issues/87
-    if (Array.isArray(config)) {
-      // Extract the first element of this single element array.
-      config = (<peerconnection.PeerConnectionConfig[]><any> config)[0];
-    }
-
-    this.peerName = config.peerName ||
-        'churn-connection-' + crypto.randomUint32();
-
-    this.signalForPeerQueue = new Handler.Queue<Churn.ChurnSignallingMessage,void>();
+  constructor(config:freedom_RTCPeerConnection.RTCConfiguration) {
+    this.signalForPeerQueue = new handler.Queue<ChurnSignallingMessage,void>();
 
     // Configure the probe connection.  Once it completes, inform the remote
     // peer which public endpoint we will be using.
@@ -283,8 +275,8 @@ export class Connection implements peerconnection.PeerConnection<ChurnSignalling
   }
 
   private configureProbeConnection_ = (
-      config:peerconnection.PeerConnectionConfig) => {
-    var probeConfig :peerconnection.PeerConnectionConfig = {
+      config:freedom_RTCPeerConnection.RTCConfiguration) => {
+    var probeConfig :freedom_RTCPeerConnection.RTCConfiguration = {
       webrtcPcConfig: config.webrtcPcConfig,
       peerName: this.peerName + '-probe',
       initiateConnection: true
@@ -370,9 +362,9 @@ export class Connection implements peerconnection.PeerConnection<ChurnSignalling
   }
 
   private configureObfuscatedConnection_ =
-      (config:peerconnection.PeerConnectionConfig) => {
+      (config:freedom_RTCPeerConnection.RTCConfiguration) => {
     // We use an empty configuration to ensure that no STUN servers are pinged.
-    var obfConfig :peerconnection.PeerConnectionConfig = {
+    var obfConfig :freedom_RTCPeerConnection.RTCConfiguration = {
       webrtcPcConfig: {
         iceServers: []
       },
@@ -410,7 +402,7 @@ export class Connection implements peerconnection.PeerConnection<ChurnSignalling
               port: 0
             });
       }
-      var churnSignal :Churn.ChurnSignallingMessage = {
+      var churnSignal :ChurnSignallingMessage = {
         webrtcMessage: signal
       };
       this.signalForPeerQueue.handle(churnSignal);
@@ -435,7 +427,7 @@ export class Connection implements peerconnection.PeerConnection<ChurnSignalling
   // In the case of obfuscated signalling channel messages, we inject our
   // local forwarding socket's endpoint.
   public handleSignalMessage = (
-      message:Churn.ChurnSignallingMessage) : void => {
+      message:ChurnSignallingMessage) : void => {
     if (message.publicEndpoint !== undefined) {
       this.haveRemoteEndpoint_(message.publicEndpoint);
     }
