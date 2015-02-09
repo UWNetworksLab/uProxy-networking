@@ -13,6 +13,8 @@ import logging = require('../../build/dev/logging/logging');
 
 import net = require('../networking-typings/net.types');
 
+import churn_pipe_types = require('./churn-pipe.freedom.types');
+
 var log :logging.Log = new logging.Log('churn pipe');
 
 /**
@@ -36,8 +38,11 @@ export class Pipe {
   // Endpoint to which all messages are sent.
   private remoteEndpoint_ :net.Endpoint;
 
+
+
   // TODO: define a type for event dispatcher in freedom-typescript-api
-  constructor (private dispatchEvent_ ?:(name:string, args:any) => void) {
+  constructor (private dispatchEvent_
+      :(name:string, args:churn_pipe_types.Message) => void) {
     // TODO: clean up udp sockets
     this.socket_ = freedom['core.udpsocket']();
   }

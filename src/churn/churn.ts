@@ -7,11 +7,13 @@ import Transformer = require('../../build/third_party/uproxy-obfuscators/utransf
 import Rabbit = require('../../build/third_party/uproxy-obfuscators/utransformers.rabbit');
 import Fte = require('../../build/third_party/uproxy-obfuscators/utransformers.fte');
 
+import arraybuffers = require('../../build/dev/arraybuffers/arraybuffers');
 import peerconnection = require('../../build/dev/webrtc/peerconnection');
 import handler = require('../../build/dev/handler/queue');
 import random = require('../../build/dev/crypto/random');
 
 import net = require('../networking-typings/net.types');
+import churn_pipe_types = require('../churn-pipe/churn-pipe.freedom.types');
 
 import logging = require('../../build/dev/logging/logging');
 var log :logging.Log = new logging.Log('churn');
@@ -51,7 +53,7 @@ module Churn {
   }
 
   export var extractEndpointFromCandidateLine = (
-      candidate:string) : freedom_ChurnPipe.Endpoint => {
+      candidate:string) : net.Endpoint => {
     var lines = splitHostCandidateLine_(candidate);
     var address = lines[4];
     var port = parseInt(lines[5]);
@@ -66,7 +68,7 @@ module Churn {
   }
 
   export var setCandidateLineEndpoint = (
-      candidate:string, endpoint:freedom_ChurnPipe.Endpoint) : string => {
+      candidate:string, endpoint:net.Endpoint) : string => {
     var lines = splitHostCandidateLine_(candidate);
     lines[4] = endpoint.address;
     lines[5] = endpoint.port.toString();
@@ -74,8 +76,8 @@ module Churn {
   }
 
   export interface NatPair {
-    internal: freedom_ChurnPipe.Endpoint;
-    external: freedom_ChurnPipe.Endpoint;
+    internal: net.Endpoint;
+    external: net.Endpoint;
   }
 
   export var selectPublicAddress =
@@ -149,12 +151,12 @@ module Churn {
    * TODO: Give the uproxypeerconnections name, to help debugging.
    * TODO: Allow obfuscation parameters be configured.
    */
-  export class Connection implements peerconnection.PeerConnectionInterface<ChurnSignallingMessage> {
+  export class Connection implements peerconnection.PeerConnection<ChurnSignallingMessage> {
 
     public pcState :peerconnection.State;
     public dataChannels :{[channelLabel:string] : peerconnection.DataChannel};
-    public peerOpenedChannelQueue :Handler.Queue<peerconnection.DataChannel, void>;
-    public signalForPeerQueue :Handler.Queue<Churn.ChurnSignallingMessage, void>;
+    public peerOpenedChannelQueue :handler.QueueHandler<peerconnection.DataChannel, void>;
+    public signalForPeerQueue :handler.Queue<Churn.ChurnSignallingMessage, void>;
     public peerName :string;
 
     public onceConnecting :Promise<void>;
@@ -163,7 +165,8 @@ module Churn {
 
     // A short-lived connection used to determine network addresses on which
     // we might be able to communicate with the remote host.
-    private probeConnection_ :peerconnection.PeerConnection;
+    private probeConnection_
+        :peerconnection.PeerConnection<peerconnection.SignallingMessage>;
 
     // The list of all candidates returned by the probe connection.
     private probeCandidates_ :freedom_RTCPeerConnection.RTCIceCandidate[] = [];
@@ -175,17 +178,18 @@ module Churn {
     });
 
     // The obfuscated connection.
-    private obfuscatedConnection_ :peerconnection.PeerConnection;
+    private obfuscatedConnection_
+        :peerconnection.PeerConnection<peerconnection.SignallingMessage>;
 
     // Fulfills once we know on which port the local obfuscated RTCPeerConnection
     // is listening.
-    private haveWebRtcEndpoint_ :(endpoint:freedom_ChurnPipe.Endpoint) => void;
+    private haveWebRtcEndpoint_ :(endpoint:net.Endpoint) => void;
     private onceHaveWebRtcEndpoint_ = new Promise((F, R) => {
       this.haveWebRtcEndpoint_ = F;
     });
 
     // Fulfills once we know on which port the remote CHURN pipe is listening.
-    private haveRemoteEndpoint_ :(endpoint:freedom_ChurnPipe.Endpoint) => void;
+    private haveRemoteEndpoint_ :(endpoint:net.Endpoint) => void;
     private onceHaveRemoteEndpoint_ = new Promise((F, R) => {
       this.haveRemoteEndpoint_ = F;
     });
@@ -193,7 +197,7 @@ module Churn {
     // Fulfills once we've successfully allocated the forwarding socket.
     // At that point, we can inject its address into candidate messages destined
     // for the local RTCPeerConnection.
-    private haveForwardingSocketEndpoint_ :(endpoint:freedom_ChurnPipe.Endpoint) => void;
+    private haveForwardingSocketEndpoint_ :(endpoint:net.Endpoint) => void;
     private onceHaveForwardingSocketEndpoint_ = new Promise((F, R) => {
       this.haveForwardingSocketEndpoint_ = F;
     });
@@ -201,9 +205,9 @@ module Churn {
     constructor(probeRtcPc:freedom_RTCPeerConnection.RTCPeerConnection,
                 peerName?:string) {
       this.peerName = peerName ||
-          'churn-connection-' + crypto.randomUint32();
+          'churn-connection-' + random.randomUint32();
 
-      this.signalForPeerQueue = new Handler.Queue<Churn.ChurnSignallingMessage,void>();
+      this.signalForPeerQueue = new handler.Queue<Churn.ChurnSignallingMessage,void>();
 
       // Configure the probe connection.  Once it completes, inform the remote
       // peer which public endpoint we will be using.
@@ -242,7 +246,7 @@ module Churn {
     private configureProbeConnection_ = (
         freedomPc:freedom_RTCPeerConnection.RTCPeerConnection) => {
       var probePeerName = this.peerName + '-probe';
-      this.probeConnection_ = peerconnection.PeerConnection.fromRtcPeerConnectionWithName(
+      this.probeConnection_ = new peerconnection.PeerConnectionClass(
           freedomPc, probePeerName);
       this.probeConnection_.signalForPeerQueue.setSyncHandler(
           (signal:peerconnection.SignallingMessage) => {
@@ -263,8 +267,8 @@ module Churn {
     //    automatically allocated, port
     //  - remote, obfuscated, port
     private configurePipes_ = (
-        webRtcEndpoint:freedom_ChurnPipe.Endpoint,
-        remoteEndpoint:freedom_ChurnPipe.Endpoint,
+        webRtcEndpoint:net.Endpoint,
+        remoteEndpoint:net.Endpoint,
         natEndpoints:NatPair) : void => {
       log.debug('configuring pipes...');
       var localPipe = freedom['churnPipe']();
@@ -280,7 +284,7 @@ module Churn {
         log.error('error setting up local pipe: ' + e.message);
       })
       .then(localPipe.getLocalEndpoint)
-      .then((forwardingSocketEndpoint:freedom_ChurnPipe.Endpoint) => {
+      .then((forwardingSocketEndpoint:net.Endpoint) => {
         this.haveForwardingSocketEndpoint_(forwardingSocketEndpoint);
         log.info('configured local pipe between forwarding socket at ' +
             forwardingSocketEndpoint.address + ':' +
@@ -294,7 +298,7 @@ module Churn {
             remoteEndpoint.address,
             remoteEndpoint.port,
             'fte',
-            ArrayBuffers.stringToArrayBuffer('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'),
+            arraybuffers.stringToArrayBuffer('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'),
             JSON.stringify({
               'plaintext_dfa': regex2dfa('^.*$'),
               'plaintext_max_len': 1400,
@@ -310,10 +314,10 @@ module Churn {
               remoteEndpoint.port);
 
           // Connect the local pipe to the remote, obfuscating, pipe.
-          localPipe.on('message', (m:freedom_ChurnPipe.Message) => {
+          localPipe.on('message', (m:churn_pipe_types.Message) => {
             publicPipe.send(m.data);
           });
-          publicPipe.on('message', (m:freedom_ChurnPipe.Message) => {
+          publicPipe.on('message', (m:churn_pipe_types.Message) => {
             localPipe.send(m.data);
           });
         })
@@ -331,8 +335,7 @@ module Churn {
       var obfPeerName = this.peerName + '-obfuscated';
       var freedomPc = freedom['core.rtcpeerconnection'](obfConfig);
       this.obfuscatedConnection_ =
-          peerconnection.PeerConnection.fromRtcPeerConnectionWithName(
-              freedomPc, obfPeerName);
+          peerconnection.createPeerConnection(freedomPc, obfPeerName);
       this.obfuscatedConnection_.signalForPeerQueue.setSyncHandler(
           (signal:peerconnection.SignallingMessage) => {
         // Super-paranoid check: remove candidates from SDP messages.
@@ -396,7 +399,7 @@ module Churn {
         var signal = message.webrtcMessage;
         if (signal.type === peerconnection.SignalType.CANDIDATE) {
           this.onceHaveForwardingSocketEndpoint_.then(
-              (forwardingSocketEndpoint:freedom_ChurnPipe.Endpoint) => {
+              (forwardingSocketEndpoint:net.Endpoint) => {
             signal.candidate.candidate =
                 setCandidateLineEndpoint(
                     signal.candidate.candidate, forwardingSocketEndpoint);

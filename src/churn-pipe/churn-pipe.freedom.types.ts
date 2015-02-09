@@ -2,7 +2,7 @@
 
 // TODO: rename once https://github.com/Microsoft/TypeScript/issues/52 is fixed
 
-import Net = require('../networking-typings/net.types');
+import net = require('../networking-typings/net.types');
 
 export interface Message {
   data: ArrayBuffer
@@ -21,14 +21,12 @@ export interface freedom_ChurnPipe {
        key ?:ArrayBuffer,
        config ?:string) : Promise<void>;
   send(buffer :ArrayBuffer) : Promise<void>;
-  sendTo(buffer :ArrayBuffer, to :freedom_ChurnPipe.Endpoint) : Promise<void>;
+  sendTo(buffer :ArrayBuffer, to :net.Endpoint) : Promise<void>;
 
-  getLocalEndpoint() : Promise<freedom_ChurnPipe.Endpoint>;
+  getLocalEndpoint() : Promise<net.Endpoint>;
 
-  on(t:'message', f:(message:freedom_ChurnPipe.Message) => any) : void;
+  on(t:'message', f:(message:Message) => void) : void;
   on(t:string, f:Function) : void;
-
-  providePromises(provider:any) : void;
 }
 // }
 

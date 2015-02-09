@@ -5,19 +5,18 @@
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
 
-import WebRtc = require('../../build/dev/webrtc/webrtc');
-import WebRtcTypes = require('../../build/dev/webrtc/webrtc.types');
-import WebRtcEnums = require('../../build/dev/webrtc/webrtc.types');
-import Logging = require('../../build/dev/logging/logging');
-import Handler = require('../../build/dev/handler/queue');
+import peerconnection = require('../../build/dev/webrtc/peerconnection');
+import handler = require('../../build/dev/handler/queue');
 
-import Net = require('../networking-typings/net.types');
-import Tcp = require('../tcp/tcp');
-import Socks = require('../socks-headers/socks-headers');
+import net = require('../networking-typings/net.types');
+import tcp = require('../tcp/tcp');
+import socks = require('../socks-headers/socks-headers');
+
+import logging = require('../../build/dev/logging/logging');
 
 
 module SocksToRtc {
-  var log :Logging.Log = new Logging.Log('SocksToRtc');
+  var log :logging.Log = new logging.Log('SocksToRtc');
 
   var tagNumber_ = 0;
   function obtainTag() {
