@@ -20,11 +20,11 @@ var log :logging.Log = new logging.Log('churn');
 var regex2dfa :any;
 
 module Churn {
-  var log :Logging.Log = new Logging.Log('churn');
+  var log :logging.Log = new logging.Log('churn');
 
   export interface ChurnSignallingMessage {
-    webrtcMessage ?:WebRtc.SignallingMessage;
-    publicEndpoint ?:WebRtc.Endpoint;
+    webrtcMessage ?:peerconnection.SignallingMessage;
+    publicEndpoint ?:net.Endpoint;
   }
 
   export var filterCandidatesFromSdp = (sdp:string) : string => {
@@ -149,11 +149,11 @@ module Churn {
    * TODO: Give the uproxypeerconnections name, to help debugging.
    * TODO: Allow obfuscation parameters be configured.
    */
-  export class Connection implements WebRtc.PeerConnectionInterface<ChurnSignallingMessage> {
+  export class Connection implements peerconnection.PeerConnectionInterface<ChurnSignallingMessage> {
 
-    public pcState :WebRtc.State;
-    public dataChannels :{[channelLabel:string] : WebRtc.DataChannel};
-    public peerOpenedChannelQueue :Handler.Queue<WebRtc.DataChannel, void>;
+    public pcState :peerconnection.State;
+    public dataChannels :{[channelLabel:string] : peerconnection.DataChannel};
+    public peerOpenedChannelQueue :Handler.Queue<peerconnection.DataChannel, void>;
     public signalForPeerQueue :Handler.Queue<Churn.ChurnSignallingMessage, void>;
     public peerName :string;
 
@@ -163,7 +163,7 @@ module Churn {
 
     // A short-lived connection used to determine network addresses on which
     // we might be able to communicate with the remote host.
-    private probeConnection_ :WebRtc.PeerConnection;
+    private probeConnection_ :peerconnection.PeerConnection;
 
     // The list of all candidates returned by the probe connection.
     private probeCandidates_ :freedom_RTCPeerConnection.RTCIceCandidate[] = [];
@@ -175,7 +175,7 @@ module Churn {
     });
 
     // The obfuscated connection.
-    private obfuscatedConnection_ :WebRtc.PeerConnection;
+    private obfuscatedConnection_ :peerconnection.PeerConnection;
 
     // Fulfills once we know on which port the local obfuscated RTCPeerConnection
     // is listening.
@@ -227,29 +227,29 @@ module Churn {
       });
 
       // Handle |pcState| and related promises.
-      this.pcState = WebRtc.State.WAITING;
+      this.pcState = peerconnection.State.WAITING;
       this.onceConnecting = this.obfuscatedConnection_.onceConnecting.then(
           () => {
-        this.pcState = WebRtc.State.CONNECTING;
+        this.pcState = peerconnection.State.CONNECTING;
       });
       this.onceConnected = this.obfuscatedConnection_.onceConnected.then(() => {
-        this.pcState = WebRtc.State.CONNECTED;
+        this.pcState = peerconnection.State.CONNECTED;
       });
       this.onceDisconnected = this.obfuscatedConnection_.onceDisconnected.then(
-          () => { this.pcState = WebRtc.State.DISCONNECTED; });
+          () => { this.pcState = peerconnection.State.DISCONNECTED; });
     }
 
     private configureProbeConnection_ = (
         freedomPc:freedom_RTCPeerConnection.RTCPeerConnection) => {
       var probePeerName = this.peerName + '-probe';
-      this.probeConnection_ = WebRtc.PeerConnection.fromRtcPeerConnectionWithName(
+      this.probeConnection_ = peerconnection.PeerConnection.fromRtcPeerConnectionWithName(
           freedomPc, probePeerName);
       this.probeConnection_.signalForPeerQueue.setSyncHandler(
-          (signal:WebRtc.SignallingMessage) => {
+          (signal:peerconnection.SignallingMessage) => {
         log.debug("probe connection emitted: " + JSON.stringify(signal));
-        if (signal.type === WebRtc.SignalType.CANDIDATE) {
+        if (signal.type === peerconnection.SignalType.CANDIDATE) {
           this.probeCandidates_.push(signal.candidate);
-        } else if (signal.type === WebRtc.SignalType.NO_MORE_CANDIDATES) {
+        } else if (signal.type === peerconnection.SignalType.NO_MORE_CANDIDATES) {
           this.probeConnection_.close();
           this.probingComplete_(selectPublicAddress(this.probeCandidates_));
         }
@@ -331,20 +331,20 @@ module Churn {
       var obfPeerName = this.peerName + '-obfuscated';
       var freedomPc = freedom['core.rtcpeerconnection'](obfConfig);
       this.obfuscatedConnection_ =
-          WebRtc.PeerConnection.fromRtcPeerConnectionWithName(
+          peerconnection.PeerConnection.fromRtcPeerConnectionWithName(
               freedomPc, obfPeerName);
       this.obfuscatedConnection_.signalForPeerQueue.setSyncHandler(
-          (signal:WebRtc.SignallingMessage) => {
+          (signal:peerconnection.SignallingMessage) => {
         // Super-paranoid check: remove candidates from SDP messages.
         // This can happen if a connection is re-negotiated.
         // TODO: We can safely remove this once we can reliably interrogate
         //       peerconnection endpoints.
-        if (signal.type === WebRtc.SignalType.OFFER ||
-            signal.type === WebRtc.SignalType.ANSWER) {
+        if (signal.type === peerconnection.SignalType.OFFER ||
+            signal.type === peerconnection.SignalType.ANSWER) {
           signal.description.sdp =
               filterCandidatesFromSdp(signal.description.sdp);
         }
-        if (signal.type === WebRtc.SignalType.CANDIDATE) {
+        if (signal.type === peerconnection.SignalType.CANDIDATE) {
           if (!signal.candidate || !signal.candidate.candidate) {
             log.error('null candidate!');
             return;
@@ -372,7 +372,7 @@ module Churn {
       // If the caller or |obfuscatedConnection_| applies the same approach,
       // the code will break in hard-to-debug fashion.  This could be
       // addressed by using a javascript "getter", or by changing the
-      // WebRtc.PeerConnection API.
+      // peerconnection.PeerConnection API.
       this.dataChannels = this.obfuscatedConnection_.dataChannels;
       this.peerOpenedChannelQueue =
           this.obfuscatedConnection_.peerOpenedChannelQueue;
@@ -394,7 +394,7 @@ module Churn {
       }
       if (message.webrtcMessage) {
         var signal = message.webrtcMessage;
-        if (signal.type === WebRtc.SignalType.CANDIDATE) {
+        if (signal.type === peerconnection.SignalType.CANDIDATE) {
           this.onceHaveForwardingSocketEndpoint_.then(
               (forwardingSocketEndpoint:freedom_ChurnPipe.Endpoint) => {
             signal.candidate.candidate =
@@ -402,8 +402,8 @@ module Churn {
                     signal.candidate.candidate, forwardingSocketEndpoint);
             this.obfuscatedConnection_.handleSignalMessage(signal);
           });
-        } else if (signal.type == WebRtc.SignalType.OFFER ||
-                   signal.type == WebRtc.SignalType.ANSWER) {
+        } else if (signal.type == peerconnection.SignalType.OFFER ||
+                   signal.type == peerconnection.SignalType.ANSWER) {
           // Remove candidates from the SDP.  This is redundant, but ensures
           // that a bug in the remote client won't cause us to send
           // unobfuscated traffic.
@@ -416,7 +416,7 @@ module Churn {
 
     public openDataChannel = (channelLabel:string,
         options?:freedom_RTCPeerConnection.RTCDataChannelInit)
-        : Promise<WebRtc.DataChannel> => {
+        : Promise<peerconnection.DataChannel> => {
       return this.obfuscatedConnection_.openDataChannel(channelLabel);
     }
 
