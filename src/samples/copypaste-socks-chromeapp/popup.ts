@@ -1,4 +1,7 @@
 /// <reference path='../../freedom/typings/freedom.d.ts' />
+/// <reference path='../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../freedom/typings/pgp.d.ts' />
+/// <reference path='../../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../../networking-typings/communications.d.ts' />
 /// <reference path='../../networking-typings/polymer.d.ts' />
 /// <reference path='../../networking-typings/i18n.d.ts' />
@@ -17,13 +20,20 @@ var copypastePromise :Promise<any> = freedom('freedom-module.json', {
 // Polymer elements will bind to model so that the elements' style and
 // contents are up to date.
 var model = { givingOrGetting : <string>null,
+              usingCrypto : false,
+              inputDecrypted : false,
+              inputSigned : false,
+              userPublicKey : '',
+              friendPublicKey : '',
+              friendUserId : 'Joe <joe@test.com>',  // TODO actual interaction
               readyForStep2 : false,
               outboundMessageValue : '',
+              inboundText: '',
               inputIsWellFormed : false,
               proxyingState : 'notYetAttempted',
-              endpoint : <string>null,  // E.g., "127.0.0.1:9999"
+              endpoint : <string>null,  // E.g., '127.0.0.1:9999'
               totalBytesReceived : 0,
-              totalBytesSent : 0,
+              totalBytesSent : 0
             };
 
 // Define basee64 helper functions that are type-annotated and meaningfully
@@ -91,7 +101,7 @@ function parseInboundMessages(inboundMessageFieldValue:string)
 // or rtc-to-net module. Disables the form field.
 function consumeInboundMessage() : void {
   // Forward the signalling messages to the Freedom app.
-  copypastePromise.then(function(copypaste:any) {
+  copypastePromise.then(function(copypaste:OnAndEmit<any,any>) {
     for (var i = 0; i < parsedInboundMessages.length; i++) {
       copypaste.emit('handleSignalMessage', parsedInboundMessages[i]);
     }
@@ -100,8 +110,15 @@ function consumeInboundMessage() : void {
   // TODO: Report success/failure to the user.
 };
 
-copypastePromise.then(function(copypaste:any) {
-  copypaste.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
+function verifyDecryptInboundMessage(ciphertext:string) : void {
+  copypastePromise.then(function(copypaste) {
+    copypaste.emit('friendKey', model.friendPublicKey);
+    copypaste.emit('verifyDecrypt', ciphertext);
+  });
+};
+
+copypastePromise.then(function(copypaste:OnAndEmit<any,any>) {
+ copypaste.on('signalForPeer', (signal:WebRtc.SignallingMessage) => {
     model.readyForStep2 = true;
 
     // Append the new signalling message to the previous message(s), if any.
@@ -111,7 +128,26 @@ copypastePromise.then(function(copypaste:any) {
     // unintended transformation.
     var oldConcatenatedJson = base64Decode(model.outboundMessageValue.trim());
     var newConcatenatedJson = oldConcatenatedJson + '\n' + JSON.stringify(signal);
+    if (model.usingCrypto) {
+      copypaste.emit('friendKey', model.friendPublicKey);
+      copypaste.emit('signEncrypt', base64Encode(newConcatenatedJson));
+    }
     model.outboundMessageValue = base64Encode(newConcatenatedJson);
+  });
+
+  copypaste.on('publicKeyExport', (publicKey:string) => {
+    model.userPublicKey = publicKey;
+  });
+
+  copypaste.on('ciphertext', (ciphertext:string) => {
+    model.outboundMessageValue = ciphertext;
+  });
+
+  copypaste.on('verifyDecryptResult', (result:VerifyDecryptResult) => {
+    model.inputDecrypted = true;
+    model.inputSigned = result.signedBy[0] == model.friendUserId;
+    model.inboundText = ArrayBuffers.arrayBufferToString(result.data);
+    parsedInboundMessages = parseInboundMessages(model.inboundText);
   });
 
   copypaste.on('bytesReceived', (numNewBytesReceived:number) => {

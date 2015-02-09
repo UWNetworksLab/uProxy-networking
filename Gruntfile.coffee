@@ -29,6 +29,7 @@ uproxyObfuscatorsPath = path.dirname(require.resolve('uproxy-obfuscators/package
 regex2dfaPath = path.dirname(require.resolve('regex2dfa/package.json'))
 # Cordova testing
 ccaPath = path.dirname(require.resolve('cca/package.json'))
+pgpPath = path.dirname(require.resolve('freedom-pgp-e2e/package.json'))
 
 #-------------------------------------------------------------------------
 module.exports = (grunt) ->
@@ -130,6 +131,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-clean'
   grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
+  grunt.loadNpmTasks 'grunt-jasmine-chromeapp'
   grunt.loadNpmTasks 'grunt-ts'
 
   grunt.loadTasks (path.join freedomForChromePath, 'tasks')

@@ -27,9 +27,15 @@
     "churnPipe": {
       "url": "lib/churn-pipe/freedom.json",
       "api": "churnPipe"
+    },
+    "pgp": {
+      "url": "lib/freedom-pgp-e2e/build/pgpapi.json",
+      "api": "crypto"
     }
   },
   "permissions": [
+    "core.console",
+    "core.storage",
     "core.tcpsocket",
     "core.udpsocket",
     "core.rtcdatachannel",

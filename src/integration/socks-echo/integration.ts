@@ -40,25 +40,18 @@ class ProxyIntegrationTest {
       address: this.localhost_,
       port: 0
     };
-    var socksToRtcPcConfig :WebRtc.PeerConnectionConfig = {
-      webrtcPcConfig: {iceServers: []},
-      peerName: 'socks-to-rtc',  // Required because crypto.randomUint32 is not defined.
-      initiateConnection: true
-    };
-    var rtcToNetPcConfig :WebRtc.PeerConnectionConfig = {
-      webrtcPcConfig: {iceServers: []},
-      peerName: 'rtc-to-net',
-      initiateConnection: false
+    var rtcPcConfig :freedom_RTCPeerConnection.RTCConfiguration = {
+      iceServers: [],
     };
     var rtcToNetProxyConfig :RtcToNet.ProxyConfig = {
       allowNonUnicast: !denyLocalhost  // Allow RtcToNet to contact the localhost server.
     };
 
     this.socksToRtc_ = new SocksToRtc.SocksToRtc();
-    this.rtcToNet_ = new RtcToNet.RtcToNet(rtcToNetPcConfig, rtcToNetProxyConfig);
+    this.rtcToNet_ = new RtcToNet.RtcToNet(rtcPcConfig, rtcToNetProxyConfig);
     this.socksToRtc_.on('signalForPeer', this.rtcToNet_.handleSignalFromPeer);
     this.rtcToNet_.signalsForPeer.setSyncHandler(this.socksToRtc_.handleSignalFromPeer);
-    return this.socksToRtc_.start(socksToRtcEndpoint, socksToRtcPcConfig);
+    return this.socksToRtc_.start(socksToRtcEndpoint, rtcPcConfig);
   }
 
   // Assumes webEndpoint is IPv4.
