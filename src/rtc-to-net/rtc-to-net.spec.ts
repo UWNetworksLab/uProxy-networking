@@ -1,7 +1,20 @@
-/// <reference path='rtc-to-net.d.ts' />
-/// <reference path='../tcp/tcp.d.ts' />
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../build/third_party/typings/jasmine/jasmine.d.ts' />
+
+import arraybuffers = require('../../build/dev/arraybuffers/arraybuffers');
+import peerconnection = require('../../build/dev/webrtc/peerconnection');
+import handler = require('../../build/dev/handler/queue');
+
+import rtc_to_net = require('./rtc-to-net');
+import net = require('../networking-typings/net.types');
+import tcp = require('../tcp/tcp');
+import socks = require('../socks-common/socks-headers');
+
+import logging = require('../../build/dev/logging/logging');
+
+var log :logging.Log = new logging.Log('socks-to-rtc spec');
+
 
 var mockBoundEndpoint :net.Endpoint = {
   address: '127.0.0.1',
@@ -10,7 +23,7 @@ var mockBoundEndpoint :net.Endpoint = {
 
 var voidPromise = Promise.resolve<void>();
 
-var mockProxyConfig :RtcToNet.ProxyConfig = {
+var mockProxyConfig :rtc_to_net.ProxyConfig = {
   allowNonUnicast: false
 };
 
@@ -20,7 +33,7 @@ var mockRemoteEndpoint :net.Endpoint = {
   port: 1023
 };
 
-var mockConnectionInfo :Tcp.ConnectionInfo = {
+var mockConnectionInfo :tcp.ConnectionInfo = {
   bound: mockBoundEndpoint,
   remote: mockRemoteEndpoint
 }
@@ -31,12 +44,13 @@ var mockConnectionInfo :Tcp.ConnectionInfo = {
 var noopPromise = new Promise<any>((F, R) => {});
 
 describe('RtcToNet', function() {
-  var server :RtcToNet.RtcToNet;
+  var server :rtc_to_net.RtcToNet;
 
-  var mockPeerconnection :WebRtc.PeerConnection;
+  var mockPeerconnection
+      :peerconnection.PeerConnection<peerconnection.SignallingMessage>;
 
   beforeEach(function() {
-    server = new RtcToNet.RtcToNet();
+    server = new rtc_to_net.RtcToNet();
 
     mockPeerconnection = <any>{
       dataChannels: {},
@@ -44,7 +58,7 @@ describe('RtcToNet', function() {
       onceConnecting: noopPromise,
       onceConnected: noopPromise,
       onceDisconnected: noopPromise,
-      peerOpenedChannelQueue: new Handler.Queue(),
+      peerOpenedChannelQueue: new handler.Queue(),
       close: jasmine.createSpy('close')
     };
   });
@@ -85,12 +99,12 @@ describe('RtcToNet', function() {
 });
 
 describe("RtcToNet session", function() {
-  var session :RtcToNet.Session;
+  var session :rtc_to_net.Session;
 
-  var mockTcpConnection :Tcp.Connection;
-  var mockDataChannel :WebRtc.DataChannel;
-  var mockBytesReceived :Handler.Queue<number,void>;
-  var mockBytesSent :Handler.Queue<number,void>;
+  var mockTcpConnection :tcp.Connection;
+  var mockDataChannel :peerconnection.DataChannel;
+  var mockBytesReceived :handler.Queue<number,void>;
+  var mockBytesSent :handler.Queue<number,void>;
 
   beforeEach(function() {
     mockTcpConnection = jasmine.createSpyObj('tcp connection', [
@@ -111,7 +125,7 @@ describe("RtcToNet session", function() {
         'handle'
       ]);
 
-    session  = new RtcToNet.Session(
+    session  = new rtc_to_net.Session(
         mockDataChannel,
         mockProxyConfig,
         mockBytesReceived,

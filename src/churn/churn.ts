@@ -1,7 +1,6 @@
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
-//// <reference path='../../build/third_party/freedom-typings/tcp-socket.d.ts' />
 
 import Transformer = require('../../build/third_party/uproxy-obfuscators/utransformer');
 import Rabbit = require('../../build/third_party/uproxy-obfuscators/utransformers.rabbit');
@@ -156,7 +155,7 @@ module Churn {
     public pcState :peerconnection.State;
     public dataChannels :{[channelLabel:string] : peerconnection.DataChannel};
     public peerOpenedChannelQueue :handler.QueueHandler<peerconnection.DataChannel, void>;
-    public signalForPeerQueue :handler.Queue<Churn.ChurnSignallingMessage, void>;
+    public signalForPeerQueue :handler.Queue<ChurnSignallingMessage, void>;
     public peerName :string;
 
     public onceConnecting :Promise<void>;
@@ -207,7 +206,7 @@ module Churn {
       this.peerName = peerName ||
           'churn-connection-' + random.randomUint32();
 
-      this.signalForPeerQueue = new handler.Queue<Churn.ChurnSignallingMessage,void>();
+      this.signalForPeerQueue = new handler.Queue<ChurnSignallingMessage,void>();
 
       // Configure the probe connection.  Once it completes, inform the remote
       // peer which public endpoint we will be using.
@@ -366,7 +365,7 @@ module Churn {
                 port: 0
               });
         }
-        var churnSignal :Churn.ChurnSignallingMessage = {
+        var churnSignal :ChurnSignallingMessage = {
           webrtcMessage: signal
         };
         this.signalForPeerQueue.handle(churnSignal);
@@ -391,7 +390,7 @@ module Churn {
     // In the case of obfuscated signalling channel messages, we inject our
     // local forwarding socket's endpoint.
     public handleSignalMessage = (
-        message:Churn.ChurnSignallingMessage) : void => {
+        message:ChurnSignallingMessage) : void => {
       if (message.publicEndpoint !== undefined) {
         this.haveRemoteEndpoint_(message.publicEndpoint);
       }

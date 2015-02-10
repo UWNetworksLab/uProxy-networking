@@ -17,12 +17,6 @@ function runCmd ()
     $1
 }
 
-function buildTools ()
-{
-  runCmd "node_modules/.bin/tsc --module commonjs --outDir build/tools/ src/build-tools/taskmanager.ts"
-  runCmd "node_modules/.bin/tsc --module commonjs --outDir build/tools/ src/build-tools/common-grunt-rules.ts"
-}
-
 function clean ()
 {
   runCmd "rm -r node_modules build .tscache src/.baseDir.ts"
@@ -33,20 +27,19 @@ function installDevDependencies ()
   runCmd "bower install"
   runCmd "npm install"
   runCmd "node_modules/.bin/tsd reinstall --config ./third_party/tsd.json"
-  buildTools
 }
 
 runCmd "cd $ROOT_DIR"
 
-if [ "$1" == 'help' ]; then
-  echo "Usage: setup.sh [help|tools|clean]"
-elif [ "$1" == 'tools' ]; then
-  buildTools
+if [ "$1" == 'install' ]; then
+  installDevDependencies
 elif [ "$1" == 'clean' ]; then
   clean
 else
-  installDevDependencies
+  echo "Usage: setup.sh [install|tools|clean]"
+  echo "  install       Installs needed development dependencies into build/"
+  echo "  clean         Removes all dependencies installed by this script."
+  echo
+  echo ""
+  exit 0
 fi
-
-echo
-echo "Successfully completed install of dev dependencies."

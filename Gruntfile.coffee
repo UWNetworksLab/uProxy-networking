@@ -48,14 +48,14 @@ module.exports = (grunt) ->
               dest: 'build/dev/',
               onlyIf: 'modified'
           },
-          # Ee will use the third_party definitions from uProxy-lib, and they
+          # We will use the third_party definitions from uProxy-lib, and they
           # will need to have the same relative path to the created .d.ts files
           # from |build/dev|.
           {
               nonull: true,
               expand: true,
               cwd: path.join(uproxyLibPath, 'build/third_party'),
-              src: ['**/*'],
+              src: ['freedom-typings/**/*'],
               dest: 'build/third_party/',
               onlyIf: 'modified'
           },
@@ -97,12 +97,15 @@ module.exports = (grunt) ->
       dev:
         src: [
           'src/benchmark/**/*.ts',
-          'src/tcp/**/*.ts',
-          'src/udp/**/*.ts',
-          'src/socks-common/**/*.ts',
-          'src/simple-transformers/**/*.ts',
           'src/churn-pipe/**/*.ts',
           'src/churn/**/*.ts',
+          'src/echo/**/*.ts',
+          'src/rtc-to-net/**/*.ts',
+          'src/simple-transformers/**/*.ts',
+          'src/socks-common/**/*.ts',
+          'src/socks-to-rtc/**/*.ts',
+          'src/tcp/**/*.ts',
+          'src/udp/**/*.ts',
           '!src/**/*.d.ts',
           '!src/samples/**/*.ts',
           '!src/**/*.spec.dynamic.ts',

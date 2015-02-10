@@ -1,19 +1,18 @@
-// SocksToRtc.Peer passes socks requests over WebRTC datachannels.
-
-/// <reference path="../churn/churn.d.ts" />
+// SocksToRtc passes socks requests over WebRTC datachannels.
 
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
 
+import arraybuffers = require('../../build/dev/arraybuffers/arraybuffers');
 import peerconnection = require('../../build/dev/webrtc/peerconnection');
 import handler = require('../../build/dev/handler/queue');
 
+import churn = require('../churn/churn');
 import net = require('../networking-typings/net.types');
 import tcp = require('../tcp/tcp');
-import socks = require('../socks-headers/socks-headers');
+import socks = require('../socks-common/socks-headers');
 
 import logging = require('../../build/dev/logging/logging');
-
 
 module SocksToRtc {
   var log :logging.Log = new logging.Log('SocksToRtc');
@@ -52,20 +51,21 @@ module SocksToRtc {
     // push numbers to the same queues (belonging to that instance of SocksToRtc).
     // Queue of the number of bytes received from the peer. Handler is typically
     // defined in the class that creates an instance of SocksToRtc.
-    private bytesReceivedFromPeer_ :Handler.Queue<number, void> =
-        new Handler.Queue<number, void>();
+    private bytesReceivedFromPeer_ :handler.Queue<number, void> =
+        new handler.Queue<number, void>();
 
     // Queue of the number of bytes sent to the peer. Handler is typically
     // defined in the class that creates an instance of SocktsToRtc.
-    private bytesSentToPeer_ :Handler.Queue<number,void> =
-        new Handler.Queue<number, void>();
+    private bytesSentToPeer_ :handler.Queue<number,void> =
+        new handler.Queue<number, void>();
 
     // Tcp server that is listening for SOCKS connections.
-    private tcpServer_       :Tcp.Server;
+    private tcpServer_       :tcp.Server;
 
     // The connection to the peer that is acting as the endpoint for the proxy
     // connection.
-    private peerConnection_  :WebRtc.PeerConnection;
+    private peerConnection_
+        :peerconnection.PeerConnection<peerconnection.SignallingMessage>;
 
     // Event listener registration function.  When running in freedom, this is
     // not defined, and the corresponding functionality is inserted by freedom
@@ -109,18 +109,20 @@ module SocksToRtc {
       var pc :freedom_RTCPeerConnection.RTCPeerConnection =
           freedom['core.rtcpeerconnection'](pcConfig);
       return this.startInternal(
-          new Tcp.Server(endpoint),
+          new tcp.Server(endpoint),
           obfuscate ?
-              new Churn.Connection(pc) :
-              WebRtc.PeerConnection.fromRtcPeerConnection(pc));
+              new churn.Connection(pc) :
+              new peerconnection.PeerConnectionClass(pc));
     }
 
     // Starts the SOCKS server with the supplied TCP server and peerconnection.
-    // Returns a promise that resolves when the server is ready to use.
-    // This method is public only for testing purposes.
+    // Returns a promise that resolves when the server is ready to use. This
+    // method is public only for testing purposes.
     public startInternal = (
-        tcpServer:Tcp.Server,
-        peerconnection:WebRtc.PeerConnectionInterface<WebRtc.SignallingMessage>)
+        tcpServer:tcp.Server,
+        // TODO(iislucas): are the types correct here? Does an obfuscated
+        // channel have a different signalling type?
+        peerconnection:peerconnection.PeerConnection<peerconnection.SignallingMessage>)
         : Promise<net.Endpoint> => {
       if (this.tcpServer_) {
         throw new Error('already configured');
@@ -216,11 +218,11 @@ module SocksToRtc {
 
     // Invoked when a SOCKS client establishes a connection with the TCP server.
     // Note that Session closes the TCP connection and datachannel on any error.
-    private makeTcpToRtcSession_ = (tcpConnection:Tcp.Connection) : void => {
+    private makeTcpToRtcSession_ = (tcpConnection:tcp.Connection) : void => {
       var tag = obtainTag();
       log.info('created new session %1', [tag]);
 
-	    this.peerConnection_.openDataChannel(tag).then((channel:WebRtc.DataChannel) => {
+	    this.peerConnection_.openDataChannel(tag).then((channel:peerconnection.DataChannel) => {
         log.debug('opened datachannel for session %1', [tag]);
         var session = new Session();
         session.start(
@@ -252,7 +254,7 @@ module SocksToRtc {
       });
     }
 
-    public handleSignalFromPeer = (signal:WebRtc.SignallingMessage)
+    public handleSignalFromPeer = (signal:peerconnection.SignallingMessage)
         : void => {
       this.peerConnection_.handleSignalMessage(signal);
     }
@@ -276,10 +278,10 @@ module SocksToRtc {
   // can use the DataChannel class directly here instead of the awkward pairing
   // of peerConnection with chanelLabel.
   export class Session {
-    private tcpConnection_ :Tcp.Connection;
-    private dataChannel_ :WebRtc.DataChannel;
-    private bytesSentToPeer_ :Handler.Queue<number,void>;
-    private bytesReceivedFromPeer_ :Handler.Queue<number,void>;
+    private tcpConnection_ :tcp.Connection;
+    private dataChannel_ :peerconnection.DataChannel;
+    private bytesSentToPeer_ :handler.Queue<number,void>;
+    private bytesReceivedFromPeer_ :handler.Queue<number,void>;
 
     // Fulfills with the bound endpoint which RtcToNet is using to connect to the
     // remote host. Rejects if RtcToNet could not connect to the remote host
@@ -305,10 +307,10 @@ module SocksToRtc {
     // successfully established.
     // Returns onceReady.
     public start = (
-        tcpConnection:Tcp.Connection,
-        dataChannel:WebRtc.DataChannel,
-        bytesSentToPeer:Handler.Queue<number,void>,
-        bytesReceivedFromPeer:Handler.Queue<number,void>)
+        tcpConnection:tcp.Connection,
+        dataChannel:peerconnection.DataChannel,
+        bytesSentToPeer:handler.Queue<number,void>,
+        bytesReceivedFromPeer:handler.Queue<number,void>)
         : Promise<net.Endpoint> => {
       this.tcpConnection_ = tcpConnection;
       this.dataChannel_ = dataChannel;
@@ -322,9 +324,9 @@ module SocksToRtc {
       // Shutdown once TCP connection or datachannel terminate.
       this.onceReady.catch(this.fulfillStopping_);
       Promise.race<any>([
-          tcpConnection.onceClosed.then((kind:Tcp.SocketCloseKind) => {
+          tcpConnection.onceClosed.then((kind:tcp.SocketCloseKind) => {
             log.debug('%1: client socket closed (%2)', [
-                this.longId(), Tcp.SocketCloseKind[kind] || 'unknown reason']);
+                this.longId(), tcp.SocketCloseKind[kind] || 'unknown reason']);
           }),
           dataChannel.onceClosed.then(() => {
             log.debug('%1: datachannel closed', [this.longId()]);
@@ -382,19 +384,19 @@ module SocksToRtc {
     private doAuthHandshake_ = ()
         : Promise<void> => {
       return this.tcpConnection_.receiveNext()
-        .then(Socks.interpretAuthHandshakeBuffer)
-        .then((auths:Socks.Auth[]) => {
+        .then(socks.interpretAuthHandshakeBuffer)
+        .then((auths:socks.Auth[]) => {
           this.tcpConnection_.send(
-              Socks.composeAuthResponse(Socks.Auth.NOAUTH));
+              socks.composeAuthResponse(socks.Auth.NOAUTH));
         });
     }
 
     // Sets the next data hanlder to get next data from peer, assuming it's
     // stringified version of the destination.
     // TODO: Needs unit tests badly since it's mocked by several other tests.
-    private receiveResponseFromPeer_ = () : Promise<Socks.Response> => {
+    private receiveResponseFromPeer_ = () : Promise<socks.Response> => {
       return new Promise((F,R) => {
-        this.dataChannel_.dataFromPeerQueue.setSyncNextHandler((data:WebRtc.Data) => {
+        this.dataChannel_.dataFromPeerQueue.setSyncNextHandler((data:peerconnection.Data) => {
           if (!data.str) {
             R(new Error('received non-string data during handshake: ' +
                 JSON.stringify(data)));
@@ -402,7 +404,7 @@ module SocksToRtc {
           }
           try {
             var r :any = JSON.parse(data.str);
-            if (!Socks.isValidResponse(r)) {
+            if (!socks.isValidResponse(r)) {
               R(new Error('invalid response:' + data.str));
               return;
             }
@@ -420,15 +422,15 @@ module SocksToRtc {
     private doRequestHandshake_ = ()
         : Promise<net.Endpoint> => {
       return this.tcpConnection_.receiveNext()
-        .then(Socks.interpretRequestBuffer)
-        .then((request:Socks.Request) => {
+        .then(socks.interpretRequestBuffer)
+        .then((request:socks.Request) => {
           this.dataChannel_.send({ str: JSON.stringify(request) });
           return this.receiveResponseFromPeer_();
         })
-        .then((response:Socks.Response) => {
+        .then((response:socks.Response) => {
           // TODO: test and close: https://github.com/uProxy/uproxy/issues/324
-          this.tcpConnection_.send(Socks.composeResponseBuffer(response));
-          if (response.reply != Socks.Reply.SUCCEEDED) {
+          this.tcpConnection_.send(socks.composeResponseBuffer(response));
+          if (response.reply != socks.Reply.SUCCEEDED) {
             this.stop();
           }
           return response.endpoint;
@@ -450,7 +452,7 @@ module SocksToRtc {
         this.bytesSentToPeer_.handle(data.byteLength);
       });
       // Any data from the peer goes to the TCP connection
-      this.dataChannel_.dataFromPeerQueue.setSyncHandler((data:WebRtc.Data) => {
+      this.dataChannel_.dataFromPeerQueue.setSyncHandler((data:peerconnection.Data) => {
         if (!data.buffer) {
           log.error('%1: received non-buffer data from datachannel', [
               this.longId()]);
@@ -469,3 +471,5 @@ module SocksToRtc {
   }  // Session
 
 }  // module SocksToRtc
+
+export = SocksToRtc;

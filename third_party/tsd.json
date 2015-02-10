@@ -6,7 +6,7 @@
   "bundle": "third_party/typings/tsd.d.ts",
   "installed": {
     "es6-promise/es6-promise.d.ts": {
-      "commit": "338059f48e4e32ef11472bd5a54ad91fb67f8c36"
+      "commit": "31370adcb0d0941b3b6a27d3cbec04e94b0f95d9"
     },
     "jasmine/jasmine.d.ts": {
       "commit": "338059f48e4e32ef11472bd5a54ad91fb67f8c36"

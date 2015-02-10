@@ -1,11 +1,19 @@
-/// <reference path='socks-to-rtc.d.ts' />
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../build/third_party/typings/jasmine/jasmine.d.ts' />
 
-/// <reference path='../tcp/tcp.d.ts' />
-/// <reference path='../handler/queue.d.ts' />
-/// <reference path='../webrtc/datachannel.d.ts' />
-/// <reference path='../webrtc/peerconnection.d.ts' />
+import arraybuffers = require('../../build/dev/arraybuffers/arraybuffers');
+import peerconnection = require('../../build/dev/webrtc/peerconnection');
+import handler = require('../../build/dev/handler/queue');
+
+import socks_to_rtc = require('./socks-to-rtc');
+import net = require('../networking-typings/net.types');
+import tcp = require('../tcp/tcp');
+import socks = require('../socks-common/socks-headers');
+
+import logging = require('../../build/dev/logging/logging');
+
+var log :logging.Log = new logging.Log('socks-to-rtc spec');
 
 var mockEndpoint :net.Endpoint = {
   address: '127.0.0.1',
@@ -20,14 +28,14 @@ var voidPromise = Promise.resolve<void>();
 var noopPromise = new Promise<void>((F, R) => {});
 
 describe('SOCKS server', function() {
-  var server :SocksToRtc.SocksToRtc;
+  var server :socks_to_rtc.SocksToRtc;
   var onceServerStopped :() => Promise<void>;
 
-  var mockTcpServer :Tcp.Server;
-  var mockPeerConnection :WebRtc.PeerConnection;
+  var mockTcpServer :tcp.Server;
+  var mockPeerConnection :peerconnection.PeerConnection<peerconnection.SignallingMessage>;
 
   beforeEach(function() {
-    server = new SocksToRtc.SocksToRtc();
+    server = new socks_to_rtc.SocksToRtc();
 
     var serverStopped = new Promise<void>((F, R) => {
       server.on('stopped', F);
@@ -47,11 +55,11 @@ describe('SOCKS server', function() {
     // TODO: make a real mock of listen; this one is frgaile to implementation
     // changes and tests that might call onceListening before listen.
     mockTcpServer.listen = () => { return mockTcpServer.onceListening(); }
-    mockTcpServer.connectionsQueue = new Handler.Queue<Tcp.Connection, void>();
+    mockTcpServer.connectionsQueue = new handler.Queue<tcp.Connection, void>();
 
     mockPeerConnection = <any>{
       dataChannels: {},
-      signalForPeerQueue: new Handler.Queue<WebRtc.SignallingMessage, void>(),
+      signalForPeerQueue: new handler.Queue<peerconnection.SignallingMessage, void>(),
       negotiateConnection: jasmine.createSpy('negotiateConnection'),
       onceConnecting: noopPromise,
       onceConnected: noopPromise,
@@ -131,15 +139,15 @@ describe('SOCKS server', function() {
 });
 
 describe("SOCKS session", function() {
-  var session :SocksToRtc.Session;
+  var session :socks_to_rtc.Session;
 
-  var mockTcpConnection :Tcp.Connection;
-  var mockDataChannel :WebRtc.DataChannel;
-  var mockBytesSent :Handler.Queue<number,void>;
-  var mockBytesReceived :Handler.Queue<number,void>;
+  var mockTcpConnection :tcp.Connection;
+  var mockDataChannel :peerconnection.DataChannel;
+  var mockBytesSent :handler.Queue<number,void>;
+  var mockBytesReceived :handler.Queue<number,void>;
 
   beforeEach(function() {
-    session = new SocksToRtc.Session();
+    session = new socks_to_rtc.Session();
 
     mockTcpConnection = jasmine.createSpyObj('tcp connection', [
         'onceClosed',
@@ -148,12 +156,12 @@ describe("SOCKS session", function() {
       ]);
     (<any>mockTcpConnection.close).and.returnValue(Promise.resolve(-1));
     mockTcpConnection.onceClosed = Promise.resolve(
-        Tcp.SocketCloseKind.REMOTELY_CLOSED);
+        tcp.SocketCloseKind.REMOTELY_CLOSED);
     mockDataChannel = <any>{
       getLabel: jasmine.createSpy('getLabel').and.returnValue('mock label'),
       onceOpened: noopPromise,
       onceClosed: noopPromise,
-      dataFromPeerQueue: new Handler.Queue(),
+      dataFromPeerQueue: new handler.Queue(),
       send: jasmine.createSpy('send'),
       close: jasmine.createSpy('close')
     };
@@ -197,7 +205,7 @@ describe("SOCKS session", function() {
 
   it('onceStopped fulfills on call to stop', (done) => {
     // Neither TCP connection nor datachannel close "naturally".
-    mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
+    mockTcpConnection.onceClosed = new Promise<tcp.SocketCloseKind>((F, R) => {});
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));

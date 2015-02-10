@@ -1,12 +1,14 @@
 // For testing just the TCP server portion (see src/client/tcp.ts)
 
-/// <reference path='../arraybuffers/arraybuffers.d.ts' />
-/// <reference path='../networking-typings/communications.d.ts' />
-/// <reference path='../tcp/tcp.d.ts' />
-/// <reference path='freedom-module.ts' />
+import arraybuffers = require('../../build/dev/arraybuffers/arraybuffers');
+import net = require('../networking-typings/net.types');
+import tcp = require('../tcp/tcp');
+
+import logging = require('../../build/dev/logging/logging');
+var log :logging.Log = new logging.Log('echo-server');
 
 class TcpEchoServer {
-  public server :Tcp.Server;
+  public server :tcp.Server;
 
   // '4' is the char-code for control-D which we use to close the TCP
   // connection.
@@ -14,7 +16,7 @@ class TcpEchoServer {
 
   constructor(public endpoint:net.Endpoint) {
     log.info('Starting TcpEchoServer(' + JSON.stringify(endpoint) + ')...');
-    this.server = new Tcp.Server(endpoint);
+    this.server = new tcp.Server(endpoint);
 
     // Start listening to connections.
     this.server.listen().then((listeningEndpoint) => {
@@ -31,7 +33,7 @@ class TcpEchoServer {
     this.server.connectionsQueue.setSyncHandler(this.onConnection_);
   }
 
-  private onConnection_ = (conn:Tcp.Connection) : void => {
+  private onConnection_ = (conn:tcp.Connection) : void => {
     log.info(conn.toString() + ': New TCP Connection: ');
     // The onceConnected is fulfilled by onConnection (in practice, but not
     // specified by the freedom TCP interface)
@@ -48,10 +50,10 @@ class TcpEchoServer {
     });
   }
 
-  private onData_ = (conn:Tcp.Connection, data :ArrayBuffer) : void => {
+  private onData_ = (conn:tcp.Connection, data :ArrayBuffer) : void => {
     log.info(conn.toString() + ': Received: ' + data.byteLength + " bytes.");
 
-    var hexStrOfData = ArrayBuffers.arrayBufferToHexString(data);
+    var hexStrOfData = arraybuffers.arrayBufferToHexString(data);
     log.info(conn.toString() + ': Received data as hex-string: ' + hexStrOfData);
 
     // This shows how you handle some data and close the connection.
@@ -62,3 +64,5 @@ class TcpEchoServer {
     conn.send(data);
   }
 }
+
+export = TcpEchoServer;
