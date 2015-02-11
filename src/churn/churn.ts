@@ -204,7 +204,11 @@ module Churn {
     constructor(probeRtcPc:freedom_RTCPeerConnection.RTCPeerConnection,
                 peerName?:string) {
       this.peerName = peerName ||
+<<<<<<< HEAD
           'churn-connection-' + random.randomUint32();
+=======
+          'churn-connection-' + Math.random();
+>>>>>>> dev
 
       this.signalForPeerQueue = new handler.Queue<ChurnSignallingMessage,void>();
 

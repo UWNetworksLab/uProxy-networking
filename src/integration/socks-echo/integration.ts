@@ -8,6 +8,8 @@ import net = require('../../networking-typings/net.types');
 import tcp = require('../../tcp/tcp');
 import socks = require('../../socks-common/socks-headers');
 
+freedom['loggingprovider']().setConsoleFilter(['*:D']);
+
 class ProxyIntegrationTest {
   private socksToRtc_ :socks_to_rtc.SocksToRtc;
   private rtcToNet_ :rtc_to_net.RtcToNet;
@@ -17,8 +19,9 @@ class ProxyIntegrationTest {
   private localhost_ :string = '127.0.0.1';
 
   constructor(private dispatchEvent_:(name:string, args:any) => void,
-                                      denyLocalhost?:boolean) {
-    this.socksEndpoint_ = this.startSocksPair_(denyLocalhost);
+                                      denyLocalhost?:boolean,
+                                      obfuscate?:boolean) {
+    this.socksEndpoint_ = this.startSocksPair_(denyLocalhost, obfuscate);
   }
 
   public startEchoServer = () : Promise<number> => {
@@ -38,7 +41,7 @@ class ProxyIntegrationTest {
     return server.listen().then((endpoint:net.Endpoint) => { return endpoint.port; });
   }
 
-  private startSocksPair_ = (denyLocalhost?:boolean) : Promise<net.Endpoint> => {
+  private startSocksPair_ = (denyLocalhost?:boolean, obfuscate?:boolean) : Promise<net.Endpoint> => {
     var socksToRtcEndpoint :net.Endpoint = {
       address: this.localhost_,
       port: 0
@@ -51,10 +54,10 @@ class ProxyIntegrationTest {
     };
 
     this.socksToRtc_ = new socks_to_rtc.SocksToRtc();
-    this.rtcToNet_ = new rtc_to_net.RtcToNet(rtcPcConfig, rtcToNetProxyConfig);
+    this.rtcToNet_ = new rtc_to_net.RtcToNet(rtcPcConfig, rtcToNetProxyConfig, obfuscate);
     this.socksToRtc_.on('signalForPeer', this.rtcToNet_.handleSignalFromPeer);
     this.rtcToNet_.signalsForPeer.setSyncHandler(this.socksToRtc_.handleSignalFromPeer);
-    return this.socksToRtc_.start(socksToRtcEndpoint, rtcPcConfig);
+    return this.socksToRtc_.start(socksToRtcEndpoint, rtcPcConfig, obfuscate);
   }
 
   // Assumes webEndpoint is IPv4.
