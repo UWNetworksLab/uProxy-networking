@@ -1,4 +1,4 @@
-/// <reference path='../../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-core-env.d.ts' />
 /// <reference path='../../../build/third_party/typings/jasmine/jasmine.d.ts' />
 
 // Coarse-grained tests for tcp.ts.

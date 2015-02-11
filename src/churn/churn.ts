@@ -201,14 +201,12 @@ module Churn {
       this.haveForwardingSocketEndpoint_ = F;
     });
 
+    private static internalConnectionId_ = 0;
+
     constructor(probeRtcPc:freedom_RTCPeerConnection.RTCPeerConnection,
                 peerName?:string) {
-      this.peerName = peerName ||
-<<<<<<< HEAD
-          'churn-connection-' + random.randomUint32();
-=======
-          'churn-connection-' + Math.random();
->>>>>>> dev
+      this.peerName = peerName || 'churn-connection-' +
+          (++Connection.internalConnectionId_);
 
       this.signalForPeerQueue = new handler.Queue<ChurnSignallingMessage,void>();
 
