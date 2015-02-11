@@ -1,6 +1,7 @@
-/// <reference path='../../freedom/typings/freedom.d.ts' />
-/// <reference path='../../third_party/typings/jasmine/jasmine.d.ts' />
-/// <reference path="../../socks-common/socks-headers.d.ts" />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-core-env.d.ts' />
+/// <reference path='../../../build/third_party/typings/jasmine/jasmine.d.ts' />
+
+import socks = require('../../socks-common/socks-headers');
 
 // Integration test for the whole proxying system.
 // The real work is done in the Freedom module which performs each test.

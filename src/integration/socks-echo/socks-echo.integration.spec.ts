@@ -1,7 +1,8 @@
-/// <reference path='../../arraybuffers/arraybuffers.d.ts' />
-/// <reference path='../../freedom/typings/freedom.d.ts' />
-/// <reference path='../../third_party/typings/jasmine/jasmine.d.ts' />
-/// <reference path="../../socks-common/socks-headers.d.ts" />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-core-env.d.ts' />
+/// <reference path='../../../build/third_party/typings/jasmine/jasmine.d.ts' />
+
+import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
+import socks = require('../../socks-common/socks-headers');
 
 // Integration test for the whole proxying system.
 // The real work is done in the Freedom module which performs each test.
@@ -23,7 +24,7 @@ describe('proxy integration tests', function() {
   };
 
   it('run a simple echo test', (done) => {
-    var input = ArrayBuffers.stringToArrayBuffer('arbitrary test string');
+    var input = arraybuffers.stringToArrayBuffer('arbitrary test string');
     getTestModule().then((testModule:any) => {
       return testModule.startEchoServer().then((port:number) => {
         return testModule.connect(port);
@@ -31,14 +32,14 @@ describe('proxy integration tests', function() {
         return testModule.echo(connectionId, input);
       });
     }).then((output:ArrayBuffer) => {
-      expect(ArrayBuffers.byteEquality(input, output)).toBe(true);
+      expect(arraybuffers.byteEquality(input, output)).toBe(true);
     }).catch((e:any) => {
       expect(e).toBeUndefined();
     }).then(done);
   });
 
   it('run multiple echo tests in a batch on one connection', (done) => {
-    var testBuffers = testStrings.map(ArrayBuffers.stringToArrayBuffer);
+    var testBuffers = testStrings.map(arraybuffers.stringToArrayBuffer);
     getTestModule().then((testModule:any) => {
       return testModule.startEchoServer().then((port:number) => {
         return testModule.connect(port);
@@ -47,7 +48,7 @@ describe('proxy integration tests', function() {
       });
     }).then((outputs:ArrayBuffer[]) => {
       for (var i = 0; i < testBuffers.length; ++i) {
-        expect(ArrayBuffers.byteEquality(testBuffers[i], outputs[i])).toBe(true);
+        expect(arraybuffers.byteEquality(testBuffers[i], outputs[i])).toBe(true);
       }
     }).catch((e:any) => {
       expect(e).toBeUndefined();
@@ -55,7 +56,7 @@ describe('proxy integration tests', function() {
   });
 
   it('run multiple echo tests in series on one connection', (done) => {
-    var testBuffers = testStrings.map(ArrayBuffers.stringToArrayBuffer);
+    var testBuffers = testStrings.map(arraybuffers.stringToArrayBuffer);
     getTestModule().then((testModule:any) => {
       return testModule.startEchoServer().then((port:number) => {
         return testModule.connect(port);
@@ -69,7 +70,7 @@ describe('proxy integration tests', function() {
             }
             testModule.echo(connectionId, testBuffers[i])
                 .then((echo:ArrayBuffer) => {
-              expect(ArrayBuffers.byteEquality(testBuffers[i], echo)).toBe(true);
+              expect(arraybuffers.byteEquality(testBuffers[i], echo)).toBe(true);
               ++i;
             }).then(step);
           };
@@ -85,11 +86,11 @@ describe('proxy integration tests', function() {
     getTestModule().then((testModule:any) => {
       return testModule.startEchoServer().then((port:number) : Promise<any> => {
         var promises = testStrings.map((s:string) : Promise<void> => {
-          var buffer = ArrayBuffers.stringToArrayBuffer(s);
+          var buffer = arraybuffers.stringToArrayBuffer(s);
           return testModule.connect(port).then((connectionId:string) => {
             return testModule.echo(connectionId, buffer);
           }).then((response:ArrayBuffer) => {
-            expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
+            expect(arraybuffers.byteEquality(buffer, response)).toBe(true);
           });
         });
         return Promise.all(promises);
@@ -102,7 +103,7 @@ describe('proxy integration tests', function() {
   it('connect to many different servers in parallel', (done) => {
     getTestModule().then((testModule:any) => {
       var promises = testStrings.map((s:string) : Promise<void> => {
-        var buffer = ArrayBuffers.stringToArrayBuffer(s);
+        var buffer = arraybuffers.stringToArrayBuffer(s);
 
         // For each string, start a new echo server with that name, and
         // then echo that string from that server.
@@ -111,7 +112,7 @@ describe('proxy integration tests', function() {
         }).then((connectionId:string) => {
           return testModule.echo(connectionId, buffer);
         }).then((response:ArrayBuffer) => {
-          expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
+          expect(arraybuffers.byteEquality(buffer, response)).toBe(true);
         });
       });
 
@@ -138,14 +139,14 @@ describe('proxy integration tests', function() {
 
   it('fetch from non-localhost address', (done) => {
     var nonExistentPath = '/noSuchPath';
-    var input = ArrayBuffers.stringToArrayBuffer(
+    var input = arraybuffers.stringToArrayBuffer(
         'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
     getTestModule().then((testModule:any) => {
       return testModule.connect(80, 'uproxy.org').then((connectionId:string) => {
         return testModule.echo(connectionId, input);
       });
     }).then((output:ArrayBuffer) => {
-      var outputString = ArrayBuffers.arrayBufferToString(output);
+      var outputString = arraybuffers.arrayBufferToString(output);
       expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
       expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
     }).catch((e:any) => {
@@ -155,14 +156,14 @@ describe('proxy integration tests', function() {
 
   it('fetch from non-localhost address while localhost is blocked.', (done) => {
     var nonExistentPath = '/noSuchPath';
-    var input = ArrayBuffers.stringToArrayBuffer(
+    var input = arraybuffers.stringToArrayBuffer(
         'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
     getTestModule(true).then((testModule:any) => {
       return testModule.connect(80, 'uproxy.org').then((connectionId:string) => {
         return testModule.echo(connectionId, input);
       });
     }).then((output:ArrayBuffer) => {
-      var outputString = ArrayBuffers.arrayBufferToString(output);
+      var outputString = arraybuffers.arrayBufferToString(output);
       expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
       expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
     }).catch((e:any) => {
@@ -172,7 +173,7 @@ describe('proxy integration tests', function() {
 
   it('do a request that gets blocked, then another that succeeds.', (done) => {
     var nonExistentPath = '/noSuchPath';
-    var input = ArrayBuffers.stringToArrayBuffer(
+    var input = arraybuffers.stringToArrayBuffer(
         'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
     // Get a test module that doesn't allow localhost access.
     getTestModule(true).then((testModule:any) => {
@@ -189,7 +190,7 @@ describe('proxy integration tests', function() {
       }).then((connectionId:string) => {
         return testModule.echo(connectionId, input);
       }).then((output:ArrayBuffer) => {
-        var outputString = ArrayBuffers.arrayBufferToString(output);
+        var outputString = arraybuffers.arrayBufferToString(output);
         expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
         expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
       }).catch((e:any) => {

@@ -1,16 +1,19 @@
-/// <reference path="../../networking-typings/communications.d.ts" />
-/// <reference path="../../rtc-to-net/rtc-to-net.d.ts" />
-/// <reference path="../../socks-common/socks-headers.d.ts" />
-/// <reference path="../../socks-to-rtc/socks-to-rtc.d.ts" />
-/// <reference path="../../tcp/tcp.d.ts" />
-/// <reference path="../../webrtc/peerconnection.d.ts" />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
+
+import peerconnection = require('../../../build/dev/webrtc/peerconnection');
+
+import rtc_to_net = require('../../rtc-to-net/rtc-to-net');
+import socks_to_rtc = require('../../socks-to-rtc/socks-to-rtc');
+import net = require('../../networking-typings/net.types');
+import tcp = require('../../tcp/tcp');
+import socks = require('../../socks-common/socks-headers');
 
 class ProxyIntegrationTest {
-  private socksToRtc_ :SocksToRtc.SocksToRtc;
-  private rtcToNet_ :RtcToNet.RtcToNet;
+  private socksToRtc_ :socks_to_rtc.SocksToRtc;
+  private rtcToNet_ :rtc_to_net.RtcToNet;
   private socksEndpoint_ : Promise<net.Endpoint>;
-  private echoServers_ :Tcp.Server[] = [];
-  private connections_ :{ [index:string]: Tcp.Connection; } = {};
+  private echoServers_ :tcp.Server[] = [];
+  private connections_ :{ [index:string]: tcp.Connection; } = {};
   private localhost_ :string = '127.0.0.1';
 
   constructor(private dispatchEvent_:(name:string, args:any) => void,
@@ -19,12 +22,12 @@ class ProxyIntegrationTest {
   }
 
   public startEchoServer = () : Promise<number> => {
-    var server = new Tcp.Server({
+    var server = new tcp.Server({
       address: this.localhost_,
       port: 0
     });
 
-    server.connectionsQueue.setSyncHandler((tcpConnection:Tcp.Connection) => {
+    server.connectionsQueue.setSyncHandler((tcpConnection:tcp.Connection) => {
       tcpConnection.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
         tcpConnection.send(buffer);
       });
@@ -43,45 +46,45 @@ class ProxyIntegrationTest {
     var rtcPcConfig :freedom_RTCPeerConnection.RTCConfiguration = {
       iceServers: [],
     };
-    var rtcToNetProxyConfig :RtcToNet.ProxyConfig = {
+    var rtcToNetProxyConfig :rtc_to_net.ProxyConfig = {
       allowNonUnicast: !denyLocalhost  // Allow RtcToNet to contact the localhost server.
     };
 
-    this.socksToRtc_ = new SocksToRtc.SocksToRtc();
-    this.rtcToNet_ = new RtcToNet.RtcToNet(rtcPcConfig, rtcToNetProxyConfig);
+    this.socksToRtc_ = new socks_to_rtc.SocksToRtc();
+    this.rtcToNet_ = new rtc_to_net.RtcToNet(rtcPcConfig, rtcToNetProxyConfig);
     this.socksToRtc_.on('signalForPeer', this.rtcToNet_.handleSignalFromPeer);
     this.rtcToNet_.signalsForPeer.setSyncHandler(this.socksToRtc_.handleSignalFromPeer);
     return this.socksToRtc_.start(socksToRtcEndpoint, rtcPcConfig);
   }
 
   // Assumes webEndpoint is IPv4.
-  private connectThroughSocks_ = (socksEndpoint:net.Endpoint, webEndpoint:net.Endpoint) : Promise<Tcp.Connection> => {
-    var connection = new Tcp.Connection({endpoint: socksEndpoint});
-    var authRequest = Socks.composeAuthHandshakeBuffer([Socks.Auth.NOAUTH]);
+  private connectThroughSocks_ = (socksEndpoint:net.Endpoint, webEndpoint:net.Endpoint) : Promise<tcp.Connection> => {
+    var connection = new tcp.Connection({endpoint: socksEndpoint});
+    var authRequest = socks.composeAuthHandshakeBuffer([socks.Auth.NOAUTH]);
     connection.send(authRequest);
-    var connected = new Promise<Tcp.ConnectionInfo>((F, R) => {
+    var connected = new Promise<tcp.ConnectionInfo>((F, R) => {
       connection.onceConnected.then(F);
       connection.onceClosed.then(R);
     });
     var firstBufferPromise :Promise<ArrayBuffer> = connection.receiveNext();
-    return connected.then((i:Tcp.ConnectionInfo) => {
+    return connected.then((i:tcp.ConnectionInfo) => {
       return firstBufferPromise;
     }).then((buffer:ArrayBuffer) : Promise<ArrayBuffer> => {
-      var auth = Socks.interpretAuthResponse(buffer);
-      if (auth != Socks.Auth.NOAUTH) {
+      var auth = socks.interpretAuthResponse(buffer);
+      if (auth != socks.Auth.NOAUTH) {
         throw new Error('SOCKS server returned unexpected AUTH response.  ' +
-                        'Expected NOAUTH (' + Socks.Auth.NOAUTH + ') but got ' + auth);
+                        'Expected NOAUTH (' + socks.Auth.NOAUTH + ') but got ' + auth);
       }
 
-      var request :Socks.Request = {
-        command: Socks.Command.TCP_CONNECT,
+      var request :socks.Request = {
+        command: socks.Command.TCP_CONNECT,
         endpoint: webEndpoint,
       };
-      connection.send(Socks.composeRequestBuffer(request));
+      connection.send(socks.composeRequestBuffer(request));
       return connection.receiveNext();
-    }).then((buffer:ArrayBuffer) : Promise<Tcp.Connection> => {
-      var response = Socks.interpretResponseBuffer(buffer);
-      if (response.reply != Socks.Reply.SUCCEEDED) {
+    }).then((buffer:ArrayBuffer) : Promise<tcp.Connection> => {
+      var response = socks.interpretResponseBuffer(buffer);
+      if (response.reply != socks.Reply.SUCCEEDED) {
         return Promise.reject(response);
       }
       return Promise.resolve(connection);
@@ -90,13 +93,13 @@ class ProxyIntegrationTest {
 
   public connect = (port:number, address?:string) : Promise<string> => {
     try {
-      return this.socksEndpoint_.then((socksEndpoint:net.Endpoint) : Promise<Tcp.Connection> => {
+      return this.socksEndpoint_.then((socksEndpoint:net.Endpoint) : Promise<tcp.Connection> => {
         var echoEndpoint :net.Endpoint = {
           address: address || this.localhost_,
           port: port
         };
         return this.connectThroughSocks_(socksEndpoint, echoEndpoint);
-      }).then((connection:Tcp.Connection) => {
+      }).then((connection:tcp.Connection) => {
         this.connections_[connection.connectionId] = connection;
         return connection.connectionId;
       });
@@ -131,10 +134,6 @@ class ProxyIntegrationTest {
     }
   }
 }
-
-interface Freedom {
-  providePromises: (a:new (f:any) => ProxyIntegrationTest) => void;
-};
 
 if (typeof freedom !== 'undefined') {
   freedom().providePromises(ProxyIntegrationTest);

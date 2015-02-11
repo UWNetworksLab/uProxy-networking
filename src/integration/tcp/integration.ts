@@ -1,6 +1,7 @@
-/// <reference path="../../tcp/tcp.d.ts" />
-/// <reference path='../../arraybuffers/arraybuffers.d.ts' />
-/// <reference path='../../freedom/typings/freedom.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+
+import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
+import tcp = require('../../tcp/tcp');
 
 // Starts an echo server on a free port and verifies that the server
 // is listening on that port. Tests:

@@ -100,6 +100,7 @@ module.exports = (grunt) ->
           'src/churn-pipe/**/*.ts',
           'src/churn/**/*.ts',
           'src/echo/**/*.ts',
+          'src/integration/**/*.ts',
           'src/rtc-to-net/**/*.ts',
           'src/simple-transformers/**/*.ts',
           'src/socks-common/**/*.ts',

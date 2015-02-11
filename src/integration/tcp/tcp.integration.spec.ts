@@ -1,5 +1,5 @@
-/// <reference path='../../freedom/typings/freedom.d.ts' />
-/// <reference path='../../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../build/third_party/typings/jasmine/jasmine.d.ts' />
 
 // Coarse-grained tests for tcp.ts.
 // The real work is done in the Freedom module which starts a test in response
