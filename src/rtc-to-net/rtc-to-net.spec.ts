@@ -7,8 +7,8 @@ import peerconnection = require('../../build/dev/webrtc/peerconnection');
 import handler = require('../../build/dev/handler/queue');
 
 import rtc_to_net = require('./rtc-to-net');
-import net = require('../networking-typings/net.types');
-import tcp = require('../tcp/tcp');
+import net = require('../net/net.types');
+import tcp = require('../net/tcp');
 import socks = require('../socks-common/socks-headers');
 
 import logging = require('../../build/dev/logging/logging');

@@ -2,7 +2,7 @@
 
 // TODO: rename once https://github.com/Microsoft/TypeScript/issues/52 is fixed
 
-import net = require('../networking-typings/net.types');
+import net = require('../net/net.types');
 
 export interface Message {
   data: ArrayBuffer

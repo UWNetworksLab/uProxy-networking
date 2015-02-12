@@ -11,7 +11,7 @@ import CaesarCipher = require('../simple-transformers/caesar');
 
 import logging = require('../../build/dev/logging/logging');
 
-import net = require('../networking-typings/net.types');
+import net = require('../net/net.types');
 
 import churn_pipe_types = require('./churn-pipe.freedom.types');
 

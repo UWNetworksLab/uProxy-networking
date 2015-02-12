@@ -1,8 +1,8 @@
 // For testing just the TCP server portion (see src/client/tcp.ts)
 
 import arraybuffers = require('../../build/dev/arraybuffers/arraybuffers');
-import net = require('../networking-typings/net.types');
-import tcp = require('../tcp/tcp');
+import net = require('../net/net.types');
+import tcp = require('../net/tcp');
 
 import logging = require('../../build/dev/logging/logging');
 var log :logging.Log = new logging.Log('echo-server');

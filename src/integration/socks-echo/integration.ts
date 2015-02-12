@@ -4,8 +4,8 @@ import peerconnection = require('../../../build/dev/webrtc/peerconnection');
 
 import rtc_to_net = require('../../rtc-to-net/rtc-to-net');
 import socks_to_rtc = require('../../socks-to-rtc/socks-to-rtc');
-import net = require('../../networking-typings/net.types');
-import tcp = require('../../tcp/tcp');
+import net = require('../../net/net.types');
+import tcp = require('../../net/tcp');
 import socks = require('../../socks-common/socks-headers');
 
 freedom['loggingprovider']().setConsoleFilter(['*:D']);

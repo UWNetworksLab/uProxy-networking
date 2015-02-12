@@ -11,7 +11,7 @@ import peerconnection = require('../../build/dev/webrtc/peerconnection');
 import handler = require('../../build/dev/handler/queue');
 import random = require('../../build/dev/crypto/random');
 
-import net = require('../networking-typings/net.types');
+import net = require('../net/net.types');
 import churn_pipe_types = require('../churn-pipe/churn-pipe.freedom.types');
 
 import logging = require('../../build/dev/logging/logging');

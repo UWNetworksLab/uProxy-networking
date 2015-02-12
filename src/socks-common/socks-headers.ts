@@ -5,7 +5,7 @@
 /// <reference path='../../build/third_party/ipaddrjs/ipaddrjs.d.ts' />
 
 import ipaddr = require('ipaddr');
-import net = require('../networking-typings/net.types');
+import net = require('../net/net.types');
 
 // version 5 of socks
 export var VERSION5 = 0x05;

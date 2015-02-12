@@ -2,7 +2,7 @@
 /// <reference path='../../build/third_party/typings/jasmine/jasmine.d.ts' />
 
 import churn = require('./churn');
-import net = require('../networking-typings/net.types');
+import net = require('../net/net.types');
 
 describe("filterCandidatesFromSdp", function() {
   it('with candidates', () => {

@@ -5,7 +5,7 @@
 // compiler.
 
 import TcpEchoServer = require('tcp-echo-server');
-import net = require('../networking-typings/net.types');
+import net = require('../net/net.types');
 
 // Example of how to add custom setting for the logging controller's filtering.
 freedom['loggingcontroller']().setConsoleFilter(['*:D']);
