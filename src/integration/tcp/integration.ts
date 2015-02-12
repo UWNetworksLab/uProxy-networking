@@ -1,7 +1,8 @@
 /// <reference path='../../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
 
 import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
-import tcp = require('../../tcp/tcp');
+import tcp = require('../../net/tcp');
+import net = require('../../net/net.types');
 
 // Starts an echo server on a free port and verifies that the server
 // is listening on that port. Tests:
@@ -9,27 +10,27 @@ import tcp = require('../../tcp/tcp');
 //  - the server is listening on that port
 //  - data can be sent and received on that socket
 freedom().on('listen', () => {
-  var server = new Tcp.Server({
+  var server = new tcp.Server({
     address: '127.0.0.1',
     port: 0
   });
 
-  server.connectionsQueue.setSyncHandler((tcpConnection:Tcp.Connection) => {
+  server.connectionsQueue.setSyncHandler((tcpConnection:tcp.Connection) => {
     tcpConnection.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
       tcpConnection.send(buffer);
     });
   });
 
   server.listen().then((endpoint:net.Endpoint) => {
-    var client = new Tcp.Connection({endpoint: endpoint});
+    var client = new tcp.Connection({endpoint: endpoint});
     client.dataFromSocketQueue.setSyncNextHandler((buffer:ArrayBuffer) => {
-      var s = ArrayBuffers.arrayBufferToString(buffer);
+      var s = arraybuffers.arrayBufferToString(buffer);
       if (s == 'ping') {
         freedom().emit('listen');
       }
     });
-    client.onceConnected.then((info:Tcp.ConnectionInfo) => {
-      client.send(ArrayBuffers.stringToArrayBuffer('ping'));
+    client.onceConnected.then((info:tcp.ConnectionInfo) => {
+      client.send(arraybuffers.stringToArrayBuffer('ping'));
     });
   });
 });
@@ -42,14 +43,14 @@ freedom().on('listen', () => {
 //  - onceShutdown fulfills
 // TODO: verify server receives connection events
 freedom().on('shutdown', () => {
-  var server = new Tcp.Server({
+  var server = new tcp.Server({
     address: '127.0.0.1',
     port: 0
   });
 
   server.listen().then((endpoint:net.Endpoint) => {
-    var client1 = new Tcp.Connection({endpoint: endpoint});
-    var client2 = new Tcp.Connection({endpoint: endpoint});
+    var client1 = new tcp.Connection({endpoint: endpoint});
+    var client2 = new tcp.Connection({endpoint: endpoint});
     Promise.all([client1.onceConnected, client2.onceConnected])
       .then(server.shutdown)
       .then(() => {

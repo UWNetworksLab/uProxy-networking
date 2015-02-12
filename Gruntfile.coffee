@@ -10,7 +10,8 @@ taskManager.add 'default', [ 'dev' ]
 taskManager.add 'base-dev', [
   'copy:typescriptLibs'
   'copy:dev'
-  'ts:dev'
+  'ts:devInModuleEnv'
+  'ts:devInCoreEnv'
 ]
 
 taskManager.add 'dev', [
@@ -94,7 +95,7 @@ module.exports = (grunt) ->
     ts:
       # Compile all non-sample typescript code into the development build
       # directory.
-      dev:
+      devInModuleEnv:
         src: [
           'src/benchmark/**/*.ts',
           'src/churn-pipe/**/*.ts',
@@ -110,6 +111,7 @@ module.exports = (grunt) ->
           '!src/**/*.d.ts',
           '!src/samples/**/*.ts',
           '!src/**/*.spec.dynamic.ts',
+          '!src/**/*.integration.spec.ts',
         ]
         outDir: 'build/dev/'
         baseDir: 'src'
@@ -121,6 +123,22 @@ module.exports = (grunt) ->
           declaration: true
           module: 'commonjs'
           fast: 'always'
+
+      devInCoreEnv:
+        src: [
+          'src/**/*.integration.spec.ts',
+        ]
+        outDir: 'build/dev/'
+        baseDir: 'src'
+        options:
+          target: 'es5'
+          comments: true
+          noImplicitAny: true
+          sourceMap: false
+          declaration: true
+          module: 'commonjs'
+          fast: 'always'
+
 
     clean:
       build:
