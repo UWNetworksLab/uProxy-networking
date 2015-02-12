@@ -1,6 +1,7 @@
 # uproxy-networking
 
 [![Build Status](https://travis-ci.org/uProxy/uproxy-networking.svg?branch=master)](https://travis-ci.org/uProxy/uproxy-networking) [![devDependency Status](https://david-dm.org/uProxy/uproxy-networking/dev-status.svg)](https://david-dm.org/uProxy/uproxy-networking#info=devDependencies)
+[![Build Status](https://api.shippable.com/projects/54c823bf5ab6cc135289fbd1/badge?branchName=dev)](https://app.shippable.com/projects/54c823bf5ab6cc135289fbd1/builds/latest)
 
 ## Overview
 
