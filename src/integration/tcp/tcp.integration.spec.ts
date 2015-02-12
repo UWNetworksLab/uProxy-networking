@@ -16,8 +16,28 @@ describe('core.tcpsocket wrapper', function() {
     loadFreedom('listen').then(done);
   });
 
-  it('shutdown notifications', (done) => {
+  it('sends onceShutdown notifications', (done) => {
     loadFreedom('shutdown').then(done);
+  });
+
+  it('onceClosed by server', (done) => {
+    loadFreedom('onceclosedbyserver').then(done);
+  });
+
+  it('onceClosed by client', (done) => {
+    loadFreedom('onceclosedbyclient').then(done);
+  });
+
+  it('onceClosed returns NEVER_CONNECTED when client connection fails', (done) => {
+    loadFreedom('neverconnected').then(done);
+  });
+
+  it('serves multiple clients', (done) => {
+    loadFreedom('multipleclients').then(done);
+  });
+
+  it('connectionsCount', (done) => {
+    loadFreedom('connectionscount').then(done);
   });
 
   // Loads the testing Freedom module, emits a signal and returns

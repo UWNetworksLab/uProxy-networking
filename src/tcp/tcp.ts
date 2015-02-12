@@ -332,6 +332,11 @@ module Tcp {
       this.onceClosed = new Promise<SocketCloseKind>((F, R) => {
         this.fulfillClosed_ = F;
       });
+
+      this.onceConnected.catch((e:Error) => {
+        this.fulfillClosed_(SocketCloseKind.NEVER_CONNECTED);
+      });
+
       this.connectionSocket_.on('onDisconnect', this.onDisconnectHandler_);
     }
 
