@@ -7,7 +7,7 @@ document.head.appendChild(script);
 script.onload = () => {
   freedom('lib/simple-socks/freedom-module.json', {
       'logger': 'lib/loggingprovider/loggingprovider.json',
-      'debug': 'log'
+      'debug': 'debug'
   }).then(function(interface:any) {
     // Keep a background timeout running continuously, to prevent chrome from
     // putting the app to sleep.
