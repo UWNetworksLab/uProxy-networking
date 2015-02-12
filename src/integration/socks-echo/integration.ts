@@ -121,14 +121,33 @@ class ProxyIntegrationTest {
       contents.forEach(connection.send);
 
       var received :ArrayBuffer[] = [];
+      var bytesReceived :number = 0;
+      var bytesToSend :number = 0;
+      contents.forEach((content:ArrayBuffer) => {
+        bytesToSend += content.byteLength;
+      });
       return new Promise<ArrayBuffer[]>((F, R) => {
         connection.dataFromSocketQueue.setSyncHandler((echo:ArrayBuffer) => {
           received.push(echo);
-          if (received.length == contents.length) {
+          bytesReceived += echo.byteLength;
+          if (bytesReceived == bytesToSend) {
             F(received);
           }
         });
       });
+    } catch (e) {
+      return Promise.reject(e.message + ' ' + e.stack);
+    }
+  }
+
+  public ping = (connectionId:string, content:ArrayBuffer) : Promise<void> => {
+    try {
+      var connection = this.connections_[connectionId];
+      connection.send(content);
+      connection.dataFromSocketQueue.setSyncHandler((response:ArrayBuffer) => {
+        this.dispatchEvent_('pong', response);
+      });
+      return Promise.resolve();
     } catch (e) {
       return Promise.reject(e.message + ' ' + e.stack);
     }
