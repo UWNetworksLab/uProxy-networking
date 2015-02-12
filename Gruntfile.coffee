@@ -18,6 +18,31 @@ FILES =
     '!node_modules/es6-promise/dist/promise-*.min.js'
   ]
 
+INTEGRATION_SOURCES = [
+  'build/freedom/freedom-for-chrome.js'
+  'build/arraybuffers/arraybuffers.js'
+  'build/loggingprovider/loggingprovider.js'
+  'build/loggingprovider/loggingprovider.json'
+  'build/logging/logging.js'
+  'build/handler/queue.js'
+  'build/ipaddrjs/ipaddr.min.js'
+  'build/tcp/tcp.js'
+  'build/rtc-to-net/rtc-to-net.js'
+  'build/socks-common/socks-headers.js'
+  'build/socks-to-rtc/socks-to-rtc.js'
+  'build/simple-transformers/*.js'
+  'build/regex2dfa/*.js'
+  'build/utransformers/**/*.js'
+  'build/churn-pipe/churn-pipe.js'
+  'build/churn-pipe/freedom.json'
+  'build/churn/churn.js'
+  'build/webrtc/*.js'
+  # spec_base.js is listed first so that it can be used by spec.js
+  'build/integration/**/*.integration.spec_base.js'
+  'build/integration/**/*.js'
+  'build/integration/**/integration.json'
+];
+
 #-------------------------------------------------------------------------
 module.exports = (grunt) ->
   grunt.initConfig {
@@ -329,42 +354,27 @@ module.exports = (grunt) ->
 
     jasmine_chromeapp:
       base:
-        src: [
-          'build/freedom/freedom-for-chrome.js'
-          'build/arraybuffers/arraybuffers.js'
-          'build/logging/logging.js'
-          'build/handler/queue.js'
-          'build/ipaddrjs/ipaddr.min.js'
-          'build/tcp/tcp.js'
-          'build/rtc-to-net/rtc-to-net.js'
-          'build/socks-common/socks-headers.js'
-          'build/socks-to-rtc/socks-to-rtc.js'
-          'build/webrtc/*.js'
-          'build/integration/**/*.js'
-          'build/integration/**/integration.json'
-        ]
+        src: INTEGRATION_SOURCES
         options:
           paths: [
             'build/freedom/freedom-for-chrome.js'
             'build/arraybuffers/arraybuffers.js'
+            'build/integration/**/*.integration.spec_base.js'
             'build/integration/**/*.integration.spec.js'
           ]
           keepRunner: false
+      churn:
+        src: INTEGRATION_SOURCES
+        options:
+          paths: [
+            'build/freedom/freedom-for-chrome.js'
+            'build/arraybuffers/arraybuffers.js'
+            'build/integration/**/*.integration.spec_base.js'
+            'build/integration/**/*.churn_integration.spec.js'
+          ]
+          keepRunner: false
       slow:
-        src: [
-          'build/freedom/freedom-for-chrome.js'
-          'build/arraybuffers/arraybuffers.js'
-          'build/logging/logging.js'
-          'build/handler/queue.js'
-          'build/ipaddrjs/ipaddr.min.js'
-          'build/tcp/tcp.js'
-          'build/rtc-to-net/rtc-to-net.js'
-          'build/socks-common/socks-headers.js'
-          'build/socks-to-rtc/socks-to-rtc.js'
-          'build/webrtc/*.js'
-          'build/integration/**/*.js'
-          'build/integration/**/integration.json'
-        ]
+        src: INTEGRATION_SOURCES
         options:
           paths: [
             'build/freedom/freedom-for-chrome.js'
@@ -661,6 +671,13 @@ module.exports = (grunt) ->
   taskManager.add 'slow_integration_test', [
     'integration_test'
     'jasmine_chromeapp:slow'
+  ]
+
+  taskManager.add 'churn_integration_test', [
+    'build'
+    'ts:integrationTests'
+    'ts:integrationTestsSpecDecl'
+    'jasmine_chromeapp:churn'
   ]
 
   taskManager.add 'test', [
