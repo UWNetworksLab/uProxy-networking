@@ -7,7 +7,7 @@
 
 import logging = require('../../build/dev/logging/logging');
 import handler = require('../../build/dev/handler/queue');
-import net = require('../networking-typings/net.types');
+import net = require('./net.types');
 
 var log :logging.Log = new logging.Log('tcp');
 

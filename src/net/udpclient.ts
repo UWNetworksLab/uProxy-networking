@@ -1,7 +1,7 @@
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
 
-import net = require('../networking-typings/net.types');
+import net = require('./net.types');
 
 import UdpLib = freedom_UdpSocket;
 

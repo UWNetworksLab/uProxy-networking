@@ -3,6 +3,8 @@
 
 import UdpLib = freedom_UdpSocket;
 
+var log :logging.Log = new logging.Log('udprelay');
+
 /**
  * A UDP-based "relay" server intended for use as part of a SOCKS5 proxy:
  *   http://www.ietf.org/rfc/rfc1928.txt
@@ -43,7 +45,7 @@ import UdpLib = freedom_UdpSocket;
  * TODO: this is so similar to udprelay.ts that they can almost certainly
  *       be merged into one
  */
-export class UdpRelay {
+class UdpRelay {
 
   // The Socks client sends datagrams to this socket.
   // Eventually, it will also receive replies on this socket.
@@ -89,7 +91,7 @@ export class UdpRelay {
           // Record the address and port on which our socket is listening.
           this.address_ = socketInfo.localAddress;
           this.port_ = socketInfo.localPort;
-          dbg('listening on ' + this.address_ + ':' + this.port_);
+          log.info('listening on ' + this.address_ + ':' + this.port_);
         })
         .then(this.attachSocketHandler_);
   }
@@ -154,8 +156,4 @@ export class UdpRelay {
   }
 }
 
-// Debug helpers.
-var modulePrefix_ = '[UDP-RELAY] ';
-function dbg(msg:string) { console.log(modulePrefix_ + msg); }
-function dbgWarn(msg:string) { console.warn(modulePrefix_ + msg); }
-function dbgErr(msg:string) { console.error(modulePrefix_ + msg); }
+export = UdpRelay;
