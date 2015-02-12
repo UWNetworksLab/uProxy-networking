@@ -14,22 +14,32 @@ var socksEchoTestDescription = function(useChurn:boolean) {
     'that seems like enough'
   ];
 
+  var freedomInterface :Function;
   var getTestModule = function(denyLocalhost?:boolean) : any {
-    return freedom('scripts/build/integration/socks-echo/integration.json',
-            { 'debug': 'debug' })
-        .then((interface:any) => {
-          return interface(denyLocalhost, useChurn);
-        });
+    return freedomInterface(denyLocalhost, useChurn);
   };
+
+  beforeEach((done) => {
+    freedom('scripts/build/integration/socks-echo/integration.json',
+            { 'debug': 'debug' })
+        .then((interface:Function) => {
+          freedomInterface = interface;
+          done();
+        });
+  });
+
+  afterEach(() => {
+    expect(freedomInterface).not.toBeUndefined();
+    freedomInterface.close();
+  });
 
   it('run a simple echo test', (done) => {
     var input = ArrayBuffers.stringToArrayBuffer('arbitrary test string');
-    getTestModule().then((testModule:any) => {
-      return testModule.startEchoServer().then((port:number) => {
-        return testModule.connect(port);
-      }).then((connectionId:string) => {
-        return testModule.echo(connectionId, input);
-      });
+    var testModule = getTestModule();
+    testModule.startEchoServer().then((port:number) => {
+      return testModule.connect(port);
+    }).then((connectionId:string) => {
+      return testModule.echo(connectionId, input);
     }).then((output:ArrayBuffer) => {
       expect(ArrayBuffers.byteEquality(input, output)).toBe(true);
     }).catch((e:any) => {
@@ -39,16 +49,16 @@ var socksEchoTestDescription = function(useChurn:boolean) {
 
   it('run multiple echo tests in a batch on one connection', (done) => {
     var testBuffers = testStrings.map(ArrayBuffers.stringToArrayBuffer);
-    getTestModule().then((testModule:any) => {
-      return testModule.startEchoServer().then((port:number) => {
-        return testModule.connect(port);
-      }).then((connectionId:string) => {
-        return testModule.echoMultiple(connectionId, testBuffers);
-      });
+    var testModule = getTestModule();
+    testModule.startEchoServer().then((port:number) => {
+      return testModule.connect(port);
+    }).then((connectionId:string) => {
+      return testModule.echoMultiple(connectionId, testBuffers);
     }).then((outputs:ArrayBuffer[]) => {
-      for (var i = 0; i < testBuffers.length; ++i) {
-        expect(ArrayBuffers.byteEquality(testBuffers[i], outputs[i])).toBe(true);
-      }
+      var concatenatedInputs = ArrayBuffers.concat(testBuffers);
+      var concatenatedOutputs = ArrayBuffers.concat(outputs);
+      var isEqual = ArrayBuffers.byteEquality(concatenatedInputs, concatenatedOutputs);
+      expect(isEqual).toBe(true);
     }).catch((e:any) => {
       expect(e).toBeUndefined();
     }).then(done);
@@ -56,25 +66,24 @@ var socksEchoTestDescription = function(useChurn:boolean) {
 
   it('run multiple echo tests in series on one connection', (done) => {
     var testBuffers = testStrings.map(ArrayBuffers.stringToArrayBuffer);
-    getTestModule().then((testModule:any) => {
-      return testModule.startEchoServer().then((port:number) => {
-        return testModule.connect(port);
-      }).then((connectionId:string) => {
-        var i = 0;
-        return new Promise<void>((F, R) => {
-          var step = () => {
-            if (i == testBuffers.length) {
-              F();
-              return;
-            }
-            testModule.echo(connectionId, testBuffers[i])
-                .then((echo:ArrayBuffer) => {
-              expect(ArrayBuffers.byteEquality(testBuffers[i], echo)).toBe(true);
-              ++i;
-            }).then(step);
-          };
-          step();
-        });
+    var testModule = getTestModule();
+    testModule.startEchoServer().then((port:number) => {
+      return testModule.connect(port);
+    }).then((connectionId:string) => {
+      var i = 0;
+      return new Promise<void>((F, R) => {
+        var step = () => {
+          if (i == testBuffers.length) {
+            F();
+            return;
+          }
+          testModule.echo(connectionId, testBuffers[i])
+              .then((echo:ArrayBuffer) => {
+            expect(ArrayBuffers.byteEquality(testBuffers[i], echo)).toBe(true);
+            ++i;
+          }).then(step);
+        };
+        step();
       });
     }).catch((e:any) => {
       expect(e).toBeUndefined();
@@ -82,51 +91,48 @@ var socksEchoTestDescription = function(useChurn:boolean) {
   });
 
   it('connect to the same server multiple times in parallel', (done) => {
-    getTestModule().then((testModule:any) => {
-      return testModule.startEchoServer().then((port:number) : Promise<any> => {
-        var promises = testStrings.map((s:string) : Promise<void> => {
-          var buffer = ArrayBuffers.stringToArrayBuffer(s);
-          return testModule.connect(port).then((connectionId:string) => {
-            return testModule.echo(connectionId, buffer);
-          }).then((response:ArrayBuffer) => {
-            expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
-          });
+    var testModule = getTestModule();
+    testModule.startEchoServer().then((port:number) : Promise<any> => {
+      var promises = testStrings.map((s:string) : Promise<void> => {
+        var buffer = ArrayBuffers.stringToArrayBuffer(s);
+        return testModule.connect(port).then((connectionId:string) => {
+          return testModule.echo(connectionId, buffer);
+        }).then((response:ArrayBuffer) => {
+          expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
         });
-        return Promise.all(promises);
       });
+      return Promise.all(promises);
     }).catch((e:any) => {
       expect(e).toBeUndefined();
     }).then(done);
   });
 
   it('connect to many different servers in parallel', (done) => {
-    getTestModule().then((testModule:any) => {
-      var promises = testStrings.map((s:string) : Promise<void> => {
-        var buffer = ArrayBuffers.stringToArrayBuffer(s);
+    var testModule = getTestModule();
+    var promises = testStrings.map((s:string) : Promise<void> => {
+      var buffer = ArrayBuffers.stringToArrayBuffer(s);
 
-        // For each string, start a new echo server with that name, and
-        // then echo that string from that server.
-        return testModule.startEchoServer().then((port:number) => {
-          return testModule.connect(port);
-        }).then((connectionId:string) => {
-          return testModule.echo(connectionId, buffer);
-        }).then((response:ArrayBuffer) => {
-          expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
-        });
+      // For each string, start a new echo server with that name, and
+      // then echo that string from that server.
+      return testModule.startEchoServer().then((port:number) => {
+        return testModule.connect(port);
+      }).then((connectionId:string) => {
+        return testModule.echo(connectionId, buffer);
+      }).then((response:ArrayBuffer) => {
+        expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
       });
-
-      Promise.all(promises).catch((e:any) => {
-        expect(e).toBeUndefined();
-      }).then(done);
     });
+
+    Promise.all(promises).catch((e:any) => {
+      expect(e).toBeUndefined();
+    }).then(done);
   });
 
   it('run a localhost echo test while localhost is blocked.', (done) => {
     // Get a test module that doesn't allow localhost access.
-    getTestModule(true).then((testModule:any) => {
-      return testModule.startEchoServer().then((port:number) => {
-        return testModule.connect(port);
-      });
+    var testModule = getTestModule(true);
+    testModule.startEchoServer().then((port:number) => {
+      return testModule.connect(port);
     }).then((connectionId:string) => {
       // This code should not run, because testModule.connect() should
       // reject with a NOT_ALLOWED error.
@@ -136,38 +142,38 @@ var socksEchoTestDescription = function(useChurn:boolean) {
     }).then(done);
   });
 
-  it('fetch from non-localhost address', (done) => {
+  var runUproxyOrg404Test = (testModule:any, done:Function) => {
     var nonExistentPath = '/noSuchPath';
     var input = ArrayBuffers.stringToArrayBuffer(
         'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
-    getTestModule().then((testModule:any) => {
-      return testModule.connect(80, 'uproxy.org').then((connectionId:string) => {
-        return testModule.echo(connectionId, input);
+    testModule.connect(80, 'uproxy.org').then((connectionId:string) => {
+      var isDone = false;
+      var outputString = '';
+      testModule.on('pong', (response:ArrayBuffer) => {
+        if (isDone) {
+          return;
+        }
+        outputString += ArrayBuffers.arrayBufferToString(response);
+        if (outputString.indexOf('HTTP/1.0 404 Not Found') != -1 &&
+            outputString.indexOf(nonExistentPath) != -1) {
+          isDone = true;
+          done();
+        }
       });
-    }).then((output:ArrayBuffer) => {
-      var outputString = ArrayBuffers.arrayBufferToString(output);
-      expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
-      expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
+      return testModule.ping(connectionId, input);
     }).catch((e:any) => {
       expect(e).toBeUndefined();
-    }).then(done);
+    });
+  };
+
+  it('fetch from non-localhost address', (done) => {
+    var testModule = getTestModule();
+    runUproxyOrg404Test(testModule, done);
   });
 
   it('fetch from non-localhost address while localhost is blocked.', (done) => {
-    var nonExistentPath = '/noSuchPath';
-    var input = ArrayBuffers.stringToArrayBuffer(
-        'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
-    getTestModule(true).then((testModule:any) => {
-      return testModule.connect(80, 'uproxy.org').then((connectionId:string) => {
-        return testModule.echo(connectionId, input);
-      });
-    }).then((output:ArrayBuffer) => {
-      var outputString = ArrayBuffers.arrayBufferToString(output);
-      expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
-      expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
-    }).catch((e:any) => {
-      expect(e).toBeUndefined();
-    }).then(done);
+    var testModule = getTestModule(true);
+    runUproxyOrg404Test(testModule, done);
   });
 
   it('do a request that gets blocked, then another that succeeds.', (done) => {
@@ -175,35 +181,24 @@ var socksEchoTestDescription = function(useChurn:boolean) {
     var input = ArrayBuffers.stringToArrayBuffer(
         'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
     // Get a test module that doesn't allow localhost access.
-    getTestModule(true).then((testModule:any) => {
-      // Try to connect to localhost, and fail
-      testModule.connect(1023).then((connectionId:string) => {
-        // This code should not run, because testModule.connect() should
-        // reject with a NOT_ALLOWED error.
-        expect(connectionId).toBeUndefined();
-      }, (e:any) => {
-        expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
-      }).then(() => {
-        // After the first request fails, try to fetch uproxy.org.
-        return testModule.connect(80, 'uproxy.org');
-      }).then((connectionId:string) => {
-        return testModule.echo(connectionId, input);
-      }).then((output:ArrayBuffer) => {
-        var outputString = ArrayBuffers.arrayBufferToString(output);
-        expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
-        expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
-      }).catch((e:any) => {
-        expect(e).toBeUndefined();
-      }).then(done);
+    var testModule = getTestModule(true);
+    // Try to connect to localhost, and fail
+    testModule.connect(1023).then((connectionId:string) => {
+      // This code should not run, because testModule.connect() should
+      // reject with a NOT_ALLOWED error.
+      expect(connectionId).toBeUndefined();
+    }, (e:any) => {
+      expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
+    }).then(() => {
+      runUproxyOrg404Test(testModule, done);
     });
   });
 
   it('run a localhost-resolving DNS name echo test while localhost is blocked.', (done) => {
     // Get a test module with one that doesn't allow localhost access.
-    getTestModule(true).then((testModule:any) => {
-      return testModule.startEchoServer().then((port:number) => {
-        return testModule.connect(port, 'www.127.0.0.1.xip.io');
-      });
+    var testModule = getTestModule(true);
+    testModule.startEchoServer().then((port:number) => {
+      return testModule.connect(port, 'www.127.0.0.1.xip.io');
     }).then((connectionId:string) => {
       // This code should not run, because testModule.connect() should
       // reject.
@@ -221,9 +216,9 @@ var socksEchoTestDescription = function(useChurn:boolean) {
   });
 
   it('attempt to connect to a nonexistent echo daemon', (done) => {
-    getTestModule().then((testModule:any) => {
-      return testModule.connect(1023);  // 1023 is a reserved port.
-    }).then((connectionId:string) => {
+    var testModule = getTestModule();
+    // 1023 is a reserved port.
+    testModule.connect(1023).then((connectionId:string) => {
       // This code should not run, because there is no server on this port.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
@@ -232,9 +227,9 @@ var socksEchoTestDescription = function(useChurn:boolean) {
   });
 
   it('attempt to connect to a nonexistent echo daemon while localhost is blocked', (done) => {
-    getTestModule(true).then((testModule:any) => {
-      return testModule.connect(1023);  // 1023 is a reserved port.
-    }).then((connectionId:string) => {
+    var testModule = getTestModule(true);
+    // 1023 is a reserved port.
+    testModule.connect(1023).then((connectionId:string) => {
       // This code should not run, because localhost is blocked.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
@@ -243,9 +238,9 @@ var socksEchoTestDescription = function(useChurn:boolean) {
   });
 
   it('attempt to connect to a nonexistent local echo daemon while localhost is blocked as 0.0.0.0', (done) => {
-    getTestModule(true).then((testModule:any) => {
-      return testModule.connect(1023, '0.0.0.0');  // 1023 is a reserved port.
-    }).then((connectionId:string) => {
+    var testModule = getTestModule(true);
+    // 1023 is a reserved port.
+    testModule.connect(1023, '0.0.0.0').then((connectionId:string) => {
       // This code should not run because the destination is invalid.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
@@ -256,9 +251,9 @@ var socksEchoTestDescription = function(useChurn:boolean) {
   });
 
   it('attempt to connect to a nonexistent local echo daemon while localhost is blocked as IPv6', (done) => {
-    getTestModule(true).then((testModule:any) => {
-      return testModule.connect(1023, '::1');  // 1023 is a reserved port.
-    }).then((connectionId:string) => {
+    var testModule = getTestModule(true);
+    // 1023 is a reserved port.
+    testModule.connect(1023, '::1').then((connectionId:string) => {
       // This code should not run, because localhost is blocked.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
@@ -267,9 +262,9 @@ var socksEchoTestDescription = function(useChurn:boolean) {
   });
 
   it('attempt to connect to a local network IP address while it is blocked', (done) => {
-    getTestModule(true).then((testModule:any) => {
-      return testModule.connect(1023, '10.5.5.5');  // 1023 is a reserved port.
-    }).then((connectionId:string) => {
+    var testModule = getTestModule(true);
+    // 1023 is a reserved port.
+    testModule.connect(1023, '10.5.5.5').then((connectionId:string) => {
       // This code should not run, because local network access is blocked.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
@@ -278,12 +273,11 @@ var socksEchoTestDescription = function(useChurn:boolean) {
   });
 
   it('connection refused from DNS name', (done) => {
-    getTestModule().then((testModule:any) => {
-      // Many sites (such as uproxy.org) seem to simply ignore SYN packets on
-      // unmonitored ports, but openbsd.org actually refuses the connection as
-      // expected.
-      return testModule.connect(1023, 'openbsd.org');
-    }).then((connectionId:string) => {
+    var testModule = getTestModule();
+    // Many sites (such as uproxy.org) seem to simply ignore SYN packets on
+    // unmonitored ports, but openbsd.org actually refuses the connection as
+    // expected.
+    testModule.connect(1023, 'openbsd.org').then((connectionId:string) => {
       // This code should not run, because there is no server on this port.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
@@ -292,12 +286,11 @@ var socksEchoTestDescription = function(useChurn:boolean) {
   });
 
   it('connection refused from DNS name while localhost is blocked', (done) => {
-    getTestModule(true).then((testModule:any) => {
-      // Many sites (such as uproxy.org) seem to simply ignore SYN packets on
-      // unmonitored ports, but openbsd.org actually refuses the connection as
-      // expected.
-      return testModule.connect(1023, 'openbsd.org');
-    }).then((connectionId:string) => {
+    var testModule = getTestModule(true);
+    // Many sites (such as uproxy.org) seem to simply ignore SYN packets on
+    // unmonitored ports, but openbsd.org actually refuses the connection as
+    // expected.
+    testModule.connect(1023, 'openbsd.org').then((connectionId:string) => {
       // This code should not run, because there is no server on this port.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
@@ -312,9 +305,8 @@ var socksEchoTestDescription = function(useChurn:boolean) {
   // Disabled because HOST_UNREACHABLE is not yet exposed in freedom-for-chrome's
   // implementation of the core.tcpsocket API.
   xit('attempt to connect to a nonexistent DNS name', (done) => {
-    getTestModule(true).then((testModule:any) => {
-      return testModule.connect(80, 'www.nonexistentdomain.gov');
-    }).then((connectionId:string) => {
+    var testModule = getTestModule(true);
+    testModule.connect(80, 'www.nonexistentdomain.gov').then((connectionId:string) => {
       // This code should not run, because there is no such DNS name.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
