@@ -319,8 +319,13 @@ module SocksToRtc {
       this.onceReady.catch(this.fulfillStopping_);
       Promise.race<any>([
           tcpConnection.onceClosed.then((kind:Tcp.SocketCloseKind) => {
-            log.debug('%1: client socket closed (%2)', [
-                this.longId(), Tcp.SocketCloseKind[kind] || 'unknown reason']);
+            if (kind === Tcp.SocketCloseKind.UNKOWN) {
+              log.error('%1: client socket closed for unknown reason', [
+                  this.longId()]);
+            } else {
+              log.debug('%1: client socket closed (%2)', [
+                  this.longId(), Tcp.SocketCloseKind[kind] || 'unknown reason']);
+            }
           }),
           dataChannel.onceClosed.then(() => {
             log.debug('%1: datachannel closed', [this.longId()]);
