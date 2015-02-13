@@ -21,26 +21,33 @@ module Tcp {
   }
 
   export interface ConnectionInfo {
-    bound: Net.Endpoint;
-    remote: Net.Endpoint;
+    bound?: Net.Endpoint;
+    remote?: Net.Endpoint;
   }
 
   // A limit on the max number of TCP connections before we start rejecting
   // new ones.
   var DEFAULT_MAX_CONNECTIONS = 1048576;
 
-  function endpointOfSocketInfo(info:freedom_TcpSocket.SocketInfo)
+  // Private function, exported only for unit tests
+  export function endpointOfSocketInfo(info:freedom_TcpSocket.SocketInfo)
       : ConnectionInfo {
-     return {
-       bound: {
-         address: info.localAddress,
-         port: info.localPort
-       },
-       remote: {
-         address: info.peerAddress,
-         port: info.peerPort
-       }
-     };
+    var retval :ConnectionInfo = {};
+    if (typeof info.localAddress == 'string' &&
+        typeof info.localPort == 'number') {
+      retval.bound = {
+        address: info.localAddress,
+        port: info.localPort
+      };
+    }
+    if (typeof info.peerAddress == 'string' &&
+        typeof info.peerPort == 'number') {
+      retval.remote = {
+        address: info.peerAddress,
+        port: info.peerPort
+      };
+    }
+    return retval;
   }
 
   // A static helper function to close a freedom socket object and then
