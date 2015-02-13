@@ -240,6 +240,7 @@ module RtcToNet {
           var reply = this.getReplyFromInfo_(info);
           this.replyToPeer_(reply, info);
         }, (e:any) => {
+          // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // If this.tcpConnection_ is not defined, then getTcpConnection_
           // failed and we've already replied with UNSUPPORTED_COMMAND.
           if (this.tcpConnection_) {
