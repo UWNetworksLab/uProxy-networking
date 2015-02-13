@@ -1,21 +1,25 @@
-/// <reference path='../rtc-to-net/rtc-to-net.d.ts' />
-/// <reference path='../socks-to-rtc/socks-to-rtc.d.ts' />
+/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
 
-/// <reference path='../webrtc/peerconnection.d.ts' />
+import peerconnection = require('../../build/dev/webrtc/peerconnection');
+
+import rtc_to_net = require('../rtc-to-net/rtc-to-net');
+import socks_to_rtc = require('../socks-to-rtc/socks-to-rtc');
+import net = require('../net/net.types');
+
+import logging = require('../../build/dev/logging/logging');
+var log :logging.Log = new logging.Log('simple-socks');
+
 /// <reference path='../logging/logging.d.ts' />
-/// <reference path='../freedom/typings/freedom.d.ts' />
-/// <reference path='../networking-typings/communications.d.ts' />
 
 // Set each module to I, W, E, or D depending on which module
 // you're debugging. Since the proxy outputs quite a lot of messages,
 // show only warnings by default from the rest of the system.
 // Note that the proxy is extremely slow in debug (D) mode.
-freedom['loggingprovider']().setConsoleFilter([
+freedom['loggingcontroller']().setConsoleFilter([
     '*:I',
     'SocksToRtc:I',
     'RtcToNet:I']);
-
-var log :Logging.Log = new Logging.Log('simple-socks');
 
 //-----------------------------------------------------------------------------
 var localhostEndpoint:net.Endpoint = { address: '127.0.0.1', port:9999 };
@@ -25,7 +29,7 @@ var pcConfig :freedom_RTCPeerConnection.RTCConfiguration = {
   iceServers: [{urls: ['stun:stun.l.google.com:19302']},
                {urls: ['stun:stun1.l.google.com:19302']}]
 };
-var rtcNet = new RtcToNet.RtcToNet(
+var rtcNet = new rtc_to_net.RtcToNet(
     pcConfig,
     {
       allowNonUnicast: true
@@ -33,7 +37,7 @@ var rtcNet = new RtcToNet.RtcToNet(
     false); // obfuscate
 
 //-----------------------------------------------------------------------------
-var socksRtc = new SocksToRtc.SocksToRtc();
+var socksRtc = new socks_to_rtc.SocksToRtc();
 socksRtc.on('signalForPeer', rtcNet.handleSignalFromPeer);
 socksRtc.start(
     localhostEndpoint,

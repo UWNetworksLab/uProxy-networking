@@ -24,14 +24,15 @@ describe('core.tcpsocket wrapper', function() {
   // a promise which fulfills once the signal is echoed.
   function loadFreedom(name:string) : Promise<void> {
     return freedom('scripts/build/integration/tcp/integration.json', { 'debug': 'log' })
-      .then((interface:any) => {
+      .then((integrationFactoryConstructor) => {
         return new Promise((F, R) => {
-          var testModule = interface();
+          var testModule = integrationFactoryConstructor();
           testModule.emit(name);
           testModule.on(name, F);
         })
-        // Cleanup! Note: this will not run if the test times out...
-        .then(interface.close, interface.close);
+        // Cleanup! Note: this will not run if the test times out... TODO: do
+        // we really want close on an promise rejection? better to error then?
+        .then(integrationFactoryConstructor.close, integrationFactoryConstructor.close);
       });
   }
 });

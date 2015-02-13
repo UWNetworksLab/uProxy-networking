@@ -27,7 +27,7 @@ describe('proxy integration tests', function() {
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
       // The socket should time out after two minutes.
-      expect(e.reply).toEqual(Socks.Reply.TTL_EXPIRED);
+      expect(e.reply).toEqual(socks.Reply.TTL_EXPIRED);
     }).then(done);
   });
 });

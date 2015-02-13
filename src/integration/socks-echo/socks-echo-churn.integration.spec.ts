@@ -1,5 +1,5 @@
-/// <reference path='socks-echo.integration.spec_base.ts' />
+import echotest = require('socks-echo-base.integration.spec');
 
 describe('proxy integration tests using churn', function() {
-  socksEchoTestDescription(true);
+  echotest.socksEchoTestDescription(true);
 });

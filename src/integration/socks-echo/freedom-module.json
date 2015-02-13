@@ -18,9 +18,9 @@
     ]
   },
   "dependencies": {
-    "loggingprovider": {
+    "loggingcontroller": {
       "url": "../../loggingprovider/loggingprovider.json",
-      "api": "loggingprovider"
+      "api": "loggingcontroller"
     },
     "churnPipe": {
       "url": "../../churn-pipe/freedom.json",

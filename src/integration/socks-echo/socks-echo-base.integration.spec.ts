@@ -6,7 +6,7 @@ import socks = require('../../socks-common/socks-headers');
 
 // Integration test for the whole proxying system.
 // The real work is done in the Freedom module which performs each test.
-var socksEchoTestDescription = function(useChurn:boolean) {
+export function socksEchoTestDescription(useChurn:boolean) {
   var testStrings = [
     'foo',
     'bar',
@@ -24,7 +24,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
   };
 
   it('run a simple echo test', (done) => {
-    var input = ArrayBuffers.stringToArrayBuffer('arbitrary test string');
+    var input = arraybuffers.stringToArrayBuffer('arbitrary test string');
     getTestModule().then((testModule:any) => {
       return testModule.startEchoServer().then((port:number) => {
         return testModule.connect(port);
@@ -32,14 +32,14 @@ var socksEchoTestDescription = function(useChurn:boolean) {
         return testModule.echo(connectionId, input);
       });
     }).then((output:ArrayBuffer) => {
-      expect(ArrayBuffers.byteEquality(input, output)).toBe(true);
+      expect(arraybuffers.byteEquality(input, output)).toBe(true);
     }).catch((e:any) => {
       expect(e).toBeUndefined();
     }).then(done);
   });
 
   it('run multiple echo tests in a batch on one connection', (done) => {
-    var testBuffers = testStrings.map(ArrayBuffers.stringToArrayBuffer);
+    var testBuffers = testStrings.map(arraybuffers.stringToArrayBuffer);
     getTestModule().then((testModule:any) => {
       return testModule.startEchoServer().then((port:number) => {
         return testModule.connect(port);
@@ -48,7 +48,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
       });
     }).then((outputs:ArrayBuffer[]) => {
       for (var i = 0; i < testBuffers.length; ++i) {
-        expect(ArrayBuffers.byteEquality(testBuffers[i], outputs[i])).toBe(true);
+        expect(arraybuffers.byteEquality(testBuffers[i], outputs[i])).toBe(true);
       }
     }).catch((e:any) => {
       expect(e).toBeUndefined();
@@ -56,7 +56,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
   });
 
   it('run multiple echo tests in series on one connection', (done) => {
-    var testBuffers = testStrings.map(ArrayBuffers.stringToArrayBuffer);
+    var testBuffers = testStrings.map(arraybuffers.stringToArrayBuffer);
     getTestModule().then((testModule:any) => {
       return testModule.startEchoServer().then((port:number) => {
         return testModule.connect(port);
@@ -70,7 +70,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
             }
             testModule.echo(connectionId, testBuffers[i])
                 .then((echo:ArrayBuffer) => {
-              expect(ArrayBuffers.byteEquality(testBuffers[i], echo)).toBe(true);
+              expect(arraybuffers.byteEquality(testBuffers[i], echo)).toBe(true);
               ++i;
             }).then(step);
           };
@@ -86,11 +86,11 @@ var socksEchoTestDescription = function(useChurn:boolean) {
     getTestModule().then((testModule:any) => {
       return testModule.startEchoServer().then((port:number) : Promise<any> => {
         var promises = testStrings.map((s:string) : Promise<void> => {
-          var buffer = ArrayBuffers.stringToArrayBuffer(s);
+          var buffer = arraybuffers.stringToArrayBuffer(s);
           return testModule.connect(port).then((connectionId:string) => {
             return testModule.echo(connectionId, buffer);
           }).then((response:ArrayBuffer) => {
-            expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
+            expect(arraybuffers.byteEquality(buffer, response)).toBe(true);
           });
         });
         return Promise.all(promises);
@@ -103,7 +103,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
   it('connect to many different servers in parallel', (done) => {
     getTestModule().then((testModule:any) => {
       var promises = testStrings.map((s:string) : Promise<void> => {
-        var buffer = ArrayBuffers.stringToArrayBuffer(s);
+        var buffer = arraybuffers.stringToArrayBuffer(s);
 
         // For each string, start a new echo server with that name, and
         // then echo that string from that server.
@@ -112,7 +112,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
         }).then((connectionId:string) => {
           return testModule.echo(connectionId, buffer);
         }).then((response:ArrayBuffer) => {
-          expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
+          expect(arraybuffers.byteEquality(buffer, response)).toBe(true);
         });
       });
 
@@ -133,20 +133,20 @@ var socksEchoTestDescription = function(useChurn:boolean) {
       // reject with a NOT_ALLOWED error.
       expect(connectionId).toBeUndefined();
     }, (e:any) => {
-      expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
+      expect(e.reply).toEqual(socks.Reply.NOT_ALLOWED);
     }).then(done);
   });
 
   it('fetch from non-localhost address', (done) => {
     var nonExistentPath = '/noSuchPath';
-    var input = ArrayBuffers.stringToArrayBuffer(
+    var input = arraybuffers.stringToArrayBuffer(
         'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
     getTestModule().then((testModule:any) => {
       return testModule.connect(80, 'uproxy.org').then((connectionId:string) => {
         return testModule.echo(connectionId, input);
       });
     }).then((output:ArrayBuffer) => {
-      var outputString = ArrayBuffers.arrayBufferToString(output);
+      var outputString = arraybuffers.arrayBufferToString(output);
       expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
       expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
     }).catch((e:any) => {
@@ -156,14 +156,14 @@ var socksEchoTestDescription = function(useChurn:boolean) {
 
   it('fetch from non-localhost address while localhost is blocked.', (done) => {
     var nonExistentPath = '/noSuchPath';
-    var input = ArrayBuffers.stringToArrayBuffer(
+    var input = arraybuffers.stringToArrayBuffer(
         'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
     getTestModule(true).then((testModule:any) => {
       return testModule.connect(80, 'uproxy.org').then((connectionId:string) => {
         return testModule.echo(connectionId, input);
       });
     }).then((output:ArrayBuffer) => {
-      var outputString = ArrayBuffers.arrayBufferToString(output);
+      var outputString = arraybuffers.arrayBufferToString(output);
       expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
       expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
     }).catch((e:any) => {
@@ -173,7 +173,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
 
   it('do a request that gets blocked, then another that succeeds.', (done) => {
     var nonExistentPath = '/noSuchPath';
-    var input = ArrayBuffers.stringToArrayBuffer(
+    var input = arraybuffers.stringToArrayBuffer(
         'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
     // Get a test module that doesn't allow localhost access.
     getTestModule(true).then((testModule:any) => {
@@ -183,14 +183,14 @@ var socksEchoTestDescription = function(useChurn:boolean) {
         // reject with a NOT_ALLOWED error.
         expect(connectionId).toBeUndefined();
       }, (e:any) => {
-        expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
+        expect(e.reply).toEqual(socks.Reply.NOT_ALLOWED);
       }).then(() => {
         // After the first request fails, try to fetch uproxy.org.
         return testModule.connect(80, 'uproxy.org');
       }).then((connectionId:string) => {
         return testModule.echo(connectionId, input);
       }).then((output:ArrayBuffer) => {
-        var outputString = ArrayBuffers.arrayBufferToString(output);
+        var outputString = arraybuffers.arrayBufferToString(output);
         expect(outputString.indexOf('HTTP/1.0 404 Not Found')).not.toBe(-1);
         expect(outputString.indexOf(nonExistentPath)).not.toBe(-1);
       }).catch((e:any) => {
@@ -217,7 +217,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
       // resolution succeeds.  However, to avoid portscanning leaks
       // (https://github.com/uProxy/uproxy/issues/809) both will be reported
       // as FAILURE
-      expect(e.reply).toEqual(Socks.Reply.FAILURE);
+      expect(e.reply).toEqual(socks.Reply.FAILURE);
     }).then(done);
   });
 
@@ -228,7 +228,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
       // This code should not run, because there is no server on this port.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
-      expect(e.reply).toEqual(Socks.Reply.CONNECTION_REFUSED);
+      expect(e.reply).toEqual(socks.Reply.CONNECTION_REFUSED);
     }).then(done);
   });
 
@@ -239,7 +239,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
       // This code should not run, because localhost is blocked.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
-      expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
+      expect(e.reply).toEqual(socks.Reply.NOT_ALLOWED);
     }).then(done);
   });
 
@@ -252,7 +252,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
     }).catch((e:any) => {
       // TODO: Make this just NOT_ALLOWED once this bug in ipadddr.js is fixed:
       // https://github.com/whitequark/ipaddr.js/issues/9
-      expect([Socks.Reply.NOT_ALLOWED, Socks.Reply.FAILURE]).toContain(e.reply);
+      expect([socks.Reply.NOT_ALLOWED, socks.Reply.FAILURE]).toContain(e.reply);
     }).then(done);
   });
 
@@ -263,7 +263,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
       // This code should not run, because localhost is blocked.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
-      expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
+      expect(e.reply).toEqual(socks.Reply.NOT_ALLOWED);
     }).then(done);
   });
 
@@ -274,7 +274,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
       // This code should not run, because local network access is blocked.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
-      expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
+      expect(e.reply).toEqual(socks.Reply.NOT_ALLOWED);
     }).then(done);
   });
 
@@ -288,7 +288,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
       // This code should not run, because there is no server on this port.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
-      expect(e.reply).toEqual(Socks.Reply.CONNECTION_REFUSED);
+      expect(e.reply).toEqual(socks.Reply.CONNECTION_REFUSED);
     }).then(done);
   });
 
@@ -306,7 +306,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
       // domain isn't on the local network, and we're concerned about port
       // scanning, we return the generic FAILURE code instead.
       // See https://github.com/uProxy/uproxy/issues/809.
-      expect(e.reply).toEqual(Socks.Reply.FAILURE);
+      expect(e.reply).toEqual(socks.Reply.FAILURE);
     }).then(done);
   });
 
@@ -319,7 +319,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
       // This code should not run, because there is no such DNS name.
       expect(connectionId).toBeUndefined();
     }).catch((e:any) => {
-      expect(e.reply).toEqual(Socks.Reply.HOST_UNREACHABLE);
+      expect(e.reply).toEqual(socks.Reply.HOST_UNREACHABLE);
     }).then(done);
   });
 };

@@ -8,7 +8,7 @@ import net = require('../../net/net.types');
 import tcp = require('../../net/tcp');
 import socks = require('../../socks-common/socks-headers');
 
-freedom['loggingprovider']().setConsoleFilter(['*:D']);
+freedom['loggingcontroller']().setConsoleFilter(['*:D']);
 
 class ProxyIntegrationTest {
   private socksToRtc_ :socks_to_rtc.SocksToRtc;

@@ -9,6 +9,12 @@
       "integration.js"
     ]
   },
+  "dependencies": {
+    "loggingcontroller": {
+      "url": "../../loggingprovider/loggingprovider.json",
+      "api": "loggingcontroller"
+    }
+  },
   "permissions": [
     "core.tcpsocket"
   ]

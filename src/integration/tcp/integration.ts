@@ -4,6 +4,8 @@ import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
 import tcp = require('../../net/tcp');
 import net = require('../../net/net.types');
 
+freedom['loggingcontroller']().setConsoleFilter(['*:D']);
+
 // Starts an echo server on a free port and verifies that the server
 // is listening on that port. Tests:
 //  - a free port is chosen when port zero is requested
