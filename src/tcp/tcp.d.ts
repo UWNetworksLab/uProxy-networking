@@ -61,8 +61,8 @@ declare module Tcp {
   }
 
   interface ConnectionInfo {
-    bound: Net.Endpoint;
-    remote: Net.Endpoint;
+    bound?: Net.Endpoint;
+    remote?: Net.Endpoint;
   }
 
   // Wraps up a single TCP connection to a client
@@ -113,4 +113,8 @@ declare module Tcp {
       CLOSED // Cannot change state.
     }
   }
+
+  // Private function, exported only for unit tests.
+  function endpointOfSocketInfo(info:freedom_TcpSocket.SocketInfo)
+      : ConnectionInfo;
 }

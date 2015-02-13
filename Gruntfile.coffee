@@ -192,6 +192,7 @@ module.exports = (grunt) ->
     ts:
       # SOCKS.
       tcp: Rule.typescriptSrc 'tcp'
+      tcpSpecDecl: Rule.typescriptSpecDecl 'tcp'
 
       udp: Rule.typescriptSrc 'udp'
 
@@ -351,6 +352,23 @@ module.exports = (grunt) ->
               type: 'html'
               options:
                 dir: 'build/coverage/rtcToNet'
+      tcp:
+        src: FILES.jasmine_helpers.concat([
+          'build/tcp/mocks.js'
+          'build/logging/logging.js'
+          'build/tcp/tcp.js'
+        ])
+        options:
+          specs: 'build/tcp/*.spec.js'
+          #outfile: 'build/rtc-to-net/SpecRunner.html'
+          #keepRunner: true
+          template: require('grunt-template-jasmine-istanbul')
+          templateOptions:
+            coverage: 'build/coverage/tcp/coverage.json'
+            report:
+              type: 'html'
+              options:
+                dir: 'build/coverage/tcp'
 
     jasmine_chromeapp:
       base:
@@ -432,6 +450,7 @@ module.exports = (grunt) ->
   taskManager.add 'tcp', [
     'base'
     'ts:tcp'
+    'ts:tcpSpecDecl'
     'copy:tcp'
   ]
 
