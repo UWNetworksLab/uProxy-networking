@@ -8,7 +8,7 @@ var manifest = self.data.url("lib/simple-socks/freedom-module.json");
 var loggingProviderManifest = self.data.url("lib/loggingprovider/loggingprovider.json");
 freedom(manifest, {
   'logger': loggingProviderManifest,
-  'debug': 'log'
+  'debug': 'debug'
 }).then(function(interface) {
   var simpleSocks = interface();
 }, function() {
