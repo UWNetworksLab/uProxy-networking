@@ -320,7 +320,7 @@ module SocksToRtc {
       Promise.race<any>([
           tcpConnection.onceClosed.then((kind:Tcp.SocketCloseKind) => {
             if (kind === Tcp.SocketCloseKind.UNKOWN) {
-              log.error('%1: client socket closed for unknown reason', [
+              log.error('%1: client socket closed for unrecognized reason', [
                   this.longId()]);
             } else {
               log.debug('%1: client socket closed (%2)', [
