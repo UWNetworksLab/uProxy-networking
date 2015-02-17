@@ -214,7 +214,7 @@ module SocksToRtc {
     // Note that Session closes the TCP connection and datachannel on any error.
     private makeTcpToRtcSession_ = (tcpConnection:Tcp.Connection) : void => {
       var tag = obtainTag();
-      log.info('created new session %1', [tag]);
+      log.info('created new session %1 for new SOCKS client', [tag]);
 
 	    this.peerConnection_.openDataChannel(tag).then((channel:WebRtc.DataChannel) => {
         log.debug('opened datachannel for session %1', [tag]);
@@ -225,8 +225,6 @@ module SocksToRtc {
             this.bytesSentToPeer_,
             this.bytesReceivedFromPeer_)
         .then((endpoint:Net.Endpoint) => {
-          log.debug('session %1 connected via bound endpoint %2', [
-              tag, JSON.stringify(endpoint)]);
           this.sessions_[tag] = session;
         }, (e:Error) => {
           log.warn('session %1 failed to connect to remote endpoint: %2', [
@@ -407,6 +405,9 @@ module SocksToRtc {
               R(new Error('invalid response:' + data.str));
               return;
             }
+            log.debug('%1: connected to remote host', [this.longId()]);
+            log.debug('%1: remote peer bound address: %2', [
+                this.longId(), JSON.stringify(r.endpoint)]);
             F(r);
           } catch(e) {
             R(new Error('received malformed response during handshake: ' +
@@ -423,6 +424,8 @@ module SocksToRtc {
       return this.tcpConnection_.receiveNext()
         .then(Socks.interpretRequestBuffer)
         .then((request:Socks.Request) => {
+          log.debug('%1: received endpoint from SOCKS client: %2', [
+              this.longId(), JSON.stringify(request.endpoint)]);
           this.dataChannel_.send({ str: JSON.stringify(request) });
           return this.receiveResponseFromPeer_();
         })

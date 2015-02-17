@@ -257,8 +257,9 @@ module RtcToNet {
           return this.tcpConnection_.onceConnected;
         })
         .then((info:Tcp.ConnectionInfo) => {
-          log.debug('%1: connected to remote endpoint from local endpoint %2', [
-              this.longId(), JSON.stringify(info.bound)]);
+          log.debug('%1: connected to remote endpoint', [this.longId()]);
+          log.debug('%1: bound address: %2', [this.longId(),
+              JSON.stringify(info.bound)]);
           var reply = this.getReplyFromInfo_(info);
           this.replyToPeer_(reply, info);
         }, (e:any) => {
