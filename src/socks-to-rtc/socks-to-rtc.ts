@@ -320,10 +320,10 @@ module SocksToRtc {
       Promise.race<any>([
           tcpConnection.onceClosed.then((kind:Tcp.SocketCloseKind) => {
             if (kind === Tcp.SocketCloseKind.UNKOWN) {
-              log.error('%1: client socket closed for unrecognized reason', [
+              log.error('%1: socket closed for unrecognized reason', [
                   this.longId()]);
             } else {
-              log.debug('%1: client socket closed (%2)', [
+              log.debug('%1: socket closed (%2)', [
                   this.longId(), Tcp.SocketCloseKind[kind] || 'unknown reason']);
             }
           }),
@@ -441,7 +441,7 @@ module SocksToRtc {
       // Any further data just goes to the target site.
       this.tcpConnection_.dataFromSocketQueue.setSyncHandler(
           (data:ArrayBuffer) => {
-        log.debug('%1: client socket received %2 bytes', [
+        log.debug('%1: socket received %2 bytes', [
             this.longId(), data.byteLength]);
         this.dataChannel_.send({ buffer: data })
         .catch((e:Error) => {
@@ -468,10 +468,10 @@ module SocksToRtc {
           if (e.errcode === 'NOT_CONNECTED') {
             // This can happen if, for example, there was still data to be
             // read on the datachannel's queue when the socket closed.
-            log.warn('%1: tried to send data on closed client socket: %2', [
+            log.warn('%1: tried to send data on closed socket: %2', [
                 this.longId(), e.errcode]);
           } else {
-            log.error('%1: failed to send data on client socket: %2', [
+            log.error('%1: failed to send data on socket: %2', [
                 this.longId(), e.errcode]);            
           }
         });
