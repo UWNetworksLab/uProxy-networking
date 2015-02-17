@@ -431,8 +431,18 @@ module RtcToNet {
         this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
         this.tcpConnection_.send(data.buffer)
         .catch((e:Error) => {
-          log.error('%1: failed to send data on socket: %2', [
-              this.longId(), e.message]);
+          // TODO: e is actually a freedom.Error (uproxy-lib 20+)
+          // errcode values are defined here:
+          //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
+          if (e.errcode === 'NOT_CONNECTED') {
+            // This can happen if, for example, there was still data to be
+            // read on the datachannel's queue when the socket closed.
+            log.warn('%1: tried to send data on closed socket: %2', [
+                this.longId(), e.errcode]);
+          } else {
+            log.error('%1: failed to send data on socket: %2', [
+                this.longId(), e.errcode]);
+          }
         });
       });
     }
