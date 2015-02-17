@@ -57,28 +57,30 @@ var giverBytesSent :number = 0;
 
 rtcNet.signalsForPeer.setSyncHandler(socksRtc.handleSignalFromPeer);
 
+// TODO: Re-enable received/sent messages when per-component logging is fixed:
+//         https://github.com/uProxy/uproxy/issues/906
 socksRtc.on('bytesReceivedFromPeer', (numBytes:number) => {
   getterBytesReceived += numBytes;
-  log.debug('Getter received ' + numBytes + ' bytes. (Total received: '
-    + getterBytesReceived + ' bytes)');
+  // log.debug('Getter received ' + numBytes + ' bytes. (Total received: '
+  //   + getterBytesReceived + ' bytes)');
 });
 
 socksRtc.on('bytesSentToPeer', (numBytes:number) => {
   getterBytesSent += numBytes;
-  log.debug('Getter sent ' + numBytes + ' bytes. (Total sent: '
-    + getterBytesSent + ' bytes)');
+  // log.debug('Getter sent ' + numBytes + ' bytes. (Total sent: '
+  //   + getterBytesSent + ' bytes)');
 });
 
 rtcNet.bytesReceivedFromPeer.setSyncHandler((numBytes:number) => {
   giverBytesReceived += numBytes;
-  log.debug('Giver received ' + numBytes + ' bytes. (Total received: '
-    + giverBytesReceived + ' bytes)');
+  // log.debug('Giver received ' + numBytes + ' bytes. (Total received: '
+  //   + giverBytesReceived + ' bytes)');
 });
 
 rtcNet.bytesSentToPeer.setSyncHandler((numBytes:number) => {
   giverBytesSent += numBytes;
-  log.debug('Giver sent ' + numBytes + ' bytes. (Total sent: '
-    + giverBytesSent + ' bytes)');
+  // log.debug('Giver sent ' + numBytes + ' bytes. (Total sent: '
+  //   + giverBytesSent + ' bytes)');
 });
 
 rtcNet.onceReady
