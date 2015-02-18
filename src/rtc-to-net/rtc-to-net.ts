@@ -133,7 +133,7 @@ module RtcToNet {
 
     private onPeerOpenedChannel_ = (channel:WebRtc.DataChannel) => {
       var channelLabel = channel.getLabel();
-      log.info('created new session %1', [channelLabel]);
+      log.info('associating session %1 with new datachannel', [channelLabel]);
 
       var session = new Session(
           channel,
@@ -249,7 +249,7 @@ module RtcToNet {
               log.error('%1: socket closed for unrecognized reason', [
                   this.longId()]);
             } else {
-              log.debug('%1: socket closed (%2)', [
+              log.info('%1: socket closed (%2)', [
                   this.longId(), Tcp.SocketCloseKind[kind] || 'unknown reason']);
             }
           })
@@ -257,7 +257,7 @@ module RtcToNet {
           return this.tcpConnection_.onceConnected;
         })
         .then((info:Tcp.ConnectionInfo) => {
-          log.debug('%1: connected to remote endpoint', [this.longId()]);
+          log.info('%1: connected to remote endpoint', [this.longId()]);
           log.debug('%1: bound address: %2', [this.longId(),
               JSON.stringify(info.bound)]);
           var reply = this.getReplyFromInfo_(info);
@@ -278,7 +278,7 @@ module RtcToNet {
 
       this.dataChannel_.onceClosed
       .then(() => {
-        log.debug('%1: datachannel closed', [this.longId()]);
+        log.info('%1: datachannel closed', [this.longId()]);
       })
       .then(this.fulfillStopping_);
 
@@ -337,7 +337,7 @@ module RtcToNet {
               R(new Error('unexpected type for endpoint message'));
               return;
             }
-            log.debug('%1: received endpoint from peer: %2', [
+            log.info('%1: received endpoint from peer: %2', [
                 this.longId(), JSON.stringify(request.endpoint)]);
             F(request.endpoint);
             return;
