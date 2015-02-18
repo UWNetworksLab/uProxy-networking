@@ -120,7 +120,12 @@ module RtcToNet {
       this.onceReady = this.peerConnection_.onceConnected.then(() => {});
       this.onceReady.catch(this.fulfillStopping_);
       this.peerConnection_.onceDisconnected
-          .then(this.fulfillStopping_, this.fulfillStopping_);
+        .then(() => {
+          log.debug('peerconnection terminated');
+        }, (e:Error) => {
+          log.error('peerconnection terminated with error: %1', [e.message]);
+        })
+        .then(this.fulfillStopping_, this.fulfillStopping_);
       this.onceClosed = this.onceStopping_.then(this.stopResources_);
 
       return this.onceReady;
@@ -128,7 +133,7 @@ module RtcToNet {
 
     private onPeerOpenedChannel_ = (channel:WebRtc.DataChannel) => {
       var channelLabel = channel.getLabel();
-      log.debug('creating new session for channel ' + channelLabel);
+      log.info('created new session %1', [channelLabel]);
 
       var session = new Session(
           channel,
@@ -136,15 +141,19 @@ module RtcToNet {
           this.bytesReceivedFromPeer,
           this.bytesSentToPeer);
       this.sessions_[channelLabel] = session;
-      session.start();
+      session.start().catch((e:Error) => {
+        log.warn('session %1 failed to connect to remote endpoint: %2', [
+            channelLabel, e.message]);
+      });
 
       var discard = () => {
         delete this.sessions_[channelLabel];
-        log.debug('discarded session ' + channelLabel + ' (' +
-            Object.keys(this.sessions_).length + ' sessions remaining)');
-      };
+        log.info('discarded session %1 (%2 remaining)', [
+            channelLabel, Object.keys(this.sessions_).length]);
+        };
       session.onceStopped().then(discard, (e:Error) => {
-        log.error('session ' + channelLabel + ' closed with error: ' + e.message);
+        log.info('discarded session %1 (%2 remaining)', [
+            channelLabel, Object.keys(this.sessions_).length]);
         discard();
       });
     }
@@ -153,6 +162,7 @@ module RtcToNet {
     // Returns onceClosed.
     // TODO: rename stop, ala SocksToRtc (API breakage).
     public close = () : Promise<void> => {
+      log.debug('stop requested');
       this.fulfillStopping_();
       return this.onceClosed;
     }
@@ -161,6 +171,7 @@ module RtcToNet {
     // Since its close() method should never throw, this should never reject.
     // TODO: close all sessions before fulfilling
     private stopResources_ = () : Promise<void> => {
+      log.debug('freeing resources');
       return new Promise<void>((F, R) => { this.peerConnection_.close(); F(); });
     }
 
@@ -233,10 +244,22 @@ module RtcToNet {
         }).then((tcpConnection:Tcp.Connection) => {
           this.tcpConnection_ = tcpConnection;
           // Shutdown once the TCP connection terminates.
-          this.tcpConnection_.onceClosed.then(this.fulfillStopping_);
+          this.tcpConnection_.onceClosed.then((kind:Tcp.SocketCloseKind) => {
+            if (kind === Tcp.SocketCloseKind.UNKOWN) {
+              log.error('%1: socket closed for unrecognized reason', [
+                  this.longId()]);
+            } else {
+              log.debug('%1: socket closed (%2)', [
+                  this.longId(), Tcp.SocketCloseKind[kind] || 'unknown reason']);
+            }
+          })
+          .then(this.fulfillStopping_);
           return this.tcpConnection_.onceConnected;
         })
         .then((info:Tcp.ConnectionInfo) => {
+          log.debug('%1: connected to remote endpoint', [this.longId()]);
+          log.debug('%1: bound address: %2', [this.longId(),
+              JSON.stringify(info.bound)]);
           var reply = this.getReplyFromInfo_(info);
           this.replyToPeer_(reply, info);
         }, (e:any) => {
@@ -252,7 +275,13 @@ module RtcToNet {
       this.onceReady.then(this.linkTcpAndPeerConnectionData_);
 
       this.onceReady.catch(this.fulfillStopping_);
-      this.dataChannel_.onceClosed.then(this.fulfillStopping_);
+
+      this.dataChannel_.onceClosed
+      .then(() => {
+        log.debug('%1: datachannel closed', [this.longId()]);
+      })
+      .then(this.fulfillStopping_);
+
       this.onceStopped_ = this.onceStopping_.then(this.stopResources_);
 
       return this.onceReady;
@@ -261,6 +290,7 @@ module RtcToNet {
     // Initiates shutdown of the TCP connection and peerconnection.
     // Returns onceStopped.
     public stop = () : Promise<void> => {
+      log.debug('%1: stop requested', [this.longId()]);
       this.fulfillStopping_();
       return this.onceStopped_;
     }
@@ -269,6 +299,7 @@ module RtcToNet {
     // closed, fulfilling once both have closed. Since neither object's
     // close() methods should ever reject, this should never reject.
     private stopResources_ = () : Promise<void> => {
+      log.debug('%1: freeing resources', [this.longId()]);
       // DataChannel.close() returns void, implying that the shutdown is
       // effectively immediate.  However, we wrap it in a promise to ensure
       // that any exception is sent to the Promise.catch, rather than
@@ -290,13 +321,15 @@ module RtcToNet {
       return new Promise((F,R) => {
         this.dataChannel_.dataFromPeerQueue.setSyncNextHandler((data:WebRtc.Data) => {
           if (!data.str) {
-            R(new Error('endpoint message must be a str'));
+            R(new Error('received non-string data from peer: ' +
+                JSON.stringify(data)));
             return;
           }
           try {
             var r :any = JSON.parse(data.str);
             if (!Socks.isValidRequest(r)) {
-              R(new Error('invalid request: ' + data.str));
+              R(new Error('received invalid request from peer: ' +
+                  JSON.stringify(data.str)));
               return;
             }
             var request :Socks.Request = r;
@@ -304,10 +337,13 @@ module RtcToNet {
               R(new Error('unexpected type for endpoint message'));
               return;
             }
+            log.debug('%1: received endpoint from peer: %2', [
+                this.longId(), JSON.stringify(request.endpoint)]);
             F(request.endpoint);
             return;
           } catch (e) {
-            R(new Error('could not parse requested endpoint: ' + e.message));
+            R(new Error('received malformed message during handshake: ' +
+                data.str));
             return;
           }
         });
@@ -318,7 +354,7 @@ module RtcToNet {
       if (ipaddr.isValid(endpoint.address) &&
           !this.isAllowedAddress_(endpoint.address)) {
         this.replyToPeer_(Socks.Reply.NOT_ALLOWED);
-        throw new Error('Tried to connect to disallowed address: ' +
+        throw new Error('tried to connect to disallowed address: ' +
                         endpoint.address);
       }
       return new Tcp.Connection({endpoint: endpoint});
@@ -374,25 +410,41 @@ module RtcToNet {
     // have completed.
     private linkTcpAndPeerConnectionData_ = () : void => {
       // Data from the TCP socket goes to the data channel.
-      this.tcpConnection_.dataFromSocketQueue.setSyncHandler((buffer) => {
-        log.debug(this.longId() + ': passing on data from tcp connection to pc (' +
-            buffer.byteLength + ' bytes)');
-        this.dataChannel_.send({buffer: buffer})
-          .catch((e:Error) => {
-            log.error('error forwarding received TCP data to peerconnection: ' + e.message);
-          });
-        this.bytesSentToPeer_.handle(buffer.byteLength);
+      this.tcpConnection_.dataFromSocketQueue.setSyncHandler((data) => {
+        log.debug('%1: socket received %2 bytes', [
+            this.longId(), data.byteLength]);
+        this.dataChannel_.send({buffer: data})
+        .catch((e:Error) => {
+          log.error('%1: failed to send data on datachannel: %2', [
+              this.longId(), e.message]);
+        });
+        this.bytesSentToPeer_.handle(data.byteLength);
       });
       // Data from the datachannel goes to the TCP socket.
       this.dataChannel_.dataFromPeerQueue.setSyncHandler((data:WebRtc.Data) => {
         if (!data.buffer) {
-          log.error(this.longId() + ': dataFromPeer: ' +
-              'got non-buffer data: ' + JSON.stringify(data));
+          log.error('%1: received non-buffer data from datachannel', [
+              this.longId()]);
           return;
         }
-        log.debug(this.longId() + ': dataFromPeer: ' + data.buffer.byteLength + ' bytes.');
+        log.debug('%1: datachannel received %2 bytes', [
+            this.longId(), data.buffer.byteLength]);
         this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
-        this.tcpConnection_.send(data.buffer);
+        this.tcpConnection_.send(data.buffer)
+        .catch((e:Error) => {
+          // TODO: e is actually a freedom.Error (uproxy-lib 20+)
+          // errcode values are defined here:
+          //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
+          if (e.errcode === 'NOT_CONNECTED') {
+            // This can happen if, for example, there was still data to be
+            // read on the datachannel's queue when the socket closed.
+            log.warn('%1: tried to send data on closed socket: %2', [
+                this.longId(), e.errcode]);
+          } else {
+            log.error('%1: failed to send data on socket: %2', [
+                this.longId(), e.errcode]);
+          }
+        });
       });
     }
 
@@ -417,8 +469,12 @@ module RtcToNet {
     }
 
     public longId = () : string => {
-      return 'session ' + this.channelLabel() + ' (TCP connection ' +
-          (this.tcpConnection_.isClosed() ? 'closed' : 'open') + ') ';
+      var s = 'session ' + this.channelLabel();
+      if (this.tcpConnection_) {
+        s += ' (TCP ' + (this.tcpConnection_.isClosed() ?
+            'closed' : 'open') + ')';
+      }
+      return s;
     }
 
     // For logging/debugging.
