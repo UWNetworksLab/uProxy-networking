@@ -105,6 +105,7 @@ module.exports = (grunt) ->
           'src/net/**/*.ts',
           'src/rtc-to-net/**/*.ts',
           'src/samples/copypaste-churn-chat-chromeapp/**/*.ts',
+          'src/samples/copypaste-socks-chromeapp/**/*.ts',
           'src/simple-socks/**/*.ts',
           'src/simple-transformers/**/*.ts',
           'src/socks-common/**/*.ts',

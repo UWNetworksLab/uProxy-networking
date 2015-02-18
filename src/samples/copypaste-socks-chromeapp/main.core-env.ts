@@ -1,17 +1,18 @@
-/// <reference path='../../freedom/typings/freedom.d.ts' />
-/// <reference path='../../third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../freedom/typings/pgp.d.ts' />
-/// <reference path='../../arraybuffers/arraybuffers.d.ts' />
-/// <reference path='../../networking-typings/communications.d.ts' />
-/// <reference path='../../networking-typings/polymer.d.ts' />
-/// <reference path='../../networking-typings/i18n.d.ts' />
-/// <reference path='../../webrtc/peerconnection.d.ts' />
+/// <reference path='../../../build/third_party/i18n/i18n.d.ts' />
+/// <reference path='../../../build/third_party/polymer/polymer.d.ts' />
+/// <reference path='../../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/pgp.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-core-env.d.ts' />
+
+import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
+import peerconnection = require('../../../build/dev/webrtc/peerconnection');
+import net = require('../../net/net.types');
 
 var copypastePromise :Promise<any> = freedom('freedom-module.json', {
     'logger': 'lib/loggingprovider/loggingprovider.json',
     'debug': 'log'
-}).then((interface:any) => {
-  return interface();
+}).then((copypasteSocksFactory:) => {
+  return copypasteSocksFactory();
 }, (e:Error) => {
   console.error('could not load freedom: ' + e.message);
 });
