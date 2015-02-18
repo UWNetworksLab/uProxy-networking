@@ -1,8 +1,14 @@
-/// <reference path='../../freedom/typings/freedom.d.ts' />
+/// <reference path='../../../../build/third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../../build/third_party/polymer/polymer.d.ts' />
+
+import copypaste_api = require('../copypaste-api');
+declare var copypaste :copypaste_api.CopypasteApi;
 
 Polymer({
-  model: model,
+  model: copypaste.model,
   stopProxying: function() {
-    copypastePromise.then((copypaste:OnAndEmit<any,any>) => { copypaste.emit('stop', {}); });
+    copypaste.onceReady.then((copypasteModule) => {
+      copypasteModule.emit('stop', {});
+    });
   }
 });

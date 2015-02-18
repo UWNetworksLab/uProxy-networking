@@ -1,13 +1,15 @@
-/// <reference path='../../rtc-to-net/rtc-to-net.d.ts' />
-/// <reference path='../../socks-to-rtc/socks-to-rtc.d.ts' />
+/// <reference path='../../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/pgp.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
 
-/// <reference path='../../third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../freedom/typings/pgp.d.ts' />
-/// <reference path='../../arraybuffers/arraybuffers.d.ts' />
-/// <reference path='../../logging/logging.d.ts' />
-/// <reference path='../../freedom/typings/freedom.d.ts' />
-/// <reference path='../../networking-typings/communications.d.ts' />
-/// <reference path='../../webrtc/peerconnection.d.ts' />
+import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
+import rtc_to_net = require('../../rtc-to-net/rtc-to-net');
+import socks_to_rtc = require('../../socks-to-rtc/socks-to-rtc');
+import net = require('../../net/net.types');
+import peerconnection = require('../../../build/dev/webrtc/peerconnection');
+
+import logging = require('../../../build/dev/logging/logging');
 
 // Set each module to I, W, E, or D depending on which module
 // you're debugging. Since the proxy outputs quite a lot of messages,
@@ -18,8 +20,8 @@ freedom['loggingprovider']().setConsoleFilter([
     'SocksToRtc:I',
     'RtcToNet:I']);
 
-var log :Logging.Log = new Logging.Log('copypaste-socks');
-var pgp :PgpProvider = freedom.pgp();
+var log :logging.Log = new logging.Log('copypaste-socks');
+var pgp :PgpProvider = freedom['pgp']();
 var friendKey :string;
 // TODO interactive setup w/real passphrase
 pgp.setup('', 'uProxy user <noreply@uproxy.org>');
@@ -43,12 +45,12 @@ var pcConfig :freedom_RTCPeerConnection.RTCConfiguration = {
 // If we receive signalling channel messages without having received
 // the 'start' signal then we create an rtc-to-net instance and
 // will act as the SOCKS backend.
-var socksRtc:SocksToRtc.SocksToRtc;
-var rtcNet:RtcToNet.RtcToNet;
+var socksRtc:socks_to_rtc.SocksToRtc;
+var rtcNet:rtc_to_net.RtcToNet;
 
 freedom().on('start', () => {
   var localhostEndpoint:net.Endpoint = { address: '127.0.0.1', port: 9999 };
-  socksRtc = new SocksToRtc.SocksToRtc();
+  socksRtc = new socks_to_rtc.SocksToRtc();
 
   // Forward signalling channel messages to the UI.
   socksRtc.on('signalForPeer', (signal:any) => {
@@ -89,12 +91,12 @@ freedom().on('start', () => {
 // Messages are dispatched to either the socks-to-rtc or rtc-to-net
 // modules depending on whether we're acting as the frontend or backend,
 // respectively.
-freedom().on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
+freedom().on('handleSignalMessage', (signal:peerconnection.SignallingMessage) => {
   if (socksRtc !== undefined) {
     socksRtc.handleSignalFromPeer(signal);
   } else {
     if (rtcNet === undefined) {
-      rtcNet = new RtcToNet.RtcToNet(
+      rtcNet = new rtc_to_net.RtcToNet(
           pcConfig,
           {
             allowNonUnicast:true
@@ -103,7 +105,7 @@ freedom().on('handleSignalMessage', (signal:WebRtc.SignallingMessage) => {
       log.info('created rtc-to-net');
 
       // Forward signalling channel messages to the UI.
-      rtcNet.signalsForPeer.setSyncHandler((signal:WebRtc.SignallingMessage) => {
+      rtcNet.signalsForPeer.setSyncHandler((signal:peerconnection.SignallingMessage) => {
           freedom().emit('signalForPeer', signal);
       });
 
@@ -136,7 +138,7 @@ freedom().on('friendKey', (newFriendKey:string) => {
 });
 
 freedom().on('signEncrypt', (message:string) => {
-  pgp.signEncrypt(ArrayBuffers.stringToArrayBuffer(message), friendKey)
+  pgp.signEncrypt(arraybuffers.stringToArrayBuffer(message), friendKey)
     .then((cipherdata:ArrayBuffer) => {
       return pgp.armor(cipherdata);
     })

@@ -1,8 +1,13 @@
+/// <reference path='../../../../build/third_party/polymer/polymer.d.ts' />
+
+import copypaste_api = require('../copypaste-api');
+declare var copypaste :copypaste_api.CopypasteApi;
+
 Polymer({
   giveMode: function() {
-    model.givingOrGetting = 'giving';
+    copypaste.model.givingOrGetting = 'giving';
   },
   getMode: function() {
-    model.givingOrGetting = 'getting';
+    copypaste.model.givingOrGetting = 'getting';
   },
 });

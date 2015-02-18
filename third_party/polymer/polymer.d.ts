@@ -5,4 +5,4 @@
  */
 
 // TODO(#345): Actually have typescript for polymer.
-declare var Polymer :any;
+declare var Polymer :(polymerDef:Object) => void;

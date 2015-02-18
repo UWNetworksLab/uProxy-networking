@@ -1,5 +1,5 @@
 interface I18n {
-  process :(element:Document, translations:any) => void;
+  process :(element:Element, translations:{[index:string]:string}) => void;
 }
 
 declare var i18nTemplate :I18n;

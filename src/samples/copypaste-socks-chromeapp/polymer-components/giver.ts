@@ -1,19 +1,27 @@
+/// <reference path='../../../../build/third_party/polymer/polymer.d.ts' />
+
+import copypaste_api = require('../copypaste-api');
+declare var copypaste :copypaste_api.CopypasteApi;
+
+import I18nUtil = require('../i18n-util.types');
+declare var i18n :I18nUtil;
+
 Polymer({
-  model: model,
+  model: copypaste.model,
   parseInboundText: function() {
-    if (model.usingCrypto && !model.inputDecrypted) {
-      verifyDecryptInboundMessage(model.inboundText);
+    if (copypaste.model.usingCrypto && !copypaste.model.inputDecrypted) {
+      copypaste.verifyDecryptInboundMessage(copypaste.model.inboundText);
     } else {
-      parsedInboundMessages = parseInboundMessages(model.inboundText);
+      copypaste.parseInboundMessages(copypaste.model.inboundText);
     }
   },
   consumeInboundText: function() {
-    consumeInboundMessage();
+    copypaste.consumeInboundMessage();
     // Disable the form field, since it no longer makes sense to accept further
     // input in it.
     this.$.inboundMessageNode.disabled = true;
   },
   ready: function() {
-    addTranslatedStrings(this);
+    i18n.translateStrings(this);
   }
 });
