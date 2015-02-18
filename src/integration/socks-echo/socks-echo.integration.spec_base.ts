@@ -14,7 +14,7 @@ var socksEchoTestDescription = function(useChurn:boolean) {
     'that seems like enough'
   ];
 
-  var freedomInterface :Function;
+  var freedomInterface :any;
   var getTestModule = function(denyLocalhost?:boolean) : any {
     return freedomInterface(denyLocalhost, useChurn);
   };

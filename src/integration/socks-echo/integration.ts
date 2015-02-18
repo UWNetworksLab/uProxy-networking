@@ -147,7 +147,7 @@ class ProxyIntegrationTest {
       connection.dataFromSocketQueue.setSyncHandler((response:ArrayBuffer) => {
         this.dispatchEvent_('pong', response);
       });
-      return Promise.resolve();
+      return Promise.resolve<void>();
     } catch (e) {
       return Promise.reject(e.message + ' ' + e.stack);
     }

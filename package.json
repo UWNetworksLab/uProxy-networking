@@ -1,7 +1,7 @@
 {
   "name": "uproxy-networking",
   "description": "uProxy's networking library: SOCKS5 over WebRTC",
-  "version": "5.2.1",
+  "version": "5.2.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/uProxy/uproxy-networking"
@@ -16,37 +16,32 @@
       "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
     }
   ],
-  "dependencies": {
-    "es6-promise": "^1.0.0",
-    "ipaddr.js": "~0.1.3"
-  },
   "devDependencies": {
     "babar": "0.0.3",
-    "cca": "~0.3.1",
+    "cca": "^0.5.1",
     "crypto": "0.0.3",
-    "freedom-for-chrome": "~0.4.7",
-    "freedom-for-firefox": "~0.6.4",
+    "freedom-for-chrome": "^0.4.13",
+    "freedom-for-firefox": "^0.6.8",
     "freedom-pgp-e2e": "^0.2.3",
-    "grunt": "~0.4.4",
-    "grunt-browserify": "~3.0.1",
-    "grunt-contrib-clean": "~0.6.0",
-    "grunt-contrib-copy": "~0.5.0",
-    "grunt-contrib-jasmine": "~0.8.2",
-    "grunt-jasmine-chromeapp": "^1.5.0",
-    "grunt-contrib-symlink": "~0.3.0",
-    "grunt-template-jasmine-istanbul": "^0.3.0",
-    "grunt-ts": "^1.11",
-    "regex2dfa": "~0.1.6",
-    "request": "^2.44.0",
+    "grunt": "^0.4.5",
+    "grunt-browserify": "^3.3.0",
+    "grunt-contrib-clean": "^0.6.0",
+    "grunt-contrib-copy": "^0.7.0",
+    "grunt-contrib-jasmine": "^0.8.2",
+    "grunt-jasmine-chromeapp": "^1.6.0",
+    "grunt-contrib-symlink": "^0.3.0",
+    "grunt-template-jasmine-istanbul": "^0.3.3",
+    "grunt-ts": "^3.0.0",
+    "regex2dfa": "^0.1.6",
+    "request": "^2.53.0",
     "socks5-http-client": "^0.1.6",
-    "typescript": "^1.1.0-1",
-    "uproxy-lib": "~19.1.0",
-    "utransformers": "~0.2.1",
+    "typescript": "^1.4.1",
+    "uproxy-lib": "^19.1.1",
+    "utransformers": "^0.2.1",
     "wup": "^1.0.0",
-    "yargs": "^1.3.1"
-  },
-  "peerDependencies": {
-    "freedom": "^0.6.11"
+    "yargs": "^3.0.4",
+    "es6-promise": "^1.0.0",
+    "ipaddr.js": "^0.1.3"
   },
   "scripts": {
     "test": "grunt unit_test",
