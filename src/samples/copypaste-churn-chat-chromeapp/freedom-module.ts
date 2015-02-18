@@ -1,14 +1,14 @@
-/// <reference path="../../churn/churn.d.ts" />
-
 /// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
 
 import peerconnection = require('../../../build/dev/webrtc/peerconnection');
+import churn_types = require('../../churn/churn.types');
+import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
 import churn = require('../../churn/churn');
 
 freedom['loggingprovider']().setConsoleFilter(['*:D']);
 
 import logging = require('../../../build/dev/logging/logging');
-var log :Logging.Log = new Logging.Log('copypaste churn chat');
+var log :logging.Log = new logging.Log('copypaste churn chat');
 
 var config :freedom_RTCPeerConnection.RTCConfiguration = {
   iceServers: [{urls: ['stun:stun.l.google.com:19302']},
@@ -20,21 +20,21 @@ var pc = new churn.Connection(freedomPc);
 var freedomParentModule = freedom();
 
 // Forward signalling channel messages to the UI.
-pc.signalForPeerQueue.setSyncHandler((signal:WebRtc.SignallingMessage) => {
+pc.signalForPeerQueue.setSyncHandler((signal:peerconnection.SignallingMessage) => {
   // FIXME: Does signalForPeer want a ChurnSignallingMessage?  How is the stage
   // value supposed to get filled in.
   freedomParentModule.emit('signalForPeer', signal);
 });
 
 // Receive signalling channel messages from the UI.
-freedomParentModule.on('handleSignalMessage', (signal:churn.ChurnSignallingMessage) => {
+freedomParentModule.on('handleSignalMessage', (signal:ChurnSignallingMessage) => {
   pc.handleSignalMessage(signal);
 });
 
 pc.onceConnecting.then(() => { log.info('connecting...'); });
 
 
-var connectDataChannel = (channel:WebRtc.DataChannel) => {
+var connectDataChannel = (channel:peerconnection.DataChannel) => {
 	// Send messages over the datachannel, in response to events from the UI,
 	// and forward messages received on the datachannel to the UI.
 	freedomParentModule.on('send', (message:string) => {
@@ -42,7 +42,7 @@ var connectDataChannel = (channel:WebRtc.DataChannel) => {
 			log.error('error sending message: ' + e.message);
 		});
 	});
-	channel.dataFromPeerQueue.setSyncHandler((d:WebRtc.Data) => {
+	channel.dataFromPeerQueue.setSyncHandler((d:peerconnection.Data) => {
 		if (d.str === undefined) {
 			log.error('only text messages are supported');
 			return;
@@ -53,7 +53,7 @@ var connectDataChannel = (channel:WebRtc.DataChannel) => {
 
 // TODO: This is messy...would be great just to have both sides
 //       call onceConnected but it doesn't seem to fire :-/
-pc.peerOpenedChannelQueue.setSyncHandler((channel:WebRtc.DataChannel) => {
+pc.peerOpenedChannelQueue.setSyncHandler((channel:peerconnection.DataChannel) => {
   log.info('peer opened datachannel!');
 	connectDataChannel(channel);
   freedomParentModule.emit('ready', {});
@@ -62,7 +62,7 @@ pc.peerOpenedChannelQueue.setSyncHandler((channel:WebRtc.DataChannel) => {
 // Negotiate a peerconnection.
 freedomParentModule.on('start', () => {
   pc.negotiateConnection().then(() => {
-      pc.openDataChannel('text').then((channel:WebRtc.DataChannel) => {
+      pc.openDataChannel('text').then((channel:peerconnection.DataChannel) => {
       log.info('datachannel open!');
 		  connectDataChannel(channel);
       freedomParentModule.emit('ready', {});

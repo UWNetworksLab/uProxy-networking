@@ -1,5 +1,9 @@
-/// <reference path='../../churn/churn.d.ts' />
-/// <reference path='../../freedom/typings/freedom.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-core-env.d.ts' />
+
+import churn_types = require('../../churn/churn.types');
+import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
+
+import freedom_types = require('freedom.types');
 
 var startButton = document.getElementById("startButton");
 var copyTextarea = <HTMLInputElement>document.getElementById("copy");
@@ -9,8 +13,8 @@ var receiveButton = document.getElementById("receiveButton");
 freedom('freedom-module.json', {
     'logger': 'lib/loggingprovider/loggingprovider.json',
     'debug': 'log'
-}).then(function(interface:any) {
-  var copypasteChurnChat :any = interface();
+}).then(function(copypasteChurnChatFactory:freedom_types.FreedomModuleFactoryManager) {
+  var copypasteChurnChat = copypasteChurnChatFactory();
 
   // Dispatches each line from the paste box as a signalling channel message.
   function handleSignallingMessages() {
@@ -19,7 +23,7 @@ freedom('freedom-module.json', {
       var s:string = signals[i];
       // Ignore blank lines.
       if (s) {
-        var signal:Churn.ChurnSignallingMessage = JSON.parse(s);
+        var signal:ChurnSignallingMessage = JSON.parse(s);
         copypasteChurnChat.emit('handleSignalMessage', signal);
       }
     }
@@ -35,7 +39,7 @@ freedom('freedom-module.json', {
   startButton.onclick = start;
   receiveButton.onclick = handleSignallingMessages;
 
-  copypasteChurnChat.on('signalForPeer', (signal:Churn.ChurnSignallingMessage) => {
+  copypasteChurnChat.on('signalForPeer', (signal:ChurnSignallingMessage) => {
     copyTextarea.value = copyTextarea.value.trim() + '\n' + JSON.stringify(signal);
   });
 

@@ -1,5 +1,5 @@
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
 
 import Transformer = require('../../build/third_party/uproxy-obfuscators/utransformer');
@@ -14,19 +14,16 @@ import random = require('../../build/dev/crypto/random');
 import net = require('../net/net.types');
 import churn_pipe_types = require('../churn-pipe/churn-pipe.freedom.types');
 
+import churn_types = require('./churn.types');
+import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
+
 import logging = require('../../build/dev/logging/logging');
 var log :logging.Log = new logging.Log('churn');
 
 // TODO: https://github.com/uProxy/uproxy-obfuscators/issues/35
 var regex2dfa :any;
 
-module Churn {
   var log :logging.Log = new logging.Log('churn');
-
-  export interface ChurnSignallingMessage {
-    webrtcMessage ?:peerconnection.SignallingMessage;
-    publicEndpoint ?:net.Endpoint;
-  }
 
   export var filterCandidatesFromSdp = (sdp:string) : string => {
     return sdp.split('\n').filter((s) => {
@@ -432,6 +429,3 @@ module Churn {
       return this.obfuscatedConnection_.toString();
     };
   }
-}
-
-export = Churn;
