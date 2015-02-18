@@ -3,10 +3,7 @@
   "description": "Remote endpoints for the TURN relay.",
   "app": {
     "script": [
-      "../arraybuffers/arraybuffers.js",
-      "../logging/logging.js",
-      "../turn-frontend/messages.js",
-      "turn-backend.js"
+      "freedom-module.static.js"
     ]
   },
   "provides": [

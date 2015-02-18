@@ -1,3 +1,6 @@
+/// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/.d.ts' />
+
 /// <reference path='../../turn-frontend/turn-frontend.d.ts' />
 /// <reference path='../../turn-backend/turn-backend.d.ts' />
 /// <reference path='../../freedom/typings/freedom.d.ts' />

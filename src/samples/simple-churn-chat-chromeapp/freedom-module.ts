@@ -1,12 +1,16 @@
-/// <reference path="../../churn/churn.d.ts" />
-/// <reference path="../../webrtc/peerconnection.d.ts" />
-/// <reference path="../../freedom/typings/freedom.d.ts" />
-/// <reference path="../../freedom/typings/rtcpeerconnection.d.ts" />
-/// <reference path='../../logging/logging.d.ts' />
+/// <reference path='../../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/rtcpeerconnection.d.ts' />
+
+import peerconnection = require('../../../build/dev/webrtc/peerconnection');
+import churn = require('../../churn/churn');
+
+import logging = require('../../../build/dev/logging/logging');
 
 freedom['loggingprovider']().setConsoleFilter(['*:D']);
 
-var log :Logging.Log = new Logging.Log('simple churn chat');
+var log :logging.Log = new logging.Log('simple churn chat');
 
 var config :freedom_RTCPeerConnection.RTCConfiguration = {
   iceServers: [{urls: ['stun:stun.l.google.com:19302']},

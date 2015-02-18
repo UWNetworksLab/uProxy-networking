@@ -1,15 +1,17 @@
-/// <reference path='../../freedom/typings/freedom.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-core-env.d.ts' />
 
 var script = document.createElement('script');
 script.src = 'lib/freedom/freedom-for-chrome.js';
 document.head.appendChild(script);
 
 script.onload = () => {
-  freedom('freedom-module.json', {
+  freedom('lib/echo/freedom-module.json', {
       'logger': 'lib/loggingprovider/loggingprovider.json',
       'debug': 'log'
   }).then(function(interface:any) {
-    var simpleTurn :any = interface();
+    var echo :any = interface();
+    echo.emit('start', { address: '127.0.0.1', port: 9998 });
   }, (e:Error) => {
     console.error('could not load freedom: ' + e.message);
   });

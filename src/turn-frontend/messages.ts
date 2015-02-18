@@ -1,5 +1,6 @@
-/// <reference path='../arraybuffers/arraybuffers.d.ts' />
-/// <reference path='../sha1/sha1.d.ts' />
+/// <reference path='../../build/third_party/sha1/sha1.d.ts' />
+
+import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
 
 /**
  * Utilities for decoding and encoding STUN messages.

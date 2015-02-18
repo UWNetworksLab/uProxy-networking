@@ -25,8 +25,11 @@ var pgp :PgpProvider = freedom['pgp']();
 var friendKey :string;
 // TODO interactive setup w/real passphrase
 pgp.setup('', 'uProxy user <noreply@uproxy.org>');
+
+var parentModule = freedom();
+
 pgp.exportKey().then((publicKey:string) => {
-  freedom().emit('publicKeyExport', publicKey);
+  parentModule.emit('publicKeyExport', publicKey);
 });
 
 var pcConfig :freedom_RTCPeerConnection.RTCConfiguration = {
@@ -48,28 +51,28 @@ var pcConfig :freedom_RTCPeerConnection.RTCConfiguration = {
 var socksRtc:socks_to_rtc.SocksToRtc;
 var rtcNet:rtc_to_net.RtcToNet;
 
-freedom().on('start', () => {
+parentModule.on('start', () => {
   var localhostEndpoint:net.Endpoint = { address: '127.0.0.1', port: 9999 };
   socksRtc = new socks_to_rtc.SocksToRtc();
 
   // Forward signalling channel messages to the UI.
   socksRtc.on('signalForPeer', (signal:any) => {
-      freedom().emit('signalForPeer', signal);
+      parentModule.emit('signalForPeer', signal);
   });
 
   // SocksToRtc adds the number of bytes it sends/receives to its respective
   // queue as it proxies. When new numbers (of bytes) are added to these queues,
   // emit the number to the UI (look for corresponding freedom.on in main.html).
   socksRtc.on('bytesReceivedFromPeer', (numBytes:number) => {
-      freedom().emit('bytesReceived', numBytes);
+      parentModule.emit('bytesReceived', numBytes);
   });
 
   socksRtc.on('bytesSentToPeer', (numBytes:number) => {
-      freedom().emit('bytesSent', numBytes);
+      parentModule.emit('bytesSent', numBytes);
   });
 
   socksRtc.on('stopped', () => {
-    freedom().emit('proxyingStopped');
+    parentModule.emit('proxyingStopped');
   });
 
   socksRtc.start(
@@ -79,7 +82,7 @@ freedom().on('start', () => {
     .then((endpoint:net.Endpoint) => {
       log.info('socksRtc ready. listening to SOCKS5 on: ' + JSON.stringify(endpoint));
       log.info('` curl -x socks5h://localhost:9999 www.google.com `')
-      freedom().emit('proxyingStarted', endpoint);
+      parentModule.emit('proxyingStarted', endpoint);
     })
     .catch((e) => {
       console.error('socksRtc Error: ' + e + '; ' + this.socksRtc.toString());
@@ -91,7 +94,7 @@ freedom().on('start', () => {
 // Messages are dispatched to either the socks-to-rtc or rtc-to-net
 // modules depending on whether we're acting as the frontend or backend,
 // respectively.
-freedom().on('handleSignalMessage', (signal:peerconnection.SignallingMessage) => {
+parentModule.on('handleSignalMessage', (signal:peerconnection.SignallingMessage) => {
   if (socksRtc !== undefined) {
     socksRtc.handleSignalFromPeer(signal);
   } else {
@@ -106,26 +109,26 @@ freedom().on('handleSignalMessage', (signal:peerconnection.SignallingMessage) =>
 
       // Forward signalling channel messages to the UI.
       rtcNet.signalsForPeer.setSyncHandler((signal:peerconnection.SignallingMessage) => {
-          freedom().emit('signalForPeer', signal);
+          parentModule.emit('signalForPeer', signal);
       });
 
       // Similarly to with SocksToRtc, emit the number of bytes sent/received
       // in RtcToNet to the UI.
       rtcNet.bytesReceivedFromPeer.setSyncHandler((numBytes:number) => {
-          freedom().emit('bytesReceived', numBytes);
+          parentModule.emit('bytesReceived', numBytes);
       });
 
       rtcNet.bytesSentToPeer.setSyncHandler((numBytes:number) => {
-          freedom().emit('bytesSent', numBytes);
+          parentModule.emit('bytesSent', numBytes);
       });
 
       rtcNet.onceReady.then(() => {
         log.info('rtcNet ready.');
-        freedom().emit('proxyingStarted', null);
+        parentModule.emit('proxyingStarted', null);
       });
 
       rtcNet.onceClosed.then(() => {
-        freedom().emit('proxyingStopped');
+        parentModule.emit('proxyingStopped');
       });
     }
     rtcNet.handleSignalFromPeer(signal);
@@ -133,32 +136,32 @@ freedom().on('handleSignalMessage', (signal:peerconnection.SignallingMessage) =>
 });
 
 // Crypto request messages
-freedom().on('friendKey', (newFriendKey:string) => {
+parentModule.on('friendKey', (newFriendKey:string) => {
   friendKey = newFriendKey;
 });
 
-freedom().on('signEncrypt', (message:string) => {
+parentModule.on('signEncrypt', (message:string) => {
   pgp.signEncrypt(arraybuffers.stringToArrayBuffer(message), friendKey)
     .then((cipherdata:ArrayBuffer) => {
       return pgp.armor(cipherdata);
     })
     .then((ciphertext:string) => {
-      freedom().emit('ciphertext', ciphertext);
+      parentModule.emit('ciphertext', ciphertext);
     });
 });
 
-freedom().on('verifyDecrypt', (ciphertext:string) => {
+parentModule.on('verifyDecrypt', (ciphertext:string) => {
   pgp.dearmor(ciphertext)
     .then((cipherdata:ArrayBuffer) => {
       return pgp.verifyDecrypt(cipherdata, friendKey);
     })
     .then((result:VerifyDecryptResult) => {
-      freedom().emit('verifyDecryptResult', result);
+      parentModule.emit('verifyDecryptResult', result);
     });
 });
 
 // Stops proxying.
-freedom().on('stop', () => {
+parentModule.on('stop', () => {
   if (socksRtc !== undefined) {
     socksRtc.stop();
   } else if (rtcNet !== undefined) {

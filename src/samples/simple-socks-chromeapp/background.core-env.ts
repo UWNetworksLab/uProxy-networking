@@ -1,4 +1,7 @@
-/// <reference path='../../freedom/typings/freedom.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../build/third_party/freedom-typings/freedom-core-env.d.ts' />
+
+import freedom_types = require('freedom.types');
 
 var script = document.createElement('script');
 script.src = 'lib/freedom/freedom-for-chrome.js';
@@ -8,7 +11,7 @@ script.onload = () => {
   freedom('lib/simple-socks/freedom-module.json', {
       'logger': 'lib/loggingprovider/loggingprovider.json',
       'debug': 'log'
-  }).then(function(interface:any) {
+  }).then(function(simpleSocksFactory:freedom_types.FreedomModuleFactoryManager) {
     // Keep a background timeout running continuously, to prevent chrome from
     // putting the app to sleep.
     function keepAlive() {
@@ -16,7 +19,7 @@ script.onload = () => {
     }
     keepAlive();
 
-    var simpleSocks :any = interface();
+    var simpleSocks :freedom_types.OnAndEmit<any,any> = simpleSocksFactory();
   }, (e:Error) => {
     console.error('could not load freedom: ' + e.message);
   });
