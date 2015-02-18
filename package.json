@@ -45,9 +45,6 @@
     "wup": "^1.0.0",
     "yargs": "^1.3.1"
   },
-  "peerDependencies": {
-    "freedom": "^0.6.11"
-  },
   "scripts": {
     "test": "grunt unit_test",
     "benchmark": "node bin/run-benchmark.js -n 1024 -v"
