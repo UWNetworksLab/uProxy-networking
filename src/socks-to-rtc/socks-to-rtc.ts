@@ -150,14 +150,14 @@ module SocksToRtc {
       onceReady.catch(this.fulfillStopping_);
       this.tcpServer_.onceShutdown()
         .then(() => {
-          log.debug('server socket closed');
+          log.info('server socket closed');
         }, (e:Error) => {
           log.error('server socket closed with error: %1', [e.message]);
         })
         .then(this.fulfillStopping_);
       this.peerConnection_.onceDisconnected
         .then(() => {
-          log.debug('peerconnection terminated');
+          log.info('peerconnection terminated');
         }, (e:Error) => {
           log.error('peerconnection terminated with error: %1', [e.message]);
         })
@@ -174,7 +174,7 @@ module SocksToRtc {
     // Initiates shutdown of the TCP server and peerconnection.
     // Returns onceStopped.
     public stop = () : Promise<void> => {
-      log.debug('stop requested');
+      log.info('stop requested');
       this.fulfillStopping_();
       return this.onceStopped_;
     }
@@ -214,10 +214,10 @@ module SocksToRtc {
     // Note that Session closes the TCP connection and datachannel on any error.
     private makeTcpToRtcSession_ = (tcpConnection:Tcp.Connection) : void => {
       var tag = obtainTag();
-      log.info('created new session %1 for new SOCKS client', [tag]);
+      log.info('associating session %1 with new TCP connection', [tag]);
 
 	    this.peerConnection_.openDataChannel(tag).then((channel:WebRtc.DataChannel) => {
-        log.debug('opened datachannel for session %1', [tag]);
+        log.info('opened datachannel for session %1', [tag]);
         var session = new Session();
         session.start(
             tcpConnection,
@@ -321,12 +321,12 @@ module SocksToRtc {
               log.error('%1: socket closed for unrecognized reason', [
                   this.longId()]);
             } else {
-              log.debug('%1: socket closed (%2)', [
+              log.info('%1: socket closed (%2)', [
                   this.longId(), Tcp.SocketCloseKind[kind] || 'unknown reason']);
             }
           }),
           dataChannel.onceClosed.then(() => {
-            log.debug('%1: datachannel closed', [this.longId()]);
+            log.info('%1: datachannel closed', [this.longId()]);
           })])
         .then(this.fulfillStopping_);
       this.onceStopped = this.onceStopping_.then(this.stopResources_);
@@ -405,7 +405,7 @@ module SocksToRtc {
               R(new Error('invalid response:' + data.str));
               return;
             }
-            log.debug('%1: connected to remote host', [this.longId()]);
+            log.info('%1: connected to remote host', [this.longId()]);
             log.debug('%1: remote peer bound address: %2', [
                 this.longId(), JSON.stringify(r.endpoint)]);
             F(r);
@@ -424,7 +424,7 @@ module SocksToRtc {
       return this.tcpConnection_.receiveNext()
         .then(Socks.interpretRequestBuffer)
         .then((request:Socks.Request) => {
-          log.debug('%1: received endpoint from SOCKS client: %2', [
+          log.info('%1: received endpoint from SOCKS client: %2', [
               this.longId(), JSON.stringify(request.endpoint)]);
           this.dataChannel_.send({ str: JSON.stringify(request) });
           return this.receiveResponseFromPeer_();
