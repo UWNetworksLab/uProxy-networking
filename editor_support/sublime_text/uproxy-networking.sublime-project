@@ -4,12 +4,6 @@
       "path": "../..",
       "name": "uproxy-networking",
       "follow_symlinks": true
-    },
-    {
-      "path": "../../build/",
-      "name": "typescript",
-      "follow_symlinks": true,
-      "file_exclude_patterns": ["*.js", "*.js.map"]
     }
   ],
   "settings": {
@@ -17,9 +11,8 @@
     "translate_tabs_to_spaces": true,
     "trim_trailing_white_space_on_save": true,
     "wrap_width": 80,
-
     "typescript": {
-      "roots":[ "root.ts", "src/socks-to-rtc/socks-to-rtc.ts" ],
+      "roots":[ "root.ts" ],
       "settings": {
         "auto_complete":true,
         "node_path":"none",
@@ -31,7 +24,6 @@
           "post_processing_commands":[],
           "output_dir_path":"none",
           "concatenate_and_emit_output_file_path":"none",
-          "source_files_root_path":"build/typescript-src",
           "map_files_root_path":"none",
           "module_kind":"none",
           "allow_bool_synonym":false,
