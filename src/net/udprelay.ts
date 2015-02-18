@@ -3,6 +3,7 @@
 
 import UdpLib = freedom_UdpSocket;
 
+import logging = require('../../build/dev/logging/logging');
 var log :logging.Log = new logging.Log('udprelay');
 
 /**
