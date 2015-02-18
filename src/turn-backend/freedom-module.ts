@@ -3,13 +3,14 @@
 /// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 
-import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
+import arraybuffers = require('../../build/dev/arraybuffers/arraybuffers');
 
-import turn_backend = require('./turn-backend');
-import turn_messages = require('../turn-frontend/messages');
+import turn_backend = require('./turn-backend.types');
+import messages = require('../turn-frontend/messages');
+import net = require('../net/net.types');
 
-import logging = require('../../../build/dev/logging/logging');
-var log :Logging.Log = new Logging.Log('TURN backend');
+import logging = require('../../build/dev/logging/logging');
+var log :logging.Log = new logging.Log('TURN backend');
 
 /**
  * Represents a client known to the server. One of these objects is created
@@ -38,16 +39,16 @@ export class Backend {
   }
 
   public handleIpc = (data :ArrayBuffer) : Promise<void> => {
-    var request :Turn.StunMessage;
+    var request :messages.StunMessage;
     try {
-      request = Turn.parseStunMessage(new Uint8Array(data));
+      request = messages.parseStunMessage(new Uint8Array(data));
     } catch (e) {
       return Promise.reject(new Error(
           'failed to parse STUN message from IPC channel'));
     }
 
     // With which client is this message associated?
-    var clientEndpoint :Turn.Endpoint;
+    var clientEndpoint :net.Endpoint;
     try {
       var ipcAttribute = Turn.findFirstAttributeWithType(
           Turn.MessageAttribute.IPC_TAG,
@@ -146,8 +147,8 @@ export class Backend {
    * the addition of an IPC_TAG attribute identifying the TURN client.
    */
   private emitIpc_ = (
-      stunMessage:Turn.StunMessage,
-      clientEndpoint:Turn.Endpoint) : void => {
+      stunMessage:messages.StunMessage,
+      clientEndpoint:net.Endpoint) : void => {
     // Add an IPC_TAG attribute.
     stunMessage.attributes.push({
       type: Turn.MessageAttribute.IPC_TAG,
@@ -161,7 +162,7 @@ export class Backend {
 
   /** Promises to allocate a socket, wrapped in an Allocation. */
   private makeAllocation_ = (
-      clientEndpoint:Turn.Endpoint) : Promise<Allocation> => {
+      clientEndpoint:net.Endpoint) : Promise<Allocation> => {
     var tag = clientEndpoint.address + ':' + clientEndpoint.port;
     if (tag in this.allocations_) {
       return this.allocations_[tag];

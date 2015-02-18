@@ -1,5 +1,3 @@
-/// <reference path='../logging/logging.d.ts' />
-
 /// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
@@ -7,7 +5,7 @@
 
 import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
 
-import messages = require('./messages.ts');
+import messages = require('./messages');
 
 import logging = require('../../build/dev/logging/logging');
 var log :logging.Log = new logging.Log('TURN frontend');
@@ -293,7 +291,7 @@ export class Frontend {
     }
 
     // With which client is this message associated?
-    var clientEndpoint :Turn.Endpoint;
+    var clientEndpoint :net.Endpoint;
     try {
       var ipcAttribute = Turn.findFirstAttributeWithType(
           Turn.MessageAttribute.IPC_TAG,

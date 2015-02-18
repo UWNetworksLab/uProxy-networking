@@ -8,7 +8,7 @@
 
 freedom['loggingprovider']().setConsoleFilter(['*:I']);
 
-var log :Logging.Log = new Logging.Log('simple TURN');
+var log :logging.Log = new logging.Log('simple TURN');
 
 var frontend :freedom_TurnFrontend = freedom['turnFrontend']();
 var backend :freedom_TurnBackend = freedom['turnBackend']();

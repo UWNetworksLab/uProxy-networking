@@ -102,7 +102,7 @@ describe("stun messages", function() {
   /**
    * Returns the endpoint encoded by #getMappedAddressAttributeBytes
    * and #getXorMappedAddressAttributeBytes. */
-  function getEndpoint() : Turn.Endpoint {
+  function getEndpoint() : net.Endpoint {
     return {
       address: '192.168.1.1',
       port: 32000
