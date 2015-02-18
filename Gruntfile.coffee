@@ -104,10 +104,12 @@ module.exports = (grunt) ->
           'src/integration/**/*.ts',
           'src/net/**/*.ts',
           'src/rtc-to-net/**/*.ts',
+          'src/samples/copypaste-churn-chat-chromeapp/**/*.ts',
           'src/simple-socks/**/*.ts',
           'src/simple-transformers/**/*.ts',
           'src/socks-common/**/*.ts',
           'src/socks-to-rtc/**/*.ts',
+          '!src/**/*.core-env.ts',
           '!src/**/*.d.ts',
           '!src/**/*.spec.dynamic.ts',
           '!src/**/*.integration.spec.ts',
@@ -125,7 +127,8 @@ module.exports = (grunt) ->
 
       devInCoreEnv:
         src: [
-          'src/**/*.integration.spec.ts',
+          'src/**/*.core-env.spec.ts',
+          'src/**/*.core-env.ts',
         ]
         outDir: 'build/dev/'
         baseDir: 'src'

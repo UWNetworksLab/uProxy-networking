@@ -2,19 +2,7 @@
   "name": "fully proxying integration tests",
   "app": {
     "script": [
-      "../../arraybuffers/arraybuffers.js",
-      "../../handler/queue.js",
-      "../../ipaddrjs/ipaddr.min.js",
-      "../../logging/logging.js",
-      "../../regex2dfa/regex2dfa.js",
-      "../../tcp/tcp.js",
-      "../../webrtc/datachannel.js",
-      "../../webrtc/peerconnection.js",
-      "../../churn/churn.js",
-      "../../socks-common/socks-headers.js",
-      "../../socks-to-rtc/socks-to-rtc.js",
-      "../../rtc-to-net/rtc-to-net.js",
-      "integration.js"
+      "integration.static.js"
     ]
   },
   "dependencies": {
