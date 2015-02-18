@@ -431,7 +431,7 @@ module RtcToNet {
             this.longId(), data.buffer.byteLength]);
         this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
         this.tcpConnection_.send(data.buffer)
-        .catch((e:Error) => {
+        .catch((e:any) => {
           // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // errcode values are defined here:
           //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json

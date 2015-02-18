@@ -19,7 +19,7 @@ freedom['loggingprovider']().setConsoleFilter([
     'RtcToNet:I']);
 
 var log :Logging.Log = new Logging.Log('copypaste-socks');
-var pgp :PgpProvider = freedom.pgp();
+var pgp :PgpProvider = freedom['pgp']();
 var friendKey :string;
 // TODO interactive setup w/real passphrase
 pgp.setup('', 'uProxy user <noreply@uproxy.org>');
