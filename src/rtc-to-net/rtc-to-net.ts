@@ -24,21 +24,21 @@ module RtcToNet {
   }
 
   export interface HandlerQueueSnapshot {
-    length :number;
+    size :number;
     handling :boolean;
   }
 
   export interface SocketSnapshot {
-    bytesSent :number;
-    bytesReceived :number;
-    dataIn :HandlerQueueSnapshot;
+    sent :number;
+    received :number;
+    queue :HandlerQueueSnapshot;
   }
 
   export interface DataChannelSnapshot {
-    bytesSent :number;
-    bytesReceived :number;
-    bytesBuffered :number;
-    dataIn :HandlerQueueSnapshot;
+    sent :number;
+    received :number;
+    buffered :number;
+    queue :HandlerQueueSnapshot;
   }
 
   export interface SessionSnapshot {
@@ -542,20 +542,20 @@ module RtcToNet {
       return {
         name: this.channelLabel(),
         channel: {
-          bytesSent: this.channelSentBytes_,
-          bytesReceived: this.channelReceivedBytes_,
+          sent: this.channelSentBytes_,
+          received: this.channelReceivedBytes_,
           // TODO: this is not currently exposed by datachannel.ts
-          bytesBuffered: 0,
-          dataIn: {
-            length: this.dataChannel_.dataFromPeerQueue.getLength(),
+          buffered: 0,
+          queue: {
+            size: this.dataChannel_.dataFromPeerQueue.getLength(),
             handling: this.dataChannel_.dataFromPeerQueue.isHandling()
           }
         },
         socket: {
-          bytesSent: this.socketSentBytes_,
-          bytesReceived: this.socketReceivedBytes_,
-          dataIn: {
-            length: this.tcpConnection_.dataFromSocketQueue.getLength(),
+          sent: this.socketSentBytes_,
+          received: this.socketReceivedBytes_,
+          queue: {
+            size: this.tcpConnection_.dataFromSocketQueue.getLength(),
             handling: this.tcpConnection_.dataFromSocketQueue.isHandling()
           }
         }

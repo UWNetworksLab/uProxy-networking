@@ -15,29 +15,29 @@ declare module RtcToNet {
   // for later analysis.
   interface HandlerQueueSnapshot {
     // Number of objects waiting to be handled right now.
-    length :number;
+    size :number;
     // True iff there is a handler attached right now.
     handling :boolean;
   }
 
   interface SocketSnapshot {
     // Total number of bytes sent since the connection was created.
-    bytesSent :number;
+    sent :number;
     // Total number of bytes received since the connection was created.
-    bytesReceived :number;
+    received :number;
     // Data received from the peer.
-    dataIn :HandlerQueueSnapshot;
+    queue :HandlerQueueSnapshot;
   }
 
   interface DataChannelSnapshot {
     // Total number of bytes sent since the channel was created.
-    bytesSent :number;
+    sent :number;
     // Total number of bytes received since the channel was created.
-    bytesReceived :number;
+    received :number;
     // Number of bytes sitting in the buffer right now.
-    bytesBuffered :number;
+    buffered :number;
     // Data received from the peer.
-    dataIn :HandlerQueueSnapshot;
+    queue :HandlerQueueSnapshot;
   }
 
   interface SessionSnapshot {
