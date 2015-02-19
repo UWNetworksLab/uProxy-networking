@@ -25,8 +25,6 @@ declare module RtcToNet {
     bytesSent :number;
     // Total number of bytes received since the connection was created.
     bytesReceived :number;
-    // True iff the socket is paused right now.
-    paused :boolean;
     // Data received from the peer.
     dataIn :HandlerQueueSnapshot;
   }

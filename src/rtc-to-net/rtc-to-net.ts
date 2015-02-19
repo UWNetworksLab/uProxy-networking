@@ -31,7 +31,6 @@ module RtcToNet {
   export interface SocketSnapshot {
     bytesSent :number;
     bytesReceived :number;
-    paused :boolean;
     dataIn :HandlerQueueSnapshot;
   }
 
@@ -554,7 +553,6 @@ module RtcToNet {
         socket: {
           bytesSent: this.socketSentBytes_,
           bytesReceived: this.socketReceivedBytes_,
-          paused: false,
           dataIn: {
             length: this.tcpConnection_.dataFromSocketQueue.getLength(),
             handling: this.tcpConnection_.dataFromSocketQueue.isHandling()
