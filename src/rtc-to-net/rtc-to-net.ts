@@ -544,7 +544,8 @@ module RtcToNet {
         channel: {
           bytesSent: this.channelSentBytes_,
           bytesReceived: this.channelReceivedBytes_,
-          bytesBuffered: 1,
+          // TODO: this is not currently exposed by datachannel.ts
+          bytesBuffered: 0,
           dataIn: {
             length: this.dataChannel_.dataFromPeerQueue.getLength(),
             handling: this.dataChannel_.dataFromPeerQueue.isHandling()
