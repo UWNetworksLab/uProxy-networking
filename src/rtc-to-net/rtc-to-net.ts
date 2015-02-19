@@ -159,7 +159,8 @@ module RtcToNet {
         .then(this.fulfillStopping_, this.fulfillStopping_);
       this.onceClosed = this.onceStopping_.then(this.stopResources_);
 
-      this.onceReady.then(this.initiateSnapshotting_);
+      // Uncomment this to see instrumentation data in the console.
+      // this.onceReady.then(this.initiateSnapshotting_);
 
       return this.onceReady;
     }
