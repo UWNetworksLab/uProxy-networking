@@ -23,49 +23,34 @@ module RtcToNet {
     allowNonUnicast :boolean;
   }
 
-  // Type checking for snapshots.
-  // Snapshots are spewed out every couple of seconds in DEBUG mode
-  // for later analysis.
-  interface HandlerQueueSnapshot {
-    // Number of objects waiting to be handled right now.
+  export interface HandlerQueueSnapshot {
     length :number;
-    // True iff there is a handler attached right now.
     handling :boolean;
   }
-  interface SocketSnapshot {
-    // Total number of bytes sent since the connection was created.
+
+  export interface SocketSnapshot {
     bytesSent :number;
-    // Total number of bytes received since the connection was created.
     bytesReceived :number;
-    // True iff the socket is paused right now.
     paused :boolean;
-    // Data received from the peer.
     dataIn :HandlerQueueSnapshot;
-    // Data to be sent to the peer.
     dataOut :HandlerQueueSnapshot;
   }
-  interface DataChannelSnapshot {
-    // Total number of bytes sent since the channel was created.
+
+  export interface DataChannelSnapshot {
     bytesSent :number;
-    // Total number of bytes received since the channel was created.
     bytesReceived :number;
-    // Number of bytes sitting in the buffer right now.
     bytesBuffered :number;
-    // Data received from the peer.
     dataIn :HandlerQueueSnapshot;
-    // Data to be sent to the peer.
     dataOut :HandlerQueueSnapshot;
   }
-  interface SessionSnapshot {
-    // Name of this session, e.g. c0 or c221.
+
+  export interface SessionSnapshot {
     name :string;
-    // Data channel associated with this session.
     channel :DataChannelSnapshot;
-    // TCP connection associated with this session.
     socket :SocketSnapshot;
   }
-  interface RtcToNetSnapshot {
-    // All sessions open right now.
+
+  export interface RtcToNetSnapshot {
     sessions :SessionSnapshot[];
   }
 
@@ -199,8 +184,12 @@ module RtcToNet {
 
     // Snapshots the state of this RtcToNet instance.
     private getSnapshot = () : RtcToNetSnapshot => {
+      var sessionSnapshots :SessionSnapshot[] = [];
+      Object.keys(this.sessions_).forEach((key:string) => {
+        sessionSnapshots.push(this.sessions_[key].getSnapshot())
+      });
       return {
-        sessions: []
+        sessions: sessionSnapshots
       };
     }
 
@@ -539,6 +528,38 @@ module RtcToNet {
         // the caller.
         return false;
       }
+    }
+
+    public getSnapshot = () : SessionSnapshot => {
+      return {
+        name: this.channelLabel(),
+        channel: {
+          bytesSent: 1,
+          bytesReceived: 1,
+          bytesBuffered: 1,
+          dataIn: {
+            length: 1,
+            handling: true
+          },
+          dataOut: {
+            length: 1,
+            handling: true
+          }
+        },
+        socket: {
+          bytesSent: 1,
+          bytesReceived: 1,
+          paused: false,
+          dataIn: {
+            length: 1,
+            handling: true
+          },
+          dataOut: {
+            length: 1,
+            handling: true
+          }
+        }
+      };
     }
 
     public longId = () : string => {

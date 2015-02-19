@@ -9,6 +9,57 @@ declare module RtcToNet {
   interface ProxyConfig {
     allowNonUnicast :boolean;
   }
+
+  // Type checking for snapshots.
+  // Snapshots are spewed out every couple of seconds in DEBUG mode
+  // for later analysis.
+  interface HandlerQueueSnapshot {
+    // Number of objects waiting to be handled right now.
+    length :number;
+    // True iff there is a handler attached right now.
+    handling :boolean;
+  }
+
+  interface SocketSnapshot {
+    // Total number of bytes sent since the connection was created.
+    bytesSent :number;
+    // Total number of bytes received since the connection was created.
+    bytesReceived :number;
+    // True iff the socket is paused right now.
+    paused :boolean;
+    // Data received from the peer.
+    dataIn :HandlerQueueSnapshot;
+    // Data to be sent to the peer.
+    dataOut :HandlerQueueSnapshot;
+  }
+
+  interface DataChannelSnapshot {
+    // Total number of bytes sent since the channel was created.
+    bytesSent :number;
+    // Total number of bytes received since the channel was created.
+    bytesReceived :number;
+    // Number of bytes sitting in the buffer right now.
+    bytesBuffered :number;
+    // Data received from the peer.
+    dataIn :HandlerQueueSnapshot;
+    // Data to be sent to the peer.
+    dataOut :HandlerQueueSnapshot;
+  }
+
+  interface SessionSnapshot {
+    // Name of this session, e.g. c0 or c221.
+    name :string;
+    // Data channel associated with this session.
+    channel :DataChannelSnapshot;
+    // TCP connection associated with this session.
+    socket :SocketSnapshot;
+  }
+
+  interface RtcToNetSnapshot {
+    // All sessions open right now.
+    sessions :SessionSnapshot[];
+  }
+
   class RtcToNet {
     constructor(pcConfig?:freedom_RTCPeerConnection.RTCConfiguration,
                 proxyConfig?:ProxyConfig,
@@ -44,5 +95,6 @@ declare module RtcToNet {
     public channelLabel :() => string;
     public longId :() => string;
     public toString :() => string;
+    public getSnapshot :() => SessionSnapshot;
   }
 }
