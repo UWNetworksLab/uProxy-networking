@@ -287,6 +287,11 @@ module RtcToNet {
     // Getters.
     public channelLabel = () : string => { return this.dataChannel_.getLabel(); }
 
+    private socketSentBytes_ :number = 0;
+    private socketReceivedBytes_ :number = 0;
+    private channelSentBytes_ :number = 0;
+    private channelReceivedBytes_ :number = 0;
+
     // The supplied datachannel must already be successfully established.
     constructor(
         private dataChannel_:WebRtc.DataChannel,
@@ -471,10 +476,13 @@ module RtcToNet {
     private linkTcpAndPeerConnectionData_ = () : void => {
       // Data from the TCP socket goes to the data channel.
       this.tcpConnection_.dataFromSocketQueue.setSyncHandler((data) => {
+        this.socketReceivedBytes_ += data.byteLength;
         log.debug('%1: socket received %2 bytes', [
             this.longId(), data.byteLength]);
         this.dataChannel_.send({buffer: data})
-        .catch((e:Error) => {
+        .then(() => {
+          this.channelSentBytes_ += data.byteLength;
+        }, (e:Error) => {
           log.error('%1: failed to send data on datachannel: %2', [
               this.longId(), e.message]);
         });
@@ -487,11 +495,14 @@ module RtcToNet {
               this.longId()]);
           return;
         }
+        this.channelReceivedBytes_ += data.buffer.byteLength;
         log.debug('%1: datachannel received %2 bytes', [
             this.longId(), data.buffer.byteLength]);
         this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
         this.tcpConnection_.send(data.buffer)
-        .catch((e:any) => {
+        .then(() => {
+          this.socketSentBytes_ += data.buffer.byteLength;
+        }, (e:any) => {
           // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // errcode values are defined here:
           //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
@@ -532,8 +543,8 @@ module RtcToNet {
       return {
         name: this.channelLabel(),
         channel: {
-          bytesSent: 1,
-          bytesReceived: 1,
+          bytesSent: this.channelSentBytes_,
+          bytesReceived: this.channelReceivedBytes_,
           bytesBuffered: 1,
           dataIn: {
             length: this.dataChannel_.dataFromPeerQueue.getLength(),
@@ -541,8 +552,8 @@ module RtcToNet {
           }
         },
         socket: {
-          bytesSent: 1,
-          bytesReceived: 1,
+          bytesSent: this.socketSentBytes_,
+          bytesReceived: this.socketReceivedBytes_,
           paused: false,
           dataIn: {
             length: this.tcpConnection_.dataFromSocketQueue.getLength(),
