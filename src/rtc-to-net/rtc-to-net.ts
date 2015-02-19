@@ -72,6 +72,9 @@ module RtcToNet {
   // The |RtcToNet| class holds a peer-connection and all its associated
   // proxied connections.
   export class RtcToNet {
+    // Time between outputting snapshots.
+    private static SNAPSHOTTING_INTERVAL_MS = 1000;
+
     // Configuration for the proxy endpoint. Note: all sessions share the same
     // (externally provided) proxyconfig.
     public proxyConfig :ProxyConfig;
@@ -174,7 +177,31 @@ module RtcToNet {
         .then(this.fulfillStopping_, this.fulfillStopping_);
       this.onceClosed = this.onceStopping_.then(this.stopResources_);
 
+      this.onceReady.then(this.initiateSnapshotting_);
+
       return this.onceReady;
+    }
+
+    // Loops until onceClosed fulfills.
+    private initiateSnapshotting_ = () => {
+      var loop = true;
+      this.onceClosed.then(() => {
+        loop = false;
+      });
+      var writeSnapshot = () => {
+        log.debug('snapshot: %1', [JSON.stringify(this.getSnapshot())]);
+        if (loop) {
+          setTimeout(writeSnapshot, RtcToNet.SNAPSHOTTING_INTERVAL_MS);
+        }
+      };
+      writeSnapshot();
+    }
+
+    // Snapshots the state of this RtcToNet instance.
+    private getSnapshot = () : RtcToNetSnapshot => {
+      return {
+        sessions: []
+      };
     }
 
     private onPeerOpenedChannel_ = (channel:WebRtc.DataChannel) => {
