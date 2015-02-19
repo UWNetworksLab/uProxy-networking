@@ -10,7 +10,7 @@
 // you're debugging. Since the proxy outputs quite a lot of messages,
 // show only warnings by default from the rest of the system.
 // Note that the proxy is extremely slow in debug (D) mode.
-freedom['loggingprovider']().setConsoleFilter(['*:D']);
+freedom['loggingprovider']().setConsoleFilter(['*:I']);
 
 var log :Logging.Log = new Logging.Log('simple-socks');
 
