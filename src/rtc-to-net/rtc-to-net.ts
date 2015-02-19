@@ -33,7 +33,6 @@ module RtcToNet {
     bytesReceived :number;
     paused :boolean;
     dataIn :HandlerQueueSnapshot;
-    dataOut :HandlerQueueSnapshot;
   }
 
   export interface DataChannelSnapshot {
@@ -41,7 +40,6 @@ module RtcToNet {
     bytesReceived :number;
     bytesBuffered :number;
     dataIn :HandlerQueueSnapshot;
-    dataOut :HandlerQueueSnapshot;
   }
 
   export interface SessionSnapshot {
@@ -538,12 +536,8 @@ module RtcToNet {
           bytesReceived: 1,
           bytesBuffered: 1,
           dataIn: {
-            length: 1,
-            handling: true
-          },
-          dataOut: {
-            length: 1,
-            handling: true
+            length: this.dataChannel_.dataFromPeerQueue.getLength(),
+            handling: this.dataChannel_.dataFromPeerQueue.isHandling()
           }
         },
         socket: {
@@ -551,12 +545,8 @@ module RtcToNet {
           bytesReceived: 1,
           paused: false,
           dataIn: {
-            length: 1,
-            handling: true
-          },
-          dataOut: {
-            length: 1,
-            handling: true
+            length: this.tcpConnection_.dataFromSocketQueue.getLength(),
+            handling: this.tcpConnection_.dataFromSocketQueue.isHandling()
           }
         }
       };

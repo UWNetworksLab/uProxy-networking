@@ -29,8 +29,6 @@ declare module RtcToNet {
     paused :boolean;
     // Data received from the peer.
     dataIn :HandlerQueueSnapshot;
-    // Data to be sent to the peer.
-    dataOut :HandlerQueueSnapshot;
   }
 
   interface DataChannelSnapshot {
@@ -42,8 +40,6 @@ declare module RtcToNet {
     bytesBuffered :number;
     // Data received from the peer.
     dataIn :HandlerQueueSnapshot;
-    // Data to be sent to the peer.
-    dataOut :HandlerQueueSnapshot;
   }
 
   interface SessionSnapshot {
