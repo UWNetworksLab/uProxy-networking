@@ -58,7 +58,7 @@ module RtcToNet {
   // proxied connections.
   export class RtcToNet {
     // Time between outputting snapshots.
-    private static SNAPSHOTTING_INTERVAL_MS = 1000;
+    private static SNAPSHOTTING_INTERVAL_MS = 5000;
 
     // Configuration for the proxy endpoint. Note: all sessions share the same
     // (externally provided) proxyconfig.
