@@ -160,13 +160,13 @@ module RtcToNet {
       this.onceClosed = this.onceStopping_.then(this.stopResources_);
 
       // Uncomment this to see instrumentation data in the console.
-      // this.onceReady.then(this.initiateSnapshotting_);
+      // this.onceReady.then(this.initiateSnapshotting);
 
       return this.onceReady;
     }
 
     // Loops until onceClosed fulfills.
-    private initiateSnapshotting_ = () => {
+    public initiateSnapshotting = () => {
       var loop = true;
       this.onceClosed.then(() => {
         loop = false;
