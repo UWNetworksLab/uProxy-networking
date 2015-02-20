@@ -89,6 +89,6 @@ declare module RtcToNet {
     public channelLabel :() => string;
     public longId :() => string;
     public toString :() => string;
-    public getSnapshot :() => SessionSnapshot;
+    public getSnapshot :() => Promise<SessionSnapshot>;
   }
 }

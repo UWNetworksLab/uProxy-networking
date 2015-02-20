@@ -160,7 +160,7 @@ module RtcToNet {
       this.onceClosed = this.onceStopping_.then(this.stopResources_);
 
       // Uncomment this to see instrumentation data in the console.
-      // this.onceReady.then(this.initiateSnapshotting_);
+      this.onceReady.then(this.initiateSnapshotting_);
 
       return this.onceReady;
     }
@@ -172,7 +172,9 @@ module RtcToNet {
         loop = false;
       });
       var writeSnapshot = () => {
-        log.info('snapshot: %1', [JSON.stringify(this.getSnapshot())]);
+        this.getSnapshot().then((snapshot:RtcToNetSnapshot) => {
+          log.info('snapshot: %1', [JSON.stringify(snapshot)]);
+        });
         if (loop) {
           setTimeout(writeSnapshot, RtcToNet.SNAPSHOTTING_INTERVAL_MS);
         }
@@ -181,14 +183,16 @@ module RtcToNet {
     }
 
     // Snapshots the state of this RtcToNet instance.
-    private getSnapshot = () : RtcToNetSnapshot => {
-      var sessionSnapshots :SessionSnapshot[] = [];
+    private getSnapshot = () : Promise<RtcToNetSnapshot> => {
+      var promises :Promise<SessionSnapshot>[] = [];
       Object.keys(this.sessions_).forEach((key:string) => {
-        sessionSnapshots.push(this.sessions_[key].getSnapshot())
+        promises.push(this.sessions_[key].getSnapshot())
       });
-      return {
-        sessions: sessionSnapshots
-      };
+      return Promise.all(promises).then((sessionSnapshots:SessionSnapshot[]) => {
+        return {
+          sessions: sessionSnapshots
+        };
+      });
     }
 
     private onPeerOpenedChannel_ = (channel:WebRtc.DataChannel) => {
@@ -539,28 +543,29 @@ module RtcToNet {
       }
     }
 
-    public getSnapshot = () : SessionSnapshot => {
-      return {
-        name: this.channelLabel(),
-        channel: {
-          sent: this.channelSentBytes_,
-          received: this.channelReceivedBytes_,
-          // TODO: this is not currently exposed by datachannel.ts
-          buffered: 0,
-          queue: {
-            size: this.dataChannel_.dataFromPeerQueue.getLength(),
-            handling: this.dataChannel_.dataFromPeerQueue.isHandling()
+    public getSnapshot = () : Promise<SessionSnapshot> => {
+      return this.dataChannel_.getBufferedAmount().then((bufferedAmount:number) => {
+        return {
+          name: this.channelLabel(),
+          channel: {
+            sent: this.channelSentBytes_,
+            received: this.channelReceivedBytes_,
+            buffered: bufferedAmount,
+            queue: {
+              size: this.dataChannel_.dataFromPeerQueue.getLength(),
+              handling: this.dataChannel_.dataFromPeerQueue.isHandling()
+            }
+          },
+          socket: {
+            sent: this.socketSentBytes_,
+            received: this.socketReceivedBytes_,
+            queue: {
+              size: this.tcpConnection_.dataFromSocketQueue.getLength(),
+              handling: this.tcpConnection_.dataFromSocketQueue.isHandling()
+            }
           }
-        },
-        socket: {
-          sent: this.socketSentBytes_,
-          received: this.socketReceivedBytes_,
-          queue: {
-            size: this.tcpConnection_.dataFromSocketQueue.getLength(),
-            handling: this.tcpConnection_.dataFromSocketQueue.isHandling()
-          }
-        }
-      };
+        };
+      });
     }
 
     public longId = () : string => {
