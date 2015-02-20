@@ -69,6 +69,7 @@ declare module RtcToNet {
     public onceClosed :Promise<void>;
     public close :() => void;
     public handleSignalFromPeer :(signal:WebRtc.SignallingMessage) => void;
+    public initiateSnapshotting :() => void;
     public toString :() => string;
   }
   class Session {
