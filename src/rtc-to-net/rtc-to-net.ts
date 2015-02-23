@@ -268,7 +268,7 @@ module RtcToNet {
           }
           throw e;
         });
-      this.onceReady.then(this.linkTcpAndPeerConnectionData_);
+      this.onceReady.then(this.startReadLoops_);
 
       this.onceReady.catch(this.fulfillStopping_);
 
@@ -402,46 +402,75 @@ module RtcToNet {
       return reply;
     }
 
-    // Assumes that |receiveEndpointFromPeer| and |getTcpConnection_|
-    // have completed.
-    private linkTcpAndPeerConnectionData_ = () : void => {
-      // Data from the TCP socket goes to the data channel.
-      this.tcpConnection_.dataFromSocketQueue.setSyncHandler((data) => {
-        log.debug('%1: socket received %2 bytes', [
-            this.longId(), data.byteLength]);
-        this.dataChannel_.send({buffer: data})
-        .catch((e:Error) => {
-          log.error('%1: failed to send data on datachannel: %2', [
-              this.longId(), e.message]);
-        });
-        this.bytesSentToPeer_.handle(data.byteLength);
+    // Sends a packet over the data channel.
+    // Invoked when a packet is received over the TCP socket.
+    private readFromSocket_ = (data:ArrayBuffer) : void => {
+      log.debug('%1: socket received %2 bytes', [
+          this.longId(),
+          data.byteLength]);
+      this.dataChannel_.send({buffer: data}).catch((e:Error) => {
+        log.error('%1: failed to send data on datachannel: %2', [
+            this.longId(),
+            e.message]);
       });
-      // Data from the datachannel goes to the TCP socket.
-      this.dataChannel_.dataFromPeerQueue.setSyncHandler((data:WebRtc.Data) => {
-        if (!data.buffer) {
-          log.error('%1: received non-buffer data from datachannel', [
-              this.longId()]);
-          return;
+    }
+
+    // Sends a packet over the TCP socket.
+    // Invoked when a packet is received over the data channel.
+    private readFromChannel_ = (data:WebRtc.Data) : void => {
+      if (!data.buffer) {
+        log.error('%1: received non-buffer data from datachannel', [
+            this.longId()]);
+        return;
+      }
+      log.debug('%1: datachannel received %2 bytes', [
+          this.longId(),
+          data.buffer.byteLength]);
+      this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
+      this.tcpConnection_.send(data.buffer).catch((e:any) => {
+        // TODO: e is actually a freedom.Error (uproxy-lib 20+)
+        // errcode values are defined here:
+        //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
+        if (e.errcode === 'NOT_CONNECTED') {
+          // This can happen if, for example, there was still data to be
+          // read on the datachannel's queue when the socket closed.
+          log.warn('%1: tried to send data on closed socket: %2', [
+              this.longId(),
+              e.errcode]);
+        } else {
+          log.error('%1: failed to send data on socket: %2', [
+              this.longId(),
+              e.errcode]);
         }
-        log.debug('%1: datachannel received %2 bytes', [
-            this.longId(), data.buffer.byteLength]);
-        this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
-        this.tcpConnection_.send(data.buffer)
-        .catch((e:any) => {
-          // TODO: e is actually a freedom.Error (uproxy-lib 20+)
-          // errcode values are defined here:
-          //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
-          if (e.errcode === 'NOT_CONNECTED') {
-            // This can happen if, for example, there was still data to be
-            // read on the datachannel's queue when the socket closed.
-            log.warn('%1: tried to send data on closed socket: %2', [
-                this.longId(), e.errcode]);
-          } else {
-            log.error('%1: failed to send data on socket: %2', [
-                this.longId(), e.errcode]);
-          }
-        });
       });
+    }
+
+    // Configures forwarding of data from the TCP socket over the data channel
+    // and vice versa. Should only be called once both socket and channel have
+    // been successfully established.
+    private startReadLoops_ = () : void => {
+      // Note that setTimeout is used by both handlers to preserve
+      // responsiveness when large amounts of data are being received:
+      //   https://github.com/uProxy/uproxy/issues/967
+      var socketReadLoop = (data:ArrayBuffer) => {
+        this.readFromSocket_(data);
+        setTimeout(() => {
+          this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
+              socketReadLoop);
+        }, 0);
+      }
+      this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
+          socketReadLoop);
+
+      var channelReadLoop = (data:WebRtc.Data) : void => {
+        this.readFromChannel_(data);
+        setTimeout(() => {
+          this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
+              channelReadLoop);
+        }, 0);
+      };
+      this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
+          channelReadLoop);
     }
 
     private isAllowedAddress_ = (addressString:string) : boolean => {
