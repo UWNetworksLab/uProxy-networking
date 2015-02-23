@@ -245,13 +245,9 @@ module RtcToNet {
           this.tcpConnection_ = tcpConnection;
           // Shutdown once the TCP connection terminates.
           this.tcpConnection_.onceClosed.then((kind:Tcp.SocketCloseKind) => {
-            if (kind === Tcp.SocketCloseKind.UNKOWN) {
-              log.error('%1: socket closed for unrecognized reason', [
-                  this.longId()]);
-            } else {
-              log.info('%1: socket closed (%2)', [
-                  this.longId(), Tcp.SocketCloseKind[kind] || 'unknown reason']);
-            }
+            log.info('%1: socket closed (%2)', [
+                this.longId(),
+                Tcp.SocketCloseKind[kind]]);
           })
           .then(this.fulfillStopping_);
           return this.tcpConnection_.onceConnected;

@@ -359,10 +359,12 @@ module Tcp {
     // fullfilled.  If there's an error, onceDisconnected is rejected with the
     // error.
     private onDisconnectHandler_ = (info:freedom_TcpSocket.DisconnectInfo) : void => {
-      //log.debug(this.connectionId + ': onDisconnectHandler_');
-      if(this.state_ === Connection.State.CLOSED) {
-        //log.warn(this.connectionId + ': Got onDisconnect in closed state' +
-        //    '(errcode=' + info.errcode + '; msg=' + info.message + ')');
+      log.debug('%1: Disconnected: %2', [
+          this.connectionId,
+          JSON.stringify(info)]);
+
+      if (this.state_ === Connection.State.CLOSED) {
+        log.warn('%1: Got onDisconnect in closed state', [this.connectionId]);
         return;
       }
 
@@ -375,8 +377,6 @@ module Tcp {
         } else if (info.errcode === 'CONNECTION_CLOSED') {
           this.fulfillClosed_(SocketCloseKind.REMOTELY_CLOSED);
         } else {
-          //log.warn(this.connectionId + ': Disconnected with errcode '
-          //  + info.errcode + ': ' + info.message);
           this.fulfillClosed_(SocketCloseKind.UNKOWN);
         }
       });
