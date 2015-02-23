@@ -1,3 +1,4 @@
+/// <reference path='../../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../../../../third_party/freedom-typings/freedom-common.d.ts' />
 
 import peerconnection = require('../../../../third_party/uproxy-lib/webrtc/peerconnection');
@@ -17,6 +18,7 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
   private echoServers_ :tcp.Server[] = [];
   private connections_ :{ [index:string]: tcp.Connection; } = {};
   private localhost_ :string = '127.0.0.1';
+  private repeat_ :number = 1;
 
   constructor(private dispatchEvent_:(name:string, args:any) => void,
                                       denyLocalhost?:boolean,
@@ -32,7 +34,12 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
 
     server.connectionsQueue.setSyncHandler((tcpConnection:tcp.Connection) => {
       tcpConnection.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
-        tcpConnection.send(buffer);
+        var multiBuffer :ArrayBuffer[] = []
+        for (var i = 0; i < this.repeat_; ++i) {
+          multiBuffer.push(buffer);
+        }
+        var concatenated = ArrayBuffers.concat(multiBuffer);
+        tcpConnection.send(concatenated);
       });
     });
 
@@ -40,6 +47,11 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
     this.echoServers_.push(server);
     return server.listen().then((endpoint:net.Endpoint) => { return endpoint.port; });
   }
+
+  public setRepeat = (repeat:number) : Promise<void> => {
+    this.repeat_ = repeat;
+    return Promise.resolve<void>();
+  };
 
   private startSocksPair_ = (denyLocalhost?:boolean, obfuscate?:boolean) : Promise<net.Endpoint> => {
     var socksToRtcEndpoint :net.Endpoint = {
@@ -151,7 +163,10 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
       var connection = this.connections_[connectionId];
       connection.send(content);
       connection.dataFromSocketQueue.setSyncHandler((response:ArrayBuffer) => {
-        this.dispatchEvent_('pong', response);
+        this.dispatchEvent_('pong', {
+          connectionId: connectionId,
+          response: response
+        });
       });
       return Promise.resolve<void>();
     } catch (e) {

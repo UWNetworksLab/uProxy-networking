@@ -38,6 +38,10 @@
         "value": ["number", "string"],
         "ret": "string"
       },
+      "setRepeat": {
+        "type": "method",
+        "value": ["number"]
+      },
       "echo": {
         "type": "method",
         "value": ["string", "buffer"],
@@ -54,7 +58,10 @@
       },
       "pong": {
         "type": "event",
-        "value": "buffer"
+        "value": {
+          "connectionId": "string",
+          "response": "buffer"
+        }
       }
     }
   },
