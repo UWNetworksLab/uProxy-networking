@@ -12,7 +12,7 @@ import handler = require('../../build/dev/handler/queue');
 import random = require('../../build/dev/crypto/random');
 
 import net = require('../net/net.types');
-import churn_pipe_types = require('../churn-pipe/churn-pipe.freedom.types');
+import churn_pipe_types = require('../churn-pipe/freedom-module.interface');
 
 import churn_types = require('./churn.types');
 import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;

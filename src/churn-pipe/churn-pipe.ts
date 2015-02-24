@@ -1,4 +1,4 @@
-/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
 
@@ -13,7 +13,8 @@ import logging = require('../../build/dev/logging/logging');
 
 import net = require('../net/net.types');
 
-import churn_pipe_types = require('./churn-pipe.freedom.types');
+import churn_pipe_types = require('./freedom-module.interface');
+import Message = churn_pipe_types.Message;
 
 var log :logging.Log = new logging.Log('churn pipe');
 
@@ -27,7 +28,7 @@ var log :logging.Log = new logging.Log('churn pipe');
  * message passing owing to the inelegance of receiving a response *back*
  * from a Freedom module.
  */
-export class Pipe {
+class Pipe {
 
   // Socket on which the server is listening.
   private socket_ :freedom_UdpSocket.Socket;
@@ -38,11 +39,9 @@ export class Pipe {
   // Endpoint to which all messages are sent.
   private remoteEndpoint_ :net.Endpoint;
 
-
-
   // TODO: define a type for event dispatcher in freedom-typescript-api
   constructor (private dispatchEvent_
-      :(name:string, args:churn_pipe_types.Message) => void) {
+      :(name:string, args:Message) => void) {
     // TODO: clean up udp sockets
     this.socket_ = freedom['core.udpsocket']();
   }
@@ -159,6 +158,4 @@ export class Pipe {
   }
 }
 
-if (typeof freedom !== 'undefined') {
-  freedom['churnPipe'].providePromises(Pipe);
-}
+export = Pipe;
