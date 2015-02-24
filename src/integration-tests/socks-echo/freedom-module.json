@@ -2,7 +2,7 @@
   "name": "fully proxying integration tests",
   "app": {
     "script": [
-      "integration.static.js"
+      "freedom-module.static.js"
     ]
   },
   "dependencies": {
