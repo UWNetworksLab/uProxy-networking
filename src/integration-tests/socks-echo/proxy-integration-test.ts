@@ -8,8 +8,6 @@ import net = require('../../net/net.types');
 import tcp = require('../../net/tcp');
 import socks = require('../../socks-common/socks-headers');
 
-freedom['loggingcontroller']().setConsoleFilter(['*:D']);
-
 class ProxyIntegrationTest {
   private socksToRtc_ :socks_to_rtc.SocksToRtc;
   private rtcToNet_ :rtc_to_net.RtcToNet;
@@ -157,6 +155,4 @@ class ProxyIntegrationTest {
   }
 }
 
-if (typeof freedom !== 'undefined') {
-  freedom().providePromises(ProxyIntegrationTest);
-}
+export = ProxyIntegrationTest;

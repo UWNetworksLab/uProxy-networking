@@ -8,6 +8,7 @@ taskManager = new TaskManager.Manager();
 taskManager.add 'default', [ 'dev' ]
 
 taskManager.add 'base-dev', [
+  'copy:thirdParty'
   'copy:typescriptLibs'
   'copy:dev'
   'ts:devInModuleEnv'
@@ -39,9 +40,25 @@ module.exports = (grunt) ->
     pkg: grunt.file.readJSON 'package.json'
 
     copy:
+      # Copy local |third_party| files into dev: so that the third_party
+      # dependencies are always in the common |build/third_party| location. This
+      # allows path to reference typescript definitions for ambient contexts to
+      # always be found, even in generated `.d.ts` files..
+      thirdParty:
+        files: [
+          {
+              nonull: true,
+              expand: true,
+              src: ['third_party/**/*'],
+              dest: 'build/',
+              onlyIf: 'modified'
+          }
+        ]
       # Copy releveant non-typescript files to dev build.
       typescriptLibs:
         files: [
+          # Copy distribution directory of uproxy-lib into the fixed build/dev
+          # location, so all paths can always find their dependencies.
           {
               nonull: true,
               expand: true,
@@ -50,24 +67,15 @@ module.exports = (grunt) ->
               dest: 'build/dev/',
               onlyIf: 'modified'
           },
-          # We will use the third_party definitions from uProxy-lib, and they
-          # will need to have the same relative path to the created .d.ts files
-          # from |build/dev|.
+          # Use the third_party definitions from uproxy-lib. Copied to the same
+          # location relative to their compiled location in uproxy-lib so they
+          # have the same relative path to the created `.d.ts` files from
+          # |build/dev|.
           {
               nonull: true,
               expand: true,
               cwd: path.join(uproxyLibPath, 'build/third_party'),
               src: ['freedom-typings/**/*'],
-              dest: 'build/third_party/',
-              onlyIf: 'modified'
-          },
-          # This puts the locally defind third party definition files into the
-          # common location of build/third_party.
-          {
-              nonull: true,
-              expand: true,
-              cwd: 'third_party',
-              src: ['**/*'],
               dest: 'build/third_party/',
               onlyIf: 'modified'
           },
@@ -84,15 +92,38 @@ module.exports = (grunt) ->
       dev:
         files: [
           {
-              nonull: false,
+              nonull: true,
               expand: true,
               cwd: 'src/',
-              src: ['**/*.html', '**/*.css', '**/*.json', '**/*.js',],
+              src: ['**/*', '!**/*.ts'],
               dest: devBuildDir,
               onlyIf: 'modified'
           }
         ]
+      # Copy releveant non-typescript files to distribution build.
+      dist:
+        files: [
+          {
+              nonull: true,
+              expand: true,
+              cwd: devBuildDir,
+              src: ['**/*',
+                    '!**/*.spec.js',
+                    '!**/*.spec.*.js'],
+              dest: 'build/dist/',
+              onlyIf: 'modified'
+          }
+        ]
 
+      # Copy the freedom output file to sample apps
+      freedomLibsFor:
+        Rule.copyFreedomLibs 'freedom', ['loggingprovider'],
+          'samples/simple-freedom-chat'
+      freedomLibsFor:
+        Rule.copyFreedomLibs 'freedom', ['loggingprovider'],
+          'samples/copypaste-freedom-chat/'
+
+    # Typescript compilation rules
     ts:
       # Compile all non-sample typescript code into the development build
       # directory.
@@ -129,6 +160,31 @@ module.exports = (grunt) ->
           module: 'commonjs'
           fast: 'always'
 
+
+    jasmine:
+      arraybuffers: Rule.jasmineSpec 'arraybuffers'
+      buildTools: Rule.jasmineSpec 'build-tools'
+      handler: Rule.jasmineSpec 'handler'
+      logging: Rule.jasmineSpec 'logging'
+      loggingProvider: Rule.jasmineSpec 'loggingprovider'
+      webrtc: Rule.jasmineSpec 'webrtc'
+
+    browserify:
+      # Browserify freedom-modules in the library
+      churnPipe: Rule.browserify 'churn-pipe/freedom-module'
+      echo: Rule.browserify 'echo/freedom-module'
+      # Browserify specs
+      arraybuffersSpec: Rule.browserifySpec 'arraybuffers/arraybuffers'
+      buildToolsTaskmanagerSpec: Rule.browserifySpec 'build-tools/taskmanager'
+      handlerSpec: Rule.browserifySpec 'handler/queue'
+      loggingProviderSpec: Rule.browserifySpec 'loggingprovider/loggingprovider'
+      loggingSpec: Rule.browserifySpec 'logging/logging'
+      webrtcSpec: Rule.browserifySpec 'webrtc/peerconnection'
+      # Browserify sample apps main freedom module and core environments
+      copypasteFreedomChatMain: Rule.browserify 'samples/copypaste-freedom-chat/main.core-env'
+      copypasteFreedomChatFreedomModule: Rule.browserify 'samples/copypaste-freedom-chat/freedom-module'
+      simpleFreedomChatMain: Rule.browserify 'samples/simple-freedom-chat/main.core-env'
+      simpleFreedomChatFreedomModule: Rule.browserify 'samples/simple-freedom-chat/freedom-module'
 
     clean:
       build:
