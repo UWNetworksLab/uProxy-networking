@@ -467,8 +467,8 @@ module RtcToNet {
     public longId = () : string => {
       var s = 'session ' + this.channelLabel();
       if (this.tcpConnection_) {
-        s += ' (TCP ' + (this.tcpConnection_.isClosed() ?
-            'closed' : 'open') + ')';
+        s += ' (socket ' + this.tcpConnection_.connectionId + ' ' +
+            (this.tcpConnection_.isClosed() ? 'closed' : 'open') + ')';
       }
       return s;
     }
