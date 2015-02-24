@@ -23,7 +23,6 @@ devBuildDir = 'build/dev'
 Rule = new Rules.Rule({devBuildDir: devBuildDir});
 
 path = require('path');
-freedomForChromePath = path.dirname(require.resolve('freedom-for-chrome/package.json'))
 uproxyLibPath = path.dirname(require.resolve('uproxy-lib/package.json'))
 ipaddrjsPath = path.dirname(require.resolve('ipaddr.js/package.json'))
 # TODO(ldixon): update utransformers package to uproxy-obfuscators
@@ -146,8 +145,6 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-jasmine-chromeapp'
   grunt.loadNpmTasks 'grunt-ts'
-
-  grunt.loadTasks (path.join freedomForChromePath, 'tasks')
 
   #-------------------------------------------------------------------------
   # Register the tasks
