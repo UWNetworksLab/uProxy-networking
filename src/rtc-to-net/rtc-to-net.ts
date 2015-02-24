@@ -449,25 +449,22 @@ module RtcToNet {
     // and vice versa. Should only be called once both socket and channel have
     // been successfully established.
     private startReadLoops_ = () : void => {
-      // Note that setTimeout is used by both handlers to preserve
-      // responsiveness when large amounts of data are being received:
-      //   https://github.com/uProxy/uproxy/issues/967
       var socketReadLoop = (data:ArrayBuffer) => {
         this.readFromSocket_(data);
-        setTimeout(() => {
+        Session.nextTick_(() => {
           this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
               socketReadLoop);
-        }, 0);
+        });
       }
       this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
           socketReadLoop);
 
       var channelReadLoop = (data:WebRtc.Data) : void => {
         this.readFromChannel_(data);
-        setTimeout(() => {
+        Session.nextTick_(() => {
           this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
               channelReadLoop);
-        }, 0);
+        });
       };
       this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
           channelReadLoop);
@@ -512,6 +509,13 @@ module RtcToNet {
         channelLabel_: this.channelLabel(),
         tcpConnection: tcpString
       });
+    }
+
+    // Runs callback once the current event loop has run to completion.
+    // Uses setTimeout in lieu of something like Node's process.nextTick:
+    //   https://github.com/uProxy/uproxy/issues/967
+    private static nextTick_ = (callback:Function) : void => {
+      setTimeout(callback, 0);
     }
   }  // Session
 
