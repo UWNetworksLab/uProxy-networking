@@ -7,7 +7,7 @@ taskManager = new TaskManager.Manager();
 
 taskManager.add 'default', [ 'dev' ]
 
-taskManager.add 'base-dev', [
+taskManager.add 'dev', [
   'copy:thirdParty'
   'copy:typescriptLibs'
   'copy:dev'
@@ -15,8 +15,10 @@ taskManager.add 'base-dev', [
   'ts:devInCoreEnv'
 ]
 
-taskManager.add 'dev', [
-  'base-dev'
+taskManager.add 'tcp-integration-test', [
+  'dev'
+  'copy:freedomLibsForIntegrationTestTcp'
+  'browserify:'
 ]
 
 Rules = require 'uproxy-lib/build/dist/build-tools/common-grunt-rules'
@@ -116,10 +118,9 @@ module.exports = (grunt) ->
         ]
 
       # Copy the freedom output file to sample apps
-      freedomLibsFor:
+      freedomLibsForIntegrationTestTcp:
         Rule.copyFreedomLibs 'freedom', ['loggingprovider'],
-          'samples/simple-freedom-chat'
-
+          'integration-tests/tcp/'
 
     # Typescript compilation rules
     ts:
@@ -172,8 +173,19 @@ module.exports = (grunt) ->
       echoFreedomModule: Rule.browserify 'echo/freedom-module'
 
       # Browserify specs
-      socksEchoFreedomModule: Rule.browserify 'integration-tests/socks-echo/freedom-module'
-      socksEchoSpec: Rule.browserifySpec 'integration-tests/socks-echo/'
+      integrationTcpFreedomModule:
+        Rule.browserify 'integration-tests/tcp/freedom-module'
+      integrationTcpSpec:
+        Rule.browserifySpec 'integration-tests/tcp/tcp.core-env.spec.ts'
+
+      integrationSocksEchoFreedomModule:
+        Rule.browserify 'integration-tests/socks-echo/freedom-module'
+      integrationSocksEchoChurnSpec:
+        Rule.browserifySpec 'integration-tests/socks-echo/churn.core-env.spec.ts'
+      integrationSocksEchoNochurnSpec:
+        Rule.browserifySpec 'integration-tests/socks-echo/nochurn.core-env.spec.ts'
+      integrationSocksEchoSlowSpec:
+        Rule.browserifySpec 'integration-tests/socks-echo/slow.core-env.spec.ts'
       # Browserify sample apps main freedom module and core environments
 
     clean:
