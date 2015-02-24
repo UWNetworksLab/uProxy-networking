@@ -1,4 +1,9 @@
-import Transformer = require('../../build/third_party/uproxy-obfuscators/utransformer');
+// TODO(ldixon): update to a require-style inclusion.
+// e.g.
+// import Transformer = require('../../build/third_party/uproxy-obfuscators/utransformer');
+/// <reference path='../../build/third_party/uproxy-obfuscators/utransformer.d.ts' />
+
+import Transformer = UTransformers.Transformer;
 
 /** An obfuscator which does nothing. */
 class PassThrough implements Transformer {

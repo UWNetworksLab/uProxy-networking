@@ -6,8 +6,8 @@ import net = require('../../net/net.types');
 
 freedom['loggingcontroller']().setConsoleFilter(['*:D']);
 
-var getServerOnFreePort = () : Tcp.Server => {
-  return new Tcp.Server({
+var getServerOnFreePort = () : tcp.Server => {
+  return new tcp.Server({
     address: '127.0.0.1',
     port: 0
   });
@@ -44,9 +44,9 @@ freedom().on('listen', () => {
 freedom().on('shutdown', () => {
   var server = getServerOnFreePort();
 
-  server.listen().then((endpoint:Net.Endpoint) => {
-    var client = new Tcp.Connection({endpoint: endpoint});
-    server.connectionsQueue.setSyncHandler((connection:Tcp.Connection) => {
+  server.listen().then((endpoint:net.Endpoint) => {
+    var client = new tcp.Connection({endpoint: endpoint});
+    server.connectionsQueue.setSyncHandler((connection:tcp.Connection) => {
       client.onceConnected.then(() => {
         server.shutdown();
         return Promise.all<any>([connection.onceClosed, client.onceClosed,
@@ -65,16 +65,16 @@ freedom().on('shutdown', () => {
 freedom().on('onceclosedbyserver', () => {
   var server = getServerOnFreePort();
 
-  server.listen().then((endpoint:Net.Endpoint) => {
-    var client = new Tcp.Connection({endpoint: endpoint});
-    server.connectionsQueue.setSyncHandler((connection:Tcp.Connection) => {
+  server.listen().then((endpoint:net.Endpoint) => {
+    var client = new tcp.Connection({endpoint: endpoint});
+    server.connectionsQueue.setSyncHandler((connection:tcp.Connection) => {
       client.onceConnected.then(() => {
         connection.close();
         return Promise.all<any>([connection.onceClosed, client.onceClosed]);
       })
       .then((values:any) => {
-        if (values[0] === Tcp.SocketCloseKind.WE_CLOSED_IT &&
-            values[1] === Tcp.SocketCloseKind.REMOTELY_CLOSED) {
+        if (values[0] === tcp.SocketCloseKind.WE_CLOSED_IT &&
+            values[1] === tcp.SocketCloseKind.REMOTELY_CLOSED) {
           freedom().emit('onceclosedbyserver');
         }
       });
@@ -88,16 +88,16 @@ freedom().on('onceclosedbyserver', () => {
 freedom().on('onceclosedbyclient', () => {
   var server = getServerOnFreePort();
 
-  server.listen().then((endpoint:Net.Endpoint) => {
-    var client = new Tcp.Connection({endpoint: endpoint});
-    server.connectionsQueue.setSyncHandler((connection:Tcp.Connection) => {
+  server.listen().then((endpoint:net.Endpoint) => {
+    var client = new tcp.Connection({endpoint: endpoint});
+    server.connectionsQueue.setSyncHandler((connection:tcp.Connection) => {
       client.onceConnected.then(() => {
         client.close();
         return Promise.all<any>([connection.onceClosed, client.onceClosed]);
       })
       .then((values:any) => {
-        if (values[0] === Tcp.SocketCloseKind.REMOTELY_CLOSED &&
-            values[1] === Tcp.SocketCloseKind.WE_CLOSED_IT) {
+        if (values[0] === tcp.SocketCloseKind.REMOTELY_CLOSED &&
+            values[1] === tcp.SocketCloseKind.WE_CLOSED_IT) {
           freedom().emit('onceclosedbyclient');
         }
       });
@@ -107,7 +107,7 @@ freedom().on('onceclosedbyclient', () => {
 
 // Attempts to connect to an address which is not bound.
 freedom().on('neverconnected', () => {
-  var client = new Tcp.Connection({
+  var client = new tcp.Connection({
     endpoint: {
       address: '127.0.0.1',
       port: 1023 // Reserved port.
@@ -115,8 +115,8 @@ freedom().on('neverconnected', () => {
   });
   client.onceConnected.catch((e:Error) => {
     return client.onceClosed;
-  }).then((kind:Tcp.SocketCloseKind) => {
-    if (kind === Tcp.SocketCloseKind.NEVER_CONNECTED) {
+  }).then((kind:tcp.SocketCloseKind) => {
+    if (kind === tcp.SocketCloseKind.NEVER_CONNECTED) {
       freedom().emit('neverconnected');
     }
   });
@@ -127,23 +127,23 @@ freedom().on('neverconnected', () => {
 freedom().on('multipleclients', () => {
   var server = getServerOnFreePort();
 
-  server.connectionsQueue.setSyncHandler((tcpConnection:Tcp.Connection) => {
+  server.connectionsQueue.setSyncHandler((tcpConnection:tcp.Connection) => {
     tcpConnection.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
       tcpConnection.send(buffer);
     });
   });
 
-  server.listen().then((endpoint:Net.Endpoint) => {
+  server.listen().then((endpoint:net.Endpoint) => {
     var addEchoClient = (i:number) : Promise<void> => {
       var fulfill :() => void;
-      var client = new Tcp.Connection({endpoint: endpoint});
+      var client = new tcp.Connection({endpoint: endpoint});
       client.dataFromSocketQueue.setSyncNextHandler((buffer:ArrayBuffer) => {
         var bytes = new Uint8Array(buffer);
         if (bytes.length == 1 && bytes[0] == i) {
           fulfill();
         }
       });
-      client.onceConnected.then((info:Tcp.ConnectionInfo) => {
+      client.onceConnected.then((info:tcp.ConnectionInfo) => {
         var bytes = new Uint8Array([i]);
         client.send(bytes.buffer);
       });
@@ -165,13 +165,13 @@ freedom().on('multipleclients', () => {
 freedom().on('connectionscount', () => {
   var server = getServerOnFreePort();
 
-  server.listen().then((endpoint:Net.Endpoint) => {
-    var clients :Tcp.Connection[] = [];
+  server.listen().then((endpoint:net.Endpoint) => {
+    var clients :tcp.Connection[] = [];
     for (var i = 0; i < 5; i++) {
-      clients.push(new Tcp.Connection({endpoint: endpoint}));
+      clients.push(new tcp.Connection({endpoint: endpoint}));
     }
 
-    Promise.all(clients.map((client:Tcp.Connection) => {
+    Promise.all(clients.map((client:tcp.Connection) => {
       return client.onceConnected;
     })).then((answers:any) => {
       if (server.connectionsCount() != clients.length) {

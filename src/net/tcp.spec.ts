@@ -34,7 +34,7 @@ describe('Tcp', function() {
       connected: false
     };
 
-    var output :Tcp.ConnectionInfo = {};
+    var output :tcp.ConnectionInfo = {};
 
     expect(tcp.endpointOfSocketInfo(input)).toEqual(output);
   });

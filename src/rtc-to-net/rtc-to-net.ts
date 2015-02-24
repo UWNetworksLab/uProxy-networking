@@ -254,10 +254,10 @@ module RtcToNet {
         .then((tcpConnection) => {
           this.tcpConnection_ = tcpConnection;
           // Shutdown once the TCP connection terminates.
-          this.tcpConnection_.onceClosed.then((kind:Tcp.SocketCloseKind) => {
+          this.tcpConnection_.onceClosed.then((kind:tcp.SocketCloseKind) => {
             log.info('%1: socket closed (%2)', [
                 this.longId(),
-                Tcp.SocketCloseKind[kind]]);
+                tcp.SocketCloseKind[kind]]);
           })
           .then(this.fulfillStopping_);
           return this.tcpConnection_.onceConnected;

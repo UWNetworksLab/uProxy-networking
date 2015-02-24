@@ -2,9 +2,19 @@
 /// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
 
-import Transformer = require('../../build/third_party/uproxy-obfuscators/utransformer');
-import Rabbit = require('../../build/third_party/uproxy-obfuscators/utransformers.rabbit');
-import Fte = require('../../build/third_party/uproxy-obfuscators/utransformers.fte');
+
+// TODO(ldixon): update to a require-style inclusion.
+// e.g.
+// import Transformer = require('../../build/third_party/uproxy-obfuscators/utransformer');
+// import Rabbit = require('../../build/third_party/uproxy-obfuscators/utransformers.rabbit');
+// import Fte = require('../../build/third_party/uproxy-obfuscators/utransformers.fte');
+/// <reference path='../../build/third_party/uproxy-obfuscators/utransformer.d.ts' />
+/// <reference path='../../build/third_party/uproxy-obfuscators/utransformers.fte.d.ts' />
+/// <reference path='../../build/third_party/uproxy-obfuscators/utransformers.rabbit.d.ts' />
+
+import Transformer = UTransformers.Transformer;
+import Rabbit = fte.Transformer;
+import Fte = rabbit.Transformer;
 
 import arraybuffers = require('../../build/dev/arraybuffers/arraybuffers');
 import peerconnection = require('../../build/dev/webrtc/peerconnection');

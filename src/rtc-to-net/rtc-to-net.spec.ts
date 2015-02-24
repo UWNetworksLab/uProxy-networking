@@ -173,7 +173,7 @@ describe("RtcToNet session", function() {
     spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
 
     mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
-    mockTcpConnection.onceClosed = Promise.resolve(Tcp.SocketCloseKind.WE_CLOSED_IT);
+    mockTcpConnection.onceClosed = Promise.resolve(tcp.SocketCloseKind.WE_CLOSED_IT);
 
     session.start().then(session.onceStopped).then(done);
   });

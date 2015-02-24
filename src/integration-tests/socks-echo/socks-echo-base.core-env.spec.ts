@@ -49,16 +49,16 @@ export function socksEchoTestDescription(useChurn:boolean) {
   });
 
   it('run multiple echo tests in a batch on one connection', (done) => {
-    var testBuffers = testStrings.map(ArrayBuffers.stringToArrayBuffer);
+    var testBuffers = testStrings.map(arraybuffers.stringToArrayBuffer);
     var testModule = getTestModule();
     testModule.startEchoServer().then((port:number) => {
       return testModule.connect(port);
     }).then((connectionId:string) => {
       return testModule.echoMultiple(connectionId, testBuffers);
     }).then((outputs:ArrayBuffer[]) => {
-      var concatenatedInputs = ArrayBuffers.concat(testBuffers);
-      var concatenatedOutputs = ArrayBuffers.concat(outputs);
-      var isEqual = ArrayBuffers.byteEquality(concatenatedInputs, concatenatedOutputs);
+      var concatenatedInputs = arraybuffers.concat(testBuffers);
+      var concatenatedOutputs = arraybuffers.concat(outputs);
+      var isEqual = arraybuffers.byteEquality(concatenatedInputs, concatenatedOutputs);
       expect(isEqual).toBe(true);
     }).catch((e:any) => {
       expect(e).toBeUndefined();
@@ -66,7 +66,7 @@ export function socksEchoTestDescription(useChurn:boolean) {
   });
 
   it('run multiple echo tests in series on one connection', (done) => {
-    var testBuffers = testStrings.map(ArrayBuffers.stringToArrayBuffer);
+    var testBuffers = testStrings.map(arraybuffers.stringToArrayBuffer);
     var testModule = getTestModule();
     testModule.startEchoServer().then((port:number) => {
       return testModule.connect(port);
@@ -80,7 +80,7 @@ export function socksEchoTestDescription(useChurn:boolean) {
           }
           testModule.echo(connectionId, testBuffers[i])
               .then((echo:ArrayBuffer) => {
-            expect(ArrayBuffers.byteEquality(testBuffers[i], echo)).toBe(true);
+            expect(arraybuffers.byteEquality(testBuffers[i], echo)).toBe(true);
             ++i;
           }).then(step);
         };
@@ -95,11 +95,11 @@ export function socksEchoTestDescription(useChurn:boolean) {
     var testModule = getTestModule();
     testModule.startEchoServer().then((port:number) : Promise<any> => {
       var promises = testStrings.map((s:string) : Promise<void> => {
-        var buffer = ArrayBuffers.stringToArrayBuffer(s);
+        var buffer = arraybuffers.stringToArrayBuffer(s);
         return testModule.connect(port).then((connectionId:string) => {
           return testModule.echo(connectionId, buffer);
         }).then((response:ArrayBuffer) => {
-          expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
+          expect(arraybuffers.byteEquality(buffer, response)).toBe(true);
         });
       });
       return Promise.all(promises);
@@ -111,7 +111,7 @@ export function socksEchoTestDescription(useChurn:boolean) {
   it('connect to many different servers in parallel', (done) => {
     var testModule = getTestModule();
     var promises = testStrings.map((s:string) : Promise<void> => {
-      var buffer = ArrayBuffers.stringToArrayBuffer(s);
+      var buffer = arraybuffers.stringToArrayBuffer(s);
 
       // For each string, start a new echo server with that name, and
       // then echo that string from that server.
@@ -120,7 +120,7 @@ export function socksEchoTestDescription(useChurn:boolean) {
       }).then((connectionId:string) => {
         return testModule.echo(connectionId, buffer);
       }).then((response:ArrayBuffer) => {
-        expect(ArrayBuffers.byteEquality(buffer, response)).toBe(true);
+        expect(arraybuffers.byteEquality(buffer, response)).toBe(true);
       });
     });
 
@@ -154,7 +154,7 @@ export function socksEchoTestDescription(useChurn:boolean) {
         if (isDone) {
           return;
         }
-        outputString += ArrayBuffers.arrayBufferToString(response);
+        outputString += arraybuffers.arrayBufferToString(response);
         if (outputString.indexOf('HTTP/1.0 404 Not Found') != -1 &&
             outputString.indexOf(nonExistentPath) != -1) {
           isDone = true;
@@ -189,7 +189,7 @@ export function socksEchoTestDescription(useChurn:boolean) {
       // reject with a NOT_ALLOWED error.
       expect(connectionId).toBeUndefined();
     }, (e:any) => {
-      expect(e.reply).toEqual(Socks.Reply.NOT_ALLOWED);
+      expect(e.reply).toEqual(socks.Reply.NOT_ALLOWED);
     }).then(() => {
       runUproxyOrg404Test(testModule, done);
     });

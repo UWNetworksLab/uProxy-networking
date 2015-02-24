@@ -26,7 +26,9 @@ path = require('path');
 freedomForChromePath = path.dirname(require.resolve('freedom-for-chrome/package.json'))
 uproxyLibPath = path.dirname(require.resolve('uproxy-lib/package.json'))
 ipaddrjsPath = path.dirname(require.resolve('ipaddr.js/package.json'))
-uproxyObfuscatorsPath = path.dirname(require.resolve('uproxy-obfuscators/package.json'))
+# TODO(ldixon): update utransformers package to uproxy-obfuscators
+# uproxyObfuscatorsPath = path.dirname(require.resolve('uproxy-obfuscators/package.json'))
+uproxyObfuscatorsPath = path.dirname(require.resolve('utransformers/package.json'))
 regex2dfaPath = path.dirname(require.resolve('regex2dfa/package.json'))
 # Cordova testing
 ccaPath = path.dirname(require.resolve('cca/package.json'))
