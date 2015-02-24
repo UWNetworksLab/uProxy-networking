@@ -1,5 +1,4 @@
 /// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 
@@ -37,7 +36,7 @@ var log :logging.Log = new logging.Log('TURN frontend');
  *    attribute, it does not verify the client's signature
  *  - only the long-term credential mechanism is supported
  */
-export class Frontend {
+class Frontend {
   /** Socket on which the server is listening. */
   private socket_ :freedom_UdpSocket.Socket;
 
@@ -332,6 +331,4 @@ export class Frontend {
   }
 }
 
-if (typeof freedom !== 'undefined') {
-  freedom['turnFrontend'].providePromises(Frontend);
-}
+export = Frontend;

@@ -97,31 +97,9 @@ module.exports = (grunt) ->
       # directory.
       devInModuleEnv:
         src: [
-          'src/benchmark/**/*.ts',
-          'src/churn-pipe/**/*.ts',
-          'src/churn/**/*.ts',
-          'src/echo/**/*.ts',
-          'src/integration/**/*.ts',
-          'src/net/**/*.ts',
-          'src/rtc-to-net/**/*.ts',
-          'src/samples/copypaste-churn-chat-chromeapp/**/*.ts',
-          'src/samples/copypaste-socks-chromeapp/**/*.ts',
-          'src/samples/echo-server-chromeapp/**/*.ts',
-          'src/samples/echo-server-firefoxapp/**/*.ts',
-          #'src/samples/simple-churn-chat-chromeapp/**/*.ts',
-          #'src/samples/simple-socks-chromeapp/**/*.ts',
-          #'src/samples/simple-socks-firefoxapp/**/*.ts',
-          #'src/samples/simple-turn-chromeapp/**/*.ts',
-          'src/simple-socks/**/*.ts',
-          'src/simple-transformers/**/*.ts',
-          'src/socks-common/**/*.ts',
-          'src/socks-to-rtc/**/*.ts',
-          'src/turn-backend/**/*.ts',
-          'src/turn-frontend/**/*.ts',
+          'src/**/*.ts',
           '!src/**/*.core-env.ts',
-          '!src/**/*.d.ts',
-          '!src/**/*.spec.dynamic.ts',
-          '!src/**/*.integration.spec.ts',
+          '!src/**/*.core-env.spec.ts',
         ]
         outDir: 'build/dev/'
         baseDir: 'src'

@@ -1,8 +1,8 @@
 /// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
 /// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
 
-import TurnBackend = require('./turn-backend');
+import TurnFrontend = require('./turn-frontend');
 
 if (typeof freedom !== 'undefined') {
-  freedom['turnBackend']().providePromises(TurnBackend);
+  freedom['turnFrontend'].providePromises(TurnFrontend);
 }
