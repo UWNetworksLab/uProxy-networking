@@ -3,9 +3,10 @@
 /// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
 /// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
 
-import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
+import arraybuffers = require('../../build/dev/arraybuffers/arraybuffers');
 
 import messages = require('./messages');
+import net = require('../net/net.types');
 
 import logging = require('../../build/dev/logging/logging');
 var log :logging.Log = new logging.Log('TURN frontend');
@@ -46,12 +47,12 @@ export class Frontend {
    * These are invoked when the remote side sends us a response
    * to a relay socket creation request.
    */
-  private callbacks_:{[tag:string]:(response:Turn.StunMessage) => void} = {};
+  private callbacks_:{[tag:string]:(response:messages.StunMessage) => void} = {};
 
   /**
    * These are fulfilled when the callback is invoked.
    */
-  private promises_:{[s:string]:Promise<Turn.StunMessage>} = {};
+  private promises_:{[s:string]:Promise<messages.StunMessage>} = {};
 
   // TODO: define a type for event dispatcher in freedom-typescript-api
   constructor (private dispatchEvent_ ?:(name:string, args:any) => void) {
@@ -63,7 +64,7 @@ export class Frontend {
    * start listening for datagrams. Specify port zero to have the system
    * choose a free port.
    */
-  public bind(address:string, port:number) : Promise<freedom_TurnFrontend.EndpointInfo> {
+  public bind(address:string, port:number) : Promise<net.Endpoint> {
     return this.socket_.bind(address, port)
         .then((resultCode:number) => {
           if (resultCode != 0) {
@@ -92,15 +93,15 @@ export class Frontend {
    */
   private onData_ = (recvFromInfo:freedom_UdpSocket.RecvFromInfo) => {
     try {
-      var stunMessage = Turn.parseStunMessage(new Uint8Array(recvFromInfo.data));
+      var stunMessage = messages.parseStunMessage(new Uint8Array(recvFromInfo.data));
       var clientEndpoint = {
         address: recvFromInfo.address,
         port: recvFromInfo.port
       };
       this.handleStunMessage(stunMessage, clientEndpoint)
-          .then((response ?:Turn.StunMessage) => {
+          .then((response ?:messages.StunMessage) => {
             if (response) {
-              var responseBytes = Turn.formatStunMessageWithIntegrity(response);
+              var responseBytes = messages.formatStunMessageWithIntegrity(response);
               this.socket_.sendTo(
                   responseBytes.buffer,
                   recvFromInfo.address,
@@ -122,19 +123,19 @@ export class Frontend {
    * Public for testing.
    */
   public handleStunMessage = (
-      stunMessage:Turn.StunMessage,
-      clientEndpoint:Endpoint) : Promise<Turn.StunMessage> => {
-    if (stunMessage.method == Turn.MessageMethod.ALLOCATE) {
+      stunMessage:messages.StunMessage,
+      clientEndpoint:net.Endpoint) : Promise<messages.StunMessage> => {
+    if (stunMessage.method == messages.MessageMethod.ALLOCATE) {
       return this.handleAllocateRequest_(stunMessage, clientEndpoint);
-    } else if (stunMessage.method == Turn.MessageMethod.CREATE_PERMISSION) {
+    } else if (stunMessage.method == messages.MessageMethod.CREATE_PERMISSION) {
       return this.handleCreatePermissionRequest_(stunMessage);
-    } else if (stunMessage.method == Turn.MessageMethod.REFRESH) {
+    } else if (stunMessage.method == messages.MessageMethod.REFRESH) {
       return this.handleRefreshRequest_(stunMessage);
-    } else if (stunMessage.method == Turn.MessageMethod.SEND) {
+    } else if (stunMessage.method == messages.MessageMethod.SEND) {
       return this.handleSendIndication_(stunMessage, clientEndpoint);
     }
     return Promise.reject(new Error('unsupported STUN method ' +
-        (Turn.MessageMethod[stunMessage.method] || stunMessage.method)));
+        (messages.MessageMethod[stunMessage.method] || stunMessage.method)));
   }
 
   /**
@@ -142,12 +143,12 @@ export class Frontend {
    * permissions, this is pretty straightforward.
    */
   private handleCreatePermissionRequest_ = (
-      request:Turn.StunMessage) : Promise<Turn.StunMessage> => {
+      request:messages.StunMessage) : Promise<messages.StunMessage> => {
     return Promise.resolve({
-      method: Turn.MessageMethod.CREATE_PERMISSION,
-      clazz: Turn.MessageClass.SUCCESS_RESPONSE,
+      method: messages.MessageMethod.CREATE_PERMISSION,
+      clazz: messages.MessageClass.SUCCESS_RESPONSE,
       transactionId: request.transactionId,
-      attributes: <Turn.StunAttribute[]>[]
+      attributes: <messages.StunAttribute[]>[]
     });
   }
 
@@ -157,13 +158,13 @@ export class Frontend {
    * required by turnutils_uclient.
    */
   private handleRefreshRequest_ = (
-      request:Turn.StunMessage) : Promise<Turn.StunMessage> => {
+      request:messages.StunMessage) : Promise<messages.StunMessage> => {
     return Promise.resolve({
-      method: Turn.MessageMethod.REFRESH,
-      clazz: Turn.MessageClass.SUCCESS_RESPONSE,
+      method: messages.MessageMethod.REFRESH,
+      clazz: messages.MessageClass.SUCCESS_RESPONSE,
       transactionId: request.transactionId,
       attributes: [{
-          type: Turn.MessageAttribute.LIFETIME,
+          type: messages.MessageAttribute.LIFETIME,
           value: new Uint8Array([0x00, 0x00, 600 >> 8, 600 & 0xff]) // 600 = ten mins
         }]
     });
@@ -192,29 +193,29 @@ export class Frontend {
    *   http://tools.ietf.org/html/rfc5389#section-10.2
    */
   private handleAllocateRequest_ = (
-      request:Turn.StunMessage,
-      clientEndpoint:Endpoint) : Promise<Turn.StunMessage> => {
+      request:messages.StunMessage,
+      clientEndpoint:net.Endpoint) : Promise<messages.StunMessage> => {
     // If no USERNAME attribute is present then assume this is the client's
     // first interaction with the server and respond immediately with a
     // failure message, including REALM information for subsequent requests.
     try {
-      Turn.findFirstAttributeWithType(
-          Turn.MessageAttribute.USERNAME,
+      messages.findFirstAttributeWithType(
+          messages.MessageAttribute.USERNAME,
           request.attributes);
     } catch (e) {
       return Promise.resolve({
-        method: Turn.MessageMethod.ALLOCATE,
-        clazz: Turn.MessageClass.FAILURE_RESPONSE,
+        method: messages.MessageMethod.ALLOCATE,
+        clazz: messages.MessageClass.FAILURE_RESPONSE,
         transactionId: request.transactionId,
         attributes: [{
-          type: Turn.MessageAttribute.ERROR_CODE,
-          value: Turn.formatErrorCodeAttribute(401, 'not authorised')
+          type: messages.MessageAttribute.ERROR_CODE,
+          value: messages.formatErrorCodeAttribute(401, 'not authorised')
         }, {
-          type: Turn.MessageAttribute.NONCE,
-          value: new Uint8Array(ArrayBuffers.stringToArrayBuffer('nonce'))
+          type: messages.MessageAttribute.NONCE,
+          value: new Uint8Array(arraybuffers.stringToArrayBuffer('nonce'))
         }, {
-          type: Turn.MessageAttribute.REALM,
-          value: new Uint8Array(ArrayBuffers.stringToArrayBuffer(Turn.REALM))
+          type: messages.MessageAttribute.REALM,
+          value: new Uint8Array(arraybuffers.stringToArrayBuffer(messages.REALM))
         }]
       });
     }
@@ -222,13 +223,13 @@ export class Frontend {
     // If we haven't already done so, create a callback which will be invoked
     // when the remote side sends us a response to our relay socket request.
     var tag = clientEndpoint.address + ':' + clientEndpoint.port;
-    var promise :Promise<Turn.StunMessage>;
+    var promise :Promise<messages.StunMessage>;
     if (tag in this.promises_) {
       promise = this.promises_[tag];
     } else {
       promise = new Promise((F,R) => {
-        this.callbacks_[tag] = (response:Turn.StunMessage) => {
-          if (response.clazz === Turn.MessageClass.SUCCESS_RESPONSE) {
+        this.callbacks_[tag] = (response:messages.StunMessage) => {
+          if (response.clazz === messages.MessageClass.SUCCESS_RESPONSE) {
             log.debug('relay socket allocated for TURN client ' +
                 clientEndpoint.address + ':' + clientEndpoint.port);
             F(response);
@@ -254,8 +255,8 @@ export class Frontend {
    * relay socket.
    */
   private handleSendIndication_ = (
-      request:Turn.StunMessage,
-      clientEndpoint:Endpoint) : Promise<Turn.StunMessage> => {
+      request:messages.StunMessage,
+      clientEndpoint:net.Endpoint) : Promise<messages.StunMessage> => {
     this.emitIpc_(request, clientEndpoint);
     return Promise.resolve(undefined);
   }
@@ -266,15 +267,15 @@ export class Frontend {
    * the addition of an IPC_TAG attribute identifying the TURN client.
    */
   private emitIpc_ = (
-      stunMessage:Turn.StunMessage,
-      clientEndpoint:Endpoint) : void => {
+      stunMessage:messages.StunMessage,
+      clientEndpoint:net.Endpoint) : void => {
     stunMessage.attributes.push({
-      type: Turn.MessageAttribute.IPC_TAG,
-      value: Turn.formatXorMappedAddressAttribute(
+      type: messages.MessageAttribute.IPC_TAG,
+      value: messages.formatXorMappedAddressAttribute(
           clientEndpoint.address, clientEndpoint.port)
     });
     this.dispatchEvent_('ipc', {
-      data: Turn.formatStunMessage(stunMessage).buffer
+      data: messages.formatStunMessage(stunMessage).buffer
     });
   }
 
@@ -282,9 +283,9 @@ export class Frontend {
    * Handles a Freedom message from the remote side.
    */
   public handleIpc = (data :ArrayBuffer) : Promise<void> => {
-    var stunMessage :Turn.StunMessage;
+    var stunMessage :messages.StunMessage;
     try {
-      stunMessage = Turn.parseStunMessage(new Uint8Array(data));
+      stunMessage = messages.parseStunMessage(new Uint8Array(data));
     } catch (e) {
       return Promise.reject(new Error(
           'failed to parse STUN message from IPC channel'));
@@ -293,11 +294,11 @@ export class Frontend {
     // With which client is this message associated?
     var clientEndpoint :net.Endpoint;
     try {
-      var ipcAttribute = Turn.findFirstAttributeWithType(
-          Turn.MessageAttribute.IPC_TAG,
+      var ipcAttribute = messages.findFirstAttributeWithType(
+          messages.MessageAttribute.IPC_TAG,
           stunMessage.attributes);
       try {
-        clientEndpoint = Turn.parseXorMappedAddressAttribute(
+        clientEndpoint = messages.parseXorMappedAddressAttribute(
             ipcAttribute.value);
       } catch (e) {
         return Promise.reject(new Error(
@@ -309,13 +310,13 @@ export class Frontend {
     }
     var tag = clientEndpoint.address + ':' + clientEndpoint.port;
 
-    if (stunMessage.method == Turn.MessageMethod.ALLOCATE) {
+    if (stunMessage.method == messages.MessageMethod.ALLOCATE) {
       // A response from one of our relay socket creation requests.
       // Invoke the relevant callback.
       // TODO: check callback exists
       var callback = this.callbacks_[tag];
       callback(stunMessage);
-    } else if (stunMessage.method == Turn.MessageMethod.DATA) {
+    } else if (stunMessage.method == messages.MessageMethod.DATA) {
       // The remote side received data on a relay socket.
       // Forward it to the relevant client.
       // TODO: consider removing the IPC_TAG attribute
@@ -332,5 +333,5 @@ export class Frontend {
 }
 
 if (typeof freedom !== 'undefined') {
-  freedom.turnFrontend().providePromises(Turn.Frontend);
+  freedom['turnFrontend'].providePromises(Frontend);
 }

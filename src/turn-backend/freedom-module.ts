@@ -50,11 +50,11 @@ export class Backend {
     // With which client is this message associated?
     var clientEndpoint :net.Endpoint;
     try {
-      var ipcAttribute = Turn.findFirstAttributeWithType(
-          Turn.MessageAttribute.IPC_TAG,
+      var ipcAttribute = messages.findFirstAttributeWithType(
+          messages.MessageAttribute.IPC_TAG,
           request.attributes);
       try {
-        clientEndpoint = Turn.parseXorMappedAddressAttribute(
+        clientEndpoint = messages.parseXorMappedAddressAttribute(
             ipcAttribute.value);
       } catch (e) {
         return Promise.reject(new Error(
@@ -66,30 +66,30 @@ export class Backend {
     }
     var tag = clientEndpoint.address + ':' + clientEndpoint.port;
 
-    if (request.method == Turn.MessageMethod.ALLOCATE) {
+    if (request.method == messages.MessageMethod.ALLOCATE) {
       this.makeAllocation_(clientEndpoint).then((allocation:Allocation) => {
         allocation.socket.getInfo().then((socketInfo:freedom_UdpSocket.SocketInfo) => {
           this.emitIpc_({
-            method: Turn.MessageMethod.ALLOCATE,
-            clazz: Turn.MessageClass.SUCCESS_RESPONSE,
+            method: messages.MessageMethod.ALLOCATE,
+            clazz: messages.MessageClass.SUCCESS_RESPONSE,
             transactionId: request.transactionId,
             attributes: [{
               // Endpoint on which the new socket is listening.
               // This is really the whole point of the thing.
-              type: Turn.MessageAttribute.XOR_RELAYED_ADDRESS,
-              value: Turn.formatXorMappedAddressAttribute(
+              type: messages.MessageAttribute.XOR_RELAYED_ADDRESS,
+              value: messages.formatXorMappedAddressAttribute(
                   socketInfo.localAddress,
                   socketInfo.localPort)
             }, {
               // Endpoint from which the client appears to us.
               // This is essentially a STUN response and is generally
               // provided as a convenience to TURN clients.
-              type: Turn.MessageAttribute.XOR_MAPPED_ADDRESS,
-              value: Turn.formatXorMappedAddressAttribute(
+              type: messages.MessageAttribute.XOR_MAPPED_ADDRESS,
+              value: messages.formatXorMappedAddressAttribute(
                   clientEndpoint.address, clientEndpoint.port)
             }, {
               // Lifetime.
-              type: Turn.MessageAttribute.LIFETIME,
+              type: messages.MessageAttribute.LIFETIME,
               value: new Uint8Array([0x00, 0x00, 600 >> 8, 600 & 0xff]) // 600 = ten mins
             }]
           }, clientEndpoint);
@@ -97,31 +97,31 @@ export class Backend {
       }, (e) => {
         // Send error response (failed to make allocation).
         this.emitIpc_({
-          method: Turn.MessageMethod.ALLOCATE,
-          clazz: Turn.MessageClass.FAILURE_RESPONSE,
+          method: messages.MessageMethod.ALLOCATE,
+          clazz: messages.MessageClass.FAILURE_RESPONSE,
           transactionId: request.transactionId,
           attributes: []
         }, clientEndpoint);
       });
-    } else if (request.method == Turn.MessageMethod.SEND) {
+    } else if (request.method == messages.MessageMethod.SEND) {
       // Extract the destination address and payload.
-      var destinationAttribute :Turn.StunAttribute;
-      var dataAttribute :Turn.StunAttribute;
+      var destinationAttribute :messages.StunAttribute;
+      var dataAttribute :messages.StunAttribute;
       try {
-        destinationAttribute = Turn.findFirstAttributeWithType(
-            Turn.MessageAttribute.XOR_PEER_ADDRESS,
+        destinationAttribute = messages.findFirstAttributeWithType(
+            messages.MessageAttribute.XOR_PEER_ADDRESS,
             request.attributes);
-        dataAttribute = Turn.findFirstAttributeWithType(
-            Turn.MessageAttribute.DATA,
+        dataAttribute = messages.findFirstAttributeWithType(
+            messages.MessageAttribute.DATA,
             request.attributes);
       } catch (e) {
         return Promise.reject(new Error(
             'no address or data attribute in SEND indication'));
       }
 
-      var remoteEndpoint = Turn.parseXorMappedAddressAttribute(
+      var remoteEndpoint = messages.parseXorMappedAddressAttribute(
           destinationAttribute.value);
-      var payload = Turn.Backend.bytesToArrayBuffer_(dataAttribute.value);
+      var payload = Backend.bytesToArrayBuffer_(dataAttribute.value);
 
       if (!(tag in this.allocations_)) {
         return Promise.reject(new Error(
@@ -151,12 +151,12 @@ export class Backend {
       clientEndpoint:net.Endpoint) : void => {
     // Add an IPC_TAG attribute.
     stunMessage.attributes.push({
-      type: Turn.MessageAttribute.IPC_TAG,
-      value: Turn.formatXorMappedAddressAttribute(
+      type: messages.MessageAttribute.IPC_TAG,
+      value: messages.formatXorMappedAddressAttribute(
           clientEndpoint.address, clientEndpoint.port)
     });
     this.dispatchEvent_('ipc', {
-      data: Turn.formatStunMessage(stunMessage).buffer
+      data: messages.formatStunMessage(stunMessage).buffer
     });
   }
 
@@ -186,16 +186,16 @@ export class Backend {
 
       socket.on('onData', (recvFromInfo:freedom_UdpSocket.RecvFromInfo) => {
         this.emitIpc_({
-          method: Turn.MessageMethod.DATA,
-          clazz: Turn.MessageClass.INDICATION,
-          transactionId: Turn.Backend.getRandomTransactionId_(),
+          method: messages.MessageMethod.DATA,
+          clazz: messages.MessageClass.INDICATION,
+          transactionId: Backend.getRandomTransactionId_(),
           attributes: [{
-            type: Turn.MessageAttribute.XOR_PEER_ADDRESS,
-            value: Turn.formatXorMappedAddressAttribute(
+            type: messages.MessageAttribute.XOR_PEER_ADDRESS,
+            value: messages.formatXorMappedAddressAttribute(
                 recvFromInfo.address,
                 recvFromInfo.port)
           }, {
-            type: Turn.MessageAttribute.DATA,
+            type: messages.MessageAttribute.DATA,
             value: new Uint8Array(recvFromInfo.data)
           }]
         }, clientEndpoint);

@@ -1,6 +1,8 @@
 /// <reference path='../../build/third_party/sha1/sha1.d.ts' />
 
-import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
+import arraybuffers = require('../../build/dev/arraybuffers/arraybuffers');
+
+import net = require('../net/net.types');
 
 /**
  * Utilities for decoding and encoding STUN messages.
@@ -142,7 +144,7 @@ function getMagicCookieBytes() : Uint8Array {
  * Parses a byte array, returning a StunMessage object.
  * Throws an error if this is not a STUN request.
  */
-export function parseStunMessage(bytes:Uint8Array) : Turn.StunMessage {
+export function parseStunMessage(bytes:Uint8Array) : StunMessage {
   // Fail if the request is too short to be valid.
   if (bytes.length < 20) {
     throw new Error('request too short');
@@ -173,7 +175,7 @@ export function parseStunMessage(bytes:Uint8Array) : Turn.StunMessage {
   // The class is determined by bits C1 and C0.
   var c1 = bytes[0] & 0x01;
   var c0 = bytes[1] & 0x10;
-  var clazz :Turn.MessageClass;
+  var clazz :MessageClass;
   if (c1) {
     if (c0) {
       clazz = MessageClass.FAILURE_RESPONSE;
@@ -200,7 +202,7 @@ export function parseStunMessage(bytes:Uint8Array) : Turn.StunMessage {
   var transactionId = bytes.subarray(8, 20);
 
   // Attributes.
-  var attributes :Turn.StunAttribute[] = [];
+  var attributes :StunAttribute[] = [];
   var attributeOffset = 20;
   while (attributeOffset < bytes.length) {
     var attribute = parseStunAttribute(bytes.subarray(attributeOffset));
@@ -220,7 +222,7 @@ export function parseStunMessage(bytes:Uint8Array) : Turn.StunMessage {
 /**
  * Constructs a byte array from a StunMessage object.
  */
-export function formatStunMessage(message:Turn.StunMessage) : Uint8Array {
+export function formatStunMessage(message:StunMessage) : Uint8Array {
   // Figure out how many bytes we'll need.
   var length = 0;
   for (var i = 0; i < message.attributes.length; i++) {
@@ -253,7 +255,7 @@ export function formatStunMessage(message:Turn.StunMessage) : Uint8Array {
   // Class (C1 and C0).
   var c1 = bytes[0] & 0x01;
   var c0 = bytes[1] & 0x10;
-  var clazz :Turn.MessageClass;
+  var clazz :MessageClass;
   // C1.
   if (message.clazz == MessageClass.SUCCESS_RESPONSE ||
       message.clazz == MessageClass.FAILURE_RESPONSE) {
@@ -291,10 +293,10 @@ export function formatStunMessage(message:Turn.StunMessage) : Uint8Array {
  * Normally, this is the function you should call; the exceptions are tests
  * and send/data indications (which do not require a checksum).
  */
-export function formatStunMessageWithIntegrity(message:Turn.StunMessage) : Uint8Array {
+export function formatStunMessageWithIntegrity(message:StunMessage) : Uint8Array {
   // Append the attribute and obtain the bytes...
   message.attributes.push({
-    type: Turn.MessageAttribute.MESSAGE_INTEGRITY,
+    type: MessageAttribute.MESSAGE_INTEGRITY,
     value: new Uint8Array(20)
   });
   var bytes = formatStunMessage(message);
@@ -324,7 +326,7 @@ export function formatStunMessageWithIntegrity(message:Turn.StunMessage) : Uint8
  * supplied byte array.
  */
 export function computeHash(bytes:Uint8Array) : Uint8Array {
-  var keyAsString = ArrayBuffers.arrayBufferToString(HMAC_KEY.buffer);
+  var keyAsString = arraybuffers.arrayBufferToString(HMAC_KEY.buffer);
   // MESSAGE-INTEGRITY attributes are always 24 bytes long:
   // 4 bytes header + 20 bytes hash
   var bytesToBeHashed = bytes.subarray(0, bytes.byteLength - 24);
@@ -342,7 +344,7 @@ export function computeHash(bytes:Uint8Array) : Uint8Array {
 
   var hashAsString = sha1.str_hmac_sha1(keyAsString,
       bytesToBeHashedAsString);
-  return new Uint8Array(ArrayBuffers.stringToArrayBuffer(hashAsString));
+  return new Uint8Array(arraybuffers.stringToArrayBuffer(hashAsString));
 }
 
 /**
@@ -351,7 +353,7 @@ export function computeHash(bytes:Uint8Array) : Uint8Array {
  * to contain the attribute but otherwise ignores any trailing bytes.
  */
 export function formatStunAttribute(
-    attr:Turn.StunAttribute,
+    attr:StunAttribute,
     bytes:Uint8Array) : number {
   var paddedLength = calculatePadding(attr.value ? attr.value.length : 0, 4);
   if (bytes.length < 4 + paddedLength) {
@@ -383,7 +385,7 @@ export function formatStunAttribute(
  * Parses a STUN attribute:
  *   http://tools.ietf.org/html/rfc5389#section-15
  */
-export function parseStunAttribute(bytes:Uint8Array) : Turn.StunAttribute {
+export function parseStunAttribute(bytes:Uint8Array) : StunAttribute {
   // Fail if the number of bytes is too small.
   if (bytes.length < 4) {
     throw new Error('too few bytes');
@@ -424,7 +426,7 @@ export function formatErrorCodeAttribute(
   // Number (code modulo 100).
   bytes[3] = code % 100;
   // Reason.
-  var reasonBuffer = ArrayBuffers.stringToArrayBuffer(reason);
+  var reasonBuffer = arraybuffers.stringToArrayBuffer(reason);
   bytes.set(new Uint8Array(reasonBuffer), 4);
   return bytes;
 }
@@ -552,8 +554,8 @@ export function formatXorMappedAddressAttribute(
  * specified type. Raises an error if the attribute is not found.
  */
 export function findFirstAttributeWithType(
-  type:Turn.MessageAttribute,
-  attributes:Turn.StunAttribute[]) : Turn.StunAttribute {
+  type:MessageAttribute,
+  attributes:StunAttribute[]) : StunAttribute {
   for (var i = 0; i < attributes.length; i++) {
     var attribute = attributes[i];
     if (attribute.type === type) {
