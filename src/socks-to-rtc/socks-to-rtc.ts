@@ -311,7 +311,7 @@ module SocksToRtc {
 
       // Startup notifications.
       this.onceReady = this.doAuthHandshake_().then(this.doRequestHandshake_);
-      this.onceReady.then(this.startReadLoops_);
+      this.onceReady.then(this.linkSocketAndChannel_);
 
       // Shutdown once TCP connection or datachannel terminate.
       this.onceReady.catch(this.fulfillStopping_);
@@ -481,7 +481,7 @@ module SocksToRtc {
     // Configures forwarding of data from the TCP socket over the data channel
     // and vice versa. Should only be called once both socket and channel have
     // been successfully established and the handshake has completed.
-    private startReadLoops_ = () : void => {
+    private linkSocketAndChannel_ = () : void => {
       // Note that setTimeout is used by both handlers to preserve
       // responsiveness when large amounts of data are being received:
       //   https://github.com/uProxy/uproxy/issues/967

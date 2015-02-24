@@ -268,7 +268,7 @@ module RtcToNet {
           }
           throw e;
         });
-      this.onceReady.then(this.startReadLoops_);
+      this.onceReady.then(this.linkSocketAndChannel_);
 
       this.onceReady.catch(this.fulfillStopping_);
 
@@ -448,7 +448,7 @@ module RtcToNet {
     // Configures forwarding of data from the TCP socket over the data channel
     // and vice versa. Should only be called once both socket and channel have
     // been successfully established.
-    private startReadLoops_ = () : void => {
+    private linkSocketAndChannel_ = () : void => {
       var socketReadLoop = (data:ArrayBuffer) => {
         this.sendOnChannel_(data);
         Session.nextTick_(() => {
