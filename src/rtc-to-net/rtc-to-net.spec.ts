@@ -116,7 +116,8 @@ describe("RtcToNet session", function() {
     mockDataChannel = <any>{
       closeDataChannel: noopPromise,
       onceClosed: noopPromise,
-      close: jasmine.createSpy('close')
+      close: jasmine.createSpy('close'),
+      getLabel: jasmine.createSpy('getLabel')
     };
     mockBytesReceived = jasmine.createSpyObj('bytes received handler', [
         'handle'
@@ -172,7 +173,7 @@ describe("RtcToNet session", function() {
     spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
 
     mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
-    mockTcpConnection.onceClosed = Promise.resolve();
+    mockTcpConnection.onceClosed = Promise.resolve(Tcp.SocketCloseKind.WE_CLOSED_IT);
 
     session.start().then(session.onceStopped).then(done);
   });

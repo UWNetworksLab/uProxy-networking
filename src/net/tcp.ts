@@ -1,9 +1,11 @@
+/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../build/third_party/freedom-typings/tcp-socket.d.ts' />
+
 /*
  * This is a TCP server based on Freedom's sockets API.
  */
-
-/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/tcp-socket.d.ts' />
 
 import logging = require('../../build/dev/logging/logging');
 import handler = require('../../build/dev/handler/queue');
@@ -20,26 +22,33 @@ export enum SocketCloseKind {
 }
 
 export interface ConnectionInfo {
-  bound: net.Endpoint;
-  remote: net.Endpoint;
+  bound  ?:net.Endpoint;
+  remote ?:net.Endpoint;
 }
 
 // A limit on the max number of TCP connections before we start rejecting
 // new ones.
 var DEFAULT_MAX_CONNECTIONS = 1048576;
 
-function endpointOfSocketInfo(info:freedom_TcpSocket.SocketInfo)
+// Private function, exported only for unit tests
+export function endpointOfSocketInfo(info:freedom_TcpSocket.SocketInfo)
     : ConnectionInfo {
-   return {
-     bound: {
-       address: info.localAddress,
-       port: info.localPort
-     },
-     remote: {
-       address: info.peerAddress,
-       port: info.peerPort
-     }
-   };
+  var retval :ConnectionInfo = {};
+  if (typeof info.localAddress == 'string' &&
+      typeof info.localPort == 'number') {
+    retval.bound = {
+      address: info.localAddress,
+      port: info.localPort
+    };
+  }
+  if (typeof info.peerAddress == 'string' &&
+      typeof info.peerPort == 'number') {
+    retval.remote = {
+      address: info.peerAddress,
+      port: info.peerPort
+    };
+  }
+  return retval;
 }
 
 // A static helper function to close a freedom socket object and then
@@ -321,16 +330,20 @@ export class Connection {
       this.dataFromSocketQueue.handle(readInfo.data);
     });
 
+    this.onceClosed = new Promise<SocketCloseKind>((F, R) => {
+      this.fulfillClosed_ = F;
+    });
+
     // Once we are connected, we start sending data to the underlying socket.
     // |dataToSocketQueue| allows a class using this connection to start
     // queuing data to be send to the socket.
     this.onceConnected.then(() => {
       this.dataToSocketQueue.setHandler(this.connectionSocket_.write);
     });
-
-    this.onceClosed = new Promise<SocketCloseKind>((F, R) => {
-      this.fulfillClosed_ = F;
+    this.onceConnected.catch((e:Error) => {
+      this.fulfillClosed_(SocketCloseKind.NEVER_CONNECTED);
     });
+
     this.connectionSocket_.on('onDisconnect', this.onDisconnectHandler_);
   }
 
@@ -346,10 +359,12 @@ export class Connection {
   // fullfilled.  If there's an error, onceDisconnected is rejected with the
   // error.
   private onDisconnectHandler_ = (info:freedom_TcpSocket.DisconnectInfo) : void => {
-    //log.debug(this.connectionId + ': onDisconnectHandler_');
-    if(this.state_ === Connection.State.CLOSED) {
-      //log.warn(this.connectionId + ': Got onDisconnect in closed state' +
-      //    '(errcode=' + info.errcode + '; msg=' + info.message + ')');
+    log.debug('%1: Disconnected: %2', [
+        this.connectionId,
+        JSON.stringify(info)]);
+
+    if (this.state_ === Connection.State.CLOSED) {
+      log.warn('%1: Got onDisconnect in closed state', [this.connectionId]);
       return;
     }
 
@@ -362,8 +377,6 @@ export class Connection {
       } else if (info.errcode === 'CONNECTION_CLOSED') {
         this.fulfillClosed_(SocketCloseKind.REMOTELY_CLOSED);
       } else {
-        //log.warn(this.connectionId + ': Disconnected with errcode '
-        //  + info.errcode + ': ' + info.message);
         this.fulfillClosed_(SocketCloseKind.UNKOWN);
       }
     });

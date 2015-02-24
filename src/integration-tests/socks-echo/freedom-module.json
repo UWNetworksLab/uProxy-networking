@@ -43,6 +43,14 @@
         "type": "method",
         "value": ["string", ["array", "buffer"]],
         "ret": ["array", "buffer"]
+      },
+      "ping": {
+        "type": "method",
+        "value": ["string", "buffer"]
+      },
+      "pong": {
+        "type": "event",
+        "value": "buffer"
       }
     }
   },

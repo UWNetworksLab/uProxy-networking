@@ -156,14 +156,14 @@ module SocksToRtc {
       onceReady.catch(this.fulfillStopping_);
       this.tcpServer_.onceShutdown()
         .then(() => {
-          log.debug('server socket closed');
+          log.info('server socket closed');
         }, (e:Error) => {
           log.error('server socket closed with error: %1', [e.message]);
         })
         .then(this.fulfillStopping_);
       this.peerConnection_.onceDisconnected
         .then(() => {
-          log.debug('peerconnection terminated');
+          log.info('peerconnection terminated');
         }, (e:Error) => {
           log.error('peerconnection terminated with error: %1', [e.message]);
         })
@@ -180,7 +180,7 @@ module SocksToRtc {
     // Initiates shutdown of the TCP server and peerconnection.
     // Returns onceStopped.
     public stop = () : Promise<void> => {
-      log.debug('stop requested');
+      log.info('stop requested');
       this.fulfillStopping_();
       return this.onceStopped_;
     }
@@ -220,10 +220,10 @@ module SocksToRtc {
     // Note that Session closes the TCP connection and datachannel on any error.
     private makeTcpToRtcSession_ = (tcpConnection:tcp.Connection) : void => {
       var tag = obtainTag();
-      log.info('created new session %1', [tag]);
+      log.info('associating session %1 with new TCP connection', [tag]);
 
 	    this.peerConnection_.openDataChannel(tag).then((channel:peerconnection.DataChannel) => {
-        log.debug('opened datachannel for session %1', [tag]);
+        log.info('opened datachannel for session %1', [tag]);
         var session = new Session();
         session.start(
             tcpConnection,
@@ -231,8 +231,6 @@ module SocksToRtc {
             this.bytesSentToPeer_,
             this.bytesReceivedFromPeer_)
         .then((endpoint:net.Endpoint) => {
-          log.debug('session %1 connected via bound endpoint %2', [
-              tag, JSON.stringify(endpoint)]);
           this.sessions_[tag] = session;
         }, (e:Error) => {
           log.warn('session %1 failed to connect to remote endpoint: %2', [
@@ -325,11 +323,12 @@ module SocksToRtc {
       this.onceReady.catch(this.fulfillStopping_);
       Promise.race<any>([
           tcpConnection.onceClosed.then((kind:tcp.SocketCloseKind) => {
-            log.debug('%1: client socket closed (%2)', [
-                this.longId(), tcp.SocketCloseKind[kind] || 'unknown reason']);
+            log.info('%1: socket closed (%2)', [
+                this.longId(),
+                tcp.SocketCloseKind[kind]]);
           }),
           dataChannel.onceClosed.then(() => {
-            log.debug('%1: datachannel closed', [this.longId()]);
+            log.info('%1: datachannel closed', [this.longId()]);
           })])
         .then(this.fulfillStopping_);
       this.onceStopped = this.onceStopping_.then(this.stopResources_);
@@ -408,6 +407,9 @@ module SocksToRtc {
               R(new Error('invalid response:' + data.str));
               return;
             }
+            log.info('%1: connected to remote host', [this.longId()]);
+            log.debug('%1: remote peer bound address: %2', [
+                this.longId(), JSON.stringify(r.endpoint)]);
             F(r);
           } catch(e) {
             R(new Error('received malformed response during handshake: ' +
@@ -424,6 +426,8 @@ module SocksToRtc {
       return this.tcpConnection_.receiveNext()
         .then(socks.interpretRequestBuffer)
         .then((request:socks.Request) => {
+          log.info('%1: received endpoint from SOCKS client: %2', [
+              this.longId(), JSON.stringify(request.endpoint)]);
           this.dataChannel_.send({ str: JSON.stringify(request) });
           return this.receiveResponseFromPeer_();
         })
@@ -442,7 +446,7 @@ module SocksToRtc {
       // Any further data just goes to the target site.
       this.tcpConnection_.dataFromSocketQueue.setSyncHandler(
           (data:ArrayBuffer) => {
-        log.debug('%1: client socket received %2 bytes', [
+        log.debug('%1: socket received %2 bytes', [
             this.longId(), data.byteLength]);
         this.dataChannel_.send({ buffer: data })
         .catch((e:Error) => {
@@ -462,9 +466,19 @@ module SocksToRtc {
             this.longId(), data.buffer.byteLength]);
         this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
         this.tcpConnection_.send(data.buffer)
-        .catch((e:Error) => {
-          log.error('%1: failed to send data on client socket: %2', [
-              this.longId(), e.message]);
+        .catch((e:any) => {
+          // TODO: e is actually a freedom.Error (uproxy-lib 20+)
+          // errcode values are defined here:
+          //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
+          if (e.errcode === 'NOT_CONNECTED') {
+            // This can happen if, for example, there was still data to be
+            // read on the datachannel's queue when the socket closed.
+            log.warn('%1: tried to send data on closed socket: %2', [
+                this.longId(), e.errcode]);
+          } else {
+            log.error('%1: failed to send data on socket: %2', [
+                this.longId(), e.errcode]);
+          }
         });
       });
     }

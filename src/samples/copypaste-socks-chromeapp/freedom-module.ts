@@ -21,6 +21,7 @@ freedom['loggingprovider']().setConsoleFilter([
     'RtcToNet:I']);
 
 var log :logging.Log = new logging.Log('copypaste-socks');
+
 var pgp :PgpProvider = freedom['pgp']();
 var friendKey :string;
 // TODO interactive setup w/real passphrase

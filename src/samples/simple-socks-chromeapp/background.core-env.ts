@@ -10,13 +10,11 @@ document.head.appendChild(script);
 script.onload = () => {
   freedom('lib/simple-socks/freedom-module.json', {
       'logger': 'lib/loggingprovider/loggingprovider.json',
-      'debug': 'log'
-  }).then(function(simpleSocksFactory:freedom_types.FreedomModuleFactoryManager) {
+      'debug': 'debug'
+  }).then((simpleSocksFactory:freedom_types.FreedomModuleFactoryManager) => {
     // Keep a background timeout running continuously, to prevent chrome from
     // putting the app to sleep.
-    function keepAlive() {
-      setTimeout(keepAlive, 5000);
-    }
+    function keepAlive() { setTimeout(keepAlive, 5000); }
     keepAlive();
 
     var simpleSocks :freedom_types.OnAndEmit<any,any> = simpleSocksFactory();
