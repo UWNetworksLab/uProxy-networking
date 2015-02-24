@@ -437,7 +437,7 @@ module SocksToRtc {
 
     // Sends a packet over the data channel.
     // Invoked when a packet is received over the TCP socket.
-    private readFromSocket_ = (data:ArrayBuffer) : void => {
+    private sendOnChannel_ = (data:ArrayBuffer) : void => {
       log.debug('%1: socket received %2 bytes', [
           this.longId(),
           data.byteLength]);
@@ -450,7 +450,7 @@ module SocksToRtc {
 
     // Sends a packet over the TCP socket.
     // Invoked when a packet is received over the data channel.
-    private readFromChannel_ = (data:WebRtc.Data) : void => {
+    private sendOnSocket_ = (data:WebRtc.Data) : void => {
       if (!data.buffer) {
         log.error('%1: received non-buffer data from datachannel', [
             this.longId()]);
@@ -486,7 +486,7 @@ module SocksToRtc {
       // responsiveness when large amounts of data are being received:
       //   https://github.com/uProxy/uproxy/issues/967
       var socketReadLoop = (data:ArrayBuffer) => {
-        this.readFromSocket_(data);
+        this.sendOnChannel_(data);
         Session.nextTick_(() => {
           this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
               socketReadLoop);
@@ -496,7 +496,7 @@ module SocksToRtc {
           socketReadLoop);
 
       var channelReadLoop = (data:WebRtc.Data) : void => {
-        this.readFromChannel_(data);
+        this.sendOnSocket_(data);
         Session.nextTick_(() => {
           this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
               channelReadLoop);
