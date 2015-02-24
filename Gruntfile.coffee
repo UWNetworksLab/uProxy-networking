@@ -18,7 +18,8 @@ taskManager.add 'dev', [
 taskManager.add 'tcp-integration-test', [
   'dev'
   'copy:freedomLibsForIntegrationTestTcp'
-  'browserify:'
+  'browserify:integrationTcpFreedomModule'
+  'browserify:integrationTcpSpec:'
 ]
 
 Rules = require 'uproxy-lib/build/dist/build-tools/common-grunt-rules'

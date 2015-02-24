@@ -13,9 +13,11 @@ var getServerOnFreePort = () : tcp.Server => {
   });
 }
 
+var parentModule = freedom();
+
 // Starts an echo server on a free port and sends some data to the server,
 // verifying that an echo is received.
-freedom().on('listen', () => {
+parentModule.on('listen', () => {
   var server = getServerOnFreePort();
 
   server.connectionsQueue.setSyncHandler((tcpConnection:tcp.Connection) => {
@@ -29,7 +31,7 @@ freedom().on('listen', () => {
     client.dataFromSocketQueue.setSyncNextHandler((buffer:ArrayBuffer) => {
       var s = arraybuffers.arrayBufferToString(buffer);
       if (s == 'ping') {
-        freedom().emit('listen');
+        parentModule.emit('listen');
       }
     });
     client.onceConnected.then((info:tcp.ConnectionInfo) => {
@@ -41,7 +43,7 @@ freedom().on('listen', () => {
 // Starts a server on a free port and makes a connection to that
 // port before shutting down the server, verifying that onceShutdown
 // fulfills.
-freedom().on('shutdown', () => {
+parentModule.on('shutdown', () => {
   var server = getServerOnFreePort();
 
   server.listen().then((endpoint:net.Endpoint) => {
@@ -53,7 +55,7 @@ freedom().on('shutdown', () => {
             server.onceShutdown()]);
       })
       .then((values:any) => {
-        freedom().emit('shutdown');
+        parentModule.emit('shutdown');
       });
     });
   });
@@ -62,7 +64,7 @@ freedom().on('shutdown', () => {
 // Starts a server on a free port and makes a connection to that
 // port before closing that connection, verifying that each side
 // of the socket receives the appropriate SocketCloseKind event.
-freedom().on('onceclosedbyserver', () => {
+parentModule.on('onceclosedbyserver', () => {
   var server = getServerOnFreePort();
 
   server.listen().then((endpoint:net.Endpoint) => {
@@ -75,7 +77,7 @@ freedom().on('onceclosedbyserver', () => {
       .then((values:any) => {
         if (values[0] === tcp.SocketCloseKind.WE_CLOSED_IT &&
             values[1] === tcp.SocketCloseKind.REMOTELY_CLOSED) {
-          freedom().emit('onceclosedbyserver');
+          parentModule.emit('onceclosedbyserver');
         }
       });
     });
@@ -85,7 +87,7 @@ freedom().on('onceclosedbyserver', () => {
 // Starts a server on a free port and makes a connection to that
 // port before closing that connection, verifying that each side
 // of the socket receives the appropriate SocketCloseKind event.
-freedom().on('onceclosedbyclient', () => {
+parentModule.on('onceclosedbyclient', () => {
   var server = getServerOnFreePort();
 
   server.listen().then((endpoint:net.Endpoint) => {
@@ -98,7 +100,7 @@ freedom().on('onceclosedbyclient', () => {
       .then((values:any) => {
         if (values[0] === tcp.SocketCloseKind.REMOTELY_CLOSED &&
             values[1] === tcp.SocketCloseKind.WE_CLOSED_IT) {
-          freedom().emit('onceclosedbyclient');
+          parentModule.emit('onceclosedbyclient');
         }
       });
     });
@@ -106,7 +108,7 @@ freedom().on('onceclosedbyclient', () => {
 });
 
 // Attempts to connect to an address which is not bound.
-freedom().on('neverconnected', () => {
+parentModule.on('neverconnected', () => {
   var client = new tcp.Connection({
     endpoint: {
       address: '127.0.0.1',
@@ -117,14 +119,14 @@ freedom().on('neverconnected', () => {
     return client.onceClosed;
   }).then((kind:tcp.SocketCloseKind) => {
     if (kind === tcp.SocketCloseKind.NEVER_CONNECTED) {
-      freedom().emit('neverconnected');
+      parentModule.emit('neverconnected');
     }
   });
 });
 
 // Starts an echo server on a free port and verifies that five echo clients
 // can send and receive data from the server.
-freedom().on('multipleclients', () => {
+parentModule.on('multipleclients', () => {
   var server = getServerOnFreePort();
 
   server.connectionsQueue.setSyncHandler((tcpConnection:tcp.Connection) => {
@@ -155,14 +157,14 @@ freedom().on('multipleclients', () => {
       promises.push(addEchoClient(i));
     }
     Promise.all(promises).then((answers:any) => {
-      freedom().emit('multipleclients');
+      parentModule.emit('multipleclients');
     });
   });
 });
 
 // Starts an echo server on a free port and verifies that its connectionsCount
 // is correct once five clients have connected to it.
-freedom().on('connectionscount', () => {
+parentModule.on('connectionscount', () => {
   var server = getServerOnFreePort();
 
   server.listen().then((endpoint:net.Endpoint) => {
@@ -178,7 +180,7 @@ freedom().on('connectionscount', () => {
         throw new Error();
       }
     }).then(() => {
-      freedom().emit('connectionscount');
+      parentModule.emit('connectionscount');
     });
   });
 });
