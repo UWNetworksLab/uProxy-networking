@@ -25,6 +25,8 @@ module RtcToNet {
 
   // The |RtcToNet| class holds a peer-connection and all its associated
   // proxied connections.
+  // TODO: Extract common code for this and SocksToRtc:
+  //         https://github.com/uProxy/uproxy/issues/977
   export class RtcToNet {
     // Configuration for the proxy endpoint. Note: all sessions share the same
     // (externally provided) proxyconfig.

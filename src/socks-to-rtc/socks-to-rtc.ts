@@ -22,6 +22,8 @@ module SocksToRtc {
   // The |SocksToRtc| class runs a SOCKS5 proxy server which passes requests
   // remotely through WebRTC peer connections.
   // TODO: rename this 'Server'.
+  // TODO: Extract common code for this and SocksToRtc:
+  //         https://github.com/uProxy/uproxy/issues/977
   export class SocksToRtc {
 
     // Call this to initiate shutdown.
