@@ -119,9 +119,7 @@ module.exports = (grunt) ->
       freedomLibsFor:
         Rule.copyFreedomLibs 'freedom', ['loggingprovider'],
           'samples/simple-freedom-chat'
-      freedomLibsFor:
-        Rule.copyFreedomLibs 'freedom', ['loggingprovider'],
-          'samples/copypaste-freedom-chat/'
+
 
     # Typescript compilation rules
     ts:
@@ -160,7 +158,6 @@ module.exports = (grunt) ->
           module: 'commonjs'
           fast: 'always'
 
-
     jasmine:
       arraybuffers: Rule.jasmineSpec 'arraybuffers'
       buildTools: Rule.jasmineSpec 'build-tools'
@@ -171,20 +168,13 @@ module.exports = (grunt) ->
 
     browserify:
       # Browserify freedom-modules in the library
-      churnPipe: Rule.browserify 'churn-pipe/freedom-module'
-      echo: Rule.browserify 'echo/freedom-module'
+      churnPipeFreedomModule: Rule.browserify 'churn-pipe/freedom-module'
+      echoFreedomModule: Rule.browserify 'echo/freedom-module'
+
       # Browserify specs
-      arraybuffersSpec: Rule.browserifySpec 'arraybuffers/arraybuffers'
-      buildToolsTaskmanagerSpec: Rule.browserifySpec 'build-tools/taskmanager'
-      handlerSpec: Rule.browserifySpec 'handler/queue'
-      loggingProviderSpec: Rule.browserifySpec 'loggingprovider/loggingprovider'
-      loggingSpec: Rule.browserifySpec 'logging/logging'
-      webrtcSpec: Rule.browserifySpec 'webrtc/peerconnection'
+      socksEchoFreedomModule: Rule.browserify 'integration-tests/socks-echo/freedom-module'
+      socksEchoSpec: Rule.browserifySpec 'integration-tests/socks-echo/'
       # Browserify sample apps main freedom module and core environments
-      copypasteFreedomChatMain: Rule.browserify 'samples/copypaste-freedom-chat/main.core-env'
-      copypasteFreedomChatFreedomModule: Rule.browserify 'samples/copypaste-freedom-chat/freedom-module'
-      simpleFreedomChatMain: Rule.browserify 'samples/simple-freedom-chat/main.core-env'
-      simpleFreedomChatFreedomModule: Rule.browserify 'samples/simple-freedom-chat/freedom-module'
 
     clean:
       build:

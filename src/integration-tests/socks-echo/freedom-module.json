@@ -7,11 +7,11 @@
   },
   "dependencies": {
     "loggingcontroller": {
-      "url": "../../loggingprovider/loggingprovider.json",
+      "url": "../../loggingprovider/freedom-module.json",
       "api": "loggingcontroller"
     },
     "churnPipe": {
-      "url": "../../churn-pipe/freedom.json",
+      "url": "../../churn-pipe/freedom-module.json",
       "api": "churnPipe"
     }
   },

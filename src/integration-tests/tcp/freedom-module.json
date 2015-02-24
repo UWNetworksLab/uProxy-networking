@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "loggingcontroller": {
-      "url": "../../loggingprovider/loggingprovider.json",
+      "url": "../../loggingprovider/freedom-module.json",
       "api": "loggingcontroller"
     }
   },
