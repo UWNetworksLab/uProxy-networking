@@ -71,7 +71,9 @@ declare module Tcp {
 
     public onceConnected :Promise<ConnectionInfo>;
     public onceClosed :Promise<SocketCloseKind>;
-    // The |close| method will cause onceClosed to be fulfilled.
+
+    // Closes the underlying socket.
+    // Returns onceClosed.
     public close :() => Promise<SocketCloseKind>;
 
     // Send writes data to the tcp socket = dataToSocketQueue.handle

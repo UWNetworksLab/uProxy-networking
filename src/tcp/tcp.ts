@@ -354,51 +354,46 @@ module Tcp {
       });
     }
 
-    // This happens when the Tcp connection is closed by the other end or
-    // because  of an error. When closed by the other end, onceDisconnected is
-    // fullfilled.  If there's an error, onceDisconnected is rejected with the
-    // error.
+    // Invoked when the socket is closed for any reason.
+    // Fulfills onceClosed.
     private onDisconnectHandler_ = (info:freedom_TcpSocket.DisconnectInfo) : void => {
-      //log.debug(this.connectionId + ': onDisconnectHandler_');
-      if(this.state_ === Connection.State.CLOSED) {
-        //log.warn(this.connectionId + ': Got onDisconnect in closed state' +
-        //    '(errcode=' + info.errcode + '; msg=' + info.message + ')');
+      log.debug('%1: onDisconnect: %2', [
+          this.connectionId,
+          JSON.stringify(info)]);
+
+      if (this.state_ === Connection.State.CLOSED) {
+        log.warn('%1: duplicate onDisconnect event', [this.connectionId]);
         return;
       }
 
       this.state_ = Connection.State.CLOSED;
-
       this.dataToSocketQueue.stopHandling();
+      this.dataToSocketQueue.clear();
+
       destroyFreedomSocket_(this.connectionSocket_).then(() => {
         if (info.errcode === 'SUCCESS') {
           this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
         } else if (info.errcode === 'CONNECTION_CLOSED') {
           this.fulfillClosed_(SocketCloseKind.REMOTELY_CLOSED);
         } else {
-          //log.warn(this.connectionId + ': Disconnected with errcode '
-          //  + info.errcode + ': ' + info.message);
           this.fulfillClosed_(SocketCloseKind.UNKOWN);
         }
       });
     }
 
-    // This is called to close the underlying socket. This fulfills the
-    // disconnect Promise `onceDisconnected`.
     public close = () : Promise<SocketCloseKind> => {
-      //log.debug(this.connectionId + ': close');
+      log.debug('%1: close', [this.connectionId]);
+
       if (this.state_ === Connection.State.CLOSED) {
-        //log.warn(this.connectionId + ': close: called when already closed');
-        return;
+        log.debug('%1: close called when already closed', [
+            this.connectionId]);
+      } else {
+        this.connectionSocket_.close();
       }
-      this.dataToSocketQueue.stopHandling();
-      this.connectionSocket_.close();
-      // Note: calling close on the freedom socket will cause
-      // `onDisconnectHandler_` to be fired, but we need to fulfill the promise
-      // set closed here and fulfill here because on the onDisconnect Handler
-      // needs to also call this.connectionSocket_.close() to do freedom memory
-      // cleanup.
-      this.state_ = Connection.State.CLOSED;
-      this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
+
+      // The onDisconnect handler (which should only
+      // be invoked once) actually stops handling, fulfills
+      // onceClosed, etc.
       return this.onceClosed;
     }
 
