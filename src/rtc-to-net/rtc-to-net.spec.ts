@@ -112,7 +112,7 @@ describe("RtcToNet session", function() {
     (<any>mockDataChannel.send).and.returnValue(voidPromise);
 
     mockBytesReceived = new Handler.Queue<number, void>();
-    mockBytesSent = new Handler.Queue<number, void>();    
+    mockBytesSent = new Handler.Queue<number, void>();
     session  = new RtcToNet.Session(
         mockDataChannel,
         mockProxyConfig,

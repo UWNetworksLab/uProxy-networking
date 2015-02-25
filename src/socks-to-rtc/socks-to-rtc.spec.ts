@@ -163,7 +163,7 @@ describe("SOCKS session", function() {
     (<any>mockDataChannel.send).and.returnValue(voidPromise);
 
     mockBytesReceived = new Handler.Queue<number, void>();
-    mockBytesSent = new Handler.Queue<number, void>();    
+    mockBytesSent = new Handler.Queue<number, void>()
   });
 
   it('onceReady fulfills with listening endpoint on successful negotiation', (done) => {
