@@ -333,8 +333,9 @@ module SocksToRtc {
     }
 
     public longId = () : string => {
-      return 'session ' + this.channelLabel() + ' (TCP '
-          + (this.tcpConnection_.isClosed() ? 'closed' : 'open') + ')';
+      return 'session ' + this.channelLabel() + ' (socket ' +
+          this.tcpConnection_.connectionId + ' ' +
+          (this.tcpConnection_.isClosed() ? 'closed' : 'open') + ')';
     }
 
     // Initiates shutdown of the TCP server and peerconnection.
