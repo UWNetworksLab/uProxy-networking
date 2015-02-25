@@ -368,6 +368,7 @@ module Tcp {
 
       this.state_ = Connection.State.CLOSED;
       this.dataToSocketQueue.stopHandling();
+      this.dataToSocketQueue.clear();
 
       destroyFreedomSocket_(this.connectionSocket_).then(() => {
         if (info.errcode === 'SUCCESS') {
