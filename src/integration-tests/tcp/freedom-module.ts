@@ -1,6 +1,6 @@
-/// <reference path='../../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../../third_party/freedom-typings/freedom-module-env.d.ts' />
 
-import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
+import arraybuffers = require('../../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import tcp = require('../../net/tcp');
 import net = require('../../net/net.types');
 

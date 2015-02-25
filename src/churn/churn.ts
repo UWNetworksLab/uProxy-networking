@@ -1,25 +1,25 @@
-/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/udp-socket.d.ts' />
 
 
 // TODO(ldixon): update to a require-style inclusion.
 // e.g.
-// import Transformer = require('../../build/third_party/uproxy-obfuscators/utransformer');
-// import Rabbit = require('../../build/third_party/uproxy-obfuscators/utransformers.rabbit');
-// import Fte = require('../../build/third_party/uproxy-obfuscators/utransformers.fte');
-/// <reference path='../../build/third_party/uproxy-obfuscators/utransformer.d.ts' />
-/// <reference path='../../build/third_party/uproxy-obfuscators/utransformers.fte.d.ts' />
-/// <reference path='../../build/third_party/uproxy-obfuscators/utransformers.rabbit.d.ts' />
+// import Transformer = require('../../../third_party/uproxy-obfuscators/utransformer');
+// import Rabbit = require('../../../third_party/uproxy-obfuscators/utransformers.rabbit');
+// import Fte = require('../../../third_party/uproxy-obfuscators/utransformers.fte');
+/// <reference path='../../../third_party/uproxy-obfuscators/utransformer.d.ts' />
+/// <reference path='../../../third_party/uproxy-obfuscators/utransformers.fte.d.ts' />
+/// <reference path='../../../third_party/uproxy-obfuscators/utransformers.rabbit.d.ts' />
 
 import Transformer = UTransformers.Transformer;
 import Rabbit = fte.Transformer;
 import Fte = rabbit.Transformer;
 
-import arraybuffers = require('../../build/dev/arraybuffers/arraybuffers');
-import peerconnection = require('../../build/dev/webrtc/peerconnection');
-import handler = require('../../build/dev/handler/queue');
-import random = require('../../build/dev/crypto/random');
+import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
+import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
+import handler = require('../../../third_party/uproxy-lib/handler/queue');
+import random = require('../../../third_party/uproxy-lib/crypto/random');
 
 import net = require('../net/net.types');
 import churn_pipe_types = require('../churn-pipe/freedom-module.interface');
@@ -27,7 +27,7 @@ import churn_pipe_types = require('../churn-pipe/freedom-module.interface');
 import churn_types = require('./churn.types');
 import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
 
-import logging = require('../../build/dev/logging/logging');
+import logging = require('../../../third_party/uproxy-lib/logging/logging');
 var log :logging.Log = new logging.Log('churn');
 
 // TODO: https://github.com/uProxy/uproxy-obfuscators/issues/35

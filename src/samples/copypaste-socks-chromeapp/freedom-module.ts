@@ -1,15 +1,15 @@
-/// <reference path='../../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../../build/third_party/freedom-typings/pgp.d.ts' />
-/// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
-/// <reference path='../../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../../third_party/freedom-typings/pgp.d.ts' />
+/// <reference path='../../../../third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../../third_party/freedom-typings/freedom-module-env.d.ts' />
 
-import arraybuffers = require('../../../build/dev/arraybuffers/arraybuffers');
+import arraybuffers = require('../../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import rtc_to_net = require('../../rtc-to-net/rtc-to-net');
 import socks_to_rtc = require('../../socks-to-rtc/socks-to-rtc');
 import net = require('../../net/net.types');
-import peerconnection = require('../../../build/dev/webrtc/peerconnection');
+import peerconnection = require('../../../../third_party/uproxy-lib/webrtc/peerconnection');
 
-import logging = require('../../../build/dev/logging/logging');
+import logging = require('../../../../third_party/uproxy-lib/logging/logging');
 
 // Set each module to I, W, E, or D depending on which module
 // you're debugging. Since the proxy outputs quite a lot of messages,

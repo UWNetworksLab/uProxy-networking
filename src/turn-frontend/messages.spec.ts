@@ -1,7 +1,7 @@
-/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
-/// <reference path='../../build/third_party/typings/jasmine/jasmine.d.ts' />
-/// <reference path='../../build/third_party/sha1/sha1.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../../third_party/sha1/sha1.d.ts' />
 
 import net = require('../net/net.types');
 import messages = require('../turn-frontend/messages');

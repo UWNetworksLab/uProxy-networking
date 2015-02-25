@@ -1,4 +1,4 @@
-import peerconnection = require('../../build/dev/webrtc/peerconnection');
+import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
 import net = require('../net/net.types');
 
 // This file holds the common signalling message type that may be referenced

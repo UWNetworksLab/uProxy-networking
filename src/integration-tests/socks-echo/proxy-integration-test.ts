@@ -1,6 +1,6 @@
-/// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../../third_party/freedom-typings/freedom-common.d.ts' />
 
-import peerconnection = require('../../../build/dev/webrtc/peerconnection');
+import peerconnection = require('../../../../third_party/uproxy-lib/webrtc/peerconnection');
 
 import rtc_to_net = require('../../rtc-to-net/rtc-to-net');
 import socks_to_rtc = require('../../socks-to-rtc/socks-to-rtc');

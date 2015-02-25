@@ -14,5 +14,4 @@ build/*
 data/*
 node_modules/*
 npm-debug.log
-src/.baseDir.ts
 tmp/*

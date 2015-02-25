@@ -1,7 +1,7 @@
-/// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../../third_party/freedom-typings/freedom-common.d.ts' />
 
 import freedom_types = require('freedom.types');
-import peerconnection = require('../../../build/dev/webrtc/peerconnection');
+import peerconnection = require('../../../../third_party/uproxy-lib/webrtc/peerconnection');
 
 // 'model' object contains variables about the state of the application.
 // Polymer elements will bind to model so that the elements' style and

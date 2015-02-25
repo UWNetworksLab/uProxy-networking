@@ -1,17 +1,17 @@
-/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
-/// <reference path='../../build/third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../third_party/typings/jasmine/jasmine.d.ts' />
 
-import arraybuffers = require('../../build/dev/arraybuffers/arraybuffers');
-import peerconnection = require('../../build/dev/webrtc/peerconnection');
-import handler = require('../../build/dev/handler/queue');
+import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
+import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
+import handler = require('../../../third_party/uproxy-lib/handler/queue');
 
 import rtc_to_net = require('./rtc-to-net');
 import net = require('../net/net.types');
 import tcp = require('../net/tcp');
 import socks = require('../socks-common/socks-headers');
 
-import logging = require('../../build/dev/logging/logging');
+import logging = require('../../../third_party/uproxy-lib/logging/logging');
 
 var log :logging.Log = new logging.Log('socks-to-rtc spec');
 

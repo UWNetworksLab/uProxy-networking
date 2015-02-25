@@ -1,13 +1,13 @@
-/// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../../third_party/freedom-typings/freedom-common.d.ts' />
 
-import peerconnection = require('../../../build/dev/webrtc/peerconnection');
+import peerconnection = require('../../../../third_party/uproxy-lib/webrtc/peerconnection');
 import churn_types = require('../../churn/churn.types');
 import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
 import churn = require('../../churn/churn');
 
 freedom['loggingprovider']().setConsoleFilter(['*:D']);
 
-import logging = require('../../../build/dev/logging/logging');
+import logging = require('../../../../third_party/uproxy-lib/logging/logging');
 var log :logging.Log = new logging.Log('copypaste churn chat');
 
 var config :freedom_RTCPeerConnection.RTCConfiguration = {

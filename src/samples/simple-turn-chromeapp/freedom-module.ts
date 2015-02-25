@@ -1,13 +1,13 @@
-/// <reference path='../../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
-/// <reference path='../../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
-/// <reference path='../../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../../third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../../third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../../third_party/freedom-typings/freedom-module-env.d.ts' />
 
 import turn_frontend = require('../../turn-frontend/freedom-module.interface');
 import turn_backend = require('../../turn-backend/freedom-module.interface');
 
 import net = require('../../net/net.types');
-import logging = require('../../../build/dev/logging/logging');
+import logging = require('../../../../third_party/uproxy-lib/logging/logging');
 
 freedom['loggingprovider']().setConsoleFilter(['*:I']);
 

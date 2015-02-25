@@ -1,5 +1,5 @@
-/// <reference path='../../../build/third_party/freedom-typings/freedom-common.d.ts' />
-/// <reference path='../../../build/third_party/freedom-typings/freedom-core-env.d.ts' />
+/// <reference path='../../../../third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../../third_party/freedom-typings/freedom-core-env.d.ts' />
 
 import churn_types = require('../../churn/churn.types');
 import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;

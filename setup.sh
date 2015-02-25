@@ -19,27 +19,37 @@ function runCmd ()
 
 function clean ()
 {
-  runCmd "rm -r node_modules build .tscache src/.baseDir.ts"
+  runCmd "rm -r node_modules build .tscache"
+}
+
+function installThirdParty ()
+{
+  runCmd "bower install"
+  runCmd "node_modules/.bin/tsd reinstall --config ./third_party/tsd.json"
+  runCmd "grunt copy:thirdParty"
 }
 
 function installDevDependencies ()
 {
-  runCmd "bower install"
   runCmd "npm install"
-  runCmd "node_modules/.bin/tsd reinstall --config ./third_party/tsd.json"
+  runCmd "mkdir -p build"
+  runCmd "cp -r node_modules/uproxy-lib/build/tools build/"
+  installThirdParty
 }
 
 runCmd "cd $ROOT_DIR"
 
 if [ "$1" == 'install' ]; then
   installDevDependencies
+elif [ "$1" == 'third_party' ]; then
+  installThirdParty
 elif [ "$1" == 'clean' ]; then
   clean
 else
-  echo "Usage: setup.sh [install|tools|clean]"
-  echo "  install       Installs needed development dependencies into build/"
+  echo "Useage: setup.sh [install|tools|clean]"
+  echo "  install       Installs 'node_modules' and 'build/third_party'"
+  echo "  third_party   Installs 'build/third_party'"
   echo "  clean         Removes all dependencies installed by this script."
   echo
-  echo ""
   exit 0
 fi

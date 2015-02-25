@@ -1,13 +1,13 @@
-/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
 
-import peerconnection = require('../../build/dev/webrtc/peerconnection');
+import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
 
 import rtc_to_net = require('../rtc-to-net/rtc-to-net');
 import socks_to_rtc = require('../socks-to-rtc/socks-to-rtc');
 import net = require('../net/net.types');
 
-import logging = require('../../build/dev/logging/logging');
+import logging = require('../../../third_party/uproxy-lib/logging/logging');
 var log :logging.Log = new logging.Log('simple-socks');
 
 /// <reference path='../logging/logging.d.ts' />

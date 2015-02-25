@@ -1,14 +1,14 @@
-/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/tcp-socket.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/tcp-socket.d.ts' />
 
 /*
  * This is a TCP server based on Freedom's sockets API.
  */
 
-import logging = require('../../build/dev/logging/logging');
-import handler = require('../../build/dev/handler/queue');
+import logging = require('../../../third_party/uproxy-lib/logging/logging');
+import handler = require('../../../third_party/uproxy-lib/handler/queue');
 import net = require('./net.types');
 
 var log :logging.Log = new logging.Log('tcp');

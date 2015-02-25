@@ -1,15 +1,15 @@
-/// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
-/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/udp-socket.d.ts' />
 
 // TODO(ldixon): update to a require-style inclusion.
 // e.g.
-// import Transformer = require('../../build/third_party/uproxy-obfuscators/utransformer');
-// import Rabbit = require('../../build/third_party/uproxy-obfuscators/utransformers.rabbit');
-// import Fte = require('../../build/third_party/uproxy-obfuscators/utransformers.fte');
-/// <reference path='../../build/third_party/uproxy-obfuscators/utransformer.d.ts' />
-/// <reference path='../../build/third_party/uproxy-obfuscators/utransformers.fte.d.ts' />
-/// <reference path='../../build/third_party/uproxy-obfuscators/utransformers.rabbit.d.ts' />
+// import Transformer = require('../../../third_party/uproxy-obfuscators/utransformer');
+// import Rabbit = require('../../../third_party/uproxy-obfuscators/utransformers.rabbit');
+// import Fte = require('../../../third_party/uproxy-obfuscators/utransformers.fte');
+/// <reference path='../../../third_party/uproxy-obfuscators/utransformer.d.ts' />
+/// <reference path='../../../third_party/uproxy-obfuscators/utransformers.fte.d.ts' />
+/// <reference path='../../../third_party/uproxy-obfuscators/utransformers.rabbit.d.ts' />
 
 import Transformer = UTransformers.Transformer;
 import Rabbit = fte.Transformer;
@@ -18,7 +18,7 @@ import Fte = rabbit.Transformer;
 import PassThrough = require('../simple-transformers/passthrough');
 import CaesarCipher = require('../simple-transformers/caesar');
 
-import logging = require('../../build/dev/logging/logging');
+import logging = require('../../../third_party/uproxy-lib/logging/logging');
 
 import net = require('../net/net.types');
 

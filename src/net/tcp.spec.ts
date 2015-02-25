@@ -1,7 +1,7 @@
-/// <reference path='../../build/third_party/freedom-typings/freedom-common.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/freedom-module-env.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/tcp-socket.d.ts' />
-/// <reference path='../../build/third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/freedom-common.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/tcp-socket.d.ts' />
+/// <reference path='../../../third_party/typings/jasmine/jasmine.d.ts' />
 
 import tcp = require('./tcp');
 

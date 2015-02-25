@@ -1,9 +1,9 @@
-/// <reference path='../../build/third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../../build/third_party/freedom-typings/udp-socket.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/udp-socket.d.ts' />
 
 import UdpLib = freedom_UdpSocket;
 
-import logging = require('../../build/dev/logging/logging');
+import logging = require('../../../third_party/uproxy-lib/logging/logging');
 var log :logging.Log = new logging.Log('udprelay');
 
 /**
