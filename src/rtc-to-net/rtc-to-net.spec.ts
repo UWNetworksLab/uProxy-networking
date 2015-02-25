@@ -99,19 +99,20 @@ describe("RtcToNet session", function() {
         'isClosed',
         'close'
       ]);
+    mockTcpConnection.dataFromSocketQueue = new Handler.Queue<ArrayBuffer,void>();
+
     mockDataChannel = <any>{
       closeDataChannel: noopPromise,
       onceClosed: noopPromise,
       close: jasmine.createSpy('close'),
-      getLabel: jasmine.createSpy('getLabel')
+      getLabel: jasmine.createSpy('getLabel'),
+      send: jasmine.createSpy('send')
     };
-    mockBytesReceived = jasmine.createSpyObj('bytes received handler', [
-        'handle'
-      ]);
-    mockBytesSent = jasmine.createSpyObj('bytes sent handler', [
-        'handle'
-      ]);
+    mockDataChannel.dataFromPeerQueue = new Handler.Queue<ArrayBuffer,void>();
+    (<any>mockDataChannel.send).and.returnValue(voidPromise);
 
+    mockBytesReceived = new Handler.Queue<number, void>();
+    mockBytesSent = new Handler.Queue<number, void>();    
     session  = new RtcToNet.Session(
         mockDataChannel,
         mockProxyConfig,
@@ -173,5 +174,43 @@ describe("RtcToNet session", function() {
     mockTcpConnection.onceClosed = noopPromise;
 
     session.start().then(session.stop).then(session.onceStopped).then(done);
+  });
+
+  it('bytes sent counter', (done) => {
+    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockRemoteEndpoint));
+    spyOn(session, 'replyToPeer_').and.returnValue(Promise.resolve());
+    spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
+
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
+    mockTcpConnection.onceClosed = noopPromise;
+
+    var buffer = new Uint8Array([1,2,3]).buffer;
+    session.start().then(() => {
+      mockTcpConnection.dataFromSocketQueue.handle(buffer);
+    });
+    mockBytesSent.setSyncNextHandler((numBytes:number) => {
+      expect(numBytes).toEqual(buffer.byteLength);
+      done();
+    });
+  });
+
+  it('bytes received counter', (done) => {
+    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockRemoteEndpoint));
+    spyOn(session, 'replyToPeer_').and.returnValue(Promise.resolve());
+    spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
+
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
+    mockTcpConnection.onceClosed = noopPromise;
+
+    var message :WebRtc.Data = {
+      buffer: new Uint8Array([1,2,3]).buffer
+    };
+    session.start().then(() => {
+      mockDataChannel.dataFromPeerQueue.handle(message);
+    });
+    mockBytesReceived.setSyncNextHandler((numBytes:number) => {
+      expect(numBytes).toEqual(message.buffer.byteLength);
+      done();
+    });
   });
 });
