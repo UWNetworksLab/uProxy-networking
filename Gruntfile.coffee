@@ -14,15 +14,21 @@ taskManager.add 'dev', [
   'ts:devInCoreEnv'
 ]
 
+taskManager.add 'echo', [
+  'dev'
+  'browserify:echoFreedomModule'
+]
+
 taskManager.add 'sampleEchoServer', [
   'dev'
-  'copy:freedomLibsForSampleEchoServerChromeApp'
+  'echo'
+  'copy:libsForSampleEchoServerChromeApp'
   'browserify:sampleEchoServerChromeApp'
 ]
 
 taskManager.add 'tcpIntegrationTest', [
   'dev'
-  'copy:freedomLibsForIntegrationTestTcp'
+  'copy:libsForIntegrationTestTcp'
   'browserify:integrationTcpFreedomModule'
   'browserify:integrationTcpSpec'
 ]
@@ -37,8 +43,6 @@ Rule = new rules.Rule({
 });
 
 path = require('path');
-
-console.log('freedom-for-chrome:' + require.resolve('freedom-for-chrome/freedom-for-chrome.js'));
 
 #-------------------------------------------------------------------------
 
@@ -148,7 +152,9 @@ module.exports = (grunt) ->
 
       # Copy the freedom output file to sample apps
       libsForSampleEchoServerChromeApp:
-        Rule.copyLibs ['freedom-for-chrome/freedom-for-chrome.js'], [], ['uproxy-lib/loggingprovider'],
+        Rule.copyLibs ['freedom-for-chrome/freedom-for-chrome.js'],
+          ['echo'],
+          ['uproxy-lib/loggingprovider'],
           'samples/echo-server-chromeapp/'
 
     # Typescript compilation rules
@@ -215,7 +221,8 @@ module.exports = (grunt) ->
         Rule.browserifySpec 'integration-tests/socks-echo/slow.core-env'
       # Browserify sample apps main freedom module and core environments
 
-    # TODO: debug this, why doesn't it work?
+    # TODO: debug this, why doesn't it work? TODO: File issue for when a file
+    # can't be found: some sensible error should be produced.
     jasmine_chromeapp:
       tcp:
         src: [ devBuildDir + '/integration-tests/tcp/freedom-module.static.js' ]
