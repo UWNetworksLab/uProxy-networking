@@ -410,7 +410,9 @@ module RtcToNet {
       log.debug('%1: socket received %2 bytes', [
           this.longId(),
           data.byteLength]);
-      this.dataChannel_.send({buffer: data}).catch((e:Error) => {
+      this.dataChannel_.send({buffer: data}).then(() => {
+        this.bytesSentToPeer_.handle(data.byteLength);
+      }).catch((e:Error) => {
         log.error('%1: failed to send data on datachannel: %2', [
             this.longId(),
             e.message]);
