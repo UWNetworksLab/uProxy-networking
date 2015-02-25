@@ -9,6 +9,51 @@ declare module RtcToNet {
   interface ProxyConfig {
     allowNonUnicast :boolean;
   }
+
+  // Type checking for snapshots.
+  // Snapshots are spewed out every couple of seconds in DEBUG mode
+  // for later analysis.
+  interface HandlerQueueSnapshot {
+    // Number of objects waiting to be handled right now.
+    size :number;
+    // True iff there is a handler attached right now.
+    handling :boolean;
+  }
+
+  interface SocketSnapshot {
+    // Total number of bytes sent since the connection was created.
+    sent :number;
+    // Total number of bytes received since the connection was created.
+    received :number;
+    // Data received from the peer.
+    queue :HandlerQueueSnapshot;
+  }
+
+  interface DataChannelSnapshot {
+    // Total number of bytes sent since the channel was created.
+    sent :number;
+    // Total number of bytes received since the channel was created.
+    received :number;
+    // Number of bytes sitting in the buffer right now.
+    buffered :number;
+    // Data received from the peer.
+    queue :HandlerQueueSnapshot;
+  }
+
+  interface SessionSnapshot {
+    // Name of this session, e.g. c0 or c221.
+    name :string;
+    // Data channel associated with this session.
+    channel :DataChannelSnapshot;
+    // TCP connection associated with this session.
+    socket :SocketSnapshot;
+  }
+
+  interface RtcToNetSnapshot {
+    // All sessions open right now.
+    sessions :SessionSnapshot[];
+  }
+
   class RtcToNet {
     constructor(pcConfig?:freedom_RTCPeerConnection.RTCConfiguration,
                 proxyConfig?:ProxyConfig,
@@ -24,6 +69,7 @@ declare module RtcToNet {
     public onceClosed :Promise<void>;
     public close :() => void;
     public handleSignalFromPeer :(signal:WebRtc.SignallingMessage) => void;
+    public initiateSnapshotting :() => void;
     public toString :() => string;
   }
   class Session {
@@ -44,5 +90,6 @@ declare module RtcToNet {
     public channelLabel :() => string;
     public longId :() => string;
     public toString :() => string;
+    public getSnapshot :() => Promise<SessionSnapshot>;
   }
 }
