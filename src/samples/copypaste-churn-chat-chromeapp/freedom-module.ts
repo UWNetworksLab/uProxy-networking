@@ -5,7 +5,7 @@ import churn_types = require('../../churn/churn.types');
 import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
 import churn = require('../../churn/churn');
 
-freedom['loggingprovider']().setConsoleFilter(['*:D']);
+freedom['loggingcontroller']().setConsoleFilter(['*:D']);
 
 import logging = require('../../../../third_party/uproxy-lib/logging/logging');
 var log :logging.Log = new logging.Log('copypaste churn chat');

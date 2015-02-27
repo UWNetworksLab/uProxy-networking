@@ -22,6 +22,11 @@ function clean ()
   runCmd "rm -r node_modules build .tscache"
 }
 
+function installTools ()
+{
+  runCmd "cp -r node_modules/uproxy-lib/build/tools build/"
+}
+
 function installThirdParty ()
 {
   runCmd "bower install"
@@ -33,7 +38,6 @@ function installDevDependencies ()
 {
   runCmd "npm install"
   runCmd "mkdir -p build"
-  runCmd "cp -r node_modules/uproxy-lib/build/tools build/"
   installThirdParty
 }
 
@@ -41,6 +45,8 @@ runCmd "cd $ROOT_DIR"
 
 if [ "$1" == 'install' ]; then
   installDevDependencies
+elif [ "$1" == 'tools' ]; then
+  installTools
 elif [ "$1" == 'third_party' ]; then
   installThirdParty
 elif [ "$1" == 'clean' ]; then
@@ -48,6 +54,7 @@ elif [ "$1" == 'clean' ]; then
 else
   echo "Useage: setup.sh [install|tools|clean]"
   echo "  install       Installs 'node_modules' and 'build/third_party'"
+  echo "  tools         Installs build tools into 'build/tools'"
   echo "  third_party   Installs 'build/third_party'"
   echo "  clean         Removes all dependencies installed by this script."
   echo

@@ -5,41 +5,59 @@ TaskManager = require './build/tools/taskmanager'
 # of specific grunt rules below and given to grunt.initConfig
 taskManager = new TaskManager.Manager();
 
-taskManager.add 'default', [ 'dev' ]
+taskManager.add 'default', [ 'dev', 'samples', 'test' ]
 
 taskManager.add 'dev', [
   'symlink:typescriptSrc'
   'copy:dev'
   'ts:devInModuleEnv'
   'ts:devInCoreEnv'
+  'browserify:echoFreedomModule'
+  'browserify:churnPipeFreedomModule'
 ]
 
-taskManager.add 'echo', [
-  'dev'
-  'browserify:echoFreedomModule'
+taskManager.add 'samples', [
+  'sampleEchoServer',
+  'sampleCopyPasteChurnChatChromeApp'
+]
+
+taskManager.add 'test', [
+  'tcpIntegrationTest'
 ]
 
 taskManager.add 'sampleEchoServer', [
   'dev'
-  'echo'
   'copy:libsForSampleEchoServerChromeApp'
   'browserify:sampleEchoServerChromeApp'
 ]
 
+taskManager.add 'sampleCopyPasteChurnChatChromeApp', [
+  'dev'
+  'copy:libsForCopyPasteChurnChatChromeApp'
+  'browserify:copyPasteChurnChatChromeAppMain'
+  'browserify:copyPasteChurnChatChromeAppFreedomModule'
+]
+
 taskManager.add 'tcpIntegrationTest', [
   'dev'
-  'copy:libsForIntegrationTestTcp'
   'browserify:integrationTcpFreedomModule'
   'browserify:integrationTcpSpec'
 ]
 
 #-------------------------------------------------------------------------
 rules = require './build/tools/common-grunt-rules'
-devBuildDir = 'build/dev/uproxy-networking'
-thirdPartyBuildDir = 'build/third_party'
+# Location of where src is copied into and compiled.
+devBuildPath = 'build/dev/uproxy-networking'
+# Location of where to copy/build third_party source/libs.
+thirdPartyBuildPath = 'build/third_party'
+# This path is the path-extension for libraries from this repository to be
+# copied into in sample-apps.
+localLibsDestPath = 'uproxy-networking'
+# Setup our build rules/tools
 Rule = new rules.Rule({
-  devBuildDir: devBuildDir,
-  thirdPartyBuildDir: thirdPartyBuildDir
+  devBuildPath: devBuildPath,
+  thirdPartyBuildPath: thirdPartyBuildPath,
+  localLibsDestPath: localLibsDestPath
 });
 
 path = require('path');
@@ -69,7 +87,7 @@ module.exports = (grunt) ->
           overwrite: true
           cwd: 'src'
           src: ['**/*.ts']
-          dest: devBuildDir
+          dest: devBuildPath
         }]
 
     copy:
@@ -130,7 +148,7 @@ module.exports = (grunt) ->
               expand: true,
               cwd: 'src/',
               src: ['**/*', '!**/*.ts'],
-              dest: devBuildDir,
+              dest: devBuildPath,
               onlyIf: 'modified'
           }
         ]
@@ -141,7 +159,7 @@ module.exports = (grunt) ->
           {
               nonull: true,
               expand: true,
-              cwd: devBuildDir,
+              cwd: devBuildPath,
               src: ['**/*',
                     '!**/*.spec.js',
                     '!**/*.spec.*.js'],
@@ -156,6 +174,11 @@ module.exports = (grunt) ->
           ['echo'],
           ['uproxy-lib/loggingprovider'],
           'samples/echo-server-chromeapp/'
+      libsForCopyPasteChurnChatChromeApp:
+        Rule.copyLibs ['freedom-for-chrome/freedom-for-chrome.js'],
+          ['churn-pipe'],
+          ['uproxy-lib/loggingprovider'],
+          'samples/copypaste-churn-chat-chromeapp/'
 
     # Typescript compilation rules
     ts:
@@ -163,10 +186,10 @@ module.exports = (grunt) ->
       # directory.
       devInModuleEnv:
         src: [
-          devBuildDir + '/**/*.ts'
-          '!' + devBuildDir + '/**/*.d.ts'
-          '!' + devBuildDir + '/**/*.core-env.ts'
-          '!' + devBuildDir + '/**/*.core-env.spec.ts'
+          devBuildPath + '/**/*.ts'
+          '!' + devBuildPath + '/**/*.d.ts'
+          '!' + devBuildPath + '/**/*.core-env.ts'
+          '!' + devBuildPath + '/**/*.core-env.spec.ts'
         ]
         options:
           target: 'es5'
@@ -179,8 +202,8 @@ module.exports = (grunt) ->
 
       devInCoreEnv:
         src: [
-          devBuildDir + '/**/*.core-env.spec.ts'
-          devBuildDir + '/**/*.core-env.ts'
+          devBuildPath + '/**/*.core-env.spec.ts'
+          devBuildPath + '/**/*.core-env.ts'
         ]
         options:
           target: 'es5'
@@ -204,6 +227,8 @@ module.exports = (grunt) ->
       churnPipeFreedomModule: Rule.browserify 'churn-pipe/freedom-module'
       echoFreedomModule: Rule.browserify 'echo/freedom-module'
       sampleEchoServerChromeApp: Rule.browserify 'samples/echo-server-chromeapp/background.core-env'
+      copyPasteChurnChatChromeAppMain: Rule.browserify 'samples/copypaste-churn-chat-chromeapp/main.core-env'
+      copyPasteChurnChatChromeAppFreedomModule: Rule.browserify 'samples/copypaste-churn-chat-chromeapp/freedom-module'
 
       # Browserify specs
       integrationTcpFreedomModule:
@@ -225,11 +250,13 @@ module.exports = (grunt) ->
     # can't be found: some sensible error should be produced.
     jasmine_chromeapp:
       tcp:
-        src: [ devBuildDir + '/integration-tests/tcp/freedom-module.static.js' ]
+        src: [ devBuildPath + '/integration-tests/tcp/freedom-module.static.js' ]
         options:
           paths: [
+            # TODO: one this is released in freedom: https://github.com/freedomjs/freedom-for-chrome/commit/22acf21069092e71789bf68d5f433afd1ab97fb1
+            # Then we can just do: require.resolve('freedom-for-chrome')
             require.resolve('freedom-for-chrome/freedom-for-chrome.js')
-            devBuildDir + '/integration-tests/tcp/tcp.core-env.static.js'
+            devBuildPath + '/integration-tests/tcp/tcp.core-env.static.js'
           ]
           keepRunner: true
 

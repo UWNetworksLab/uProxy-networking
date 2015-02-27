@@ -12,7 +12,7 @@ var pasteTextarea = <HTMLInputElement>document.getElementById("paste");
 var receiveButton = document.getElementById("receiveButton");
 
 freedom('freedom-module.json', {
-    'logger': 'lib/loggingprovider/loggingprovider.json',
+    'logger': 'uproxy-lib/loggingprovider/freedom-module.json',
     'debug': 'log'
 }).then(function(copypasteChurnChatFactory:freedom_types.FreedomModuleFactoryManager) {
   var copypasteChurnChat = copypasteChurnChatFactory();
