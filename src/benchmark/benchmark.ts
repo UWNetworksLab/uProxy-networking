@@ -254,7 +254,7 @@ export module Benchmark {
       var latency_ms = result_time - req.requestTime;
 
       // first verify that the body is fully-formed
-      if (!request_in_error && (!body || body.length != req.requestSize)) {
+      if (!request_in_error && (!body || !body.length || body.length != req.requestSize)) {
           request_in_error = true;
       }
 
