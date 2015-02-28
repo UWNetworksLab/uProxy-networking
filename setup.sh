@@ -5,43 +5,53 @@ set -e
 
 # Get the directory where this script is and set ROOT_DIR to that path. This
 # allows script to be run from different directories but always act on the
-# directory it is within.
+# directory of the project (which is where this script is located).
 ROOT_DIR="$(cd "$(dirname $0)"; pwd)";
 
 # A simple bash script to run commands to setup and install all dev dependencies
 # (including non-npm ones)
+function runAndAssertCmd ()
+{
+    echo "Running: $1"
+    echo
+    # We use set -e to make sure this will fail if the command returns an error
+    # code.
+    cd $ROOT_DIR && set -e && $1
+}
+
+# Just run the command, ignore errors (e.g. cp fails if a file already exists
+# with "set -e")
 function runCmd ()
 {
     echo "Running: $1"
     echo
-    $1
+    cd $ROOT_DIR && $1
 }
 
 function clean ()
 {
-  runCmd "rm -r node_modules build .tscache"
+  runCmd "rm -r $ROOT_DIR/node_modules $ROOT_DIR/build $ROOT_DIR/.tscache"
 }
 
 function installTools ()
 {
-  runCmd "cp -r node_modules/uproxy-lib/build/tools build/"
+  runCmd "mkdir -p build/tools"
+  runCmd "cp -r node_modules/uproxy-lib/build/tools/* build/tools/"
 }
 
 function installThirdParty ()
 {
-  runCmd "bower install"
-  runCmd "node_modules/.bin/tsd reinstall --config ./third_party/tsd.json"
-  runCmd "grunt copy:thirdParty"
+  runAndAssertCmd "bower install"
+  runAndAssertCmd "node_modules/.bin/tsd reinstall --config ./third_party/tsd.json"
+  runAndAssertCmd "grunt copy:thirdParty"
 }
 
 function installDevDependencies ()
 {
-  runCmd "npm install"
-  runCmd "mkdir -p build"
+  runAndAssertCmd "npm install"
+  installTools
   installThirdParty
 }
-
-runCmd "cd $ROOT_DIR"
 
 if [ "$1" == 'install' ]; then
   installDevDependencies

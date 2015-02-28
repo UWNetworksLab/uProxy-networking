@@ -5,10 +5,9 @@ TaskManager = require './build/tools/taskmanager'
 # of specific grunt rules below and given to grunt.initConfig
 taskManager = new TaskManager.Manager();
 
-taskManager.add 'default', [ 'dev', 'samples', 'test' ]
+taskManager.add 'default', [ 'base', 'samples', 'test' ]
 
-taskManager.add 'dev', [
-  'symlink:typescriptSrc'
+taskManager.add 'base', [
   'copy:dev'
   'ts:devInModuleEnv'
   'ts:devInCoreEnv'
@@ -26,20 +25,20 @@ taskManager.add 'test', [
 ]
 
 taskManager.add 'sampleEchoServer', [
-  'dev'
+  'base'
   'copy:libsForSampleEchoServerChromeApp'
   'browserify:sampleEchoServerChromeApp'
 ]
 
 taskManager.add 'sampleCopyPasteChurnChatChromeApp', [
-  'dev'
+  'base'
   'copy:libsForCopyPasteChurnChatChromeApp'
   'browserify:copyPasteChurnChatChromeAppMain'
   'browserify:copyPasteChurnChatChromeAppFreedomModule'
 ]
 
 taskManager.add 'tcpIntegrationTest', [
-  'dev'
+  'base'
   'browserify:integrationTcpFreedomModule'
   'browserify:integrationTcpSpec'
 ]
@@ -55,8 +54,13 @@ thirdPartyBuildPath = 'build/third_party'
 localLibsDestPath = 'uproxy-networking'
 # Setup our build rules/tools
 Rule = new rules.Rule({
+  # The path where code in this repository should be built in.
   devBuildPath: devBuildPath,
+  # The path from where third party libraries should be copied. e.g. as used by
+  # sample apps.
   thirdPartyBuildPath: thirdPartyBuildPath,
+  # The path to copy modules from this repository into. e.g. as used by sample
+  # apps.
   localLibsDestPath: localLibsDestPath
 });
 
@@ -79,16 +83,6 @@ pgpPath = path.dirname(require.resolve('freedom-pgp-e2e/package.json'))
 module.exports = (grunt) ->
   grunt.initConfig {
     pkg: grunt.file.readJSON 'package.json'
-
-    symlink:
-      typescriptSrc:
-        files: [{
-          expand: true
-          overwrite: true
-          cwd: 'src'
-          src: ['**/*.ts']
-          dest: devBuildPath
-        }]
 
     copy:
       # Copy all needed third party libraries to appropriate locations.
@@ -147,7 +141,7 @@ module.exports = (grunt) ->
               nonull: true,
               expand: true,
               cwd: 'src/',
-              src: ['**/*', '!**/*.ts'],
+              src: ['**/*'],
               dest: devBuildPath,
               onlyIf: 'modified'
           }
@@ -170,15 +164,17 @@ module.exports = (grunt) ->
 
       # Copy the freedom output file to sample apps
       libsForSampleEchoServerChromeApp:
-        Rule.copyLibs ['freedom-for-chrome/freedom-for-chrome.js'],
-          ['echo'],
-          ['uproxy-lib/loggingprovider'],
-          'samples/echo-server-chromeapp/'
+        Rule.copyLibs
+          npmLibNames: ['freedom-for-chrome/freedom-for-chrome.js']
+          pathsFromDevBuild: ['echo']
+          pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider']
+          localDestPath: 'samples/echo-server-chromeapp/'
       libsForCopyPasteChurnChatChromeApp:
-        Rule.copyLibs ['freedom-for-chrome/freedom-for-chrome.js'],
-          ['churn-pipe'],
-          ['uproxy-lib/loggingprovider'],
-          'samples/copypaste-churn-chat-chromeapp/'
+        Rule.copyLibs
+          npmLibNames: ['freedom-for-chrome/freedom-for-chrome.js'],
+          pathsFromDevBuild: ['churn-pipe'],
+          pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider'],
+          localDestPath: 'samples/copypaste-churn-chat-chromeapp/'
 
     # Typescript compilation rules
     ts:
