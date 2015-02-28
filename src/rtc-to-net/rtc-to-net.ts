@@ -5,8 +5,6 @@
 /// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
 /// <reference path='../../../third_party/ipaddrjs/ipaddrjs.d.ts' />
 
-import ipaddr = require('ipaddr');
-
 import freedomTypes = require('freedom.types');
 
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');

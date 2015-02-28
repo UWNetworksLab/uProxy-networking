@@ -3,20 +3,9 @@
   "description": "Single-page SOCKS server with fake signalling channel.",
   "app": {
     "script": [
-      "../arraybuffers/arraybuffers.js",
-      "../handler/queue.js",
-      "../logging/logging.js",
-      "../tcp/tcp.js",
-      "../webrtc/datachannel.js",
-      "../webrtc/peerconnection.js",
-      "../regex2dfa/regex2dfa.js",
-      "../crypto/random.js",
-      "../churn/churn.js",
-      "../ipaddrjs/ipaddr.min.js",
-      "../socks-common/socks-headers.js",
-      "../socks-to-rtc/socks-to-rtc.js",
-      "../rtc-to-net/rtc-to-net.js",
-      "freedom-module.js"
+      "../../regex2dfa/regex2dfa.js",
+      "../../ipaddr.js/ipaddr.js",
+      "freedom-module.static.js"
     ]
   },
   "dependencies": {

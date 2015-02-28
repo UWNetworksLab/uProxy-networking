@@ -16,6 +16,7 @@ taskManager.add 'base', [
 ]
 
 taskManager.add 'samples', [
+  'sampleSimpleSocks',
   'sampleEchoServer',
   'sampleCopyPasteChurnChatChromeApp'
 ]
@@ -24,12 +25,20 @@ taskManager.add 'test', [
   'tcpIntegrationTest'
 ]
 
+taskManager.add 'sampleSimpleSocks', [
+  'base'
+  'copy:libsForSimpleSocksChromeApp'
+  'browserify:simpleSocksFreedomModule'
+  'browserify:simpleSocksChromeApp'
+]
+
 taskManager.add 'sampleEchoServer', [
   'base'
   'copy:libsForSampleEchoServerChromeApp'
   'browserify:sampleEchoServerChromeApp'
 ]
 
+# TODO: fix.
 taskManager.add 'sampleCopyPasteChurnChatChromeApp', [
   'base'
   'copy:libsForCopyPasteChurnChatChromeApp'
@@ -70,7 +79,7 @@ path = require('path');
 
 freedomForChromePath = path.dirname(require.resolve('freedom-for-chrome/package.json'))
 uproxyLibPath = path.dirname(require.resolve('uproxy-lib/package.json'))
-ipaddrjsPath = path.dirname(require.resolve('ipaddr.js/package.json'))
+#ipaddrjsPath = path.dirname(require.resolve('ipaddr.js/package.json'))
 # TODO(ldixon): update utransformers package to uproxy-obfuscators
 # uproxyObfuscatorsPath = path.dirname(require.resolve('uproxy-obfuscators/package.json'))
 uproxyObfuscatorsPath = path.dirname(require.resolve('utransformers/package.json'))
@@ -95,8 +104,9 @@ module.exports = (grunt) ->
           {
               nonull: true,
               expand: true,
-              src: ['third_party/**/*'],
-              dest: 'build/',
+              cwd: 'third_party'
+              src: ['**/*'],
+              dest: thirdPartyBuildPath,
               onlyIf: 'modified'
           }
           # Copy distribution directory of uproxy-lib so all paths can always
@@ -108,7 +118,7 @@ module.exports = (grunt) ->
               expand: true,
               cwd: path.join(uproxyLibPath, 'build/dist'),
               src: ['**/*'],
-              dest: 'build/third_party/uproxy-lib',
+              dest: path.join(thirdPartyBuildPath, 'uproxy-lib/'),
               onlyIf: 'modified'
           },
           # Use the third_party definitions from uproxy-lib. Copied to the same
@@ -120,16 +130,26 @@ module.exports = (grunt) ->
               expand: true,
               cwd: path.join(uproxyLibPath, 'build/third_party'),
               src: ['freedom-typings/**/*'],
-              dest: 'build/third_party/',
+              dest: thirdPartyBuildPath
               onlyIf: 'modified'
           },
           # Copy in the uproxy-obfuscators typescript interfaces
           {
               nonull: true,
               expand: true,
-              cwd: path.join(uproxyObfuscatorsPath, 'src/interfaces/'),
-              src: ['**/*'],
-              dest: 'build/third_party/uproxy-obfuscators',
+              cwd: path.join(uproxyObfuscatorsPath, 'src/'),
+              src: ['interfaces/**/*',
+                    'transformers/uTransformers.rabbit.js',
+                    'transformers/uTransformers.fte.js'],
+              dest: path.join(thirdPartyBuildPath, 'uproxy-obfuscators/'),
+              onlyIf: 'modified'
+          }
+          # Copy ipaddr library to local third_party.
+          {
+              nonull: true,
+              expand: true,
+              src: [require.resolve('ipaddr.js')],
+              dest: path.join(thirdPartyBuildPath, 'ipaddrjs/'),
               onlyIf: 'modified'
           }
         ]
@@ -171,10 +191,29 @@ module.exports = (grunt) ->
           localDestPath: 'samples/echo-server-chromeapp/'
       libsForCopyPasteChurnChatChromeApp:
         Rule.copyLibs
-          npmLibNames: ['freedom-for-chrome/freedom-for-chrome.js'],
+          npmLibNames: [
+            'freedom-for-chrome/freedom-for-chrome.js'
+            'regex2dfa'
+          ],
           pathsFromDevBuild: ['churn-pipe'],
-          pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider'],
+          pathsFromThirdPartyBuild: [
+            'uproxy-lib/loggingprovider'
+            'uproxy-obfuscators'
+          ],
           localDestPath: 'samples/copypaste-churn-chat-chromeapp/'
+      libsForSimpleSocksChromeApp:
+        Rule.copyLibs
+          npmLibNames: [
+            'freedom-for-chrome/freedom-for-chrome.js'
+            'regex2dfa'
+            'ipaddr.js'
+          ],
+          pathsFromDevBuild: ['simple-socks'],
+          pathsFromThirdPartyBuild: [
+            'uproxy-lib/loggingprovider'
+          ],
+          localDestPath: 'samples/simple-socks-chromeapp/'
+
 
     # Typescript compilation rules
     ts:
@@ -221,8 +260,13 @@ module.exports = (grunt) ->
     browserify:
       # Browserify freedom-modules in the library
       churnPipeFreedomModule: Rule.browserify 'churn-pipe/freedom-module'
+
       echoFreedomModule: Rule.browserify 'echo/freedom-module'
       sampleEchoServerChromeApp: Rule.browserify 'samples/echo-server-chromeapp/background.core-env'
+
+      simpleSocksFreedomModule: Rule.browserify 'simple-socks/freedom-module'
+      simpleSocksChromeApp: Rule.browserify 'samples/simple-socks-chromeapp/background.core-env'
+
       copyPasteChurnChatChromeAppMain: Rule.browserify 'samples/copypaste-churn-chat-chromeapp/main.core-env'
       copyPasteChurnChatChromeAppFreedomModule: Rule.browserify 'samples/copypaste-churn-chat-chromeapp/freedom-module'
 

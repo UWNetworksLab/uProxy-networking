@@ -4,11 +4,11 @@
 import freedom_types = require('freedom.types');
 
 var script = document.createElement('script');
-script.src = 'lib/freedom/freedom-for-chrome.js';
+script.src = 'freedom-for-chrome/freedom-for-chrome.js';
 document.head.appendChild(script);
 
 script.onload = () => {
-  freedom('lib/simple-socks/freedom-module.json', {
+  freedom('uproxy-lib/simple-socks/freedom-module.json', {
       'logger': 'lib/loggingprovider/loggingprovider.json',
       'debug': 'debug'
   }).then((simpleSocksFactory:freedom_types.FreedomModuleFactoryManager) => {

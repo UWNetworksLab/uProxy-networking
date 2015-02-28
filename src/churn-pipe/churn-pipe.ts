@@ -2,14 +2,21 @@
 /// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../../../third_party/freedom-typings/udp-socket.d.ts' />
 
-// TODO(ldixon): update to a require-style inclusion.
-// e.g.
+// TODO(ldixon): update to a require-style inclusion. In the meantime, the lack
+// of require-style exports for obfuscators means that each inclusion of churn-
+// pipe has to copy |utransformers/src/transformers/*| (in node_modules) into
+// |../../uproxy-obfusctors/transformers/*| relative to the location of churn-
+// pipe.
+
+// Ideal:
 // import Transformer = require('../../../third_party/uproxy-obfuscators/utransformer');
 // import Rabbit = require('../../../third_party/uproxy-obfuscators/utransformers.rabbit');
 // import Fte = require('../../../third_party/uproxy-obfuscators/utransformers.fte');
-/// <reference path='../../../third_party/uproxy-obfuscators/utransformer.d.ts' />
-/// <reference path='../../../third_party/uproxy-obfuscators/utransformers.fte.d.ts' />
-/// <reference path='../../../third_party/uproxy-obfuscators/utransformers.rabbit.d.ts' />
+
+// Current:
+/// <reference path='../../../third_party/uproxy-obfuscators/interfaces/utransformer.d.ts' />
+/// <reference path='../../../third_party/uproxy-obfuscators/interfaces/utransformers.fte.d.ts' />
+/// <reference path='../../../third_party/uproxy-obfuscators/interfaces/utransformers.rabbit.d.ts' />
 
 import Transformer = UTransformers.Transformer;
 import Rabbit = fte.Transformer;
