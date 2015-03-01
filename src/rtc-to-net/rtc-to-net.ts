@@ -6,6 +6,7 @@
 /// <reference path='../../../third_party/ipaddrjs/ipaddrjs.d.ts' />
 
 import freedomTypes = require('freedom.types');
+import ipaddr = require('ipaddr.js');
 
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');

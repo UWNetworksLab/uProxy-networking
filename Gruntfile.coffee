@@ -25,6 +25,13 @@ taskManager.add 'samples', [
 taskManager.add 'test', [
   'browserify:churnSpec'
   'browserify:tcpSpec'
+  'browserify:simpleTransformersCaesarSpec'
+  'copy:libsForSocksCommonSpec'
+  'browserify:socksCommonHeadersSpec'
+  'browserify:socksToRtcSpec'
+  'browserify:rtcToNetSpec'
+  'browserify:turnFrontEndMessagesSpec'
+  'browserify:turnFrontEndSpec'
   'jasmine'
 ]
 
@@ -157,13 +164,13 @@ module.exports = (grunt) ->
               onlyIf: 'modified'
           }
           # Copy ipaddr library to local third_party.
-          {
-              nonull: true,
-              expand: true,
-              src: [require.resolve('ipaddr.js')],
-              dest: path.join(thirdPartyBuildPath, 'ipaddrjs/'),
-              onlyIf: 'modified'
-          }
+          # {
+          #     nonull: true,
+          #     expand: true,
+          #     src: [require.resolve('ipaddr.js')],
+          #     dest: path.join(thirdPartyBuildPath, 'ipaddrjs/'),
+          #     onlyIf: 'modified'
+          # }
         ]
 
       # Copy releveant non-typescript src files to dev build.
@@ -206,12 +213,12 @@ module.exports = (grunt) ->
           npmLibNames: [
             'freedom-for-chrome/freedom-for-chrome.js'
             'regex2dfa'
-          ],
-          pathsFromDevBuild: ['churn-pipe'],
+          ]
+          pathsFromDevBuild: ['churn-pipe']
           pathsFromThirdPartyBuild: [
             'uproxy-lib/loggingprovider'
             'uproxy-obfuscators'
-          ],
+          ]
           localDestPath: 'samples/copypaste-churn-chat-chromeapp/'
       libsForSimpleSocksChromeApp:
         Rule.copyLibs
@@ -219,12 +226,16 @@ module.exports = (grunt) ->
             'freedom-for-chrome/freedom-for-chrome.js'
             'regex2dfa'
             'ipaddr.js'
-          ],
-          pathsFromDevBuild: ['simple-socks', 'churn-pipe'],
+          ]
+          pathsFromDevBuild: ['simple-socks', 'churn-pipe']
           pathsFromThirdPartyBuild: [
             'uproxy-lib/loggingprovider'
             'uproxy-obfuscators'
-          ],
+          ]
+          localDestPath: 'samples/simple-socks-chromeapp/'
+      libsForSocksCommonSpec:
+        Rule.copyLibs
+          npmLibNames: ['ipaddr.js']
           localDestPath: 'samples/simple-socks-chromeapp/'
 
 
@@ -265,10 +276,19 @@ module.exports = (grunt) ->
     jasmine:
       churn: Rule.jasmineSpec 'churn'
       net: Rule.jasmineSpec 'net'
+      simpleTransformers: Rule.jasmineSpec 'simple-transformers'
+      socksCommon: Rule.jasmineSpec('socks-common',
+        [path.join(thirdPartyBuildPath, 'ipaddr/ipaddr.js')]);
 
     browserify:
       tcpSpec: Rule.browserifySpec 'net/tcp'
       churnSpec: Rule.browserifySpec 'churn/churn'
+      simpleTransformersCaesarSpec: Rule.browserifySpec 'simple-transformers/caesar'
+      socksCommonHeadersSpec: Rule.browserifySpec 'socks-common/socks-headers'
+      rtcToNetSpec: Rule.browserifySpec 'rtc-to-net/rtc-to-net'
+      socksToRtcSpec: Rule.browserifySpec 'socks-to-rtc/socks-to-rtc'
+      turnFrontEndMessagesSpec: Rule.browserifySpec 'turn-frontend/messages'
+      turnFrontEndSpec: Rule.browserifySpec 'turn-frontend/turn-frontend'
 
       # Browserify freedom-modules in the library
       churnPipeFreedomModule: Rule.browserify 'churn-pipe/freedom-module'

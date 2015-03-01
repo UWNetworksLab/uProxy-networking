@@ -6,7 +6,7 @@
 ipaddrjs.d.ts may be freely distributed under the MIT license
 */
 
-declare module ipaddr {
+declare module "ipaddr.js" {
   // returns true if the address is a valid IPv4 or IPv6 address, and false
   // otherwise. It does not throw any exceptions.
   export function isValid(address: string): boolean;
