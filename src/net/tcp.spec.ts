@@ -3,6 +3,9 @@
 /// <reference path='../../../third_party/freedom-typings/tcp-socket.d.ts' />
 /// <reference path='../../../third_party/typings/jasmine/jasmine.d.ts' />
 
+import freedomMocker = require('../../../third_party/uproxy-lib/freedom/mocks/mock-freedom-in-module-env');
+freedom = freedomMocker.makeMockFreedomInModuleEnv();
+
 import tcp = require('./tcp');
 
 describe('Tcp', function() {

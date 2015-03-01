@@ -24,6 +24,7 @@ taskManager.add 'samples', [
 
 taskManager.add 'test', [
   'browserify:churnSpec'
+  'browserify:tcpSpec'
   'jasmine'
 ]
 
@@ -263,8 +264,10 @@ module.exports = (grunt) ->
 
     jasmine:
       churn: Rule.jasmineSpec 'churn'
+      net: Rule.jasmineSpec 'net'
 
     browserify:
+      tcpSpec: Rule.browserifySpec 'net/tcp'
       churnSpec: Rule.browserifySpec 'churn/churn'
 
       # Browserify freedom-modules in the library
