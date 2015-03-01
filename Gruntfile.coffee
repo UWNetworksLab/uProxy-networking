@@ -163,14 +163,6 @@ module.exports = (grunt) ->
               dest: path.join(thirdPartyBuildPath, 'uproxy-obfuscators/'),
               onlyIf: 'modified'
           }
-          # Copy ipaddr library to local third_party.
-          # {
-          #     nonull: true,
-          #     expand: true,
-          #     src: [require.resolve('ipaddr.js')],
-          #     dest: path.join(thirdPartyBuildPath, 'ipaddrjs/'),
-          #     onlyIf: 'modified'
-          # }
         ]
 
       # Copy releveant non-typescript src files to dev build.
