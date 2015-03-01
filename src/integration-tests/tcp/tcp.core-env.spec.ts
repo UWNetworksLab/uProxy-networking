@@ -11,7 +11,7 @@
 //         https://github.com/freedomjs/freedom/issues/146
 describe('core.tcpsocket wrapper', function() {
   // TODO: This is flaky! figuring out why may help explain why
-  //       the SOCKS server sometimes fails to start..
+  //       the SOCKS server sometimes fails to start.
   it('listens and echoes', (done) => {
     loadFreedom('listen').then(done);
   });
@@ -42,17 +42,24 @@ describe('core.tcpsocket wrapper', function() {
 
   // Loads the testing Freedom module, emits a signal and returns
   // a promise which fulfills once the signal is echoed.
-  function loadFreedom(name:string) : Promise<void> {
-    return freedom('scripts/build/integration/tcp/integration.json', { 'debug': 'log' })
-      .then((integrationFactoryConstructor) => {
+  function loadFreedom(signalName:string) : Promise<void> {
+    return freedom('uproxy-networking/integration-tests/tcp/freedom-module.json',
+      {
+        'debug': 'debug'
+      }).then((integrationFactoryConstructor) => {
         return new Promise((F, R) => {
           var testModule = integrationFactoryConstructor();
-          testModule.emit(name);
-          testModule.on(name, F);
+          testModule.emit(signalName);
+          testModule.on(signalName, () => {
+              F(testModule);
+          });
         })
         // Cleanup! Note: this will not run if the test times out... TODO: do
         // we really want close on an promise rejection? better to error then?
-        .then(integrationFactoryConstructor.close, integrationFactoryConstructor.close);
+        .then(integrationFactoryConstructor.close,
+          (e) => {
+            throw new Error('Failed to run test module: ' + e.toString());
+          });
       });
   }
 });

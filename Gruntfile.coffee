@@ -13,6 +13,7 @@ taskManager.add 'base', [
   'ts:devInCoreEnv'
   'browserify:echoFreedomModule'
   'browserify:churnPipeFreedomModule'
+  'browserify:simpleSocksFreedomModule'
 ]
 
 taskManager.add 'samples', [
@@ -22,13 +23,17 @@ taskManager.add 'samples', [
 ]
 
 taskManager.add 'test', [
+  'browserify:churnSpec'
+  'jasmine'
+]
+
+taskManager.add 'integration', [
   'tcpIntegrationTest'
 ]
 
 taskManager.add 'sampleSimpleSocks', [
   'base'
   'copy:libsForSimpleSocksChromeApp'
-  'browserify:simpleSocksFreedomModule'
   'browserify:simpleSocksChromeApp'
 ]
 
@@ -50,6 +55,12 @@ taskManager.add 'tcpIntegrationTest', [
   'base'
   'browserify:integrationTcpFreedomModule'
   'browserify:integrationTcpSpec'
+  'jasmine_chromeapp:tcp'
+]
+
+taskManager.add 'sampleFreedomModuleRunnerChromeApp', [
+  'base'
+  'samples'
 ]
 
 #-------------------------------------------------------------------------
@@ -208,9 +219,10 @@ module.exports = (grunt) ->
             'regex2dfa'
             'ipaddr.js'
           ],
-          pathsFromDevBuild: ['simple-socks'],
+          pathsFromDevBuild: ['simple-socks', 'churn-pipe'],
           pathsFromThirdPartyBuild: [
             'uproxy-lib/loggingprovider'
+            'uproxy-obfuscators'
           ],
           localDestPath: 'samples/simple-socks-chromeapp/'
 
@@ -250,16 +262,14 @@ module.exports = (grunt) ->
           fast: 'always'
 
     jasmine:
-      arraybuffers: Rule.jasmineSpec 'arraybuffers'
-      buildTools: Rule.jasmineSpec 'build-tools'
-      handler: Rule.jasmineSpec 'handler'
-      logging: Rule.jasmineSpec 'logging'
-      loggingProvider: Rule.jasmineSpec 'loggingprovider'
-      webrtc: Rule.jasmineSpec 'webrtc'
+      churn: Rule.jasmineSpec 'churn'
 
     browserify:
+      churnSpec: Rule.browserifySpec 'churn/churn'
+
       # Browserify freedom-modules in the library
       churnPipeFreedomModule: Rule.browserify 'churn-pipe/freedom-module'
+
 
       echoFreedomModule: Rule.browserify 'echo/freedom-module'
       sampleEchoServerChromeApp: Rule.browserify 'samples/echo-server-chromeapp/background.core-env'
@@ -293,11 +303,10 @@ module.exports = (grunt) ->
         src: [ devBuildPath + '/integration-tests/tcp/freedom-module.static.js' ]
         options:
           paths: [
-            # TODO: one this is released in freedom: https://github.com/freedomjs/freedom-for-chrome/commit/22acf21069092e71789bf68d5f433afd1ab97fb1
-            # Then we can just do: require.resolve('freedom-for-chrome')
-            require.resolve('freedom-for-chrome/freedom-for-chrome.js')
             devBuildPath + '/integration-tests/tcp/tcp.core-env.static.js'
           ]
+          binary: '/Applications/Google\ Chrome\ Canary.app/Contents/MacOS/Google\ Chrome\ Canary'
+          outfile: devBuildPath + '/integration-tests/tcp/jasmine_chromeapp/'
           keepRunner: true
 
     clean:

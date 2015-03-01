@@ -10,7 +10,7 @@ import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
 
 import logging = require('../../../../third_party/uproxy-lib/logging/logging');
 
-freedom['loggingprovider']().setConsoleFilter(['*:D']);
+freedom['loggingcontroller']().setConsoleFilter(['*:D']);
 
 var log :logging.Log = new logging.Log('simple churn chat');
 

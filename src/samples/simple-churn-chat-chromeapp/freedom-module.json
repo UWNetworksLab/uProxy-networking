@@ -15,9 +15,9 @@
     ]
   },
   "dependencies": {
-    "loggingprovider": {
-      "url": "lib/loggingprovider/loggingprovider.json",
-      "api": "loggingprovider"
+    "loggingcontroller": {
+      "url": "uproxy-lib/loggingprovider/freedom-module.json",
+      "api": "loggingcontroller"
     },
     "churnPipe": {
       "url": "lib/churn-pipe/freedom.json",

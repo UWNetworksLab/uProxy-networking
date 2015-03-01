@@ -13,10 +13,11 @@ import i18n = require('./i18n-util');
 
 module copypaste_module {
 
-  export var onceReady :Promise<freedom_types.OnAndEmit<any,any>> = freedom('freedom-module.json', {
-      'logger': 'lib/loggingprovider/loggingprovider.json',
-      'debug': 'log'
-  }).then((copypasteSocksFactory:() => freedom_types.OnAndEmit<any,any>) => {
+  export var onceReady :Promise<freedom_types.OnAndEmit<any,any>> =
+      freedom('freedom-module.json', {
+          'logger': 'uproxy-lib/loggingprovider/freedom-module.json',
+          'debug': 'log'
+      }).then((copypasteSocksFactory:() => freedom_types.OnAndEmit<any,any>) => {
     var copypaste :freedom_types.OnAndEmit<any,any> = copypasteSocksFactory();
 
     copypaste.on('signalForPeer', (signal:peerconnection.SignallingMessage) => {

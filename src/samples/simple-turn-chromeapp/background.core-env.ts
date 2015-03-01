@@ -9,7 +9,7 @@ document.head.appendChild(script);
 
 script.onload = () => {
   freedom('freedom-module.json', {
-      'logger': 'lib/loggingprovider/loggingprovider.json',
+      'logger': 'uproxy-lib/loggingprovider/freedom-module.json',
       'debug': 'log'
   }).then(function(simpleTurnFactory:freedom_types.FreedomModuleFactoryManager) {
     var simpleTurn :freedom_types.OnAndEmit<any,any> = simpleTurnFactory();

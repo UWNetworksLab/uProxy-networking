@@ -10,16 +10,16 @@
     ]
   },
   "dependencies": {
-    "loggingprovider": {
-      "url": "lib/loggingprovider/loggingprovider.json",
-      "api": "loggingprovider"
+    "loggingcontroller": {
+      "url": "uproxy-lib/loggingprovider/freedom-module.json",
+      "api": "loggingcontroller"
     },
     "turnFrontend": {
-      "url": "lib/turn-frontend/freedom.json",
+      "url": "uproxy-networking/turn-frontend/freedom-module.json",
       "api": "turnFrontend"
     },
     "turnBackend": {
-      "url": "lib/turn-backend/freedom.json",
+      "url": "uproxy-networking/turn-backend/freedom-module.json",
       "api": "turnBackend"
     }
   }

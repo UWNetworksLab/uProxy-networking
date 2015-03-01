@@ -20,16 +20,16 @@
     ]
   },
   "dependencies": {
-    "loggingprovider": {
-      "url": "lib/loggingprovider/loggingprovider.json",
-      "api": "loggingprovider"
+    "loggingcontroller": {
+      "url": "uproxy-lib/loggingprovider/freedom-module.json",
+      "api": "loggingcontroller"
     },
     "churnPipe": {
-      "url": "lib/churn-pipe/freedom.json",
+      "url": "uproxy-networking/churn-pipe/freedom-module.json",
       "api": "churnPipe"
     },
     "pgp": {
-      "url": "lib/freedom-pgp-e2e/build/pgpapi.json",
+      "url": "freedom-pgp-e2e/pgpapi.json",
       "api": "crypto"
     }
   },

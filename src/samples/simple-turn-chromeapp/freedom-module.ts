@@ -9,7 +9,7 @@ import turn_backend = require('../../turn-backend/freedom-module.interface');
 import net = require('../../net/net.types');
 import logging = require('../../../../third_party/uproxy-lib/logging/logging');
 
-freedom['loggingprovider']().setConsoleFilter(['*:I']);
+freedom['loggingcontroller']().setConsoleFilter(['*:I']);
 
 var log :logging.Log = new logging.Log('simple TURN');
 

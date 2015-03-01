@@ -12,14 +12,21 @@ document.head.appendChild(script);
 function keepAlive() { setTimeout(keepAlive, 5000); }
 keepAlive();
 
-// Top level variable to provide console-level access to the module interface.
-var simpleSocks :freedom_types.OnAndEmit<any,any>;
+var freedomModule :freedom_types.OnAndEmit<any,any> = null;
 
-script.onload = () => {
-  freedom('uproxy-networking/simple-socks/freedom-module.json', {
+var tcpPath = 'uproxy-networking/integration-tests/tcp/freedom-module.json';
+
+function runFreedomModule(modulePath:string) {
+  freedom(modulePath, {
       'logger': 'uproxy-lib/loggingprovider/freedom-module.json',
       'debug': 'debug'
-  }).then((simpleSocksFactory:freedom_types.FreedomModuleFactoryManager) => {
-    simpleSocks = simpleSocksFactory();
+  }).then((freedomModuleFactory:freedom_types.FreedomModuleFactoryManager) => {
+    freedomModule = freedomModuleFactory();
   }, (e:Error) => { throw e; });
 }
+
+console.info(
+  'This is a sample app to run top level freedom modules. \n' +
+  'This can be helpful to debug integration test failures, for example. + \n' +
+  'Example usage: \n  runFreedomModule(\'' + tcpPath + '\');'
+);

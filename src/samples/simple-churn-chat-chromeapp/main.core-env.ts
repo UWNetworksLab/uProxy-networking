@@ -10,7 +10,7 @@ var receiveAreaA = <HTMLInputElement>document.getElementById("receiveAreaA");
 var receiveAreaB = <HTMLInputElement>document.getElementById("receiveAreaB");
 
 freedom('freedom-module.json', {
-    'logger': 'lib/loggingprovider/loggingprovider.json',
+    'logger': 'uproxy-lib/loggingprovider/freedom-module.json',
     'debug': 'debug'
 }).then(function(interface:any) {
   var simpleChurnChat :any = interface();

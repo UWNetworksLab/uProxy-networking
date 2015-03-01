@@ -5,7 +5,6 @@
 *.swo
 *.swp
 *~
-.build
 .DS_Store
 .grunt
 .idea
