@@ -218,8 +218,8 @@ module RtcToNet {
             channelLabel, Object.keys(this.sessions_).length]);
         };
       session.onceStopped().then(discard, (e:Error) => {
-        log.info('discarded session %1 (%2 remaining)', [
-            channelLabel, Object.keys(this.sessions_).length]);
+        log.error('session %1 terminated with error: %2', [
+            tag, e.message]);
         discard();
       });
     }
