@@ -4,7 +4,13 @@ import arraybuffers = require('../../../../third_party/uproxy-lib/arraybuffers/a
 import tcp = require('../../net/tcp');
 import net = require('../../net/net.types');
 
-freedom['loggingcontroller']().setConsoleFilter(['*:D']);
+export var loggingController = freedom['loggingcontroller']();
+loggingController.setConsoleFilter(['*:D']);
+
+import logging = require('../../../../third_party/uproxy-lib/logging/logging');
+export var moduleName = 'integration-tests/tcp';
+export var log :logging.Log = new logging.Log(moduleName);
+
 
 var getServerOnFreePort = () : tcp.Server => {
   return new tcp.Server({
@@ -13,14 +19,14 @@ var getServerOnFreePort = () : tcp.Server => {
   });
 }
 
-var parentModule = freedom();
+export var parentModule = freedom();
 
 // Starts an echo server on a free port and sends some data to the server,
 // verifying that an echo is received.
 parentModule.on('listen', () => {
   var server = getServerOnFreePort();
-
   server.connectionsQueue.setSyncHandler((tcpConnection:tcp.Connection) => {
+    log.info('New TCP connection: ' + tcpConnection.toString());
     tcpConnection.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
       tcpConnection.send(buffer);
     });
