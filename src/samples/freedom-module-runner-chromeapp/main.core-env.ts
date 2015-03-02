@@ -12,11 +12,11 @@ document.head.appendChild(script);
 function keepAlive() { setTimeout(keepAlive, 5000); }
 keepAlive();
 
-var freedomModule :freedom_types.OnAndEmit<any,any> = null;
+export var freedomModule :freedom_types.OnAndEmit<any,any> = null;
 
-var tcpPath = 'uproxy-networking/integration-tests/tcp/freedom-module.json';
+export var tcpPath = 'uproxy-networking/integration-tests/tcp/freedom-module.json';
 
-function runFreedomModule(modulePath:string) {
+export function runFreedomModule(modulePath:string) :void {
   freedom(modulePath, {
       'logger': 'uproxy-lib/loggingprovider/freedom-module.json',
       'debug': 'debug'
@@ -28,5 +28,8 @@ function runFreedomModule(modulePath:string) {
 console.info(
   'This is a sample app to run top level freedom modules. \n' +
   'This can be helpful to debug integration test failures, for example. + \n' +
-  'Example usage: \n  runFreedomModule(\'' + tcpPath + '\');'
+  'Example usage: \n ' +
+  '  browserified_exports.runFreedomModule(\'' + tcpPath + '\'); \n' +
+  'Then, once loaded, you can bind the module with something like this: \n' +
+  '  var m = browserified_exports.freedomModule; \n'
 );

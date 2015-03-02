@@ -60,15 +60,25 @@ taskManager.add 'sampleCopyPasteChurnChatChromeApp', [
   'browserify:copyPasteChurnChatChromeAppFreedomModule'
 ]
 
-taskManager.add 'tcpIntegrationTest', [
+taskManager.add 'integrationTestModules', [
+  'tcpIntegrationTestModule'
+]
+
+taskManager.add 'tcpIntegrationTestModule', [
   'base'
+  'copy:libsForIntegrationTcp'
   'browserify:integrationTcpFreedomModule'
   'browserify:integrationTcpSpec'
+]
+
+taskManager.add 'tcpIntegrationTest', [
+  'tcpIntegrationTestModule'
   'jasmine_chromeapp:tcp'
 ]
 
 taskManager.add 'sampleFreedomModuleRunnerChromeApp', [
   'base'
+  'integrationTestModules'
   'copy:libsForFreedomModuleRunner'
   'browserify:sampleFreedomModuleRunnerMain'
 ]
@@ -224,16 +234,26 @@ module.exports = (grunt) ->
             'uproxy-obfuscators'
           ]
           localDestPath: 'samples/simple-socks-chromeapp/'
+      libsForIntegrationTcp:
+        Rule.copyLibs
+          npmLibNames: [
+            'freedom-for-chrome/freedom-for-chrome.js'
+          ]
+          pathsFromThirdPartyBuild: [
+            'uproxy-lib/loggingprovider'
+          ]
+          localDestPath: 'integration-tests/tcp'
       libsForFreedomModuleRunner:
         Rule.copyLibs
           npmLibNames: [
             'freedom-for-chrome/freedom-for-chrome.js'
           ]
           pathsFromDevBuild: [
-            'churn-pipe',
-            'echo',
-            'simple-socks',
-            'turn-backend',
+            'churn-pipe'
+            'echo'
+            'integration-tests'
+            'simple-socks'
+            'turn-backend'
             'turn-frontend'
           ]
           pathsFromThirdPartyBuild: [
@@ -300,12 +320,11 @@ module.exports = (grunt) ->
       turnFrontEndSpec: Rule.browserifySpec 'turn-frontend/turn-frontend'
 
       # Sample app mains
-      sampleFreedomModuleRunnerMain: Rule.browserify 'samples/freedom-module-runner-chromeapp/main'
+      sampleFreedomModuleRunnerMain: Rule.browserify 'samples/freedom-module-runner-chromeapp/main.core-env'
 
       # Browserify freedom-modules in the library
 
       churnPipeFreedomModule: Rule.browserify 'churn-pipe/freedom-module'
-
 
       echoFreedomModule: Rule.browserify 'echo/freedom-module'
       sampleEchoServerChromeApp: Rule.browserify 'samples/echo-server-chromeapp/background.core-env'
