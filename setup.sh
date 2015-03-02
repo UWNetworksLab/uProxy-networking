@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Make sure an error in this script stops it running where the error happened.
-set -e
-
 # Get the directory where this script is and set ROOT_DIR to that path. This
 # allows script to be run from different directories but always act on the
 # directory of the project (which is where this script is located).
@@ -16,7 +13,7 @@ function runAndAssertCmd ()
     echo
     # We use set -e to make sure this will fail if the command returns an error
     # code.
-    cd $ROOT_DIR && set -e && $1
+    set -e && cd $ROOT_DIR && eval $1
 }
 
 # Just run the command, ignore errors (e.g. cp fails if a file already exists
@@ -25,7 +22,7 @@ function runCmd ()
 {
     echo "Running: $1"
     echo
-    cd $ROOT_DIR && $1
+    cd $ROOT_DIR && eval $1
 }
 
 function clean ()
@@ -49,6 +46,8 @@ function installThirdParty ()
 function installDevDependencies ()
 {
   runAndAssertCmd "npm install"
+  # TODO: remove this line when uproxy-lib is npm published.
+  runAndAssertCmd "cd node_modules/uproxy-lib && ./setup.sh install && grunt dist"
   installTools
   installThirdParty
 }
