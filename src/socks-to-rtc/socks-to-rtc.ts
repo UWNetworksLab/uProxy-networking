@@ -311,12 +311,11 @@ module SocksToRtc {
       this.bytesSentToPeer_ = bytesSentToPeer;
       this.bytesReceivedFromPeer_ = bytesReceivedFromPeer;
 
-      // Startup notifications.
+      // Do handshake. If it fails, shutdown.
       this.onceReady = this.doAuthHandshake_().then(this.doRequestHandshake_);
-      this.onceReady.then(this.linkSocketAndChannel_);
+      this.onceReady.then(this.linkSocketAndChannel_, this.fulfillStopping_);
 
       // Shutdown once TCP connection or datachannel terminate.
-      this.onceReady.catch(this.fulfillStopping_);
       Promise.race<any>([
           tcpConnection.onceClosed.then((kind:Tcp.SocketCloseKind) => {
             log.info('%1: socket closed (%2)', [
