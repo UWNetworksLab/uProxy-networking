@@ -166,21 +166,16 @@ describe("SOCKS session", function() {
     mockBytesSent = new Handler.Queue<number, void>()
   });
 
-  it('onceReady fulfills with listening endpoint on successful negotiation', (done) => {
+  it('onceReady fulfills on successful negotiation', (done) => {
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
-    spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
+    spyOn(session, 'doRequestHandshake_').and.returnValue(voidPromise);
 
-    session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived)
-      .then((result:Net.Endpoint) => {
-        expect(result.address).toEqual(mockEndpoint.address);
-        expect(result.port).toEqual(mockEndpoint.port);
-      })
-      .then(done);
+    session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived).then(done);
   });
 
   it('onceReady rejects and onceStopped fulfills on unsuccessful negotiation', (done) => {
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
-    spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.reject('unknown hostname'));
+    spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.reject(new Error('unknown hostname')));
 
     session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived)
       .catch((e:Error) => { return session.onceStopped; }).then(done);
@@ -190,7 +185,7 @@ describe("SOCKS session", function() {
     mockTcpConnection.onceClosed = Promise.resolve();
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
-    spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
+    spyOn(session, 'doRequestHandshake_').and.returnValue(voidPromise);
 
     session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived)
       .then(() => { return session.onceStopped; }).then(done);
@@ -201,7 +196,7 @@ describe("SOCKS session", function() {
     mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
-    spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
+    spyOn(session, 'doRequestHandshake_').and.returnValue(voidPromise);
 
     session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived)
       .then(session.stop).then(() => { return session.onceStopped; }).then(done);
@@ -212,7 +207,7 @@ describe("SOCKS session", function() {
     mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
-    spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
+    spyOn(session, 'doRequestHandshake_').and.returnValue(voidPromise);
 
     var buffer = new Uint8Array([1,2,3]).buffer;
     session.start(
@@ -233,7 +228,7 @@ describe("SOCKS session", function() {
     mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
-    spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
+    spyOn(session, 'doRequestHandshake_').and.returnValue(voidPromise);
 
     var message :WebRtc.Data = {
       buffer: new Uint8Array([1,2,3]).buffer
