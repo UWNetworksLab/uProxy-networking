@@ -219,7 +219,7 @@ module RtcToNet {
         };
       session.onceStopped().then(discard, (e:Error) => {
         log.error('session %1 terminated with error: %2', [
-            tag, e.message]);
+            channelLabel, e.message]);
         discard();
       });
     }
