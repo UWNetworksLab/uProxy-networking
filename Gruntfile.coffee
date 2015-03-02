@@ -17,8 +17,9 @@ taskManager.add 'base', [
 ]
 
 taskManager.add 'samples', [
-  'sampleSimpleSocks',
-  'sampleEchoServer',
+  'sampleFreedomModuleRunnerChromeApp'
+  'sampleSimpleSocks'
+  'sampleEchoServer'
   'sampleCopyPasteChurnChatChromeApp'
 ]
 
@@ -68,7 +69,8 @@ taskManager.add 'tcpIntegrationTest', [
 
 taskManager.add 'sampleFreedomModuleRunnerChromeApp', [
   'base'
-  'samples'
+  'copy:libsForFreedomModuleRunner'
+  'browserify:sampleFreedomModuleRunnerMain'
 ]
 
 #-------------------------------------------------------------------------
@@ -204,7 +206,6 @@ module.exports = (grunt) ->
         Rule.copyLibs
           npmLibNames: [
             'freedom-for-chrome/freedom-for-chrome.js'
-            'regex2dfa'
           ]
           pathsFromDevBuild: ['churn-pipe']
           pathsFromThirdPartyBuild: [
@@ -216,8 +217,6 @@ module.exports = (grunt) ->
         Rule.copyLibs
           npmLibNames: [
             'freedom-for-chrome/freedom-for-chrome.js'
-            'regex2dfa'
-            'ipaddr.js'
           ]
           pathsFromDevBuild: ['simple-socks', 'churn-pipe']
           pathsFromThirdPartyBuild: [
@@ -225,6 +224,23 @@ module.exports = (grunt) ->
             'uproxy-obfuscators'
           ]
           localDestPath: 'samples/simple-socks-chromeapp/'
+      libsForFreedomModuleRunner:
+        Rule.copyLibs
+          npmLibNames: [
+            'freedom-for-chrome/freedom-for-chrome.js'
+          ]
+          pathsFromDevBuild: [
+            'churn-pipe',
+            'echo',
+            'simple-socks',
+            'turn-backend',
+            'turn-frontend'
+          ]
+          pathsFromThirdPartyBuild: [
+            'uproxy-lib'
+            'uproxy-obfuscators'
+          ]
+          localDestPath: 'samples/freedom-module-runner-chromeapp/'
       libsForSocksCommonSpec:
         Rule.copyLibs
           npmLibNames: ['ipaddr.js']
@@ -273,6 +289,7 @@ module.exports = (grunt) ->
         [path.join(thirdPartyBuildPath, 'ipaddr/ipaddr.js')]);
 
     browserify:
+      # Unit test specs
       tcpSpec: Rule.browserifySpec 'net/tcp'
       churnSpec: Rule.browserifySpec 'churn/churn'
       simpleTransformersCaesarSpec: Rule.browserifySpec 'simple-transformers/caesar'
@@ -282,7 +299,11 @@ module.exports = (grunt) ->
       turnFrontEndMessagesSpec: Rule.browserifySpec 'turn-frontend/messages'
       turnFrontEndSpec: Rule.browserifySpec 'turn-frontend/turn-frontend'
 
+      # Sample app mains
+      sampleFreedomModuleRunnerMain: Rule.browserify 'samples/freedom-module-runner-chromeapp/main'
+
       # Browserify freedom-modules in the library
+
       churnPipeFreedomModule: Rule.browserify 'churn-pipe/freedom-module'
 
 
@@ -295,12 +316,11 @@ module.exports = (grunt) ->
       copyPasteChurnChatChromeAppMain: Rule.browserify 'samples/copypaste-churn-chat-chromeapp/main.core-env'
       copyPasteChurnChatChromeAppFreedomModule: Rule.browserify 'samples/copypaste-churn-chat-chromeapp/freedom-module'
 
-      # Browserify specs
+      # Browserify Integration
       integrationTcpFreedomModule:
         Rule.browserify 'integration-tests/tcp/freedom-module'
       integrationTcpSpec:
         Rule.browserifySpec 'integration-tests/tcp/tcp.core-env'
-
       integrationSocksEchoFreedomModule:
         Rule.browserify 'integration-tests/socks-echo/freedom-module'
       integrationSocksEchoChurnSpec:

@@ -3,7 +3,7 @@
 // Definitions by: Benjamin M. Schwartz <https://github.com/bemasc>
 
 /*
-ipaddrjs.d.ts may be freely distributed under the MIT license
+ipaddrjs.d.ts may be freely distributed under the Apache 2 license
 */
 
 declare module "ipaddr.js" {

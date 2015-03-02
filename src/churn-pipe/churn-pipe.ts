@@ -18,6 +18,12 @@
 /// <reference path='../../../third_party/uproxy-obfuscators/interfaces/utransformers.fte.d.ts' />
 /// <reference path='../../../third_party/uproxy-obfuscators/interfaces/utransformers.rabbit.d.ts' />
 
+// TODO(ldixon): Make the uproxy-obfuscators repo itself import the regexp2dfa
+// library so that its dependencies are self-contained. Currently, this is
+// needed to allow Fte to run.
+/// <reference path='../../../third_party/regex2dfa/regex2dfa.d.ts' />
+import regex2dfa = require('regex2dfa');
+
 import Transformer = UTransformers.Transformer;
 import Rabbit = fte.Transformer;
 import Fte = rabbit.Transformer;
