@@ -218,7 +218,7 @@ module SocksToRtc {
       var tag = obtainTag();
       log.info('associating session %1 with new TCP connection', [tag]);
 
-	    this.peerConnection_.openDataChannel(tag).then((channel:WebRtc.DataChannel) => {
+      this.peerConnection_.openDataChannel(tag).then((channel:WebRtc.DataChannel) => {
         log.info('opened datachannel for session %1', [tag]);
         var session = new Session();
         session.start(
