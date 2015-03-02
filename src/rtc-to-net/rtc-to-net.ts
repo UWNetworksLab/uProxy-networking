@@ -339,9 +339,8 @@ module RtcToNet {
           }
           throw e;
         });
-      this.onceReady.then(this.linkSocketAndChannel_);
 
-      this.onceReady.catch(this.fulfillStopping_);
+      this.onceReady.then(this.linkSocketAndChannel_, this.fulfillStopping_);
 
       this.dataChannel_.onceClosed
       .then(() => {
