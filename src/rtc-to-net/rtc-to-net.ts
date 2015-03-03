@@ -25,6 +25,10 @@ module RtcToNet {
 
   export interface SessionSnapshot {
     name :string;
+    // Time in seconds, with fractional parts, of when the snapshot
+    // was taken.  Epoch is start of this web-worker.  This is the
+    // result of calling performance.now() -
+    // https://developer.mozilla.org/en-US/docs/Web/API/Performance/now
     timestamp: number;
     channel_sent: number;
     channel_received: number;
