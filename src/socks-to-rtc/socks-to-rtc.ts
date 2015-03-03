@@ -312,7 +312,17 @@ module SocksToRtc {
 
       // The session is ready once we've completed both
       // auth and request handshakes.
-      this.onceReady = this.doAuthHandshake_().then(this.doRequestHandshake_);
+      this.onceReady = this.doAuthHandshake_().then(
+          this.doRequestHandshake_).then((response:Socks.Response) => {
+        if (response.reply !== Socks.Reply.SUCCEEDED) {
+          throw new Error('handshake failed with reply code ' +
+              Socks.Reply[response.reply]);
+        }
+        log.info('%1: connected to remote host', [this.longId()]);
+        log.debug('%1: remote peer bound address: %2', [
+            this.longId(),
+            JSON.stringify(response.endpoint)]);
+      });
 
       // Once the handshakes have completed, start forwarding data between the
       // socket and channel and listen for socket and channel termination.
@@ -392,9 +402,8 @@ module SocksToRtc {
         });
     }
 
-    // Handles the SOCKS handshake, fulfilling iff all of the following
-    // steps succeed and the Socks.Response instance received from
-    // RtcToNet has a SUCCESSFUL reply field:
+    // Handles the SOCKS handshake, fulfilling with the Socks.Response instance
+    // sent to the SOCKS client iff all the following steps succeed:
     //  - reads the next packet from the socket
     //  - parses this packet as a Socks.Request instance
     //  - forwards this to RtcToNet
@@ -405,7 +414,7 @@ module SocksToRtc {
     // occurs then we send a generic FAILURE response back to the SOCKS
     // client before rejecting.
     // TODO: Needs unit tests badly since it's mocked by several other tests.
-    private doRequestHandshake_ = () : Promise<void> => {
+    private doRequestHandshake_ = () : Promise<Socks.Response> => {
       return this.tcpConnection_.receiveNext()
         .then(Socks.interpretRequestBuffer)
         .then((request:Socks.Request) => {
@@ -446,17 +455,8 @@ module SocksToRtc {
         })
         .then((response:Socks.Response) => {
           return this.tcpConnection_.send(Socks.composeResponseBuffer(
-              response)).then((discard:any) => {
-            if (response.reply !== Socks.Reply.SUCCEEDED) {
-              throw new Error('handshake failed with reply code ' +
-                  Socks.Reply[response.reply]);
-            }
-            log.info('%1: connected to remote host', [this.longId()]);
-            log.debug('%1: remote peer bound address: %2', [
-                this.longId(),
-                JSON.stringify(response.endpoint)]);
+              response)).then((discard:any) => { return response; });
         });
-      });
     }
 
     // Sends a packet over the data channel.
