@@ -218,7 +218,7 @@ module SocksToRtc {
       var tag = obtainTag();
       log.info('associating session %1 with new TCP connection', [tag]);
 
-	    this.peerConnection_.openDataChannel(tag).then((channel:WebRtc.DataChannel) => {
+      this.peerConnection_.openDataChannel(tag).then((channel:WebRtc.DataChannel) => {
         log.info('opened datachannel for session %1', [tag]);
         var session = new Session();
         session.start(
@@ -226,7 +226,7 @@ module SocksToRtc {
             channel,
             this.bytesSentToPeer_,
             this.bytesReceivedFromPeer_)
-        .then((endpoint:Net.Endpoint) => {
+        .then(() => {
           this.sessions_[tag] = session;
         }, (e:Error) => {
           log.warn('session %1 failed to connect to remote endpoint: %2', [
@@ -277,10 +277,9 @@ module SocksToRtc {
     private bytesSentToPeer_ :Handler.Queue<number,void>;
     private bytesReceivedFromPeer_ :Handler.Queue<number,void>;
 
-    // Fulfills with the bound endpoint which RtcToNet is using to connect to the
-    // remote host. Rejects if RtcToNet could not connect to the remote host
-    // or if there is some error negotiating the SOCKS session.
-    public onceReady :Promise<Net.Endpoint>;
+    // Fulfills once the SOCKS negotiation process has successfully completed.
+    // Rejects if negotiation fails for any reason.
+    public onceReady :Promise<void>;
 
     // Call this to initiate shutdown.
     private fulfillStopping_ :() => void;
@@ -305,19 +304,32 @@ module SocksToRtc {
         dataChannel:WebRtc.DataChannel,
         bytesSentToPeer:Handler.Queue<number,void>,
         bytesReceivedFromPeer:Handler.Queue<number,void>)
-        : Promise<Net.Endpoint> => {
+        : Promise<void> => {
       this.tcpConnection_ = tcpConnection;
       this.dataChannel_ = dataChannel;
       this.bytesSentToPeer_ = bytesSentToPeer;
       this.bytesReceivedFromPeer_ = bytesReceivedFromPeer;
 
-      // Startup notifications.
-      this.onceReady = this.doAuthHandshake_().then(this.doRequestHandshake_);
-      this.onceReady.then(this.linkSocketAndChannel_);
+      // The session is ready once we've completed both
+      // auth and request handshakes.
+      this.onceReady = this.doAuthHandshake_().then(
+          this.doRequestHandshake_).then((response:Socks.Response) => {
+        if (response.reply !== Socks.Reply.SUCCEEDED) {
+          throw new Error('handshake failed with reply code ' +
+              Socks.Reply[response.reply]);
+        }
+        log.info('%1: connected to remote host', [this.longId()]);
+        log.debug('%1: remote peer bound address: %2', [
+            this.longId(),
+            JSON.stringify(response.endpoint)]);
+      });
 
-      // Shutdown once TCP connection or datachannel terminate.
-      this.onceReady.catch(this.fulfillStopping_);
-      Promise.race<any>([
+      // Once the handshakes have completed, start forwarding data between the
+      // socket and channel and listen for socket and channel termination.
+      // If handshake fails, shutdown.
+      this.onceReady.then(() => {
+        this.linkSocketAndChannel_();
+        Promise.race<any>([
           tcpConnection.onceClosed.then((kind:Tcp.SocketCloseKind) => {
             log.info('%1: socket closed (%2)', [
                 this.longId(),
@@ -325,8 +337,10 @@ module SocksToRtc {
           }),
           dataChannel.onceClosed.then(() => {
             log.info('%1: datachannel closed', [this.longId()]);
-          })])
-        .then(this.fulfillStopping_);
+          })]).then(this.fulfillStopping_);
+      }, this.fulfillStopping_);
+
+      // Once shutdown has been requested, free resources.
       this.onceStopped = this.onceStopping_.then(this.stopResources_);
 
       return this.onceReady;
@@ -374,6 +388,7 @@ module SocksToRtc {
 
     // Receive a socks connection and send the initial Auth messages.
     // Assumes: no packet fragmentation.
+    // TODO: send failure to client if auth fails
     // TODO: handle packet fragmentation:
     //   https://github.com/uProxy/uproxy/issues/323
     // TODO: Needs unit tests badly since it's mocked by several other tests.
@@ -387,54 +402,60 @@ module SocksToRtc {
         });
     }
 
-    // Sets the next data hanlder to get next data from peer, assuming it's
-    // stringified version of the destination.
+    // Handles the SOCKS handshake, fulfilling with the Socks.Response instance
+    // sent to the SOCKS client iff all the following steps succeed:
+    //  - reads the next packet from the socket
+    //  - parses this packet as a Socks.Request instance
+    //  - forwards this to RtcToNet
+    //  - receives the next message from the channel
+    //  - parses this message as a Socks.Response instance
+    //  - forwards the Socks.Response to the SOCKS client
+    // If a response is not received from RtcToNet or any other error
+    // occurs then we send a generic FAILURE response back to the SOCKS
+    // client before rejecting.
     // TODO: Needs unit tests badly since it's mocked by several other tests.
-    private receiveResponseFromPeer_ = () : Promise<Socks.Response> => {
-      return new Promise((F,R) => {
-        this.dataChannel_.dataFromPeerQueue.setSyncNextHandler((data:WebRtc.Data) => {
-          if (!data.str) {
-            R(new Error('received non-string data during handshake: ' +
-                JSON.stringify(data)));
-            return;
-          }
-          try {
-            var r :any = JSON.parse(data.str);
-            if (!Socks.isValidResponse(r)) {
-              R(new Error('invalid response:' + data.str));
-              return;
-            }
-            log.info('%1: connected to remote host', [this.longId()]);
-            log.debug('%1: remote peer bound address: %2', [
-                this.longId(), JSON.stringify(r.endpoint)]);
-            F(r);
-          } catch(e) {
-            R(new Error('received malformed response during handshake: ' +
-                data.str));
-          }
-        });
-      });
-    }
-
-    // Assumes that |doAuthHandshake_| has completed and that a peer-conneciton
-    // has been established. Promise returns the bound address used to connect.
-    private doRequestHandshake_ = ()
-        : Promise<Net.Endpoint> => {
+    private doRequestHandshake_ = () : Promise<Socks.Response> => {
       return this.tcpConnection_.receiveNext()
         .then(Socks.interpretRequestBuffer)
         .then((request:Socks.Request) => {
           log.info('%1: received endpoint from SOCKS client: %2', [
               this.longId(), JSON.stringify(request.endpoint)]);
-          this.dataChannel_.send({ str: JSON.stringify(request) });
-          return this.receiveResponseFromPeer_();
+          return this.dataChannel_.send({ str: JSON.stringify(request) });
+        })
+        .then(() => {
+          // Equivalent to channel.receiveNext(), if it existed.
+          return new Promise((F, R) => {
+            this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(F).catch(R);
+          });
+        })
+        .then((data:WebRtc.Data) => {
+          if (!data.str) {
+            throw new Error('received non-string data from peer ' +
+              'during handshake: ' + JSON.stringify(data));
+          }
+          try {
+            var response :Socks.Response = JSON.parse(data.str);
+            if (!Socks.isValidResponse(response)) {
+              throw new Error('invalid response received from peer ' +
+                  'during handshake: ' + data.str);
+            }
+            return response;
+          } catch (e) {
+            throw new Error('could not parse response from peer: ' + e.message);
+          }
+        })
+        .catch((e:Error) => {
+          log.debug('%1: unexpected failure during handshake, ' +
+              'returning generic FAILURE to SOCKS client: %2', [
+              this.longId(),
+              e.message]);
+          return {
+            reply: Socks.Reply.FAILURE
+          };
         })
         .then((response:Socks.Response) => {
-          // TODO: test and close: https://github.com/uProxy/uproxy/issues/324
-          this.tcpConnection_.send(Socks.composeResponseBuffer(response));
-          if (response.reply != Socks.Reply.SUCCEEDED) {
-            this.stop();
-          }
-          return response.endpoint;
+          return this.tcpConnection_.send(Socks.composeResponseBuffer(
+              response)).then((discard:any) => { return response; });
         });
     }
 

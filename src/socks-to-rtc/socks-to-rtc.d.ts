@@ -40,10 +40,10 @@ declare module SocksToRtc {
         dataChannel:WebRtc.DataChannel,
         bytesSentToPeer:Handler.Queue<number,void>,
         bytesReceivedFromPeer:Handler.Queue<number,void>)
-        => Promise<Net.Endpoint>;
+        => Promise<void>;
     public stop :() => Promise<void>;
     public tcpConnection :Tcp.Connection;
-    public onceReady :Promise<Net.Endpoint>;
+    public onceReady :Promise<void>;
     public onceStopped :Promise<void>;
     public longId :() => string;
     public channelLabel :() => string;
