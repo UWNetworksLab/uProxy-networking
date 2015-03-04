@@ -169,7 +169,7 @@ module RtcToNet {
       });
       var writeSnapshot = () => {
         this.getSnapshot().then((snapshot:RtcToNetSnapshot) => {
-          log.info('snapshot: ' + JSON.stringify(snapshot));
+          log.info('snapshot: %1', JSON.stringify(snapshot));
         });
         if (loop) {
           setTimeout(writeSnapshot, RtcToNet.SNAPSHOTTING_INTERVAL_MS);
