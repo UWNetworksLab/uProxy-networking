@@ -41,7 +41,7 @@
     "socks5-http-client": "^0.1.6",
     "tsd": "^0.5.7",
     "typescript": "^1.4.1",
-    "uproxy-lib": "git://github.com:uproxy/uproxy-lib.git#iislucas",
+    "uproxy-lib": "git://github.com/uproxy/uproxy-lib.git#iislucas",
     "utransformers": "^0.2.1",
     "wup": "^1.0.0",
     "yargs": "^3.0.4"
