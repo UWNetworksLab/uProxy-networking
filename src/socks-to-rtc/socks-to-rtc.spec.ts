@@ -140,10 +140,10 @@ describe('SOCKS server', function() {
 describe("SOCKS session", function() {
   var session :socks_to_rtc.Session;
 
-  var mockTcpConnection :tcp.Connection;
-  var mockDataChannel :peerconnection.DataChannel;
-  var mockBytesSent :handler.Queue<number,void>;
   var mockBytesReceived :handler.Queue<number,void>;
+  var mockBytesSent :handler.Queue<number,void>;
+  var mockDataChannel :peerconnection.DataChannel;
+  var mockTcpConnection :tcp.Connection;
 
   beforeEach(function() {
     session = new socks_to_rtc.Session();
@@ -153,9 +153,11 @@ describe("SOCKS session", function() {
         'close',
         'isClosed'
       ]);
+    mockTcpConnection.dataFromSocketQueue = new Handler.Queue<ArrayBuffer,void>();
     (<any>mockTcpConnection.close).and.returnValue(Promise.resolve(-1));
     mockTcpConnection.onceClosed = Promise.resolve(
         tcp.SocketCloseKind.REMOTELY_CLOSED);
+
     mockDataChannel = <any>{
       getLabel: jasmine.createSpy('getLabel').and.returnValue('mock label'),
       onceOpened: noopPromise,
@@ -164,29 +166,25 @@ describe("SOCKS session", function() {
       send: jasmine.createSpy('send'),
       close: jasmine.createSpy('close')
     };
-    mockBytesSent = jasmine.createSpyObj('bytes sent handler', [
-        'handle'
-      ]);
-    mockBytesReceived = jasmine.createSpyObj('bytes received handler', [
-        'handle'
-      ]);
+    mockDataChannel.dataFromPeerQueue = new Handler.Queue<ArrayBuffer,void>();
+    (<any>mockDataChannel.send).and.returnValue(voidPromise);
+
+    mockBytesReceived = new Handler.Queue<number, void>();
+    mockBytesSent = new Handler.Queue<number, void>()
   });
 
-  it('onceReady fulfills with listening endpoint on successful negotiation', (done) => {
+  it('onceReady fulfills on successful negotiation', (done) => {
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
-    spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
 
-    session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived)
-      .then((result:net.Endpoint) => {
-        expect(result.address).toEqual(mockEndpoint.address);
-        expect(result.port).toEqual(mockEndpoint.port);
-      })
-      .then(done);
+    session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived).then(done);
   });
 
   it('onceReady rejects and onceStopped fulfills on unsuccessful negotiation', (done) => {
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
-    spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.reject('unknown hostname'));
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: Socks.Reply.FAILURE}));
 
     session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived)
       .catch((e:Error) => { return session.onceStopped; }).then(done);
@@ -196,7 +194,8 @@ describe("SOCKS session", function() {
     mockTcpConnection.onceClosed = Promise.resolve();
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
-    spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
 
     session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived)
       .then(() => { return session.onceStopped; }).then(done);
@@ -207,9 +206,56 @@ describe("SOCKS session", function() {
     mockTcpConnection.onceClosed = new Promise<tcp.SocketCloseKind>((F, R) => {});
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
-    spyOn(session, 'doRequestHandshake_').and.returnValue(Promise.resolve(mockEndpoint));
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
 
     session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived)
       .then(session.stop).then(() => { return session.onceStopped; }).then(done);
+  });
+
+  it('bytes sent counter', (done) => {
+    // Neither TCP connection nor datachannel close "naturally".
+    mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
+
+    spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
+
+    var buffer = new Uint8Array([1,2,3]).buffer;
+    session.start(
+        mockTcpConnection,
+        mockDataChannel,
+        mockBytesSent,
+        mockBytesReceived).then(() => {
+      mockTcpConnection.dataFromSocketQueue.handle(buffer);
+    });
+    mockBytesSent.setSyncNextHandler((numBytes:number) => {
+      expect(numBytes).toEqual(buffer.byteLength);
+      done();
+    });
+  });
+
+  it('bytes received counter', (done) => {
+    // Neither TCP connection nor datachannel close "naturally".
+    mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
+
+    spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
+
+    var message :WebRtc.Data = {
+      buffer: new Uint8Array([1,2,3]).buffer
+    };
+    session.start(
+        mockTcpConnection,
+        mockDataChannel,
+        mockBytesSent,
+        mockBytesReceived).then(() => {
+      mockDataChannel.dataFromPeerQueue.handle(message);
+    });
+    mockBytesReceived.setSyncNextHandler((numBytes:number) => {
+      expect(numBytes).toEqual(message.buffer.byteLength);
+      done();
+    });
   });
 });

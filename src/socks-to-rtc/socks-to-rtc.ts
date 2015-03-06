@@ -25,6 +25,8 @@ module SocksToRtc {
   // The |SocksToRtc| class runs a SOCKS5 proxy server which passes requests
   // remotely through WebRTC peer connections.
   // TODO: rename this 'Server'.
+  // TODO: Extract common code for this and SocksToRtc:
+  //         https://github.com/uProxy/uproxy/issues/977
   export class SocksToRtc {
 
     // Call this to initiate shutdown.
@@ -222,7 +224,8 @@ module SocksToRtc {
       var tag = obtainTag();
       log.info('associating session %1 with new TCP connection', [tag]);
 
-	    this.peerConnection_.openDataChannel(tag).then((channel:peerconnection.DataChannel) => {
+	    this.peerConnection_.openDataChannel(tag)
+          .then((channel:peerconnection.DataChannel) => {
         log.info('opened datachannel for session %1', [tag]);
         var session = new Session();
         session.start(
@@ -230,7 +233,7 @@ module SocksToRtc {
             channel,
             this.bytesSentToPeer_,
             this.bytesReceivedFromPeer_)
-        .then((endpoint:net.Endpoint) => {
+        .then(() => {
           this.sessions_[tag] = session;
         }, (e:Error) => {
           log.warn('session %1 failed to connect to remote endpoint: %2', [
@@ -281,10 +284,9 @@ module SocksToRtc {
     private bytesSentToPeer_ :handler.Queue<number,void>;
     private bytesReceivedFromPeer_ :handler.Queue<number,void>;
 
-    // Fulfills with the bound endpoint which RtcToNet is using to connect to the
-    // remote host. Rejects if RtcToNet could not connect to the remote host
-    // or if there is some error negotiating the SOCKS session.
-    public onceReady :Promise<net.Endpoint>;
+    // Fulfills once the SOCKS negotiation process has successfully completed.
+    // Rejects if negotiation fails for any reason.
+    public onceReady :Promise<void>;
 
     // Call this to initiate shutdown.
     private fulfillStopping_ :() => void;
@@ -309,36 +311,52 @@ module SocksToRtc {
         dataChannel:peerconnection.DataChannel,
         bytesSentToPeer:handler.Queue<number,void>,
         bytesReceivedFromPeer:handler.Queue<number,void>)
-        : Promise<net.Endpoint> => {
+        : Promise<void> => {
       this.tcpConnection_ = tcpConnection;
       this.dataChannel_ = dataChannel;
       this.bytesSentToPeer_ = bytesSentToPeer;
       this.bytesReceivedFromPeer_ = bytesReceivedFromPeer;
 
-      // Startup notifications.
-      this.onceReady = this.doAuthHandshake_().then(this.doRequestHandshake_);
-      this.onceReady.then(this.linkTcpAndPeerConnectionData_);
+      // The session is ready once we've completed both
+      // auth and request handshakes.
+      this.onceReady = this.doAuthHandshake_().then(
+          this.doRequestHandshake_).then((response:Socks.Response) => {
+        if (response.reply !== Socks.Reply.SUCCEEDED) {
+          throw new Error('handshake failed with reply code ' +
+              Socks.Reply[response.reply]);
+        }
+        log.info('%1: connected to remote host', [this.longId()]);
+        log.debug('%1: remote peer bound address: %2', [
+            this.longId(),
+            JSON.stringify(response.endpoint)]);
+      });
 
-      // Shutdown once TCP connection or datachannel terminate.
-      this.onceReady.catch(this.fulfillStopping_);
-      Promise.race<any>([
-          tcpConnection.onceClosed.then((kind:tcp.SocketCloseKind) => {
+      // Once the handshakes have completed, start forwarding data between the
+      // socket and channel and listen for socket and channel termination.
+      // If handshake fails, shutdown.
+      this.onceReady.then(() => {
+        this.linkSocketAndChannel_();
+        Promise.race<void>([
+          tcpConnection.onceClosed.then((kind:Tcp.SocketCloseKind) => {
             log.info('%1: socket closed (%2)', [
                 this.longId(),
                 tcp.SocketCloseKind[kind]]);
           }),
           dataChannel.onceClosed.then(() => {
             log.info('%1: datachannel closed', [this.longId()]);
-          })])
-        .then(this.fulfillStopping_);
+          })]).then(this.fulfillStopping_);
+      }, this.fulfillStopping_);
+
+      // Once shutdown has been requested, free resources.
       this.onceStopped = this.onceStopping_.then(this.stopResources_);
 
       return this.onceReady;
     }
 
     public longId = () : string => {
-      return 'session ' + this.channelLabel() + ' (TCP '
-          + (this.tcpConnection_.isClosed() ? 'closed' : 'open') + ')';
+      return 'session ' + this.channelLabel() + ' (socket ' +
+          this.tcpConnection_.connectionId + ' ' +
+          (this.tcpConnection_.isClosed() ? 'closed' : 'open') + ')';
     }
 
     // Initiates shutdown of the TCP server and peerconnection.
@@ -377,6 +395,7 @@ module SocksToRtc {
 
     // Receive a socks connection and send the initial Auth messages.
     // Assumes: no packet fragmentation.
+    // TODO: send failure to client if auth fails
     // TODO: handle packet fragmentation:
     //   https://github.com/uProxy/uproxy/issues/323
     // TODO: Needs unit tests badly since it's mocked by several other tests.
@@ -390,97 +409,141 @@ module SocksToRtc {
         });
     }
 
-    // Sets the next data hanlder to get next data from peer, assuming it's
-    // stringified version of the destination.
+    // Handles the SOCKS handshake, fulfilling with the Socks.Response instance
+    // sent to the SOCKS client iff all the following steps succeed:
+    //  - reads the next packet from the socket
+    //  - parses this packet as a Socks.Request instance
+    //  - forwards this to RtcToNet
+    //  - receives the next message from the channel
+    //  - parses this message as a Socks.Response instance
+    //  - forwards the Socks.Response to the SOCKS client
+    // If a response is not received from RtcToNet or any other error
+    // occurs then we send a generic FAILURE response back to the SOCKS
+    // client before rejecting.
     // TODO: Needs unit tests badly since it's mocked by several other tests.
-    private receiveResponseFromPeer_ = () : Promise<socks.Response> => {
-      return new Promise((F,R) => {
-        this.dataChannel_.dataFromPeerQueue.setSyncNextHandler((data:peerconnection.Data) => {
-          if (!data.str) {
-            R(new Error('received non-string data during handshake: ' +
-                JSON.stringify(data)));
-            return;
-          }
-          try {
-            var r :any = JSON.parse(data.str);
-            if (!socks.isValidResponse(r)) {
-              R(new Error('invalid response:' + data.str));
-              return;
-            }
-            log.info('%1: connected to remote host', [this.longId()]);
-            log.debug('%1: remote peer bound address: %2', [
-                this.longId(), JSON.stringify(r.endpoint)]);
-            F(r);
-          } catch(e) {
-            R(new Error('received malformed response during handshake: ' +
-                data.str));
-          }
-        });
-      });
-    }
-
-    // Assumes that |doAuthHandshake_| has completed and that a peer-conneciton
-    // has been established. Promise returns the bound address used to connect.
-    private doRequestHandshake_ = ()
-        : Promise<net.Endpoint> => {
+    private doRequestHandshake_ = () : Promise<Socks.Response> => {
       return this.tcpConnection_.receiveNext()
         .then(socks.interpretRequestBuffer)
         .then((request:socks.Request) => {
           log.info('%1: received endpoint from SOCKS client: %2', [
               this.longId(), JSON.stringify(request.endpoint)]);
-          this.dataChannel_.send({ str: JSON.stringify(request) });
-          return this.receiveResponseFromPeer_();
+          return this.dataChannel_.send({ str: JSON.stringify(request) });
         })
-        .then((response:socks.Response) => {
-          // TODO: test and close: https://github.com/uProxy/uproxy/issues/324
-          this.tcpConnection_.send(socks.composeResponseBuffer(response));
-          if (response.reply != socks.Reply.SUCCEEDED) {
-            this.stop();
+        .then(() => {
+          // Equivalent to channel.receiveNext(), if it existed.
+          return new Promise((F, R) => {
+            this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(F).catch(R);
+          });
+        })
+        .then((data:WebRtc.Data) => {
+          if (!data.str) {
+            throw new Error('received non-string data from peer ' +
+              'during handshake: ' + JSON.stringify(data));
           }
-          return response.endpoint;
+          try {
+            var response :Socks.Response = JSON.parse(data.str);
+            if (!Socks.isValidResponse(response)) {
+              throw new Error('invalid response received from peer ' +
+                  'during handshake: ' + data.str);
+            }
+            return response;
+          } catch (e) {
+            throw new Error('could not parse response from peer: ' + e.message);
+          }
+        })
+        .catch((e:Error) => {
+          log.debug('%1: unexpected failure during handshake, ' +
+              'returning generic FAILURE to SOCKS client: %2', [
+              this.longId(),
+              e.message]);
+          return {
+            reply: Socks.Reply.FAILURE
+          };
+        })
+        .then((response:Socks.Response) => {
+          return this.tcpConnection_.send(Socks.composeResponseBuffer(
+              response)).then((discard:any) => { return response; });
         });
     }
 
-    // Assumes that |doRequestHandshake_| has completed.
-    private linkTcpAndPeerConnectionData_ = () : void => {
-      // Any further data just goes to the target site.
-      this.tcpConnection_.dataFromSocketQueue.setSyncHandler(
-          (data:ArrayBuffer) => {
-        log.debug('%1: socket received %2 bytes', [
-            this.longId(), data.byteLength]);
-        this.dataChannel_.send({ buffer: data })
-        .catch((e:Error) => {
-          log.error('%1: failed to send data on datachannel: %2', [
-              this.longId(), e.message]);
-        });
+    // Sends a packet over the data channel.
+    // Invoked when a packet is received over the TCP socket.
+    private sendOnChannel_ = (data:ArrayBuffer) : void => {
+      log.debug('%1: socket received %2 bytes', [
+          this.longId(),
+          data.byteLength]);
+      this.dataChannel_.send({buffer: data}).then(() => {
         this.bytesSentToPeer_.handle(data.byteLength);
+      }).catch((e:Error) => {
+        log.error('%1: failed to send data on datachannel: %2', [
+            this.longId(),
+            e.message]);
       });
-      // Any data from the peer goes to the TCP connection
-      this.dataChannel_.dataFromPeerQueue.setSyncHandler((data:peerconnection.Data) => {
-        if (!data.buffer) {
-          log.error('%1: received non-buffer data from datachannel', [
-              this.longId()]);
-          return;
+    }
+
+    // Sends a packet over the TCP socket.
+    // Invoked when a packet is received over the data channel.
+    private sendOnSocket_ = (data:WebRtc.Data) : void => {
+      if (!data.buffer) {
+        log.error('%1: received non-buffer data from datachannel', [
+            this.longId()]);
+        return;
+      }
+      log.debug('%1: datachannel received %2 bytes', [
+          this.longId(),
+          data.buffer.byteLength]);
+      this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
+      this.tcpConnection_.send(data.buffer).catch((e:any) => {
+        // TODO: e is actually a freedom.Error (uproxy-lib 20+)
+        // errcode values are defined here:
+        //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
+        if (e.errcode === 'NOT_CONNECTED') {
+          // This can happen if, for example, there was still data to be
+          // read on the datachannel's queue when the socket closed.
+          log.warn('%1: tried to send data on closed socket: %2', [
+              this.longId(),
+              e.errcode]);
+        } else {
+          log.error('%1: failed to send data on socket: %2', [
+              this.longId(),
+              e.errcode]);
         }
-        log.debug('%1: datachannel received %2 bytes', [
-            this.longId(), data.buffer.byteLength]);
-        this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
-        this.tcpConnection_.send(data.buffer)
-        .catch((e:any) => {
-          // TODO: e is actually a freedom.Error (uproxy-lib 20+)
-          // errcode values are defined here:
-          //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
-          if (e.errcode === 'NOT_CONNECTED') {
-            // This can happen if, for example, there was still data to be
-            // read on the datachannel's queue when the socket closed.
-            log.warn('%1: tried to send data on closed socket: %2', [
-                this.longId(), e.errcode]);
-          } else {
-            log.error('%1: failed to send data on socket: %2', [
-                this.longId(), e.errcode]);
-          }
-        });
       });
+    }
+
+    // Configures forwarding of data from the TCP socket over the data channel
+    // and vice versa. Should only be called once both socket and channel have
+    // been successfully established and the handshake has completed.
+    private linkSocketAndChannel_ = () : void => {
+      // Note that setTimeout is used by both handlers to preserve
+      // responsiveness when large amounts of data are being received:
+      //   https://github.com/uProxy/uproxy/issues/967
+      var socketReadLoop = (data:ArrayBuffer) => {
+        this.sendOnChannel_(data);
+        Session.nextTick_(() => {
+          this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
+              socketReadLoop);
+        });
+      }
+      this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
+          socketReadLoop);
+
+      var channelReadLoop = (data:WebRtc.Data) : void => {
+        this.sendOnSocket_(data);
+        Session.nextTick_(() => {
+          this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
+              channelReadLoop);
+        });
+      };
+      this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
+          channelReadLoop);
+    }
+
+    // Runs callback once the current event loop has run to completion.
+    // Uses setTimeout in lieu of something like Node's process.nextTick:
+    //   https://github.com/uProxy/uproxy/issues/967
+    private static nextTick_ = (callback:Function) : void => {
+      setTimeout(callback, 0);
     }
   }  // Session
 

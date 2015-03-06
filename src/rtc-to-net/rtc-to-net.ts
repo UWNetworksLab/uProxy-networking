@@ -29,9 +29,42 @@ module RtcToNet {
     allowNonUnicast :boolean;
   }
 
+  export interface HandlerQueueSnapshot {
+    size :number;
+    handling :boolean;
+  }
+
+  export interface SocketSnapshot {
+    sent :number;
+    received :number;
+    queue :HandlerQueueSnapshot;
+  }
+
+  export interface DataChannelSnapshot {
+    sent :number;
+    received :number;
+    buffered :number;
+    queue :HandlerQueueSnapshot;
+  }
+
+  export interface SessionSnapshot {
+    name :string;
+    channel :DataChannelSnapshot;
+    socket :SocketSnapshot;
+  }
+
+  export interface RtcToNetSnapshot {
+    sessions :SessionSnapshot[];
+  }
+
   // The |RtcToNet| class holds a peer-connection and all its associated
   // proxied connections.
+  // TODO: Extract common code for this and SocksToRtc:
+  //         https://github.com/uProxy/uproxy/issues/977
   export class RtcToNet {
+    // Time between outputting snapshots.
+    private static SNAPSHOTTING_INTERVAL_MS = 5000;
+
     // Configuration for the proxy endpoint. Note: all sessions share the same
     // (externally provided) proxyconfig.
     public proxyConfig :ProxyConfig;
@@ -136,7 +169,40 @@ module RtcToNet {
         .then(this.fulfillStopping_, this.fulfillStopping_);
       this.onceClosed = this.onceStopping_.then(this.stopResources_);
 
+      // Uncomment this to see instrumentation data in the console.
+      //this.onceReady.then(this.initiateSnapshotting);
+
       return this.onceReady;
+    }
+
+    // Loops until onceClosed fulfills.
+    public initiateSnapshotting = () => {
+      var loop = true;
+      this.onceClosed.then(() => {
+        loop = false;
+      });
+      var writeSnapshot = () => {
+        this.getSnapshot().then((snapshot:RtcToNetSnapshot) => {
+          log.info('snapshot: %1', [JSON.stringify(snapshot)]);
+        });
+        if (loop) {
+          setTimeout(writeSnapshot, RtcToNet.SNAPSHOTTING_INTERVAL_MS);
+        }
+      };
+      writeSnapshot();
+    }
+
+    // Snapshots the state of this RtcToNet instance.
+    private getSnapshot = () : Promise<RtcToNetSnapshot> => {
+      var promises :Promise<SessionSnapshot>[] = [];
+      Object.keys(this.sessions_).forEach((key:string) => {
+        promises.push(this.sessions_[key].getSnapshot())
+      });
+      return Promise.all(promises).then((sessionSnapshots:SessionSnapshot[]) => {
+        return {
+          sessions: sessionSnapshots
+        };
+      });
     }
 
     private onPeerOpenedChannel_ = (channel:peerconnection.DataChannel) => {
@@ -160,8 +226,8 @@ module RtcToNet {
             channelLabel, Object.keys(this.sessions_).length]);
         };
       session.onceStopped().then(discard, (e:Error) => {
-        log.info('discarded session %1 (%2 remaining)', [
-            channelLabel, Object.keys(this.sessions_).length]);
+        log.error('session %1 terminated with error: %2', [
+            channelLabel, e.message]);
         discard();
       });
     }
@@ -235,6 +301,11 @@ module RtcToNet {
     // Getters.
     public channelLabel = () : string => { return this.dataChannel_.getLabel(); }
 
+    private socketSentBytes_ :number = 0;
+    private socketReceivedBytes_ :number = 0;
+    private channelSentBytes_ :number = 0;
+    private channelReceivedBytes_ :number = 0;
+
     // The supplied datachannel must already be successfully established.
     constructor(
         private dataChannel_:peerconnection.DataChannel,
@@ -278,9 +349,7 @@ module RtcToNet {
           throw e;
         });
 
-      this.onceReady.then(this.linkTcpAndPeerConnectionData_);
-
-      this.onceReady.catch(this.fulfillStopping_);
+      this.onceReady.then(this.linkSocketAndChannel_, this.fulfillStopping_);
 
       this.dataChannel_.onceClosed
       .then(() => {
@@ -412,46 +481,79 @@ module RtcToNet {
       return reply;
     }
 
-    // Assumes that |receiveEndpointFromPeer| and |getTcpConnection_|
-    // have completed.
-    private linkTcpAndPeerConnectionData_ = () : void => {
-      // Data from the TCP socket goes to the data channel.
-      this.tcpConnection_.dataFromSocketQueue.setSyncHandler((data) => {
-        log.debug('%1: socket received %2 bytes', [
-            this.longId(), data.byteLength]);
-        this.dataChannel_.send({buffer: data})
-        .catch((e:Error) => {
-          log.error('%1: failed to send data on datachannel: %2', [
-              this.longId(), e.message]);
-        });
+    // Sends a packet over the data channel.
+    // Invoked when a packet is received over the TCP socket.
+    private sendOnChannel_ = (data:ArrayBuffer) : void => {
+      this.socketReceivedBytes_ += data.byteLength;
+      log.debug('%1: socket received %2 bytes', [
+          this.longId(),
+          data.byteLength]);
+      this.dataChannel_.send({buffer: data}).then(() => {
         this.bytesSentToPeer_.handle(data.byteLength);
+        this.channelSentBytes_ += data.byteLength;
+      }).catch((e:Error) => {
+        log.error('%1: failed to send data on datachannel: %2', [
+            this.longId(),
+            e.message]);
       });
-      // Data from the datachannel goes to the TCP socket.
-      this.dataChannel_.dataFromPeerQueue.setSyncHandler((data:peerconnection.Data) => {
-        if (!data.buffer) {
-          log.error('%1: received non-buffer data from datachannel', [
-              this.longId()]);
-          return;
+    }
+
+    // Sends a packet over the TCP socket.
+    // Invoked when a packet is received over the data channel.
+    private sendOnSocket_ = (data:WebRtc.Data) : void => {
+      this.channelReceivedBytes_ += data.buffer.byteLength;
+      if (!data.buffer) {
+        log.error('%1: received non-buffer data from datachannel', [
+            this.longId()]);
+        return;
+      }
+      log.debug('%1: datachannel received %2 bytes', [
+          this.longId(),
+          data.buffer.byteLength]);
+      this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
+      this.tcpConnection_.send(data.buffer).then(() => {
+        this.socketSentBytes_ += data.buffer.byteLength;
+      }).catch((e:any) => {
+        // TODO: e is actually a freedom.Error (uproxy-lib 20+)
+        // errcode values are defined here:
+        //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
+        if (e.errcode === 'NOT_CONNECTED') {
+          // This can happen if, for example, there was still data to be
+          // read on the datachannel's queue when the socket closed.
+          log.warn('%1: tried to send data on closed socket: %2', [
+              this.longId(),
+              e.errcode]);
+        } else {
+          log.error('%1: failed to send data on socket: %2', [
+              this.longId(),
+              e.errcode]);
         }
-        log.debug('%1: datachannel received %2 bytes', [
-            this.longId(), data.buffer.byteLength]);
-        this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
-        this.tcpConnection_.send(data.buffer)
-        .catch((e:any) => {
-          // TODO: e is actually a freedom.Error (uproxy-lib 20+)
-          // errcode values are defined here:
-          //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
-          if (e.errcode === 'NOT_CONNECTED') {
-            // This can happen if, for example, there was still data to be
-            // read on the datachannel's queue when the socket closed.
-            log.warn('%1: tried to send data on closed socket: %2', [
-                this.longId(), e.errcode]);
-          } else {
-            log.error('%1: failed to send data on socket: %2', [
-                this.longId(), e.errcode]);
-          }
-        });
       });
+    }
+
+    // Configures forwarding of data from the TCP socket over the data channel
+    // and vice versa. Should only be called once both socket and channel have
+    // been successfully established.
+    private linkSocketAndChannel_ = () : void => {
+      var socketReadLoop = (data:ArrayBuffer) => {
+        this.sendOnChannel_(data);
+        Session.nextTick_(() => {
+          this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
+              socketReadLoop);
+        });
+      }
+      this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
+          socketReadLoop);
+
+      var channelReadLoop = (data:WebRtc.Data) : void => {
+        this.sendOnSocket_(data);
+        Session.nextTick_(() => {
+          this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
+              channelReadLoop);
+        });
+      };
+      this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
+          channelReadLoop);
     }
 
     private isAllowedAddress_ = (addressString:string) : boolean => {
@@ -474,11 +576,36 @@ module RtcToNet {
       }
     }
 
+    public getSnapshot = () : Promise<SessionSnapshot> => {
+      return this.dataChannel_.getBufferedAmount().then((bufferedAmount:number) => {
+        return {
+          name: this.channelLabel(),
+          channel: {
+            sent: this.channelSentBytes_,
+            received: this.channelReceivedBytes_,
+            buffered: bufferedAmount,
+            queue: {
+              size: this.dataChannel_.dataFromPeerQueue.getLength(),
+              handling: this.dataChannel_.dataFromPeerQueue.isHandling()
+            }
+          },
+          socket: {
+            sent: this.socketSentBytes_,
+            received: this.socketReceivedBytes_,
+            queue: {
+              size: this.tcpConnection_.dataFromSocketQueue.getLength(),
+              handling: this.tcpConnection_.dataFromSocketQueue.isHandling()
+            }
+          }
+        };
+      });
+    }
+
     public longId = () : string => {
       var s = 'session ' + this.channelLabel();
       if (this.tcpConnection_) {
-        s += ' (TCP ' + (this.tcpConnection_.isClosed() ?
-            'closed' : 'open') + ')';
+        s += ' (tcp-socket: ' + this.tcpConnection_.connectionId + ' ' +
+            (this.tcpConnection_.isClosed() ? 'closed' : 'open') + ')';
       }
       return s;
     }
@@ -493,6 +620,13 @@ module RtcToNet {
         channelLabel_: this.channelLabel(),
         tcpConnection: tcpString
       });
+    }
+
+    // Runs callback once the current event loop has run to completion.
+    // Uses setTimeout in lieu of something like Node's process.nextTick:
+    //   https://github.com/uProxy/uproxy/issues/967
+    private static nextTick_ = (callback:Function) : void => {
+      setTimeout(callback, 0);
     }
   }  // Session
 

@@ -354,12 +354,10 @@ export class Connection {
     });
   }
 
-  // This happens when the Tcp connection is closed by the other end or
-  // because  of an error. When closed by the other end, onceDisconnected is
-  // fullfilled.  If there's an error, onceDisconnected is rejected with the
-  // error.
+  // Invoked when the socket is closed for any reason.
+  // Fulfills onceClosed.
   private onDisconnectHandler_ = (info:freedom_TcpSocket.DisconnectInfo) : void => {
-    log.debug('%1: Disconnected: %2', [
+    log.debug('%1: onDisconnect: %2', [
         this.connectionId,
         JSON.stringify(info)]);
 
@@ -369,8 +367,9 @@ export class Connection {
     }
 
     this.state_ = Connection.State.CLOSED;
-
     this.dataToSocketQueue.stopHandling();
+    this.dataToSocketQueue.clear();
+
     destroyFreedomSocket_(this.connectionSocket_).then(() => {
       if (info.errcode === 'SUCCESS') {
         this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
@@ -385,20 +384,18 @@ export class Connection {
   // This is called to close the underlying socket. This fulfills the
   // disconnect Promise `onceDisconnected`.
   public close = () : Promise<SocketCloseKind> => {
-    //log.debug(this.connectionId + ': close');
+    log.debug('%1: close', [this.connectionId]);
+
     if (this.state_ === Connection.State.CLOSED) {
-      //log.warn(this.connectionId + ': close: called when already closed');
-      return;
+      log.debug('%1: close called when already closed', [
+          this.connectionId]);
+    } else {
+      this.connectionSocket_.close();
     }
-    this.dataToSocketQueue.stopHandling();
-    this.connectionSocket_.close();
-    // Note: calling close on the freedom socket will cause
-    // `onDisconnectHandler_` to be fired, but we need to fulfill the promise
-    // set closed here and fulfill here because on the onDisconnect Handler
-    // needs to also call this.connectionSocket_.close() to do freedom memory
-    // cleanup.
-    this.state_ = Connection.State.CLOSED;
-    this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
+
+    // The onDisconnect handler (which should only
+    // be invoked once) actually stops handling, fulfills
+    // onceClosed, etc.
     return this.onceClosed;
   }
 
