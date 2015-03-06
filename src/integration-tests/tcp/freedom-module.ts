@@ -54,6 +54,8 @@ parentModule.on('floodtwoclient', (data) => {
   var second_total = 0.0;
   var first_start = 0;
   var second_start = 0;
+  var first_end = 0;
+  var second_end = 0;
   if (data) {
     if (data["firstport"]) {
       firstport = data.firstport;
@@ -66,23 +68,26 @@ parentModule.on('floodtwoclient', (data) => {
   var secondclient = new tcp.Connection({endpoint:{address:"localhost", port:secondport}});
   log.info("Starting flood client to localhost:[" + firstport + "," + secondport + "]");
   var fun = () => {
-    var fstats = firstclient.dataFromSocketQueue.getStats();
-    var sstats = secondclient.dataFromSocketQueue.getStats();
-    var now = performance.now();
-    var frate = (first_total / (now - first_start)) / 1000.0;
-    var srate = (second_total / (now - second_start)) / 1000.0;
-    log.info("now: " + now + ", fst_rate: " + frate +", snd_rate: " + srate + ", "
-             "fst_queued_events: " + fstats.queued_events + ", " +
-             "fst_handled_events: " + fstats.handled_events + ", " +
-             "fst_following_queued_events: " + fstats.following_queued_events + ", " +
-             "fst_num_handlers_set: " + fstats.num_handlers_set + ", " +
-             "fst_dropped_events: " + fstats.dropped_events  + ", " +
-             "snd_queued_events: " + sstats.queued_events + ", " +
-             "snd_handled_events: " + sstats.handled_events + ", " +
-             "snd_following_queued_events: " + sstats.following_queued_events + ", " +
-             "snd_num_handlers_set: " + sstats.num_handlers_set + ", " +
-             "snd_dropped_events: " + sstats.dropped_events);
-    setTimeout(fun, 1000);
+    if (first_end == 0 && second_end == 0) {
+      var fstats = firstclient.dataFromSocketQueue.getStats();
+      var sstats = secondclient.dataFromSocketQueue.getStats();
+      var now = performance.now();
+      var frate = (first_total / (now - first_start)) / 1000.0;
+      var srate = (second_total / (now - second_start)) / 1000.0;
+      log.info("{\"now\": " + now + ", \"nr\": 1, \"rate\": " + frate + ", " +
+               "\"queued_events\": " + fstats.queued_events + ", " +
+               "\"handled_events\": " + fstats.handled_events + ", " +
+               "\"following_queued_events\": " + fstats.following_queued_events + ", " +
+               "\"num_handlers_set\": " + fstats.num_handlers_set + ", " +
+               "\"dropped_events\": " + fstats.dropped_events  +
+               "}, {\"now\": " + now + ", \"nr\": 2, \"rate\": " + srate + ", " +
+               "\"queued_events\": " + sstats.queued_events + ", " +
+               "\"handled_events\": " + sstats.handled_events + ", " +
+               "\"following_queued_events\": " + sstats.following_queued_events + ", " +
+               "\"num_handlers_set\": " + sstats.num_handlers_set + ", " +
+               "\"dropped_events\": " + sstats.dropped_events + "}");
+      setTimeout(fun, 1000);
+    }
   };
   setTimeout(fun, 1000);
   firstclient.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
@@ -92,12 +97,18 @@ parentModule.on('floodtwoclient', (data) => {
   firstclient.onceConnected.then((info:tcp.ConnectionInfo) => {
     first_start = performance.now();
   });
+  firstclient.onceClosed.then((info:tcp.ConnectionInfo) => {
+    first_end = performance.now();
+  });
   secondclient.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
     var bytes = new Uint8Array(buffer);
     second_total += bytes.length;
   });
   secondclient.onceConnected.then((info:tcp.ConnectionInfo) => {
     second_start = performance.now();
+  });
+  secondclient.onceClosed.then((info:tcp.ConnectionInfo) => {
+    second_end = performance.now();
   });
 });
 
