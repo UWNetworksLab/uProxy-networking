@@ -23,28 +23,22 @@ module RtcToNet {
     allowNonUnicast :boolean;
   }
 
-  export interface HandlerQueueSnapshot {
-    size :number;
-    handling :boolean;
-  }
-
-  export interface SocketSnapshot {
-    sent :number;
-    received :number;
-    queue :HandlerQueueSnapshot;
-  }
-
-  export interface DataChannelSnapshot {
-    sent :number;
-    received :number;
-    buffered :number;
-    queue :HandlerQueueSnapshot;
-  }
-
   export interface SessionSnapshot {
     name :string;
-    channel :DataChannelSnapshot;
-    socket :SocketSnapshot;
+    // Time in seconds, with fractional parts, of when the snapshot
+    // was taken.  Epoch is start of this web-worker.  This is the
+    // result of calling performance.now() -
+    // https://developer.mozilla.org/en-US/docs/Web/API/Performance/now
+    timestamp: number;
+    channel_sent: number;
+    channel_received: number;
+    channel_buffered: number;
+    channel_queue_size: number;
+    channel_queue_handling: boolean;
+    socket_sent: number;
+    socket_received: number;
+    socket_queue_size: number;
+    socket_queue_handling: boolean;
   }
 
   export interface RtcToNetSnapshot {
@@ -175,7 +169,7 @@ module RtcToNet {
       });
       var writeSnapshot = () => {
         this.getSnapshot().then((snapshot:RtcToNetSnapshot) => {
-          log.info('snapshot: %1', [JSON.stringify(snapshot)]);
+          log.info('snapshot: %1', JSON.stringify(snapshot));
         });
         if (loop) {
           setTimeout(writeSnapshot, RtcToNet.SNAPSHOTTING_INTERVAL_MS);
@@ -571,24 +565,17 @@ module RtcToNet {
       return this.dataChannel_.getBufferedAmount().then((bufferedAmount:number) => {
         return {
           name: this.channelLabel(),
-          channel: {
-            sent: this.channelSentBytes_,
-            received: this.channelReceivedBytes_,
-            buffered: bufferedAmount,
-            queue: {
-              size: this.dataChannel_.dataFromPeerQueue.getLength(),
-              handling: this.dataChannel_.dataFromPeerQueue.isHandling()
-            }
-          },
-          socket: {
-            sent: this.socketSentBytes_,
-            received: this.socketReceivedBytes_,
-            queue: {
-              size: this.tcpConnection_.dataFromSocketQueue.getLength(),
-              handling: this.tcpConnection_.dataFromSocketQueue.isHandling()
-            }
-          }
-        };
+          timestamp: performance.now(),
+          channel_sent: this.channelSentBytes_,
+          channel_received: this.channelReceivedBytes_,
+          channel_buffered: bufferedAmount,
+          channel_queue_size: this.dataChannel_.dataFromPeerQueue.getLength(),
+          channel_queue_handling: this.dataChannel_.dataFromPeerQueue.isHandling(),
+          socket_sent: this.socketSentBytes_,
+          socket_received: this.socketReceivedBytes_,
+          socket_queue_size: this.tcpConnection_.dataFromSocketQueue.getLength(),
+          socket_queue_handling: this.tcpConnection_.dataFromSocketQueue.isHandling()
+        }
       });
     }
 
