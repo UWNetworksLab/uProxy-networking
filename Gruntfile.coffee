@@ -48,16 +48,16 @@ taskManager.add 'sampleSimpleSocks', [
 
 taskManager.add 'sampleEchoServer', [
   'base'
-  'copy:libsForSampleEchoServerChromeApp'
-  'browserify:sampleEchoServerChromeApp'
+  'copy:libsForEchoServerChromeApp'
+  'browserify:echoServerChromeApp'
 ]
 
 # TODO: fix.
 taskManager.add 'sampleCopyPasteChurnChatChromeApp', [
   'base'
   'copy:libsForCopyPasteChurnChatChromeApp'
-  'browserify:copyPasteChurnChatChromeAppMain'
-  'browserify:copyPasteChurnChatChromeAppFreedomModule'
+  'browserify:copyPasteChurnChatChromeApp'
+  'browserify:copyPasteChurnChatFreedomModule'
 ]
 
 taskManager.add 'integrationTestModules', [
@@ -80,7 +80,7 @@ taskManager.add 'sampleFreedomModuleRunnerChromeApp', [
   'base'
   'integrationTestModules'
   'copy:libsForFreedomModuleRunner'
-  'browserify:sampleFreedomModuleRunnerMain'
+  'browserify:freedomModuleRunnerChromeApp'
 ]
 
 #-------------------------------------------------------------------------
@@ -206,7 +206,7 @@ module.exports = (grunt) ->
         ]
 
       # Copy the freedom output file to sample apps
-      libsForSampleEchoServerChromeApp:
+      libsForEchoServerChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome/freedom-for-chrome.js']
           pathsFromDevBuild: ['echo']
@@ -312,36 +312,36 @@ module.exports = (grunt) ->
 
     browserify:
       # Unit test specs
-      tcpSpec: Rule.browserifySpec 'net/tcp'
       churnSpec: Rule.browserifySpec 'churn/churn'
+      rtcToNetSpec: Rule.browserifySpec 'rtc-to-net/rtc-to-net'
       simpleTransformersCaesarSpec: Rule.browserifySpec 'simple-transformers/caesar'
       socksCommonHeadersSpec: Rule.browserifySpec 'socks-common/socks-headers'
-      rtcToNetSpec: Rule.browserifySpec 'rtc-to-net/rtc-to-net'
       socksToRtcSpec: Rule.browserifySpec 'socks-to-rtc/socks-to-rtc'
+      tcpSpec: Rule.browserifySpec 'net/tcp'
       turnFrontEndMessagesSpec: Rule.browserifySpec 'turn-frontend/messages'
       turnFrontEndSpec: Rule.browserifySpec 'turn-frontend/turn-frontend'
 
-      # Sample app mains
-      sampleFreedomModuleRunnerMain: Rule.browserify 'samples/freedom-module-runner-chromeapp/main.core-env'
-
-      # Browserify freedom-modules in the library
-
+      # Freedom Modules
       churnPipeFreedomModule: Rule.browserify 'churn-pipe/freedom-module'
-
+      copyPasteChurnChatFreedomModule: Rule.browserify 'samples/copypaste-churn-chat-chromeapp/freedom-module'
       echoFreedomModule: Rule.browserify 'echo/freedom-module'
-      sampleEchoServerChromeApp: Rule.browserify 'samples/echo-server-chromeapp/background.core-env'
-
       simpleSocksFreedomModule: Rule.browserify 'simple-socks/freedom-module'
+      turnBackendFreedomModule: Rule.browserify 'turn-backend/freedom-module'
+      turnFrontendFreedomModule: Rule.browserify 'turn-frontend/freedom-module'
+
+      # Sample app mains
+      copyPasteChurnChatChromeApp: Rule.browserify 'samples/copypaste-churn-chat-chromeapp/main.core-env'
+      echoServerChromeApp: Rule.browserify 'samples/echo-server-chromeapp/background.core-env'
+      freedomModuleRunnerChromeApp: Rule.browserify 'samples/freedom-module-runner-chromeapp/background.core-env'
       simpleSocksChromeApp: Rule.browserify 'samples/simple-socks-chromeapp/background.core-env'
 
-      copyPasteChurnChatChromeAppMain: Rule.browserify 'samples/copypaste-churn-chat-chromeapp/main.core-env'
-      copyPasteChurnChatChromeAppFreedomModule: Rule.browserify 'samples/copypaste-churn-chat-chromeapp/freedom-module'
-
-      # Browserify Integration
+      # Integration tests: tcp
       integrationTcpFreedomModule:
         Rule.browserify 'integration-tests/tcp/freedom-module'
       integrationTcpSpec:
         Rule.browserifySpec 'integration-tests/tcp/tcp.core-env'
+
+      # Integration tests: socks-echo
       integrationSocksEchoFreedomModule:
         Rule.browserify 'integration-tests/socks-echo/freedom-module'
       integrationSocksEchoChurnSpec:
