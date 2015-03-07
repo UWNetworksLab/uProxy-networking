@@ -304,9 +304,11 @@ module.exports = (grunt) ->
     jasmine:
       churn: Rule.jasmineSpec 'churn'
       net: Rule.jasmineSpec 'net'
+      rtcToNet: Rule.jasmineSpec 'rtc-to-net'
       simpleTransformers: Rule.jasmineSpec 'simple-transformers'
       socksCommon: Rule.jasmineSpec('socks-common',
         [path.join(thirdPartyBuildPath, 'ipaddr/ipaddr.js')]);
+      socksToRtc: Rule.jasmineSpec 'socks-to-rtc'
 
     browserify:
       # Unit test specs

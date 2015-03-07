@@ -2,6 +2,9 @@
 /// <reference path='../../../third_party/freedom-typings/freedom-common.d.ts' />
 /// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
 
+import freedomMocker = require('../../../third_party/uproxy-lib/freedom/mocks/mock-freedom-in-module-env');
+freedom = freedomMocker.makeMockFreedomInModuleEnv();
+
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
@@ -320,10 +323,10 @@ module SocksToRtc {
       // The session is ready once we've completed both
       // auth and request handshakes.
       this.onceReady = this.doAuthHandshake_().then(
-          this.doRequestHandshake_).then((response:Socks.Response) => {
-        if (response.reply !== Socks.Reply.SUCCEEDED) {
+          this.doRequestHandshake_).then((response:socks.Response) => {
+        if (response.reply !== socks.Reply.SUCCEEDED) {
           throw new Error('handshake failed with reply code ' +
-              Socks.Reply[response.reply]);
+              socks.Reply[response.reply]);
         }
         log.info('%1: connected to remote host', [this.longId()]);
         log.debug('%1: remote peer bound address: %2', [
@@ -337,7 +340,7 @@ module SocksToRtc {
       this.onceReady.then(() => {
         this.linkSocketAndChannel_();
         Promise.race<void>([
-          tcpConnection.onceClosed.then((kind:Tcp.SocketCloseKind) => {
+          tcpConnection.onceClosed.then((kind:tcp.SocketCloseKind) => {
             log.info('%1: socket closed (%2)', [
                 this.longId(),
                 tcp.SocketCloseKind[kind]]);
@@ -409,19 +412,19 @@ module SocksToRtc {
         });
     }
 
-    // Handles the SOCKS handshake, fulfilling with the Socks.Response instance
+    // Handles the SOCKS handshake, fulfilling with the socks.Response instance
     // sent to the SOCKS client iff all the following steps succeed:
     //  - reads the next packet from the socket
-    //  - parses this packet as a Socks.Request instance
+    //  - parses this packet as a socks.Request instance
     //  - forwards this to RtcToNet
     //  - receives the next message from the channel
-    //  - parses this message as a Socks.Response instance
-    //  - forwards the Socks.Response to the SOCKS client
+    //  - parses this message as a socks.Response instance
+    //  - forwards the socks.Response to the SOCKS client
     // If a response is not received from RtcToNet or any other error
     // occurs then we send a generic FAILURE response back to the SOCKS
     // client before rejecting.
     // TODO: Needs unit tests badly since it's mocked by several other tests.
-    private doRequestHandshake_ = () : Promise<Socks.Response> => {
+    private doRequestHandshake_ = () : Promise<socks.Response> => {
       return this.tcpConnection_.receiveNext()
         .then(socks.interpretRequestBuffer)
         .then((request:socks.Request) => {
@@ -435,14 +438,14 @@ module SocksToRtc {
             this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(F).catch(R);
           });
         })
-        .then((data:WebRtc.Data) => {
+        .then((data:peerconnection.Data) => {
           if (!data.str) {
             throw new Error('received non-string data from peer ' +
               'during handshake: ' + JSON.stringify(data));
           }
           try {
-            var response :Socks.Response = JSON.parse(data.str);
-            if (!Socks.isValidResponse(response)) {
+            var response :socks.Response = JSON.parse(data.str);
+            if (!socks.isValidResponse(response)) {
               throw new Error('invalid response received from peer ' +
                   'during handshake: ' + data.str);
             }
@@ -457,11 +460,11 @@ module SocksToRtc {
               this.longId(),
               e.message]);
           return {
-            reply: Socks.Reply.FAILURE
+            reply: socks.Reply.FAILURE
           };
         })
-        .then((response:Socks.Response) => {
-          return this.tcpConnection_.send(Socks.composeResponseBuffer(
+        .then((response:socks.Response) => {
+          return this.tcpConnection_.send(socks.composeResponseBuffer(
               response)).then((discard:any) => { return response; });
         });
     }
@@ -483,7 +486,7 @@ module SocksToRtc {
 
     // Sends a packet over the TCP socket.
     // Invoked when a packet is received over the data channel.
-    private sendOnSocket_ = (data:WebRtc.Data) : void => {
+    private sendOnSocket_ = (data:peerconnection.Data) : void => {
       if (!data.buffer) {
         log.error('%1: received non-buffer data from datachannel', [
             this.longId()]);
@@ -528,7 +531,7 @@ module SocksToRtc {
       this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
           socketReadLoop);
 
-      var channelReadLoop = (data:WebRtc.Data) : void => {
+      var channelReadLoop = (data:peerconnection.Data) : void => {
         this.sendOnSocket_(data);
         Session.nextTick_(() => {
           this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(

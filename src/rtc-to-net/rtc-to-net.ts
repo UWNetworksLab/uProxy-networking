@@ -246,10 +246,15 @@ module RtcToNet {
     // TODO: close all sessions before fulfilling
     private stopResources_ = () : Promise<void> => {
       log.debug('freeing resources');
-      return new Promise<void>((F, R) => { this.peerConnection_.close(); F(); });
+      // TODO(ldixon): why not just return this.peerConnection_.close();
+      return new Promise<void>((F, R) => {
+        this.peerConnection_.close();
+        F();
+      });
     }
 
-    public handleSignalFromPeer = (signal:peerconnection.SignallingMessage) : void => {
+    public handleSignalFromPeer = (signal:peerconnection.SignallingMessage)
+        : void => {
       this.peerConnection_.handleSignalMessage(signal);
     }
 
@@ -296,10 +301,10 @@ module RtcToNet {
     //  - manual invocation of close()
     // Should never reject.
     private onceStopped_ :Promise<void>;
-    public onceStopped = () : Promise<void> => { return this.onceStopped_; }
+    public onceStopped = () :Promise<void> => { return this.onceStopped_; }
 
     // Getters.
-    public channelLabel = () : string => { return this.dataChannel_.getLabel(); }
+    public channelLabel = () :string => { return this.dataChannel_.getLabel(); }
 
     private socketSentBytes_ :number = 0;
     private socketReceivedBytes_ :number = 0;
@@ -310,8 +315,8 @@ module RtcToNet {
     constructor(
         private dataChannel_:peerconnection.DataChannel,
         private proxyConfig_:ProxyConfig,
-        private bytesReceivedFromPeer_:handler.Queue<number,void>,
-        private bytesSentToPeer_:handler.Queue<number,void>) {}
+        private bytesReceivedFromPeer_:handler.QueueFeeder<number,void>,
+        private bytesSentToPeer_:handler.QueueFeeder<number,void>) {}
 
     // Returns onceReady.
     public start = () : Promise<void> => {
@@ -394,7 +399,8 @@ module RtcToNet {
     // TODO: needs tests (mocked by several tests)
     private receiveEndpointFromPeer_ = () : Promise<net.Endpoint> => {
       return new Promise((F,R) => {
-        this.dataChannel_.dataFromPeerQueue.setSyncNextHandler((data:peerconnection.Data) => {
+        this.dataChannel_.dataFromPeerQueue
+            .setSyncNextHandler((data:peerconnection.Data) => {
           if (!data.str) {
             R(new Error('received non-string data from peer: ' +
                 JSON.stringify(data)));
@@ -435,8 +441,8 @@ module RtcToNet {
       return new tcp.Connection({endpoint: endpoint});
     }
 
-    // Fulfills once the connected endpoint has been returned to the SOCKS client.
-    // Rejects if the endpoint cannot be sent to the SOCKS client.
+    // Fulfills once the connected endpoint has been returned to the SOCKS
+    // client. Rejects if the endpoint cannot be sent to the SOCKS client.
     private replyToPeer_ = (reply:socks.Reply, info?:tcp.ConnectionInfo)
         : Promise<void> => {
       var response :socks.Response = {
@@ -500,7 +506,7 @@ module RtcToNet {
 
     // Sends a packet over the TCP socket.
     // Invoked when a packet is received over the data channel.
-    private sendOnSocket_ = (data:WebRtc.Data) : void => {
+    private sendOnSocket_ = (data:peerconnection.Data) : void => {
       this.channelReceivedBytes_ += data.buffer.byteLength;
       if (!data.buffer) {
         log.error('%1: received non-buffer data from datachannel', [
@@ -545,7 +551,7 @@ module RtcToNet {
       this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
           socketReadLoop);
 
-      var channelReadLoop = (data:WebRtc.Data) : void => {
+      var channelReadLoop = (data:peerconnection.Data) : void => {
         this.sendOnSocket_(data);
         Session.nextTick_(() => {
           this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
@@ -577,7 +583,8 @@ module RtcToNet {
     }
 
     public getSnapshot = () : Promise<SessionSnapshot> => {
-      return this.dataChannel_.getBufferedAmount().then((bufferedAmount:number) => {
+      return this.dataChannel_.getBufferedAmount()
+          .then((bufferedAmount:number) => {
         return {
           name: this.channelLabel(),
           channel: {

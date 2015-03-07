@@ -2,6 +2,9 @@
 /// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
 /// <reference path='../../../third_party/typings/jasmine/jasmine.d.ts' />
 
+import freedomMocker = require('../../../third_party/uproxy-lib/freedom/mocks/mock-freedom-in-module-env');
+freedom = freedomMocker.makeMockFreedomInModuleEnv();
+
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
@@ -12,6 +15,7 @@ import tcp = require('../net/tcp');
 import socks = require('../socks-common/socks-headers');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
+
 
 var log :logging.Log = new logging.Log('socks-to-rtc spec');
 
@@ -103,6 +107,7 @@ describe("RtcToNet session", function() {
 
   var mockTcpConnection :tcp.Connection;
   var mockDataChannel :peerconnection.DataChannel;
+  var mockDataFromPeerQueue :handler.Queue<peerconnection.Data,void>;
   var mockBytesReceived :handler.Queue<number,void>;
   var mockBytesSent :handler.Queue<number,void>;
 
@@ -113,22 +118,23 @@ describe("RtcToNet session", function() {
         'isClosed',
         'close'
       ]);
-    mockTcpConnection.dataFromSocketQueue = new Handler.Queue<ArrayBuffer,void>();
+    mockTcpConnection.dataFromSocketQueue = new handler.Queue<ArrayBuffer,void>();
+    mockDataFromPeerQueue = new handler.Queue<peerconnection.Data,void>();
 
     mockDataChannel = <any>{
-      closeDataChannel: noopPromise,
-      onceClosed: noopPromise,
       close: jasmine.createSpy('close'),
+      closeDataChannel: noopPromise,
+      dataFromPeerQueue: mockDataFromPeerQueue,
       getLabel: jasmine.createSpy('getLabel'),
+      onceClosed: noopPromise,
       send: jasmine.createSpy('send')
     };
-    mockDataChannel.dataFromPeerQueue = new Handler.Queue<ArrayBuffer,void>();
     (<any>mockDataChannel.send).and.returnValue(voidPromise);
 
 
-    mockBytesReceived = new Handler.Queue<number, void>();
-    mockBytesSent = new Handler.Queue<number, void>();
-    session = new RtcToNet.Session(
+    mockBytesReceived = new handler.Queue<number, void>();
+    mockBytesSent = new handler.Queue<number, void>();
+    session = new rtc_to_net.Session(
         mockDataChannel,
         mockProxyConfig,
         mockBytesReceived,
@@ -217,11 +223,11 @@ describe("RtcToNet session", function() {
     mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
     mockTcpConnection.onceClosed = noopPromise;
 
-    var message :WebRtc.Data = {
+    var message :peerconnection.Data = {
       buffer: new Uint8Array([1,2,3]).buffer
     };
     session.start().then(() => {
-      mockDataChannel.dataFromPeerQueue.handle(message);
+      mockDataFromPeerQueue.handle(message);
     });
     mockBytesReceived.setSyncNextHandler((numBytes:number) => {
       expect(numBytes).toEqual(message.buffer.byteLength);
