@@ -350,16 +350,21 @@ module.exports = (grunt) ->
         Rule.browserifySpec 'integration-tests/socks-echo/slow.core-env'
       # Browserify sample apps main freedom module and core environments
 
-    # TODO: debug this, why doesn't it work? TODO: File issue for when a file
-    # can't be found: some sensible error should be produced.
     jasmine_chromeapp:
       tcp:
-        src: [ devBuildPath + '/integration-tests/tcp/freedom-module.static.js' ]
+        src: [
+          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.static.js'
+          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.json'
+          devBuildPath + '/integration-tests/tcp/freedom-module.static.js'
+          devBuildPath + '/integration-tests/tcp/freedom-module.json'
+          freedomForChromePath + '/freedom-for-chrome.js'
+          devBuildPath + '/integration-tests/tcp/tcp.core-env.spec.static.js'
+        ]
         options:
           paths: [
-            devBuildPath + '/integration-tests/tcp/tcp.core-env.static.js'
+            freedomForChromePath + '/freedom-for-chrome.js'
+            devBuildPath + '/integration-tests/tcp/tcp.core-env.spec.static.js'
           ]
-          binary: '/Applications/Google\ Chrome\ Canary.app/Contents/MacOS/Google\ Chrome\ Canary'
           outfile: devBuildPath + '/integration-tests/tcp/jasmine_chromeapp/'
           keepRunner: true
 
