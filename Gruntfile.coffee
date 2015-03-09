@@ -366,7 +366,7 @@ module.exports = (grunt) ->
             devBuildPath + '/integration-tests/tcp/tcp.core-env.spec.static.js'
           ]
           outfile: devBuildPath + '/integration-tests/tcp/jasmine_chromeapp/'
-          keepRunner: true
+          keepRunner: false
 
     clean:
       build:
