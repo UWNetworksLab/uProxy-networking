@@ -1,7 +1,7 @@
 // TODO(ldixon): update to a require-style inclusion.
 // e.g.
-// import Transformer = require('../../../third_party/uproxy-obfuscators/utransformer');
-/// <reference path='../../../third_party/uproxy-obfuscators/interfaces/utransformer.d.ts' />
+//  import Transformer = require('uproxy-obfuscators/transformer');
+/// <reference path='../../../third_party/uTransformers/utransformer.d.ts' />
 
 import Transformer = UTransformers.Transformer;
 

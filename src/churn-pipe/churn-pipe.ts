@@ -2,31 +2,15 @@
 /// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../../../third_party/freedom-typings/udp-socket.d.ts' />
 
-// TODO(ldixon): update to a require-style inclusion. In the meantime, the lack
-// of require-style exports for obfuscators means that each inclusion of churn-
-// pipe has to copy |utransformers/src/transformers/*| (in node_modules) into
-// |../../uproxy-obfusctors/transformers/*| relative to the location of churn-
-// pipe.
-
+// TODO(ldixon): reorganize the utransformers and rename uproxy-obfuscators.
 // Ideal:
-// import Transformer = require('../../../third_party/uproxy-obfuscators/utransformer');
-// import Rabbit = require('../../../third_party/uproxy-obfuscators/utransformers.rabbit');
-// import Fte = require('../../../third_party/uproxy-obfuscators/utransformers.fte');
-
+//  import Transformer = require('uproxy-obfuscators/transformer');
+//  import Rabbit = require('uproxy-obfuscators/rabbit.transformer');
+//  import Fte = require('uproxy-obfuscators/fte.transformer');
 // Current:
-/// <reference path='../../../third_party/uproxy-obfuscators/interfaces/utransformer.d.ts' />
-/// <reference path='../../../third_party/uproxy-obfuscators/interfaces/utransformers.fte.d.ts' />
-/// <reference path='../../../third_party/uproxy-obfuscators/interfaces/utransformers.rabbit.d.ts' />
-
-// TODO(ldixon): Make the uproxy-obfuscators repo itself import the regexp2dfa
-// library so that its dependencies are self-contained. Currently, this is
-// needed to allow Fte to run.
-/// <reference path='../../../third_party/regex2dfa/regex2dfa.d.ts' />
-import regex2dfa = require('regex2dfa');
-
-import Transformer = UTransformers.Transformer;
-import Rabbit = fte.Transformer;
-import Fte = rabbit.Transformer;
+/// <reference path='../../../third_party/uTransformers/utransformer.d.ts' />
+import Rabbit = require('utransformers/src/transformers/uTransformer.fte');
+import Fte = require('utransformers/src/transformers/uTransformer.rabbit');
 
 import PassThrough = require('../simple-transformers/passthrough');
 import CaesarCipher = require('../simple-transformers/caesar');
@@ -113,9 +97,9 @@ class Pipe {
       : Transformer => {
     var transformer :Transformer;
     if (name == 'rabbit') {
-      transformer = new Rabbit();
+      transformer = new Rabbit.Transformer();
     } else if (name == 'fte') {
-      transformer = new Fte();
+      transformer = new Fte.Transformer();
     } else if (name == 'caesar') {
       transformer = new CaesarCipher();
     } else if (name == 'none') {
