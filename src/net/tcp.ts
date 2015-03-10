@@ -370,6 +370,9 @@ export class Connection {
     this.dataToSocketQueue.stopHandling();
     this.dataToSocketQueue.clear();
 
+    // CONSIDER: can this happen after a onceConnected promise rejection? if so,
+    // do we want to preserve the SocketCloseKind.NEVER_CONNECTED result for
+    // onceClosed?
     destroyFreedomSocket_(this.connectionSocket_).then(() => {
       if (info.errcode === 'SUCCESS') {
         this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);

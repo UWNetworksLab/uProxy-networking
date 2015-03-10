@@ -17,10 +17,14 @@ export var log :logging.Log = new logging.Log(moduleName);
 // show only warnings by default from the rest of the system.
 // Note that the proxy is extremely slow in debug (D) mode.
 export var loggingController = freedom['loggingcontroller']();
-loggingController.setConsoleFilter([
-    '*:W',
-    'SocksToRtc:I',
-    'RtcToNet:I']);
+
+// Example to show how to manuall configure console filtering.
+//
+// loggingController.setConsoleFilter([
+//     '*:W',
+//     'SocksToRtc:I',
+//     'RtcToNet:I']);
+
 
 //-----------------------------------------------------------------------------
 var localhostEndpoint:net.Endpoint = { address: '127.0.0.1', port:9999 };
@@ -30,7 +34,8 @@ var pcConfig :freedom_RTCPeerConnection.RTCConfiguration = {
   iceServers: [{urls: ['stun:stun.l.google.com:19302']},
                {urls: ['stun:stun1.l.google.com:19302']}]
 };
-var rtcNet = new rtc_to_net.RtcToNet(
+
+export var rtcNet = new rtc_to_net.RtcToNet(
     pcConfig,
     {
       allowNonUnicast: true
@@ -38,7 +43,7 @@ var rtcNet = new rtc_to_net.RtcToNet(
     false); // obfuscate
 
 //-----------------------------------------------------------------------------
-var socksRtc = new socks_to_rtc.SocksToRtc();
+export var socksRtc = new socks_to_rtc.SocksToRtc();
 socksRtc.on('signalForPeer', rtcNet.handleSignalFromPeer);
 socksRtc.start(
     localhostEndpoint,

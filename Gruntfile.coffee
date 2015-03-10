@@ -18,8 +18,8 @@ taskManager.add 'base', [
 
 taskManager.add 'samples', [
   'sampleFreedomModuleRunnerChromeApp'
-  'sampleSimpleSocks'
-  'sampleEchoServer'
+  'sampleSimpleSocksChromeApp'
+  'sampleEchoServerChromeApp'
   'sampleCopyPasteChurnChatChromeApp'
 ]
 
@@ -40,19 +40,30 @@ taskManager.add 'integration', [
   'tcpIntegrationTest'
 ]
 
-taskManager.add 'sampleSimpleSocks', [
+taskManager.add 'sampleSimpleSocksChromeApp', [
   'base'
   'copy:libsForSimpleSocksChromeApp'
   'browserify:simpleSocksChromeApp'
 ]
 
-taskManager.add 'sampleEchoServer', [
+taskManager.add 'sampleEchoServerChromeApp', [
   'base'
   'copy:libsForEchoServerChromeApp'
   'browserify:echoServerChromeApp'
 ]
 
-# TODO: fix.
+taskManager.add 'sampleSimpleSocksFirefoxApp', [
+  'base'
+  'copy:libsForSimpleSocksFirefoxApp'
+  'browserify:simpleSocksFirefoxApp'
+]
+
+taskManager.add 'sampleEchoServerFirefoxApp', [
+  'base'
+  'copy:libsForEchoServerFirefoxApp'
+  'browserify:echoServerFirefoxApp'
+]
+
 taskManager.add 'sampleCopyPasteChurnChatChromeApp', [
   'base'
   'copy:libsForCopyPasteChurnChatChromeApp'
@@ -60,8 +71,25 @@ taskManager.add 'sampleCopyPasteChurnChatChromeApp', [
   'browserify:copyPasteChurnChatFreedomModule'
 ]
 
-taskManager.add 'integrationTestModules', [
-  'tcpIntegrationTestModule'
+taskManager.add 'sampleCopyPasteSocksChromeApp', [
+  'base'
+  'copy:libsForSocksChromeApp'
+  'browserify:copyPasteSocksChromeApp'
+  'browserify:copyPasteSocksFreedomModule'
+]
+
+taskManager.add 'socksEchoIntegrationTestModule', [
+  'base'
+  'copy:libsForIntegrationSocksEcho'
+  'browserify:integrationSocksEchoFreedomModule'
+  'browserify:integrationSocksEchoChurnSpec'
+  'browserify:integrationSocksEchoNochurnSpec'
+  'browserify:integrationSocksEchoSlowSpec'
+]
+
+taskManager.add 'socksEchoIntegrationTest', [
+  'socksEchoIntegrationTestModule'
+  'jasmine_chromeapp:sockEcho'
 ]
 
 taskManager.add 'tcpIntegrationTestModule', [
@@ -78,7 +106,8 @@ taskManager.add 'tcpIntegrationTest', [
 
 taskManager.add 'sampleFreedomModuleRunnerChromeApp', [
   'base'
-  'integrationTestModules'
+  'tcpIntegrationTestModule'
+  'socksEchoIntegrationTestModule'
   'copy:libsForFreedomModuleRunner'
   'browserify:freedomModuleRunnerChromeApp'
 ]
@@ -197,10 +226,16 @@ module.exports = (grunt) ->
       # Copy the freedom output file to sample apps
       libsForEchoServerChromeApp:
         Rule.copyLibs
-          npmLibNames: ['freedom-for-chrome/freedom-for-chrome.js']
+          npmLibNames: ['freedom-for-chrome']
           pathsFromDevBuild: ['echo']
           pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider']
           localDestPath: 'samples/echo-server-chromeapp/'
+      libsForEchoServerFirefoxApp:
+        Rule.copyLibs
+          npmLibNames: ['freedom-for-firefox']
+          pathsFromDevBuild: ['echo']
+          pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider']
+          localDestPath: 'samples/echo-server-firefoxapp/'
       libsForCopyPasteChurnChatChromeApp:
         Rule.copyLibs
           npmLibNames: [
@@ -215,7 +250,7 @@ module.exports = (grunt) ->
       libsForSimpleSocksChromeApp:
         Rule.copyLibs
           npmLibNames: [
-            'freedom-for-chrome/freedom-for-chrome.js'
+            'freedom-for-chrome'
           ]
           pathsFromDevBuild: ['simple-socks', 'churn-pipe']
           pathsFromThirdPartyBuild: [
@@ -223,7 +258,27 @@ module.exports = (grunt) ->
             'uproxy-obfuscators'
           ]
           localDestPath: 'samples/simple-socks-chromeapp/'
+      libsForSimpleSocksFirefoxApp:
+        Rule.copyLibs
+          npmLibNames: [
+            'freedom-for-firefox'
+          ]
+          pathsFromDevBuild: ['simple-socks', 'churn-pipe']
+          pathsFromThirdPartyBuild: [
+            'uproxy-lib/loggingprovider'
+            'uproxy-obfuscators'
+          ]
+          localDestPath: 'samples/simple-socks-firefoxapp/'
       libsForIntegrationTcp:
+        Rule.copyLibs
+          npmLibNames: [
+            'freedom-for-chrome/freedom-for-chrome.js'
+          ]
+          pathsFromThirdPartyBuild: [
+            'uproxy-lib/loggingprovider'
+          ]
+          localDestPath: 'integration-tests/tcp'
+      libsForIntegrationSocksEcho:
         Rule.copyLibs
           npmLibNames: [
             'freedom-for-chrome/freedom-for-chrome.js'
@@ -366,6 +421,40 @@ module.exports = (grunt) ->
           ]
           outfile: devBuildPath + '/integration-tests/tcp/jasmine_chromeapp/'
           keepRunner: true
+      socksEcho:
+        src: [
+          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.static.js'
+          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.json'
+          devBuildPath + '/integration-tests/socks-echo/freedom-module.static.js'
+          devBuildPath + '/integration-tests/socks-echo/freedom-module.json'
+          freedomForChromePath + '/freedom-for-chrome.js'
+          devBuildPath + '/integration-tests/socks-echo/tcp.core-env.spec.static.js'
+        ]
+        options:
+          paths: [
+            freedomForChromePath + '/freedom-for-chrome.js'
+            devBuildPath + '/integration-tests/socks-echo/nochurn.core-env.spec.static.js'
+            devBuildPath + '/integration-tests/socks-echo/churn.core-env.spec.static.js'
+          ]
+          outfile: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp/'
+          keepRunner: true
+      socksEchoSlow:
+        src: [
+          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.static.js'
+          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.json'
+          devBuildPath + '/integration-tests/socks-echo/freedom-module.static.js'
+          devBuildPath + '/integration-tests/socks-echo/freedom-module.json'
+          freedomForChromePath + '/freedom-for-chrome.js'
+          devBuildPath + '/integration-tests/socks-echo/slow.core-env.spec.static.js'
+        ]
+        options:
+          paths: [
+            freedomForChromePath + '/freedom-for-chrome.js'
+            devBuildPath + '/integration-tests/socks-echo/slow.core-env.spec.static.js'
+          ]
+          outfile: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp_slow/'
+          keepRunner: true
+
 
     clean:
       build:

@@ -4,8 +4,8 @@ var {setTimeout} = require("sdk/timers");
 
 Cu.import(self.data.url("lib/freedom/freedom-for-firefox.jsm"));
 
-var manifest = self.data.url("lib/simple-socks/freedom-module.json");
-var loggingProviderManifest = self.data.url("lib/loggingprovider/loggingprovider.json");
+var manifest = self.data.url("lib/uproxy-networking/simple-socks/freedom-module.json");
+var loggingProviderManifest = self.data.url("lib/uproxy-lib/loggingprovider/loggingprovider.json");
 freedom(manifest, {
   'logger': loggingProviderManifest,
   'debug': 'debug'

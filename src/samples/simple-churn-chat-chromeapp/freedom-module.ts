@@ -10,19 +10,20 @@ import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
 
 import logging = require('../../../../third_party/uproxy-lib/logging/logging');
 
-freedom['loggingcontroller']().setConsoleFilter(['*:D']);
+// Example of how to configure logging level
+// freedom['loggingcontroller']().setConsoleFilter(['*:D']);
 
-var log :logging.Log = new logging.Log('simple churn chat');
+export var log :logging.Log = new logging.Log('simple churn chat');
 
 var config :freedom_RTCPeerConnection.RTCConfiguration = {
   iceServers: [{urls: ['stun:stun.l.google.com:19302']},
                {urls: ['stun:stun1.l.google.com:19302']}]
 };
 
-var pcA = freedom['core.rtcpeerconnection'](config);
-var a :churn.Connection = new churn.Connection(pcA);
-var pcB = freedom['core.rtcpeerconnection'](config);
-var b :churn.Connection = new churn.Connection(pcB);
+export var pcA = freedom['core.rtcpeerconnection'](config);
+export var a :churn.Connection = new churn.Connection(pcA);
+export var pcB = freedom['core.rtcpeerconnection'](config);
+export var b :churn.Connection = new churn.Connection(pcB);
 
 // Connect the two signalling channels.
 // Normally, these messages would be sent over the internet.

@@ -21,7 +21,7 @@ export var copypasteChurnChat :OnEmitModule;
 
 freedom('freedom-module.json', {
     'logger': 'uproxy-lib/loggingprovider/freedom-module.json',
-    'debug': 'log'
+    'debug': 'debug'
 }).then(function(copypasteChurnChatFactory:OnEmitModuleFactory) {
   copypasteChurnChat = copypasteChurnChatFactory();
 
