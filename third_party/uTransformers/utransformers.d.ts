@@ -1,7 +1,7 @@
 // This file provides the declarations for the Rabbit and Fte uTransformers
 // modules.
 
-export interface Transformer {
+interface Transformer {
   /**
    * Sets the key for this transformer session.
    *
@@ -41,10 +41,10 @@ export interface Transformer {
   dispose() : void;
 }
 
-declare module "utransformers/src/transformers/uTransformer.fte" {
-  export class Transformer implements Transformer {}
+declare module "utransformers/src/transformers/uTransformers.fte" {
+  export function Transformer() : Transformer;
 }
 
-declare module "utransformers/src/transformers/uTransformer.rabbit" {
-  export class Transformer implements Transformer {}
+declare module "utransformers/src/transformers/uTransformers.rabbit" {
+  export function Transformer() : Transformer;
 }

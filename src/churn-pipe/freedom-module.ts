@@ -4,5 +4,7 @@
 import ChurnPipe = require('./churn-pipe');
 
 if (typeof freedom !== 'undefined') {
-  freedom['churnPipe'].providePromises(ChurnPipe);
+  freedom['churnPipe']().providePromises(ChurnPipe);
 }
+
+export = ChurnPipe

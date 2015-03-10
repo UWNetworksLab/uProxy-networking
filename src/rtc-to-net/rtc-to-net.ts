@@ -43,7 +43,8 @@ module RtcToNet {
   export interface DataChannelSnapshot {
     sent :number;
     received :number;
-    buffered :number;
+    browserBuffered :number;
+    jsBuffered :number;
     queue :HandlerQueueSnapshot;
   }
 
@@ -583,14 +584,15 @@ module RtcToNet {
     }
 
     public getSnapshot = () : Promise<SessionSnapshot> => {
-      return this.dataChannel_.getBufferedAmount()
+      return this.dataChannel_.getBrowserBufferedAmount()
           .then((bufferedAmount:number) => {
         return {
           name: this.channelLabel(),
           channel: {
             sent: this.channelSentBytes_,
             received: this.channelReceivedBytes_,
-            buffered: bufferedAmount,
+            browserBuffered: bufferedAmount,
+            jsBuffered: this.dataChannel_.getJavascriptBufferedAmount(),
             queue: {
               size: this.dataChannel_.dataFromPeerQueue.getLength(),
               handling: this.dataChannel_.dataFromPeerQueue.isHandling()

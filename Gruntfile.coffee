@@ -127,11 +127,11 @@ module.exports = (grunt) ->
     copy:
       # Copy all needed third party libraries to appropriate locations.
       thirdParty:
-        # Copy local |third_party| files into dev: so that the third_party
-        # dependencies are always in the common |build/third_party| location. This
-        # allows path to reference typescript definitions for ambient contexts to
-        # always be found, even in generated `.d.ts` files..
         files: [
+          # Copy local |third_party| files into dev: so that the third_party
+          # dependencies are always in the common |build/third_party| location.
+          # This allows path to reference typescript definitions for ambient
+          # contexts to always be found, even in generated `.d.ts` files..
           {
               nonull: true,
               expand: true,
@@ -162,17 +162,6 @@ module.exports = (grunt) ->
               cwd: path.join(uproxyLibPath, 'build/third_party'),
               src: ['freedom-typings/**/*'],
               dest: thirdPartyBuildPath
-              onlyIf: 'modified'
-          },
-          # Copy in the uproxy-obfuscators typescript interfaces
-          {
-              nonull: true,
-              expand: true,
-              cwd: path.join(uproxyObfuscatorsPath, 'src/'),
-              src: ['interfaces/**/*',
-                    'transformers/uTransformers.rabbit.js',
-                    'transformers/uTransformers.fte.js'],
-              dest: path.join(thirdPartyBuildPath, 'uproxy-obfuscators/'),
               onlyIf: 'modified'
           }
         ]
@@ -322,7 +311,15 @@ module.exports = (grunt) ->
       turnFrontEndSpec: Rule.browserifySpec 'turn-frontend/turn-frontend'
 
       # Freedom Modules
-      churnPipeFreedomModule: Rule.browserify 'churn-pipe/freedom-module'
+      churnPipeFreedomModule: Rule.browserify(
+          'churn-pipe/freedom-module',
+          {
+            # Emscripten, used to compile FTE and Rabbit to JS has unused
+            # require statements for `ws` and for `path` that need to be
+            # ignored.
+            ignore: ['ws', 'path']
+            browserifyOptions: { standalone: 'browserified_exports' }
+          })
       copyPasteChurnChatFreedomModule: Rule.browserify 'samples/copypaste-churn-chat-chromeapp/freedom-module'
       echoFreedomModule: Rule.browserify 'echo/freedom-module'
       simpleSocksFreedomModule: Rule.browserify 'simple-socks/freedom-module'

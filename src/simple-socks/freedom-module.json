@@ -3,8 +3,6 @@
   "description": "Single-page SOCKS server with fake signalling channel.",
   "app": {
     "script": [
-      "../../regex2dfa/regex2dfa.js",
-      "../../ipaddr.js/ipaddr.js",
       "freedom-module.static.js"
     ]
   },

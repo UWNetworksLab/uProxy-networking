@@ -3,9 +3,6 @@
   "description": "Obfuscating network pipe.",
   "app": {
     "script": [
-      "../../uproxy-obfuscators/transformers/uTransformers.rabbit.js",
-      "../../regex2dfa/regex2dfa.js",
-      "../../uproxy-obfuscators/transformers/uTransformers.fte.js",
       "freedom-module.static.js"
     ]
   },

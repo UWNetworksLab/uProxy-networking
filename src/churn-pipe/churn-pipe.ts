@@ -8,9 +8,10 @@
 //  import Rabbit = require('uproxy-obfuscators/rabbit.transformer');
 //  import Fte = require('uproxy-obfuscators/fte.transformer');
 // Current:
-/// <reference path='../../../third_party/uTransformers/utransformer.d.ts' />
-import Rabbit = require('utransformers/src/transformers/uTransformer.fte');
-import Fte = require('utransformers/src/transformers/uTransformer.rabbit');
+/// <reference path='../../../third_party/uTransformers/utransformers.d.ts' />
+
+// import Rabbit = require('utransformers/src/transformers/uTransformers.fte');
+// import Fte = require('utransformers/src/transformers/uTransformers.rabbit');
 
 import PassThrough = require('../simple-transformers/passthrough');
 import CaesarCipher = require('../simple-transformers/caesar');
@@ -96,11 +97,13 @@ class Pipe {
       config ?:string)
       : Transformer => {
     var transformer :Transformer;
-    if (name == 'rabbit') {
-      transformer = new Rabbit.Transformer();
+    // TODO(ldixon): re-enable rabbit and FTE once we can figure out why they
+    // don't load in freedom.
+    /* if (name == 'rabbit') {
+      transformer = Rabbit.Transformer();
     } else if (name == 'fte') {
-      transformer = new Fte.Transformer();
-    } else if (name == 'caesar') {
+      transformer = Fte.Transformer();
+    } else */ if (name == 'caesar') {
       transformer = new CaesarCipher();
     } else if (name == 'none') {
       transformer = new PassThrough();

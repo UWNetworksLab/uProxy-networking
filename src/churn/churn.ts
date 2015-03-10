@@ -2,13 +2,18 @@
 /// <reference path='../../../third_party/freedom-typings/freedom-common.d.ts' />
 /// <reference path='../../../third_party/freedom-typings/udp-socket.d.ts' />
 
-// TODO(ldixon): update to a require-style inclusion.
+// TODO(ldixon): reorganize the utransformers and rename uproxy-obfuscators.
 // Ideal:
-// import Transformer = require('../../../third_party/uproxy-obfuscators/utransformer');
+//  import Transformer = require('uproxy-obfuscators/transformer');
 // Current:
-/// <reference path='../../../third_party/uproxy-obfuscators/interfaces/utransformer.d.ts' />
+/// <reference path='../../../third_party/uTransformers/utransformers.d.ts' />
 
-import Transformer = UTransformers.Transformer;
+
+// TODO(ldixon): re-enable FTE and regex2dfa. But this time, start with a pre-
+// computed set of DFAs because the regex2dfa.js library is 4MB in size. Also
+// experiment with uglify and zip to see if that size drops significantly.
+//
+// import regex2dfa = require('regex2dfa');
 
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
@@ -23,11 +28,6 @@ import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 var log :logging.Log = new logging.Log('churn');
-
-// TODO: https://github.com/uProxy/uproxy-obfuscators/issues/35
-var regex2dfa :any;
-
-  var log :logging.Log = new logging.Log('churn');
 
   export var filterCandidatesFromSdp = (sdp:string) : string => {
     return sdp.split('\n').filter((s) => {
@@ -299,15 +299,24 @@ var regex2dfa :any;
             natEndpoints.internal.port,
             remoteEndpoint.address,
             remoteEndpoint.port,
-            'fte',
-            arraybuffers.stringToArrayBuffer('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'),
-            JSON.stringify({
-              'plaintext_dfa': regex2dfa('^.*$'),
-              'plaintext_max_len': 1400,
-              // This is equivalent to Rabbit cipher.
-              'ciphertext_dfa': regex2dfa('^.*$'),
-              'ciphertext_max_len': 1450
-            }))
+            'caesar',
+            new Uint8Array([13]),
+            {})
+        // TODO(ldixon): renable FTE support instead of caesar cipher.
+        // publicPipe.bind(
+        //     natEndpoints.internal.address,
+        //     natEndpoints.internal.port,
+        //     remoteEndpoint.address,
+        //     remoteEndpoint.port,
+        //     'fte',
+        //     arraybuffers.stringToArrayBuffer('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'),
+        //     JSON.stringify({
+        //       'plaintext_dfa': regex2dfa('^.*$'),
+        //       'plaintext_max_len': 1400,
+        //       // This is equivalent to Rabbit cipher.
+        //       'ciphertext_dfa': regex2dfa('^.*$'),
+        //       'ciphertext_max_len': 1450
+        //     }))
         .then(() => {
           log.info('configured obfuscating pipe: ' +
               natEndpoints.internal.address + ':' +
