@@ -268,8 +268,7 @@ describe("SOCKS session", function() {
     var message :WebRtc.Data = {
       buffer: new Uint8Array([1,2,3]).buffer
     };
-    mockDataChannel.dataFromPeerQueue.handle(message);
-    mockDataChannel.dataFromPeerQueue.handle(message);
+    var onceMessageHandled = mockDataChannel.dataFromPeerQueue.handle(message);
 
     session.start(
         mockTcpConnection,
@@ -277,6 +276,8 @@ describe("SOCKS session", function() {
         mockBytesSent,
         mockBytesReceived);
     session.onceStopped.then(() => {
+      return onceMessageHandled;
+    }).then(() => {
       expect(mockDataChannel.dataFromPeerQueue.getLength()).toEqual(0);
       done();
     });
@@ -294,8 +295,7 @@ describe("SOCKS session", function() {
         Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
 
     var buffer = new Uint8Array([1,2,3]).buffer;
-    mockTcpConnection.dataFromSocketQueue.handle(buffer);
-    mockTcpConnection.dataFromSocketQueue.handle(buffer);
+    var onceMessageHandled = mockTcpConnection.dataFromSocketQueue.handle(buffer);
 
     session.start(
         mockTcpConnection,
@@ -303,6 +303,8 @@ describe("SOCKS session", function() {
         mockBytesSent,
         mockBytesReceived);
     session.onceStopped.then(() => {
+      return onceMessageHandled;
+    }).then(() => {
       expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
       done();
     });

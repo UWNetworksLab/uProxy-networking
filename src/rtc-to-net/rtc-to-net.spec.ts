@@ -230,10 +230,11 @@ describe("RtcToNet session", function() {
     var message :WebRtc.Data = {
       buffer: new Uint8Array([1,2,3]).buffer
     };
-    mockDataChannel.dataFromPeerQueue.handle(message);
-    mockDataChannel.dataFromPeerQueue.handle(message);
+    var onceMessageHandled = mockDataChannel.dataFromPeerQueue.handle(message);
 
     session.start().then(session.onceStopped).then(() => {
+      return onceMessageHandled;
+    }).then(() => {
       expect(mockDataChannel.dataFromPeerQueue.getLength()).toEqual(0);
       done();
     });
@@ -250,10 +251,11 @@ describe("RtcToNet session", function() {
     (<any>mockTcpConnection.isClosed).and.returnValue(true);
 
     var buffer = new Uint8Array([1,2,3]).buffer;
-    mockTcpConnection.dataFromSocketQueue.handle(buffer);
-    mockTcpConnection.dataFromSocketQueue.handle(buffer);
+    var onceMessageHandled = mockTcpConnection.dataFromSocketQueue.handle(buffer);
 
     session.start().then(session.onceStopped).then(() => {
+      return onceMessageHandled;
+    }).then(() => {
       expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
       done();
     });
