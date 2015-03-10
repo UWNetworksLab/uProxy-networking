@@ -160,7 +160,7 @@ module.exports = (grunt) ->
               nonull: true,
               expand: true,
               cwd: path.join(uproxyLibPath, 'build/third_party'),
-              src: ['freedom-typings/**/*'],
+              src: ['freedom-typings/**/*', 'promise-polyfill.js'],
               dest: thirdPartyBuildPath
               onlyIf: 'modified'
           }
