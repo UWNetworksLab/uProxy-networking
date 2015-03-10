@@ -4,5 +4,5 @@
 import TurnFrontend = require('./turn-frontend');
 
 if (typeof freedom !== 'undefined') {
-  freedom['turnFrontend'].providePromises(TurnFrontend);
+  freedom['turnFrontend']().providePromises(TurnFrontend);
 }

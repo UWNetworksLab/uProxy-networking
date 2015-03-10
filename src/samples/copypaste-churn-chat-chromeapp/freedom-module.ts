@@ -15,9 +15,9 @@ var config :freedom_RTCPeerConnection.RTCConfiguration = {
                {urls: ['stun:stun1.l.google.com:19302']}]
 };
 
-var freedomPc = freedom['core.rtcpeerconnection'](config);
-var pc = new churn.Connection(freedomPc);
-var freedomParentModule = freedom();
+export var freedomPc = freedom['core.rtcpeerconnection'](config);
+export var pc = new churn.Connection(freedomPc);
+export var freedomParentModule = freedom();
 
 // Forward signalling channel messages to the UI.
 pc.signalForPeerQueue.setSyncHandler((signal:peerconnection.SignallingMessage) => {
@@ -34,7 +34,7 @@ freedomParentModule.on('handleSignalMessage', (signal:ChurnSignallingMessage) =>
 pc.onceConnecting.then(() => { log.info('connecting...'); });
 
 
-var connectDataChannel = (channel:peerconnection.DataChannel) => {
+export var connectDataChannel = (channel:peerconnection.DataChannel) => {
 	// Send messages over the datachannel, in response to events from the UI,
 	// and forward messages received on the datachannel to the UI.
 	freedomParentModule.on('send', (message:string) => {

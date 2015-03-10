@@ -8,15 +8,16 @@ import socks_to_rtc = require('../socks-to-rtc/socks-to-rtc');
 import net = require('../net/net.types');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
-var log :logging.Log = new logging.Log('simple-socks');
 
-/// <reference path='../logging/logging.d.ts' />
+export var moduleName = 'simple-socks';
+export var log :logging.Log = new logging.Log(moduleName);
 
 // Set each module to I, W, E, or D depending on which module
 // you're debugging. Since the proxy outputs quite a lot of messages,
 // show only warnings by default from the rest of the system.
 // Note that the proxy is extremely slow in debug (D) mode.
-freedom['loggingcontroller']().setConsoleFilter([
+export var loggingController = freedom['loggingcontroller']();
+loggingController.setConsoleFilter([
     '*:W',
     'SocksToRtc:I',
     'RtcToNet:I']);

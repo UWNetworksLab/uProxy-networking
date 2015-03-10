@@ -5,17 +5,25 @@ import churn_types = require('../../churn/churn.types');
 import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
 
 import freedom_types = require('freedom.types');
+export interface OnEmitModule extends freedom_types.OnAndEmit<any,any> {};
+export interface OnEmitModuleFactory extends
+  freedom_types.FreedomModuleFactoryManager<OnEmitModule> {};
 
 var startButton = document.getElementById("startButton");
 var copyTextarea = <HTMLInputElement>document.getElementById("copy");
 var pasteTextarea = <HTMLInputElement>document.getElementById("paste");
 var receiveButton = document.getElementById("receiveButton");
+var sendButton = document.getElementById("sendButton");
+var sendArea = <HTMLInputElement>document.getElementById("sendArea");
+var receiveArea = <HTMLInputElement>document.getElementById("receiveArea");
+
+export var copypasteChurnChat :OnEmitModule;
 
 freedom('freedom-module.json', {
     'logger': 'uproxy-lib/loggingprovider/freedom-module.json',
     'debug': 'log'
-}).then(function(copypasteChurnChatFactory:freedom_types.FreedomModuleFactoryManager) {
-  var copypasteChurnChat = copypasteChurnChatFactory();
+}).then(function(copypasteChurnChatFactory:OnEmitModuleFactory) {
+  copypasteChurnChat = copypasteChurnChatFactory();
 
   // Dispatches each line from the paste box as a signalling channel message.
   function handleSignallingMessages() {
@@ -43,11 +51,6 @@ freedom('freedom-module.json', {
   copypasteChurnChat.on('signalForPeer', (signal:ChurnSignallingMessage) => {
     copyTextarea.value = copyTextarea.value.trim() + '\n' + JSON.stringify(signal);
   });
-
-  var sendButton = document.getElementById("sendButton");
-
-  var sendArea = <HTMLInputElement>document.getElementById("sendArea");
-  var receiveArea = <HTMLInputElement>document.getElementById("receiveArea");
 
   copypasteChurnChat.on('ready', function() {
     console.log('peer connection established!');
