@@ -97,9 +97,11 @@ describe("RtcToNet session", function() {
         'onceConnected',
         'onceClosed',
         'isClosed',
-        'close'
+        'close',
+        'send'
       ]);
     mockTcpConnection.dataFromSocketQueue = new Handler.Queue<ArrayBuffer,void>();
+    (<any>mockTcpConnection.send).and.returnValue(Promise.resolve({ bytesWritten: 1 }));
 
     mockDataChannel = <any>{
       closeDataChannel: noopPromise,
@@ -210,6 +212,29 @@ describe("RtcToNet session", function() {
     });
     mockBytesReceived.setSyncNextHandler((numBytes:number) => {
       expect(numBytes).toEqual(message.buffer.byteLength);
+      done();
+    });
+  });
+
+  it('channel queue drains before termination', (done) => {
+    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockRemoteEndpoint));
+    spyOn(session, 'replyToPeer_').and.returnValue(Promise.resolve());
+    spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
+
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
+    mockTcpConnection.onceClosed = noopPromise;
+
+    // The data channel is closed before the session starts.
+    mockDataChannel.onceClosed = voidPromise;
+
+    var message :WebRtc.Data = {
+      buffer: new Uint8Array([1,2,3]).buffer
+    };
+    mockDataChannel.dataFromPeerQueue.handle(message);
+    mockDataChannel.dataFromPeerQueue.handle(message);
+
+    session.start().then(session.onceStopped).then(() => {
+      expect(mockDataChannel.dataFromPeerQueue.getLength()).toEqual(0);
       done();
     });
   });

@@ -281,4 +281,30 @@ describe("SOCKS session", function() {
       done();
     });
   });
+
+  it('socket queue drains before termination', (done) => {
+    // The data channel doesn't close "naturally" but the
+    // TCP connection is already closed when the session is started.
+    mockTcpConnection.onceClosed = Promise.resolve(Tcp.SocketCloseKind.WE_CLOSED_IT);
+    (<any>mockTcpConnection.isClosed).and.returnValue(true);
+    mockDataChannel.onceClosed = noopPromise;
+
+    spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
+
+    var buffer = new Uint8Array([1,2,3]).buffer;
+    mockTcpConnection.dataFromSocketQueue.handle(buffer);
+    mockTcpConnection.dataFromSocketQueue.handle(buffer);
+
+    session.start(
+        mockTcpConnection,
+        mockDataChannel,
+        mockBytesSent,
+        mockBytesReceived);
+    session.onceStopped.then(() => {
+      expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
+      done();
+    });
+  });
 });
