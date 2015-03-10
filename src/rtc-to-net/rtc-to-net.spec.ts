@@ -213,4 +213,24 @@ describe("RtcToNet session", function() {
       done();
     });
   });
+
+  it('socket queue drains before termination', (done) => {
+    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockRemoteEndpoint));
+    spyOn(session, 'replyToPeer_').and.returnValue(Promise.resolve());
+    spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
+
+    // The TCP connection is closed before the session starts.
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
+    mockTcpConnection.onceClosed = Promise.resolve(Tcp.SocketCloseKind.WE_CLOSED_IT);
+    (<any>mockTcpConnection.isClosed).and.returnValue(true);
+
+    var buffer = new Uint8Array([1,2,3]).buffer;
+    mockTcpConnection.dataFromSocketQueue.handle(buffer);
+    mockTcpConnection.dataFromSocketQueue.handle(buffer);
+
+    session.start().then(session.onceStopped).then(() => {
+      expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
+      done();
+    });
+  });
 });
