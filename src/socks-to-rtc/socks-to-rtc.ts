@@ -548,7 +548,7 @@ module SocksToRtc {
                   channelReadLoop);
             });
           }
-        }, (e:any) => {
+        }, (e:{ errcode: string }) => {
           // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // errcode values are defined here:
           //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json

@@ -335,7 +335,7 @@ module RtcToNet {
               JSON.stringify(info.bound)]);
           var reply = this.getReplyFromInfo_(info);
           this.replyToPeer_(reply, info);
-        }, (e:any) => {
+        }, (e:{ errcode: string }) => {
           // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // If this.tcpConnection_ is not defined, then getTcpConnection_
           // failed and we've already replied with UNSUPPORTED_COMMAND.
@@ -555,7 +555,7 @@ module RtcToNet {
                   channelReadLoop);
             });
           }
-        }, (e:any) => {
+        }, (e:{ errcode: string }) => {
           // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // errcode values are defined here:
           //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
