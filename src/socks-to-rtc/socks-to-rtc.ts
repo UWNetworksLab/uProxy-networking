@@ -277,6 +277,10 @@ module SocksToRtc {
     private bytesSentToPeer_ :Handler.Queue<number,void>;
     private bytesReceivedFromPeer_ :Handler.Queue<number,void>;
 
+    // TODO: There's no equivalent of datachannel.isClosed():
+    //         https://github.com/uProxy/uproxy/issues/1075
+    private isChannelClosed_ :boolean = false;
+
     // Fulfills once the SOCKS negotiation process has successfully completed.
     // Rejects if negotiation fails for any reason.
     public onceReady :Promise<void>;
@@ -329,15 +333,31 @@ module SocksToRtc {
       // If handshake fails, shutdown.
       this.onceReady.then(() => {
         this.linkSocketAndChannel_();
-        Promise.race<any>([
-          tcpConnection.onceClosed.then((kind:Tcp.SocketCloseKind) => {
-            log.info('%1: socket closed (%2)', [
+
+        // Shutdown once the TCP connection terminates and has drained.
+        this.tcpConnection_.onceClosed.then((kind:Tcp.SocketCloseKind) => {
+          if (this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
+            log.info('%1: socket closed (%2), all incoming data processed',
                 this.longId(),
-                Tcp.SocketCloseKind[kind]]);
-          }),
-          dataChannel.onceClosed.then(() => {
-            log.info('%1: datachannel closed', [this.longId()]);
-          })]).then(this.fulfillStopping_);
+                Tcp.SocketCloseKind[kind]);
+            this.fulfillStopping_();
+          } else {
+            log.info('%1: socket closed (%2), still processing incoming data',
+                this.longId(),
+                Tcp.SocketCloseKind[kind]);
+          }
+        });
+
+        // Shutdown once the data channel terminates and has drained.
+        this.dataChannel_.onceClosed.then(() => {
+          this.isChannelClosed_ = true;
+          if (this.dataChannel_.dataFromPeerQueue.getLength() === 0) {
+            log.info('%1: channel closed, all incoming data processed', this.longId());
+            this.fulfillStopping_();
+          } else {
+            log.info('%1: channel closed, still processing incoming data', this.longId());
+          }
+        });
       }, this.fulfillStopping_);
 
       // Once shutdown has been requested, free resources.
@@ -461,71 +481,88 @@ module SocksToRtc {
 
     // Sends a packet over the data channel.
     // Invoked when a packet is received over the TCP socket.
-    private sendOnChannel_ = (data:ArrayBuffer) : void => {
+    private sendOnChannel_ = (data:ArrayBuffer) : Promise<void> => {
       log.debug('%1: socket received %2 bytes', [
           this.longId(),
           data.byteLength]);
-      this.dataChannel_.send({buffer: data}).then(() => {
-        this.bytesSentToPeer_.handle(data.byteLength);
-      }).catch((e:Error) => {
-        log.error('%1: failed to send data on datachannel: %2', [
-            this.longId(),
-            e.message]);
-      });
+
+      return this.dataChannel_.send({buffer: data});
     }
 
     // Sends a packet over the TCP socket.
     // Invoked when a packet is received over the data channel.
-    private sendOnSocket_ = (data:WebRtc.Data) : void => {
+    private sendOnSocket_ = (data:WebRtc.Data) : Promise<freedom_TcpSocket.WriteInfo> => {
       if (!data.buffer) {
-        log.error('%1: received non-buffer data from datachannel', [
-            this.longId()]);
-        return;
+        return Promise.reject(new Error(
+            'received non-buffer data from datachannel'));
       }
       log.debug('%1: datachannel received %2 bytes', [
           this.longId(),
           data.buffer.byteLength]);
       this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
-      this.tcpConnection_.send(data.buffer).catch((e:any) => {
-        // TODO: e is actually a freedom.Error (uproxy-lib 20+)
-        // errcode values are defined here:
-        //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
-        if (e.errcode === 'NOT_CONNECTED') {
-          // This can happen if, for example, there was still data to be
-          // read on the datachannel's queue when the socket closed.
-          log.warn('%1: tried to send data on closed socket: %2', [
-              this.longId(),
-              e.errcode]);
-        } else {
-          log.error('%1: failed to send data on socket: %2', [
-              this.longId(),
-              e.errcode]);
-        }
-      });
+
+      return this.tcpConnection_.send(data.buffer);
     }
 
     // Configures forwarding of data from the TCP socket over the data channel
     // and vice versa. Should only be called once both socket and channel have
-    // been successfully established and the handshake has completed.
+    // been successfully established.
     private linkSocketAndChannel_ = () : void => {
-      // Note that setTimeout is used by both handlers to preserve
+      // Note that setTimeout is used by both loops to preserve system
       // responsiveness when large amounts of data are being received:
       //   https://github.com/uProxy/uproxy/issues/967
       var socketReadLoop = (data:ArrayBuffer) => {
-        this.sendOnChannel_(data);
-        Session.nextTick_(() => {
-          this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
-              socketReadLoop);
+        this.sendOnChannel_(data).then(() => {
+          this.bytesSentToPeer_.handle(data.byteLength);
+          // Shutdown once the TCP connection terminates and has drained,
+          // otherwise keep draining.
+          if (this.tcpConnection_.isClosed() &&
+              this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
+            log.info('%1: socket drained', this.longId());
+            this.fulfillStopping_();
+          } else {
+            Session.nextTick_(() => {
+              this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
+                  socketReadLoop);
+            });
+          }
+        }, (e:Error) => {
+          log.error('%1: failed to send data on datachannel: %2',
+              this.longId(),
+              e.message);
         });
-      }
-      this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
-          socketReadLoop);
+      };
+      this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(socketReadLoop);
 
       var channelReadLoop = (data:WebRtc.Data) : void => {
-        this.sendOnSocket_(data);
-        Session.nextTick_(() => {
-          this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
-              channelReadLoop);
+        this.sendOnSocket_(data).then((writeInfo:freedom_TcpSocket.WriteInfo) => {
+          // Shutdown once the data channel terminates and has drained,
+          // otherwise keep draining.
+          if (this.isChannelClosed_ &&
+              this.dataChannel_.dataFromPeerQueue.getLength() === 0) {
+            log.info('%1: channel drained', this.longId());
+            this.fulfillStopping_();
+          } else {
+            Session.nextTick_(() => {
+              this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
+                  channelReadLoop);
+            });
+          }
+        }, (e:{ errcode: string }) => {
+          // TODO: e is actually a freedom.Error (uproxy-lib 20+)
+          // errcode values are defined here:
+          //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
+          if (e.errcode === 'NOT_CONNECTED') {
+            // This can happen if, for example, there was still data to be
+            // read on the datachannel's queue when the socket closed.
+            log.warn('%1: tried to send data on closed socket: %2', [
+                this.longId(),
+                e.errcode]);
+          } else {
+            log.error('%1: failed to send data on socket: %2', [
+                this.longId(),
+                e.errcode]);
+          }
         });
       };
       this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
