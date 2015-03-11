@@ -277,7 +277,8 @@ module SocksToRtc {
     private bytesSentToPeer_ :Handler.Queue<number,void>;
     private bytesReceivedFromPeer_ :Handler.Queue<number,void>;
 
-    // There is no equivalent of datachannel.isClosed().
+    // TODO: There's no equivalent of datachannel.isClosed():
+    //         https://github.com/uProxy/uproxy/issues/1075
     private isChannelClosed_ :boolean = false;
 
     // Fulfills once the SOCKS negotiation process has successfully completed.

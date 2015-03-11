@@ -264,7 +264,8 @@ module RtcToNet {
   export class Session {
     private tcpConnection_ :Tcp.Connection;
 
-    // There is no equivalent of datachannel.isClosed().
+    // TODO: There's no equivalent of datachannel.isClosed():
+    //         https://github.com/uProxy/uproxy/issues/1075
     private isChannelClosed_ :boolean = false;
 
     // Fulfills once a connection has been established with the remote peer.
