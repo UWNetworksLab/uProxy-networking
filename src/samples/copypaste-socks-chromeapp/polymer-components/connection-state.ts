@@ -1,4 +1,3 @@
-/// <reference path='../../../../../third_party/freedom-typings/freedom-common.d.ts' />
 /// <reference path='../../../../../third_party/polymer/polymer.d.ts' />
 
 import copypaste_api = require('../copypaste-api');
