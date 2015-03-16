@@ -192,7 +192,7 @@ module Churn {
     constructor(probeRtcPc:freedom_RTCPeerConnection.RTCPeerConnection,
                 peerName?:string) {
       this.peerName = peerName ||
-          'churn-connection-' + Math.random();
+          'churn-' + (Math.floor(Math.random() * 1000000));
 
       this.signalForPeerQueue = new Handler.Queue<Churn.ChurnSignallingMessage,void>();
 
@@ -228,6 +228,23 @@ module Churn {
       });
       this.onceDisconnected = this.obfuscatedConnection_.onceDisconnected.then(
           () => { this.pcState = WebRtc.State.DISCONNECTED; });
+
+      // Debugging.
+      this.onceProbingComplete_.then((endpoint:Churn.NatPair) => {
+        log.debug('%1: NAT endpoints of probe connection are %2',
+            this.peerName,
+            JSON.stringify(endpoint));
+      });
+      this.onceHaveWebRtcEndpoint_.then((endpoint:Churn.Endpoint) => {
+        log.debug('%1: obfuscated connection is bound to %2',
+            this.peerName,
+            JSON.stringify(endpoint));
+      });
+      this.onceHaveRemoteEndpoint_.then((endpoint:Churn.Endpoint) => {
+        log.debug('%1: remote peer is contactable at %2',
+            this.peerName,
+            JSON.stringify(endpoint));
+      });
     }
 
     private configureProbeConnection_ = (
@@ -237,7 +254,6 @@ module Churn {
           freedomPc, probePeerName);
       this.probeConnection_.signalForPeerQueue.setSyncHandler(
           (signal:WebRtc.SignallingMessage) => {
-        log.debug("probe connection emitted: " + JSON.stringify(signal));
         if (signal.type === WebRtc.SignalType.CANDIDATE) {
           this.probeCandidates_.push(signal.candidate);
         } else if (signal.type === WebRtc.SignalType.NO_MORE_CANDIDATES) {
@@ -257,7 +273,6 @@ module Churn {
         webRtcEndpoint:freedom_ChurnPipe.Endpoint,
         remoteEndpoint:freedom_ChurnPipe.Endpoint,
         natEndpoints:NatPair) : void => {
-      log.debug('configuring pipes...');
       var localPipe = freedom['churnPipe']();
       localPipe.bind(
           '127.0.0.1',
@@ -268,15 +283,17 @@ module Churn {
           undefined,
           undefined)
       .catch((e:Error) => {
-        log.error('error setting up local pipe: ' + e.message);
+        log.error('%1: error establishing local pipe: %2',
+            this.peerName,
+            e.message);
       })
       .then(localPipe.getLocalEndpoint)
       .then((forwardingSocketEndpoint:freedom_ChurnPipe.Endpoint) => {
         this.haveForwardingSocketEndpoint_(forwardingSocketEndpoint);
-        log.info('configured local pipe between forwarding socket at ' +
-            forwardingSocketEndpoint.address + ':' +
-            forwardingSocketEndpoint.port + ' and webrtc at ' +
-            webRtcEndpoint.address + ':' + webRtcEndpoint.port);
+        log.info('%1: configured local pipe between %2 and %3',
+            this.peerName,
+            JSON.stringify(forwardingSocketEndpoint),
+            JSON.stringify(webRtcEndpoint));
 
         var publicPipe = freedom['churnPipe']();
         publicPipe.bind(
@@ -294,11 +311,10 @@ module Churn {
               'ciphertext_max_len': 1450
             }))
         .then(() => {
-          log.info('configured obfuscating pipe: ' +
-              natEndpoints.internal.address + ':' +
-              natEndpoints.internal.port + ' <-> ' +
-              remoteEndpoint.address + ':' +
-              remoteEndpoint.port);
+          log.info('%1: configured obfuscating pipe between %2 and %3',
+              this.peerName,
+              JSON.stringify(natEndpoints.internal),
+              JSON.stringify(remoteEndpoint));
 
           // Connect the local pipe to the remote, obfuscating, pipe.
           localPipe.on('message', (m:freedom_ChurnPipe.Message) => {
@@ -309,7 +325,9 @@ module Churn {
           });
         })
         .catch((e:Error) => {
-          log.error('error setting up obfuscated pipe: ' + e.message);
+          log.error('%1: error establishing obfuscated pipe: %2',
+            this.peerName,
+            e.message);
         });
       });
     }
@@ -337,7 +355,8 @@ module Churn {
         }
         if (signal.type === WebRtc.SignalType.CANDIDATE) {
           if (!signal.candidate || !signal.candidate.candidate) {
-            log.error('null candidate!');
+            log.error('%1: null candidate!',
+                this.peerName);
             return;
           }
           // This will tell us on which port webrtc is operating.
@@ -370,8 +389,6 @@ module Churn {
     }
 
     public negotiateConnection = () : Promise<void> => {
-      // TODO: propagate errors.
-      log.debug('negotiating obfuscated connection...');
       return this.obfuscatedConnection_.negotiateConnection();
     }
 
