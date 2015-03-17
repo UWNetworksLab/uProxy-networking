@@ -235,12 +235,12 @@ module Churn {
             this.peerName,
             JSON.stringify(endpoint));
       });
-      this.onceHaveWebRtcEndpoint_.then((endpoint:Churn.Endpoint) => {
+      this.onceHaveWebRtcEndpoint_.then((endpoint:freedom_ChurnPipe.Endpoint) => {
         log.debug('%1: obfuscated connection is bound to %2',
             this.peerName,
             JSON.stringify(endpoint));
       });
-      this.onceHaveRemoteEndpoint_.then((endpoint:Churn.Endpoint) => {
+      this.onceHaveRemoteEndpoint_.then((endpoint:freedom_ChurnPipe.Endpoint) => {
         log.debug('%1: remote peer is contactable at %2',
             this.peerName,
             JSON.stringify(endpoint));
