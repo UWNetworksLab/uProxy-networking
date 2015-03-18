@@ -283,7 +283,7 @@ module.exports = (grunt) ->
           npmLibNames: ['freedom-for-firefox']
           pathsFromDevBuild: ['echo']
           pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider']
-          localDestPath: 'samples/echo-server-firefoxapp/'
+          localDestPath: 'samples/echo-server-firefoxapp/lib/'
       libsForSimpleSocksChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
@@ -301,7 +301,7 @@ module.exports = (grunt) ->
             'uproxy-lib/loggingprovider'
             'uproxy-obfuscators'
           ]
-          localDestPath: 'samples/simple-socks-firefoxapp/'
+          localDestPath: 'samples/simple-socks-firefoxapp/lib/'
       libsForSimpleChurnChatChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
@@ -493,7 +493,6 @@ module.exports = (grunt) ->
           ]
           outfile: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp_slow/'
           keepRunner: true
-
 
     clean:
       build:
