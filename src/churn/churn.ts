@@ -363,8 +363,8 @@ var log :logging.Log = new logging.Log('churn');
       };
       var obfPeerName = this.peerName + '-obfuscated';
       var freedomPc = freedom['core.rtcpeerconnection'](obfConfig);
-      this.obfuscatedConnection_ =
-          peerconnection.createPeerConnection(freedomPc, obfPeerName);
+      this.obfuscatedConnection_ = new peerconnection.PeerConnectionClass(
+          freedomPc, obfPeerName);
       this.obfuscatedConnection_.signalForPeerQueue.setSyncHandler(
           (signal:peerconnection.SignallingMessage) => {
         // Super-paranoid check: remove candidates from SDP messages.
