@@ -317,7 +317,7 @@ var log :logging.Log = new logging.Log('churn');
             remoteEndpoint.address,
             remoteEndpoint.port,
             'caesar',
-            new Uint8Array([13]),
+            new Uint8Array([13]).buffer,
             {})
         // TODO(ldixon): renable FTE support instead of caesar cipher.
         // publicPipe.bind(
