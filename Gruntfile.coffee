@@ -467,7 +467,8 @@ module.exports = (grunt) ->
           devBuildPath + '/integration-tests/socks-echo/freedom-module.static.js'
           devBuildPath + '/integration-tests/socks-echo/freedom-module.json'
           freedomForChromePath + '/freedom-for-chrome.js'
-          devBuildPath + '/integration-tests/socks-echo/tcp.core-env.spec.static.js'
+          devBuildPath + '/integration-tests/socks-echo/nochurn.core-env.spec.static.js'
+          devBuildPath + '/integration-tests/socks-echo/churn.core-env.spec.static.js'
         ]
         options:
           paths: [
