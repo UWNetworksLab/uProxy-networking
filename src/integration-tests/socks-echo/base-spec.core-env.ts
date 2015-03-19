@@ -21,8 +21,7 @@ export function socksEchoTestDescription(useChurn:boolean) {
   };
 
   beforeEach((done) => {
-    freedom('scripts/build/integration/socks-echo/integration.json',
-            { 'debug': 'debug' })
+    freedom('files/freedom-module.json', { 'debug': 'debug' })
         .then((interface:Function) => {
           freedomInterface = interface;
           done();

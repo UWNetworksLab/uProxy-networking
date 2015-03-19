@@ -120,7 +120,7 @@ taskManager.add 'socksEchoIntegrationTestModule', [
 
 taskManager.add 'socksEchoIntegrationTest', [
   'socksEchoIntegrationTestModule'
-  'jasmine_chromeapp:sockEcho'
+  'jasmine_chromeapp:socksEcho'
 ]
 
 taskManager.add 'tcpIntegrationTestModule', [
@@ -164,6 +164,11 @@ Rule = new rules.Rule({
 });
 
 path = require('path');
+
+browserifyIntegrationTest = (path) ->
+  Rule.browserifySpec(path, {
+    browserifyOptions: { standalone: 'browserified_exports' }
+  });
 
 #-------------------------------------------------------------------------
 
@@ -430,17 +435,17 @@ module.exports = (grunt) ->
       integrationTcpFreedomModule:
         Rule.browserify 'integration-tests/tcp/freedom-module'
       integrationTcpSpec:
-        Rule.browserifySpec 'integration-tests/tcp/tcp.core-env'
+        browserifyIntegrationTest 'integration-tests/tcp/tcp.core-env'
 
       # Integration tests: socks-echo
       integrationSocksEchoFreedomModule:
         Rule.browserify 'integration-tests/socks-echo/freedom-module'
       integrationSocksEchoChurnSpec:
-        Rule.browserifySpec 'integration-tests/socks-echo/churn.core-env'
+        browserifyIntegrationTest 'integration-tests/socks-echo/churn.core-env'
       integrationSocksEchoNochurnSpec:
-        Rule.browserifySpec 'integration-tests/socks-echo/nochurn.core-env'
+        browserifyIntegrationTest 'integration-tests/socks-echo/nochurn.core-env'
       integrationSocksEchoSlowSpec:
-        Rule.browserifySpec 'integration-tests/socks-echo/slow.core-env'
+        browserifyIntegrationTest 'integration-tests/socks-echo/slow.core-env'
       # Browserify sample apps main freedom module and core environments
 
     jasmine_chromeapp:
@@ -465,7 +470,7 @@ module.exports = (grunt) ->
           {
             cwd: devBuildPath + '/integration-tests/socks-echo/',
             src: ['**/*', '!jasmine_chromeapp/**/*']
-            dest: '/uproxy-networking/',
+            dest: './',
             expand: true
           }
         ]
