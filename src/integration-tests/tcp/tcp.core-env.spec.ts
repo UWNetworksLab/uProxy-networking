@@ -43,8 +43,7 @@ describe('core.tcpsocket wrapper', function() {
   // Loads the testing Freedom module, emits a signal and returns
   // a promise which fulfills once the signal is echoed.
   function loadFreedom(signalName:string) : Promise<void> {
-    return freedom('scripts/build/dev/uproxy-networking/integration-tests/tcp/freedom-module.json',
-      {
+    return freedom('src/freedom-module.json', {
         'debug': 'debug'
       }).then((integrationFactoryConstructor) => {
         return new Promise((F, R) => {

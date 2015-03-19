@@ -342,7 +342,7 @@ module.exports = (grunt) ->
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
           pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider']
-          localDestPath: 'integration-tests/tcp'
+          localDestPath: 'integration-tests/socks-echo'
 
     # Typescript compilation rules
     ts:
@@ -444,7 +444,7 @@ module.exports = (grunt) ->
       # Browserify sample apps main freedom module and core environments
 
     jasmine_chromeapp:
-      tcp:
+      oldTcp:
         src: [
           thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.static.js'
           thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.json'
@@ -455,25 +455,49 @@ module.exports = (grunt) ->
         ]
         options:
           paths: [
-            freedomForChromePath + '/freedom-for-chrome.js'
             devBuildPath + '/integration-tests/tcp/tcp.core-env.spec.static.js'
+            freedomForChromePath + '/freedom-for-chrome.js'
           ]
           outfile: devBuildPath + '/integration-tests/tcp/jasmine_chromeapp/'
           keepRunner: true
+      # TODO: use files section, to allow relative paths e.g.:
+      # See: https://github.com/willscott/grunt-jasmine-chromeapp/issues/15
+      # tcp:
+      #   files: [
+      #     {
+      #       cwd: 'freedomForChromePath',
+      #       src: 'freedom-for-chrome.js',
+      #       dest: '/',  # relative to final location
+      #       expand: true }
+      #   ]
+      tcp:
+        files: [
+          {
+            cwd: devBuildPath + '/integration-tests/tcp/',
+            src: ['**/*', '!jasmine_chromeapp/**/*']
+            dest: './',
+            expand: true
+          }
+        ]
+        scripts: [
+          'freedom-for-chrome/freedom-for-chrome.js'
+          'tcp.core-env.spec.static.js'
+        ]
+        options:
+          outdir: devBuildPath + '/integration-tests/tcp/jasmine_chromeapp/'
+          keepRunner: true
       socksEcho:
-        src: [
-          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.static.js'
-          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.json'
-          devBuildPath + '/integration-tests/socks-echo/freedom-module.static.js'
-          devBuildPath + '/integration-tests/socks-echo/freedom-module.json'
-          freedomForChromePath + '/freedom-for-chrome.js'
-          devBuildPath + '/integration-tests/socks-echo/tcp.core-env.spec.static.js'
+        files: [
+          {
+            cwd: devBuildPath, src: '/integration-tests/socks-echo/**/*',
+            dest: '/uproxy-networking/', expand: true
+          }
         ]
         options:
           paths: [
-            freedomForChromePath + '/freedom-for-chrome.js'
-            devBuildPath + '/integration-tests/socks-echo/nochurn.core-env.spec.static.js'
-            devBuildPath + '/integration-tests/socks-echo/churn.core-env.spec.static.js'
+            'freedom-for-chrome/freedom-for-chrome.js'
+            'uproxy-networking/integration-tests/socks-echo/nochurn.core-env.spec.static.js'
+            'uproxy-networking/integration-tests/socks-echo/churn.core-env.spec.static.js'
           ]
           outfile: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp/'
           keepRunner: true
@@ -495,10 +519,7 @@ module.exports = (grunt) ->
           keepRunner: true
 
     clean:
-      build:
-        [ 'build/dev', 'build/dist'
-          # Note: '.tscache/' is created by grunt-ts.
-          '.tscache/' ]
+      build: [ 'build/dev', 'build/dist', '.tscache/' ]
   }  # grunt.initConfig
 
   #-------------------------------------------------------------------------
