@@ -113,7 +113,7 @@ module SocksToRtc {
       return this.startInternal(
           new tcp.Server(endpoint),
           obfuscate ?
-              new churn.Connection(pc) :
+              new churn.Connection(pc, 'SocksToRtc') :
               new peerconnection.PeerConnectionClass(pc));
     }
 
