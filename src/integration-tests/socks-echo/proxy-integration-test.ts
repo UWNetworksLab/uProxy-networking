@@ -7,8 +7,9 @@ import socks_to_rtc = require('../../socks-to-rtc/socks-to-rtc');
 import net = require('../../net/net.types');
 import tcp = require('../../net/tcp');
 import socks = require('../../socks-common/socks-headers');
+import ProxyIntegrationTester = require('./proxy-integration-test.types');
 
-class ProxyIntegrationTest {
+class ProxyIntegrationTestClass implements ProxyIntegrationTester {
   private socksToRtc_ :socks_to_rtc.SocksToRtc;
   private rtcToNet_ :rtc_to_net.RtcToNet;
   private socksEndpoint_ : Promise<net.Endpoint>;
@@ -86,6 +87,8 @@ class ProxyIntegrationTest {
     }).then((buffer:ArrayBuffer) : Promise<tcp.Connection> => {
       var response = socks.interpretResponseBuffer(buffer);
       if (response.reply != socks.Reply.SUCCEEDED) {
+        // TODO: Fix bad style: reject should only and always be an error.
+        // We should be resolving with result status.
         return Promise.reject(response);
       }
       return Promise.resolve(connection);
@@ -105,7 +108,7 @@ class ProxyIntegrationTest {
         return connection.connectionId;
       });
     } catch (e) {
-      return Promise.reject(e.message + ' ' + e.stack);
+      return Promise.reject(e);
     }
   }
 
@@ -137,7 +140,7 @@ class ProxyIntegrationTest {
         });
       });
     } catch (e) {
-      return Promise.reject(e.message + ' ' + e.stack);
+      return Promise.reject(e);
     }
   }
 
@@ -150,9 +153,9 @@ class ProxyIntegrationTest {
       });
       return Promise.resolve<void>();
     } catch (e) {
-      return Promise.reject(e.message + ' ' + e.stack);
+      return Promise.reject(e);
     }
   }
 }
 
-export = ProxyIntegrationTest;
+export = ProxyIntegrationTestClass;
