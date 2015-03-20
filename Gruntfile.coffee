@@ -202,7 +202,6 @@ module.exports = (grunt) ->
               cwd: 'third_party'
               src: ['**/*'],
               dest: thirdPartyBuildPath,
-              onlyIf: 'modified'
           }
           # Copy distribution directory of uproxy-lib so all paths can always
           # find their dependencies. Note that this also requires uproxy-lib
@@ -214,7 +213,6 @@ module.exports = (grunt) ->
               cwd: path.join(uproxyLibPath, 'build/dist'),
               src: ['**/*'],
               dest: path.join(thirdPartyBuildPath, 'uproxy-lib/'),
-              onlyIf: 'modified'
           },
           # Use the third_party definitions from uproxy-lib. Copied to the same
           # location relative to their compiled location in uproxy-lib so they
@@ -226,7 +224,6 @@ module.exports = (grunt) ->
               cwd: path.join(uproxyLibPath, 'build/third_party'),
               src: ['freedom-typings/**/*', 'promise-polyfill.js'],
               dest: thirdPartyBuildPath
-              onlyIf: 'modified'
           }
         ]
 
@@ -346,7 +343,12 @@ module.exports = (grunt) ->
       libsForIntegrationSocksEcho:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
-          pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider']
+          pathsFromDevBuild: [
+            'churn-pipe'
+          ]
+          pathsFromThirdPartyBuild: [
+            'uproxy-lib/loggingprovider'
+          ]
           localDestPath: 'integration-tests/socks-echo'
 
     # Typescript compilation rules
@@ -486,7 +488,7 @@ module.exports = (grunt) ->
         files: [
           {
             cwd: devBuildPath + '/integration-tests/socks-echo/',
-            src: ['**/*', '!jasmine_chromeapp/**/*']
+            src: ['**/*', '!jasmine_chromeapp']
             dest: '/uproxy-networking/',
             expand: true
           }
