@@ -443,7 +443,6 @@ var log :logging.Log = new logging.Log('churn');
     // local forwarding socket's endpoint.
     public handleSignalMessage = (
         message:ChurnSignallingMessage) : void => {
-      console.log('message: ' + JSON.stringify(message));
       if (message.publicEndpoint !== undefined) {
         this.haveRemoteEndpoint_(message.publicEndpoint);
       }
