@@ -243,6 +243,23 @@ var log :logging.Log = new logging.Log('churn');
       });
       this.onceDisconnected = this.obfuscatedConnection_.onceDisconnected.then(
           () => { this.pcState = peerconnection.State.DISCONNECTED; });
+
+      // Debugging.
+      this.onceProbingComplete_.then((endpoint:NatPair) => {
+        log.debug('%1: NAT endpoints of probe connection are %2',
+            this.peerName,
+            JSON.stringify(endpoint));
+      });
+      this.onceHaveWebRtcEndpoint_.then((endpoint:net.Endpoint) => {
+        log.debug('%1: obfuscated connection is bound to %2',
+            this.peerName,
+            JSON.stringify(endpoint));
+      });
+      this.onceHaveRemoteEndpoint_.then((endpoint:net.Endpoint) => {
+        log.debug('%1: remote peer is contactable at %2',
+            this.peerName,
+            JSON.stringify(endpoint));
+      });
     }
 
     private configureProbeConnection_ = (
@@ -252,7 +269,6 @@ var log :logging.Log = new logging.Log('churn');
           freedomPc, probePeerName);
       this.probeConnection_.signalForPeerQueue.setSyncHandler(
           (signal:peerconnection.SignallingMessage) => {
-        log.debug("probe connection emitted: " + JSON.stringify(signal));
         if (signal.type === peerconnection.SignalType.CANDIDATE) {
           this.probeCandidates_.push(signal.candidate);
         } else if (signal.type === peerconnection.SignalType.NO_MORE_CANDIDATES) {
@@ -272,7 +288,6 @@ var log :logging.Log = new logging.Log('churn');
         webRtcEndpoint:net.Endpoint,
         remoteEndpoint:net.Endpoint,
         natEndpoints:NatPair) : void => {
-      log.debug('configuring pipes...');
       var localPipe = freedom['churnPipe']();
       localPipe.bind(
           '127.0.0.1',
@@ -283,15 +298,17 @@ var log :logging.Log = new logging.Log('churn');
           undefined,
           undefined)
       .catch((e:Error) => {
-        log.error('error setting up local pipe: ' + e.message);
+        log.error('%1: error establishing local pipe: %2',
+            this.peerName,
+            e.message);
       })
       .then(localPipe.getLocalEndpoint)
       .then((forwardingSocketEndpoint:net.Endpoint) => {
         this.haveForwardingSocketEndpoint_(forwardingSocketEndpoint);
-        log.info('configured local pipe between forwarding socket at ' +
-            forwardingSocketEndpoint.address + ':' +
-            forwardingSocketEndpoint.port + ' and webrtc at ' +
-            webRtcEndpoint.address + ':' + webRtcEndpoint.port);
+        log.info('%1: configured local pipe between %2 and %3',
+            this.peerName,
+            JSON.stringify(forwardingSocketEndpoint),
+            JSON.stringify(webRtcEndpoint));
 
         var publicPipe = freedom['churnPipe']();
         publicPipe.bind(
@@ -318,11 +335,10 @@ var log :logging.Log = new logging.Log('churn');
         //       'ciphertext_max_len': 1450
         //     }))
         .then(() => {
-          log.info('configured obfuscating pipe: ' +
-              natEndpoints.internal.address + ':' +
-              natEndpoints.internal.port + ' <-> ' +
-              remoteEndpoint.address + ':' +
-              remoteEndpoint.port);
+          log.info('%1: configured obfuscating pipe between %2 and %3',
+              this.peerName,
+              JSON.stringify(natEndpoints.internal),
+              JSON.stringify(remoteEndpoint));
 
           // Connect the local pipe to the remote, obfuscating, pipe.
           localPipe.on('message', (m:churn_pipe_types.Message) => {
@@ -333,7 +349,9 @@ var log :logging.Log = new logging.Log('churn');
           });
         })
         .catch((e:Error) => {
-          log.error('error setting up obfuscated pipe: ' + e.message);
+          log.error('%1: error establishing obfuscated pipe: %2',
+            this.peerName,
+            e.message);
         });
       });
     }
@@ -360,7 +378,8 @@ var log :logging.Log = new logging.Log('churn');
         }
         if (signal.type === peerconnection.SignalType.CANDIDATE) {
           if (!signal.candidate || !signal.candidate.candidate) {
-            log.error('null candidate!');
+            log.error('%1: null candidate!',
+                this.peerName);
             return;
           }
           // This will tell us on which port webrtc is operating.
@@ -393,8 +412,6 @@ var log :logging.Log = new logging.Log('churn');
     }
 
     public negotiateConnection = () : Promise<void> => {
-      // TODO: propagate errors.
-      log.debug('negotiating obfuscated connection...');
       return this.obfuscatedConnection_.negotiateConnection();
     }
 

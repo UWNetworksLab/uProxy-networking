@@ -50,8 +50,20 @@ module RtcToNet {
 
   export interface SessionSnapshot {
     name :string;
-    channel :DataChannelSnapshot;
-    socket :SocketSnapshot;
+    // Time in seconds, with fractional parts, of when the snapshot
+    // was taken.  Epoch is start of this web-worker.  This is the
+    // result of calling performance.now() -
+    // https://developer.mozilla.org/en-US/docs/Web/API/Performance/now
+    timestamp: number;
+    channel_sent: number;
+    channel_received: number;
+    channel_buffered: number;
+    channel_queue_size: number;
+    channel_queue_handling: boolean;
+    socket_sent: number;
+    socket_received: number;
+    socket_queue_size: number;
+    socket_queue_handling: boolean;
   }
 
   export interface RtcToNetSnapshot {
@@ -184,7 +196,7 @@ module RtcToNet {
       });
       var writeSnapshot = () => {
         this.getSnapshot().then((snapshot:RtcToNetSnapshot) => {
-          log.info('snapshot: %1', [JSON.stringify(snapshot)]);
+          log.info('snapshot: %1', JSON.stringify(snapshot));
         });
         if (loop) {
           setTimeout(writeSnapshot, RtcToNet.SNAPSHOTTING_INTERVAL_MS);
@@ -284,6 +296,10 @@ module RtcToNet {
   export class Session {
     private tcpConnection_ :tcp.Connection;
 
+    // TODO: There's no equivalent of datachannel.isClosed():
+    //         https://github.com/uProxy/uproxy/issues/1075
+    private isChannelClosed_ :boolean = false;
+
     // Fulfills once a connection has been established with the remote peer.
     // Rejects if a connection cannot be made for any reason.
     public onceReady :Promise<void>;
@@ -322,20 +338,29 @@ module RtcToNet {
     // Returns onceReady.
     public start = () : Promise<void> => {
       this.onceReady = this.receiveEndpointFromPeer_()
-        .then(this.getTcpConnection_, (e:Error) => {
+        .catch((e:Error) => {
           // TODO: Add a unit test for this case.
           this.replyToPeer_(socks.Reply.UNSUPPORTED_COMMAND);
-          throw e;
+          return Promise.reject(e);
         })
+        .then(this.getTcpConnection_)
         .then((tcpConnection) => {
           this.tcpConnection_ = tcpConnection;
-          // Shutdown once the TCP connection terminates.
+
+          // Shutdown once the TCP connection terminates and has drained.
           this.tcpConnection_.onceClosed.then((kind:tcp.SocketCloseKind) => {
-            log.info('%1: socket closed (%2)', [
-                this.longId(),
-                tcp.SocketCloseKind[kind]]);
-          })
-          .then(this.fulfillStopping_);
+            if (this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
+              log.info('%1: socket closed (%2), all incoming data processed',
+                  this.longId(),
+                  tcp.SocketCloseKind[kind]);
+              this.fulfillStopping_();
+            } else {
+              log.info('%1: socket closed (%2), still processing incoming data',
+                  this.longId(),
+                  tcp.SocketCloseKind[kind]);
+            }
+          });
+
           return this.tcpConnection_.onceConnected;
         })
         .then((info:tcp.ConnectionInfo) => {
@@ -344,24 +369,25 @@ module RtcToNet {
               JSON.stringify(info.bound)]);
           var reply = this.getReplyFromInfo_(info);
           this.replyToPeer_(reply, info);
-        }, (e:any) => {
-          // TODO: e is actually a freedom.Error (uproxy-lib 20+)
-          // If this.tcpConnection_ is not defined, then getTcpConnection_
-          // failed and we've already replied with UNSUPPORTED_COMMAND.
-          if (this.tcpConnection_) {
-            var reply = this.getReplyFromError_(e);
-            this.replyToPeer_(reply);
-          }
-          throw e;
+        })
+        .catch((e) => {
+          log.error('Unexpected socks connection failure: ' + e.toString());
         });
+        // TODO: check: can any error happen than we havn't handled and which
+        // we'd need to reply to the socks server for?
 
       this.onceReady.then(this.linkSocketAndChannel_, this.fulfillStopping_);
 
-      this.dataChannel_.onceClosed
-      .then(() => {
-        log.info('%1: datachannel closed', [this.longId()]);
-      })
-      .then(this.fulfillStopping_);
+      // Shutdown once the data channel terminates and has drained.
+      this.dataChannel_.onceClosed.then(() => {
+        this.isChannelClosed_ = true;
+        if (this.dataChannel_.dataFromPeerQueue.getLength() === 0) {
+          log.info('%1: channel closed, all incoming data processed', this.longId());
+          this.fulfillStopping_();
+        } else {
+          log.info('%1: channel closed, still processing incoming data', this.longId());
+        }
+      });
 
       this.onceStopped_ = this.onceStopping_.then(this.stopResources_);
 
@@ -490,73 +516,93 @@ module RtcToNet {
 
     // Sends a packet over the data channel.
     // Invoked when a packet is received over the TCP socket.
-    private sendOnChannel_ = (data:ArrayBuffer) : void => {
-      this.socketReceivedBytes_ += data.byteLength;
+    private sendOnChannel_ = (data:ArrayBuffer) : Promise<void> => {
       log.debug('%1: socket received %2 bytes', [
           this.longId(),
           data.byteLength]);
-      this.dataChannel_.send({buffer: data}).then(() => {
-        this.bytesSentToPeer_.handle(data.byteLength);
-        this.channelSentBytes_ += data.byteLength;
-      }).catch((e:Error) => {
-        log.error('%1: failed to send data on datachannel: %2', [
-            this.longId(),
-            e.message]);
-      });
+      this.socketReceivedBytes_ += data.byteLength;
+
+      return this.dataChannel_.send({buffer: data});
     }
 
     // Sends a packet over the TCP socket.
     // Invoked when a packet is received over the data channel.
-    private sendOnSocket_ = (data:peerconnection.Data) : void => {
+    private sendOnSocket_ = (data:peerconnection.Data)
+        : Promise<freedom_TcpSocket.WriteInfo> => {
       this.channelReceivedBytes_ += data.buffer.byteLength;
       if (!data.buffer) {
-        log.error('%1: received non-buffer data from datachannel', [
-            this.longId()]);
-        return;
+        return Promise.reject(new Error(
+            'received non-buffer data from datachannel'));
       }
       log.debug('%1: datachannel received %2 bytes', [
           this.longId(),
           data.buffer.byteLength]);
       this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
-      this.tcpConnection_.send(data.buffer).then(() => {
-        this.socketSentBytes_ += data.buffer.byteLength;
-      }).catch((e:any) => {
-        // TODO: e is actually a freedom.Error (uproxy-lib 20+)
-        // errcode values are defined here:
-        //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
-        if (e.errcode === 'NOT_CONNECTED') {
-          // This can happen if, for example, there was still data to be
-          // read on the datachannel's queue when the socket closed.
-          log.warn('%1: tried to send data on closed socket: %2', [
-              this.longId(),
-              e.errcode]);
-        } else {
-          log.error('%1: failed to send data on socket: %2', [
-              this.longId(),
-              e.errcode]);
-        }
-      });
+
+      return this.tcpConnection_.send(data.buffer);
     }
 
     // Configures forwarding of data from the TCP socket over the data channel
     // and vice versa. Should only be called once both socket and channel have
     // been successfully established.
     private linkSocketAndChannel_ = () : void => {
+      // Note that setTimeout is used by both loops to preserve system
+      // responsiveness when large amounts of data are being received:
+      //   https://github.com/uProxy/uproxy/issues/967
       var socketReadLoop = (data:ArrayBuffer) => {
-        this.sendOnChannel_(data);
-        Session.nextTick_(() => {
-          this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
-              socketReadLoop);
+        this.sendOnChannel_(data).then(() => {
+          this.bytesSentToPeer_.handle(data.byteLength);
+          this.channelSentBytes_ += data.byteLength;
+          // Shutdown once the TCP connection terminates and has drained,
+          // otherwise keep draining.
+          if (this.tcpConnection_.isClosed() &&
+              this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
+            log.info('%1: socket drained', this.longId());
+            this.fulfillStopping_();
+          } else {
+            Session.nextTick_(() => {
+              this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
+                  socketReadLoop);
+            });
+          }
+        }, (e:Error) => {
+          log.error('%1: failed to send data on datachannel: %2',
+              this.longId(),
+              e.message);
         });
-      }
-      this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
-          socketReadLoop);
+      };
+      this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(socketReadLoop);
 
       var channelReadLoop = (data:peerconnection.Data) : void => {
-        this.sendOnSocket_(data);
-        Session.nextTick_(() => {
-          this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
-              channelReadLoop);
+        this.sendOnSocket_(data).then((writeInfo:freedom_TcpSocket.WriteInfo) => {
+          this.socketSentBytes_ += data.buffer.byteLength;
+          // Shutdown once the data channel terminates and has drained,
+          // otherwise keep draining.
+          if (this.isChannelClosed_ &&
+              this.dataChannel_.dataFromPeerQueue.getLength() === 0) {
+            log.info('%1: channel drained', this.longId());
+            this.fulfillStopping_();
+          } else {
+            Session.nextTick_(() => {
+              this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
+                  channelReadLoop);
+            });
+          }
+        }, (e:{ errcode: string }) => {
+          // TODO: e is actually a freedom.Error (uproxy-lib 20+)
+          // errcode values are defined here:
+          //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
+          if (e.errcode === 'NOT_CONNECTED') {
+            // This can happen if, for example, there was still data to be
+            // read on the datachannel's queue when the socket closed.
+            log.warn('%1: tried to send data on closed socket: %2', [
+                this.longId(),
+                e.errcode]);
+          } else {
+            log.error('%1: failed to send data on socket: %2', [
+                this.longId(),
+                e.errcode]);
+          }
         });
       };
       this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
@@ -588,25 +634,17 @@ module RtcToNet {
           .then((bufferedAmount:number) => {
         return {
           name: this.channelLabel(),
-          channel: {
-            sent: this.channelSentBytes_,
-            received: this.channelReceivedBytes_,
-            browserBuffered: bufferedAmount,
-            jsBuffered: this.dataChannel_.getJavascriptBufferedAmount(),
-            queue: {
-              size: this.dataChannel_.dataFromPeerQueue.getLength(),
-              handling: this.dataChannel_.dataFromPeerQueue.isHandling()
-            }
-          },
-          socket: {
-            sent: this.socketSentBytes_,
-            received: this.socketReceivedBytes_,
-            queue: {
-              size: this.tcpConnection_.dataFromSocketQueue.getLength(),
-              handling: this.tcpConnection_.dataFromSocketQueue.isHandling()
-            }
-          }
-        };
+          timestamp: performance.now(),
+          channel_sent: this.channelSentBytes_,
+          channel_received: this.channelReceivedBytes_,
+          channel_buffered: bufferedAmount,
+          channel_queue_size: this.dataChannel_.dataFromPeerQueue.getLength(),
+          channel_queue_handling: this.dataChannel_.dataFromPeerQueue.isHandling(),
+          socket_sent: this.socketSentBytes_,
+          socket_received: this.socketReceivedBytes_,
+          socket_queue_size: this.tcpConnection_.dataFromSocketQueue.getLength(),
+          socket_queue_handling: this.tcpConnection_.dataFromSocketQueue.isHandling()
+        }
       });
     }
 

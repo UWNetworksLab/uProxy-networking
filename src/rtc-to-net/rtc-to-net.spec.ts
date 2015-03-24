@@ -116,8 +116,10 @@ describe("RtcToNet session", function() {
         'onceConnected',
         'onceClosed',
         'isClosed',
-        'close'
+        'close',
+        'send'
       ]);
+    (<any>mockTcpConnection.send).and.returnValue(Promise.resolve({ bytesWritten: 1 }));
     mockTcpConnection.dataFromSocketQueue = new handler.Queue<ArrayBuffer,void>();
     mockDataFromPeerQueue = new handler.Queue<peerconnection.Data,void>();
 
@@ -231,6 +233,51 @@ describe("RtcToNet session", function() {
     });
     mockBytesReceived.setSyncNextHandler((numBytes:number) => {
       expect(numBytes).toEqual(message.buffer.byteLength);
+      done();
+    });
+  });
+
+  it('channel queue drains before termination', (done) => {
+    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockRemoteEndpoint));
+    spyOn(session, 'replyToPeer_').and.returnValue(Promise.resolve());
+    spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
+
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
+    mockTcpConnection.onceClosed = noopPromise;
+
+    // The data channel is closed before the session starts.
+    mockDataChannel.onceClosed = voidPromise;
+
+    var message :peerconnection.Data = {
+      buffer: new Uint8Array([1,2,3]).buffer
+    };
+    var onceMessageHandled = mockDataFromPeerQueue.handle(message);
+
+    session.start().then(session.onceStopped).then(() => {
+      return onceMessageHandled;
+    }).then(() => {
+      expect(mockDataChannel.dataFromPeerQueue.getLength()).toEqual(0);
+      done();
+    });
+  });
+
+  it('socket queue drains before termination', (done) => {
+    spyOn(session, 'receiveEndpointFromPeer_').and.returnValue(Promise.resolve(mockRemoteEndpoint));
+    spyOn(session, 'replyToPeer_').and.returnValue(Promise.resolve());
+    spyOn(session, 'getTcpConnection_').and.returnValue(Promise.resolve(mockTcpConnection));
+
+    // The TCP connection is closed before the session starts.
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
+    mockTcpConnection.onceClosed = Promise.resolve(tcp.SocketCloseKind.WE_CLOSED_IT);
+    (<any>mockTcpConnection.isClosed).and.returnValue(true);
+
+    var buffer = new Uint8Array([1,2,3]).buffer;
+    var onceMessageHandled = mockTcpConnection.dataFromSocketQueue.handle(buffer);
+
+    session.start().then(session.onceStopped).then(() => {
+      return onceMessageHandled;
+    }).then(() => {
+      expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
       done();
     });
   });
