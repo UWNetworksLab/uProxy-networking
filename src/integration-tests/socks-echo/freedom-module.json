@@ -51,6 +51,17 @@
       "pong": {
         "type": "event",
         "value": "buffer"
+      },
+      "notifyClose": {
+        "type": "method",
+        "value": ["string"]
+      },
+      "closeEchoConnections": {
+          "type": "method"
+      },
+      "sockClosed": {
+          "type": "event",
+          "value": "string"
       }
     }
   },
