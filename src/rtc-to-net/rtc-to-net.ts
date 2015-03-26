@@ -5,7 +5,7 @@
 /// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
 /// <reference path='../../../third_party/ipaddrjs/ipaddrjs.d.ts' />
 
-import freedomTypes = require('freedom.types');
+import freedom_types = require('freedom.types');
 import ipaddr = require('ipaddr.js');
 
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
@@ -27,25 +27,6 @@ module RtcToNet {
     // If |allowNonUnicast === false| then any proxy attempt that results
     // in a non-unicast (e.g. local network) address will fail.
     allowNonUnicast :boolean;
-  }
-
-  export interface HandlerQueueSnapshot {
-    size :number;
-    handling :boolean;
-  }
-
-  export interface SocketSnapshot {
-    sent :number;
-    received :number;
-    queue :HandlerQueueSnapshot;
-  }
-
-  export interface DataChannelSnapshot {
-    sent :number;
-    received :number;
-    browserBuffered :number;
-    jsBuffered :number;
-    queue :HandlerQueueSnapshot;
   }
 
   export interface SessionSnapshot {
@@ -361,7 +342,12 @@ module RtcToNet {
             }
           });
 
-          return this.tcpConnection_.onceConnected;
+          return this.tcpConnection_.onceConnected
+            .catch((e:freedom_types.Error) => {
+              log.info('%1: failed to connect to remote endpoint', [this.longId()]);
+              this.replyToPeer_(this.getReplyFromError_(e));
+              return Promise.reject(new Error(e.errcode));
+            });
         })
         .then((info:tcp.ConnectionInfo) => {
           log.info('%1: connected to remote endpoint', [this.longId()]);
@@ -369,12 +355,7 @@ module RtcToNet {
               JSON.stringify(info.bound)]);
           var reply = this.getReplyFromInfo_(info);
           this.replyToPeer_(reply, info);
-        })
-        .catch((e) => {
-          log.error('Unexpected socks connection failure: ' + e.toString());
         });
-        // TODO: check: can any error happen than we havn't handled and which
-        // we'd need to reply to the socks server for?
 
       this.onceReady.then(this.linkSocketAndChannel_, this.fulfillStopping_);
 
@@ -433,27 +414,29 @@ module RtcToNet {
                 JSON.stringify(data)));
             return;
           }
-          try {
-            var r :any = JSON.parse(data.str);
-            if (!socks.isValidRequest(r)) {
-              R(new Error('received invalid request from peer: ' +
-                  JSON.stringify(data.str)));
-              return;
-            }
-            var request :socks.Request = r;
-            if (request.command != socks.Command.TCP_CONNECT) {
-              R(new Error('unexpected type for endpoint message'));
-              return;
-            }
-            log.info('%1: received endpoint from peer: %2', [
-                this.longId(), JSON.stringify(request.endpoint)]);
-            F(request.endpoint);
-            return;
-          } catch (e) {
+
+          var request :socks.Request;
+          try { request = JSON.parse(data.str); }
+          catch (e) {
             R(new Error('received malformed message during handshake: ' +
                 data.str));
             return;
           }
+
+          if (!socks.isValidRequest(request)) {
+            R(new Error('received invalid request from peer: ' +
+                JSON.stringify(data.str)));
+            return;
+          }
+          if (request.command != socks.Command.TCP_CONNECT) {
+            R(new Error('unexpected type for endpoint message'));
+            return;
+          }
+
+          log.info('%1: received endpoint from peer: %2', [
+              this.longId(), JSON.stringify(request.endpoint)]);
+          F(request.endpoint);
+          return;
         });
       });
     }
