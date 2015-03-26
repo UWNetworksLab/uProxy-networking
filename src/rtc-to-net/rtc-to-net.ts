@@ -5,7 +5,7 @@
 /// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
 /// <reference path='../../../third_party/ipaddrjs/ipaddrjs.d.ts' />
 
-import freedomTypes = require('freedom.types');
+import freedom_types = require('freedom.types');
 import ipaddr = require('ipaddr.js');
 
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
@@ -29,29 +29,22 @@ module RtcToNet {
     allowNonUnicast :boolean;
   }
 
-  export interface HandlerQueueSnapshot {
-    size :number;
-    handling :boolean;
-  }
-
-  export interface SocketSnapshot {
-    sent :number;
-    received :number;
-    queue :HandlerQueueSnapshot;
-  }
-
-  export interface DataChannelSnapshot {
-    sent :number;
-    received :number;
-    browserBuffered :number;
-    jsBuffered :number;
-    queue :HandlerQueueSnapshot;
-  }
-
   export interface SessionSnapshot {
     name :string;
-    channel :DataChannelSnapshot;
-    socket :SocketSnapshot;
+    // Time in seconds, with fractional parts, of when the snapshot
+    // was taken.  Epoch is start of this web-worker.  This is the
+    // result of calling performance.now() -
+    // https://developer.mozilla.org/en-US/docs/Web/API/Performance/now
+    timestamp: number;
+    channel_sent: number;
+    channel_received: number;
+    channel_buffered: number;
+    channel_queue_size: number;
+    channel_queue_handling: boolean;
+    socket_sent: number;
+    socket_received: number;
+    socket_queue_size: number;
+    socket_queue_handling: boolean;
   }
 
   export interface RtcToNetSnapshot {
@@ -184,7 +177,7 @@ module RtcToNet {
       });
       var writeSnapshot = () => {
         this.getSnapshot().then((snapshot:RtcToNetSnapshot) => {
-          log.info('snapshot: %1', [JSON.stringify(snapshot)]);
+          log.info('snapshot: %1', JSON.stringify(snapshot));
         });
         if (loop) {
           setTimeout(writeSnapshot, RtcToNet.SNAPSHOTTING_INTERVAL_MS);
@@ -284,7 +277,12 @@ module RtcToNet {
   export class Session {
     private tcpConnection_ :tcp.Connection;
 
+<<<<<<< HEAD
     // There is no equivalent of datachannel.isClosed().
+=======
+    // TODO: There's no equivalent of datachannel.isClosed():
+    //         https://github.com/uProxy/uproxy/issues/1075
+>>>>>>> dev-requireify
     private isChannelClosed_ :boolean = false;
 
     // Fulfills once a connection has been established with the remote peer.
@@ -325,11 +323,12 @@ module RtcToNet {
     // Returns onceReady.
     public start = () : Promise<void> => {
       this.onceReady = this.receiveEndpointFromPeer_()
-        .then(this.getTcpConnection_, (e:Error) => {
+        .catch((e:Error) => {
           // TODO: Add a unit test for this case.
           this.replyToPeer_(socks.Reply.UNSUPPORTED_COMMAND);
-          throw e;
+          return Promise.reject(e);
         })
+        .then(this.getTcpConnection_)
         .then((tcpConnection) => {
           this.tcpConnection_ = tcpConnection;
 
@@ -347,7 +346,16 @@ module RtcToNet {
             }
           });
 
+<<<<<<< HEAD
           return this.tcpConnection_.onceConnected;
+=======
+          return this.tcpConnection_.onceConnected
+            .catch((e:freedom_types.Error) => {
+              log.info('%1: failed to connect to remote endpoint', [this.longId()]);
+              this.replyToPeer_(this.getReplyFromError_(e));
+              return Promise.reject(new Error(e.errcode));
+            });
+>>>>>>> dev-requireify
         })
         .then((info:tcp.ConnectionInfo) => {
           log.info('%1: connected to remote endpoint', [this.longId()]);
@@ -355,15 +363,6 @@ module RtcToNet {
               JSON.stringify(info.bound)]);
           var reply = this.getReplyFromInfo_(info);
           this.replyToPeer_(reply, info);
-        }, (e:any) => {
-          // TODO: e is actually a freedom.Error (uproxy-lib 20+)
-          // If this.tcpConnection_ is not defined, then getTcpConnection_
-          // failed and we've already replied with UNSUPPORTED_COMMAND.
-          if (this.tcpConnection_) {
-            var reply = this.getReplyFromError_(e);
-            this.replyToPeer_(reply);
-          }
-          throw e;
         });
 
       this.onceReady.then(this.linkSocketAndChannel_, this.fulfillStopping_);
@@ -423,27 +422,29 @@ module RtcToNet {
                 JSON.stringify(data)));
             return;
           }
-          try {
-            var r :any = JSON.parse(data.str);
-            if (!socks.isValidRequest(r)) {
-              R(new Error('received invalid request from peer: ' +
-                  JSON.stringify(data.str)));
-              return;
-            }
-            var request :socks.Request = r;
-            if (request.command != socks.Command.TCP_CONNECT) {
-              R(new Error('unexpected type for endpoint message'));
-              return;
-            }
-            log.info('%1: received endpoint from peer: %2', [
-                this.longId(), JSON.stringify(request.endpoint)]);
-            F(request.endpoint);
-            return;
-          } catch (e) {
+
+          var request :socks.Request;
+          try { request = JSON.parse(data.str); }
+          catch (e) {
             R(new Error('received malformed message during handshake: ' +
                 data.str));
             return;
           }
+
+          if (!socks.isValidRequest(request)) {
+            R(new Error('received invalid request from peer: ' +
+                JSON.stringify(data.str)));
+            return;
+          }
+          if (request.command != socks.Command.TCP_CONNECT) {
+            R(new Error('unexpected type for endpoint message'));
+            return;
+          }
+
+          log.info('%1: received endpoint from peer: %2', [
+              this.longId(), JSON.stringify(request.endpoint)]);
+          F(request.endpoint);
+          return;
         });
       });
     }
@@ -517,7 +518,9 @@ module RtcToNet {
 
     // Sends a packet over the TCP socket.
     // Invoked when a packet is received over the data channel.
-    private sendOnSocket_ = (data:peerconnection.Data) : Promise<freedom_TcpSocket.WriteInfo> => {
+    private sendOnSocket_ = (data:peerconnection.Data)
+        : Promise<freedom_TcpSocket.WriteInfo> => {
+      this.channelReceivedBytes_ += data.buffer.byteLength;
       if (!data.buffer) {
         return Promise.reject(new Error(
             'received non-buffer data from datachannel'));
@@ -576,7 +579,7 @@ module RtcToNet {
                   channelReadLoop);
             });
           }
-        }, (e:any) => {
+        }, (e:{ errcode: string }) => {
           // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // errcode values are defined here:
           //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
@@ -622,25 +625,17 @@ module RtcToNet {
           .then((bufferedAmount:number) => {
         return {
           name: this.channelLabel(),
-          channel: {
-            sent: this.channelSentBytes_,
-            received: this.channelReceivedBytes_,
-            browserBuffered: bufferedAmount,
-            jsBuffered: this.dataChannel_.getJavascriptBufferedAmount(),
-            queue: {
-              size: this.dataChannel_.dataFromPeerQueue.getLength(),
-              handling: this.dataChannel_.dataFromPeerQueue.isHandling()
-            }
-          },
-          socket: {
-            sent: this.socketSentBytes_,
-            received: this.socketReceivedBytes_,
-            queue: {
-              size: this.tcpConnection_.dataFromSocketQueue.getLength(),
-              handling: this.tcpConnection_.dataFromSocketQueue.isHandling()
-            }
-          }
-        };
+          timestamp: performance.now(),
+          channel_sent: this.channelSentBytes_,
+          channel_received: this.channelReceivedBytes_,
+          channel_buffered: bufferedAmount,
+          channel_queue_size: this.dataChannel_.dataFromPeerQueue.getLength(),
+          channel_queue_handling: this.dataChannel_.dataFromPeerQueue.isHandling(),
+          socket_sent: this.socketSentBytes_,
+          socket_received: this.socketReceivedBytes_,
+          socket_queue_size: this.tcpConnection_.dataFromSocketQueue.getLength(),
+          socket_queue_handling: this.tcpConnection_.dataFromSocketQueue.isHandling()
+        }
       });
     }
 

@@ -284,7 +284,12 @@ module SocksToRtc {
     private bytesSentToPeer_ :handler.Queue<number,void>;
     private bytesReceivedFromPeer_ :handler.Queue<number,void>;
 
+<<<<<<< HEAD
     // There is no equivalent of datachannel.isClosed().
+=======
+    // TODO: There's no equivalent of datachannel.isClosed():
+    //         https://github.com/uProxy/uproxy/issues/1075
+>>>>>>> dev-requireify
     private isChannelClosed_ :boolean = false;
 
     // Fulfills once the SOCKS negotiation process has successfully completed.
@@ -497,7 +502,8 @@ module SocksToRtc {
 
     // Sends a packet over the TCP socket.
     // Invoked when a packet is received over the data channel.
-    private sendOnSocket_ = (data:peerconnection.Data) : Promise<freedom_TcpSocket.WriteInfo> => {
+    private sendOnSocket_ = (data:peerconnection.Data)
+        : Promise<freedom_TcpSocket.WriteInfo> => {
       if (!data.buffer) {
         return Promise.reject(new Error(
             'received non-buffer data from datachannel'));
@@ -554,7 +560,7 @@ module SocksToRtc {
                   channelReadLoop);
             });
           }
-        }, (e:any) => {
+        }, (e:{ errcode:string }) => {
           // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // errcode values are defined here:
           //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json

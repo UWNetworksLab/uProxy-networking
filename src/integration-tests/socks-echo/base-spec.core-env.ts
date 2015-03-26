@@ -4,6 +4,10 @@
 import arraybuffers = require('../../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import socks = require('../../socks-common/socks-headers');
 
+import ProxyIntegrationTester = require('./proxy-integration-test.types');
+
+import freedom_types = require('freedom.types');
+
 // Integration test for the whole proxying system.
 // The real work is done in the Freedom module which performs each test.
 export function socksEchoTestDescription(useChurn:boolean) {
@@ -15,23 +19,25 @@ export function socksEchoTestDescription(useChurn:boolean) {
     'that seems like enough'
   ];
 
-  var freedomInterface :any;
-  var getTestModule = function(denyLocalhost?:boolean) : any {
-    return freedomInterface(denyLocalhost, useChurn);
+  var testerFactoryManager
+        :freedom_types.FreedomModuleFactoryManager<ProxyIntegrationTester>;
+  var getTestModule = function(denyLocalhost?:boolean)
+      :ProxyIntegrationTester {
+    return testerFactoryManager(denyLocalhost, useChurn);
   };
 
   beforeEach((done) => {
-    freedom('scripts/build/integration/socks-echo/integration.json',
-            { 'debug': 'debug' })
-        .then((interface:Function) => {
-          freedomInterface = interface;
+    freedom('files/freedom-module.json', { 'debug': 'debug' })
+        .then((freedomModuleFactoryManager) => {
+          testerFactoryManager = freedomModuleFactoryManager;
           done();
         });
   });
 
   afterEach(() => {
-    expect(freedomInterface).not.toBeUndefined();
-    freedomInterface.close();
+    expect(testerFactoryManager).not.toBeUndefined();
+    // Close all created interfaces to the freedom module.
+    testerFactoryManager.close();
   });
 
   it('run a simple echo test', (done) => {

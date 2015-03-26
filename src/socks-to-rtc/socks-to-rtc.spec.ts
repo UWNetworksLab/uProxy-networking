@@ -155,12 +155,15 @@ describe("SOCKS session", function() {
     mockTcpConnection = jasmine.createSpyObj('tcp connection', [
         'onceClosed',
         'close',
-        'isClosed'
+        'isClosed',
+        'send'
       ]);
     mockTcpConnection.dataFromSocketQueue = new handler.Queue<ArrayBuffer,void>();
     (<any>mockTcpConnection.close).and.returnValue(Promise.resolve(-1));
     mockTcpConnection.onceClosed = Promise.resolve(
         tcp.SocketCloseKind.REMOTELY_CLOSED);
+    (<any>mockTcpConnection.send).and.returnValue(Promise.resolve({ bytesWritten: 1 }));
+
     mockDataFromPeerQueue = new handler.Queue<peerconnection.Data,void>();
 
     mockDataChannel = <any>{
@@ -260,6 +263,61 @@ describe("SOCKS session", function() {
     });
     mockBytesReceived.setSyncNextHandler((numBytes:number) => {
       expect(numBytes).toEqual(message.buffer.byteLength);
+      done();
+    });
+  });
+
+  it('channel queue drains before termination', (done) => {
+    // TCP connection doesn't close "naturally" but the data
+    // channel is already closed when the session is started.
+    mockTcpConnection.onceClosed = new Promise<tcp.SocketCloseKind>((F, R) => {});
+    mockDataChannel.onceClosed = voidPromise;
+
+    spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
+
+    var message :peerconnection.Data = {
+      buffer: new Uint8Array([1,2,3]).buffer
+    };
+    var onceMessageHandled = mockDataFromPeerQueue.handle(message);
+
+    session.start(
+        mockTcpConnection,
+        mockDataChannel,
+        mockBytesSent,
+        mockBytesReceived);
+    session.onceStopped.then(() => {
+      return onceMessageHandled;
+    }).then(() => {
+      expect(mockDataChannel.dataFromPeerQueue.getLength()).toEqual(0);
+      done();
+    });
+  });
+
+  it('socket queue drains before termination', (done) => {
+    // The data channel doesn't close "naturally" but the
+    // TCP connection is already closed when the session is started.
+    mockTcpConnection.onceClosed = Promise.resolve(tcp.SocketCloseKind.WE_CLOSED_IT);
+    (<any>mockTcpConnection.isClosed).and.returnValue(true);
+    mockDataChannel.onceClosed = noopPromise;
+
+    spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
+
+    var buffer = new Uint8Array([1,2,3]).buffer;
+    var onceMessageHandled = mockTcpConnection.dataFromSocketQueue.handle(buffer);
+
+    session.start(
+        mockTcpConnection,
+        mockDataChannel,
+        mockBytesSent,
+        mockBytesReceived);
+    session.onceStopped.then(() => {
+      return onceMessageHandled;
+    }).then(() => {
+      expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
       done();
     });
   });
