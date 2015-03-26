@@ -128,7 +128,7 @@ module RtcToNet {
         this.start(
             proxyConfig,
             obfuscate ?
-                new churn.Connection(pc) :
+                new churn.Connection(pc, 'RtcToNet') :
                 new peerconnection.PeerConnectionClass(pc));
       }
     }

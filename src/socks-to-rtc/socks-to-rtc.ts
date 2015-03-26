@@ -113,7 +113,7 @@ module SocksToRtc {
       return this.startInternal(
           new tcp.Server(endpoint),
           obfuscate ?
-              new churn.Connection(pc) :
+              new churn.Connection(pc, 'SocksToRtc') :
               new peerconnection.PeerConnectionClass(pc));
     }
 
@@ -340,6 +340,7 @@ module SocksToRtc {
       // If handshake fails, shutdown.
       this.onceReady.then(() => {
         this.linkSocketAndChannel_();
+
         // Shutdown once the TCP connection terminates and has drained.
         this.tcpConnection_.onceClosed.then((kind:tcp.SocketCloseKind) => {
           if (this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {

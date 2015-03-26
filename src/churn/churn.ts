@@ -1,6 +1,7 @@
 /// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
 /// <reference path='../../../third_party/freedom-typings/freedom-common.d.ts' />
 /// <reference path='../../../third_party/freedom-typings/udp-socket.d.ts' />
+/// <reference path='../../../third_party/ipaddrjs/ipaddrjs.d.ts' />
 
 // TODO(ldixon): reorganize the utransformers and rename uproxy-obfuscators.
 // Ideal:
@@ -25,6 +26,8 @@ import churn_pipe_types = require('../churn-pipe/freedom-module.interface');
 
 import churn_types = require('./churn.types');
 import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
+
+import ipaddr = require('ipaddr.js');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 var log :logging.Log = new logging.Log('churn');
@@ -83,6 +86,8 @@ var log :logging.Log = new logging.Log('churn');
   export var selectPublicAddress =
       (candidates:freedom_RTCPeerConnection.RTCIceCandidate[])
       : NatPair => {
+    // TODO: Note that we cannot currently support IPv6 addresses:
+    //         https://github.com/uProxy/uproxy/issues/1107
     var address :string;
     var port :number;
     for (var i = 0; i < candidates.length; ++i) {
@@ -95,11 +100,17 @@ var log :logging.Log = new logging.Log('churn');
       var typ = tokens[7];
       if (typ === 'srflx') {
         address = tokens[4];
+        if (ipaddr.process(address).kind() === 'ipv6') {
+          continue;
+        }
         port = parseInt(tokens[5]);
         if (tokens[8] != 'raddr') {
           throw new Error('no raddr in candidate line: ' + line);
         }
         var raddr = tokens[9];
+        if (ipaddr.process(raddr).kind() === 'ipv6') {
+          continue;
+        }
         if (tokens[10] != 'rport') {
           throw new Error('no rport in candidate line: ' + line);
         }
@@ -118,8 +129,10 @@ var log :logging.Log = new logging.Log('churn');
         };
       } else if (typ === 'host') {
         // Store the host address in case no srflx candidates are found.
-        address = tokens[4];
-        port = parseInt(tokens[5]);
+        if (ipaddr.process(tokens[4]).kind() !== 'ipv6') {
+          address = tokens[4];
+          port = parseInt(tokens[5]);
+        }
       }
     }
     // No 'srflx' candidate found.
@@ -317,7 +330,7 @@ var log :logging.Log = new logging.Log('churn');
             remoteEndpoint.address,
             remoteEndpoint.port,
             'caesar',
-            new Uint8Array([13]),
+            new Uint8Array([13]).buffer,
             {})
         // TODO(ldixon): renable FTE support instead of caesar cipher.
         // publicPipe.bind(
@@ -363,8 +376,8 @@ var log :logging.Log = new logging.Log('churn');
       };
       var obfPeerName = this.peerName + '-obfuscated';
       var freedomPc = freedom['core.rtcpeerconnection'](obfConfig);
-      this.obfuscatedConnection_ =
-          peerconnection.createPeerConnection(freedomPc, obfPeerName);
+      this.obfuscatedConnection_ = new peerconnection.PeerConnectionClass(
+          freedomPc, obfPeerName);
       this.obfuscatedConnection_.signalForPeerQueue.setSyncHandler(
           (signal:peerconnection.SignallingMessage) => {
         // Super-paranoid check: remove candidates from SDP messages.
@@ -377,24 +390,34 @@ var log :logging.Log = new logging.Log('churn');
               filterCandidatesFromSdp(signal.description.sdp);
         }
         if (signal.type === peerconnection.SignalType.CANDIDATE) {
-          if (!signal.candidate || !signal.candidate.candidate) {
-            log.error('%1: null candidate!',
-                this.peerName);
-            return;
-          }
           // This will tell us on which port webrtc is operating.
           // Record it and inject a fake endpoint, to be sure the remote
           // side never knows the real address (can be an issue when both
           // hosts are on the same network).
-          this.haveWebRtcEndpoint_(
-            extractEndpointFromCandidateLine(
-              signal.candidate.candidate));
-          signal.candidate.candidate =
-            setCandidateLineEndpoint(
-              signal.candidate.candidate, {
-                address: '0.0.0.0',
-                port: 0
-              });
+          try {
+            if (!signal.candidate || !signal.candidate.candidate) {
+              throw new Error('no candidate line');
+            }
+            var address = extractEndpointFromCandidateLine(
+                signal.candidate.candidate);
+            // TODO: We cannot currently support IPv6 addresses:
+            //         https://github.com/uProxy/uproxy/issues/1107
+            if (ipaddr.process(address.address).kind() === 'ipv6') {
+              throw new Error('ipv6 unsupported');
+            }
+            this.haveWebRtcEndpoint_(address);
+            signal.candidate.candidate =
+              setCandidateLineEndpoint(
+                signal.candidate.candidate, {
+                  address: '0.0.0.0',
+                  port: 0
+                });
+          } catch (e) {
+            log.debug('%1: ignoring candidate line %2: %3',
+                this.peerName,
+                JSON.stringify(signal),
+                e.message);
+          }
         }
         var churnSignal :ChurnSignallingMessage = {
           webrtcMessage: signal
