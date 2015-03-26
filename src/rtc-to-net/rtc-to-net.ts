@@ -277,12 +277,8 @@ module RtcToNet {
   export class Session {
     private tcpConnection_ :tcp.Connection;
 
-<<<<<<< HEAD
-    // There is no equivalent of datachannel.isClosed().
-=======
     // TODO: There's no equivalent of datachannel.isClosed():
     //         https://github.com/uProxy/uproxy/issues/1075
->>>>>>> dev-requireify
     private isChannelClosed_ :boolean = false;
 
     // Fulfills once a connection has been established with the remote peer.
@@ -346,16 +342,12 @@ module RtcToNet {
             }
           });
 
-<<<<<<< HEAD
-          return this.tcpConnection_.onceConnected;
-=======
           return this.tcpConnection_.onceConnected
             .catch((e:freedom_types.Error) => {
               log.info('%1: failed to connect to remote endpoint', [this.longId()]);
               this.replyToPeer_(this.getReplyFromError_(e));
               return Promise.reject(new Error(e.errcode));
             });
->>>>>>> dev-requireify
         })
         .then((info:tcp.ConnectionInfo) => {
           log.info('%1: connected to remote endpoint', [this.longId()]);
