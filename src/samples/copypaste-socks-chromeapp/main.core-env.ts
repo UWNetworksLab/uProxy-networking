@@ -177,4 +177,4 @@ module copypaste_module {
 
 }  // module copypaste_api
 
-var copypaste :copypaste_api.CopypasteApi = copypaste_module;
+export var copypaste :copypaste_api.CopypasteApi = copypaste_module;
