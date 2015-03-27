@@ -11,6 +11,8 @@ notifications:
 before_install:
   - "export DISPLAY=:10.0"
   - "Xvfb :10 -screen 0 1280x1024x24 &"
+  - npm install -g grunt-cli
+  - npm install -g bower
 install:
   - "google-chrome --version"
   - "firefox -v || echo 'No firefox installed.'"
