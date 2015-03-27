@@ -311,6 +311,7 @@ export function socksEchoTestDescription(useChurn:boolean) {
 
   // Disabled because HOST_UNREACHABLE is not yet exposed in freedom-for-chrome's
   // implementation of the core.tcpsocket API.
+  //  https://github.com/freedomjs/freedom-for-chrome/issues/73
   xit('attempt to connect to a nonexistent DNS name', (done) => {
     var testModule = getTestModule(true);
     testModule.connect(80, 'www.nonexistentdomain.gov').then((connectionId:string) => {

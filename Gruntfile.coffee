@@ -272,6 +272,7 @@ module.exports = (grunt) ->
           pathsFromThirdPartyBuild: [
             'uproxy-lib/loggingprovider'
             'uproxy-obfuscators'
+            'i18n'
           ]
           localDestPath: 'samples/copypaste-churn-chat-chromeapp/'
       libsForEchoServerChromeApp:
