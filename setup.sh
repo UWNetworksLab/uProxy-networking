@@ -47,7 +47,7 @@ function installDevDependencies ()
 {
   runAndAssertCmd "npm install"
   # TODO: remove this line when uproxy-lib is npm published.
-  runAndAssertCmd "cd node_modules/uproxy-lib && ./setup.sh install && grunt dist"
+  # runAndAssertCmd "cd node_modules/uproxy-lib && ./setup.sh install && grunt dist"
   installTools
   installThirdParty
 }

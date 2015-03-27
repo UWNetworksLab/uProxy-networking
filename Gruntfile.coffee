@@ -76,6 +76,7 @@ taskManager.add 'sampleCopyPasteChurnChatChromeApp', [
 taskManager.add 'sampleCopyPasteSocksChromeApp', [
   'base'
   'copy:libsForCopyPasteSocksChromeApp'
+  'vulcanize:sampleCopyPasteSocksChromeApp'
   'browserify:copyPasteSocksFreedomModule'
   'browserify:copyPasteSocksChromeApp'
 ]
@@ -464,6 +465,18 @@ module.exports = (grunt) ->
         browserifyIntegrationTest 'integration-tests/socks-echo/slow.core-env'
       # Browserify sample apps main freedom module and core environments
 
+    vulcanize:
+      sampleCopyPasteSocksChromeApp:
+        options:
+          inline: true
+          csp: true
+        files: [
+          {
+            src: path.join(devBuildPath, 'samples/copypaste-socks-chromeapp/polymer-components/root.html')
+            dest: path.join(devBuildPath, 'samples/copypaste-socks-chromeapp/polymer-components/vulcanized.html')
+          }
+        ]
+
     jasmine_chromeapp:
       tcp:
         files: [
@@ -526,6 +539,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-jasmine-chromeapp'
+  grunt.loadNpmTasks 'grunt-vulcanize'
 
   grunt.loadNpmTasks 'grunt-ts'
 

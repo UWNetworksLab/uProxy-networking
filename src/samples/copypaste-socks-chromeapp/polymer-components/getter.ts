@@ -1,10 +1,13 @@
 /// <reference path='../../../../../third_party/polymer/polymer.d.ts' />
 
 import copypaste_api = require('../copypaste-api');
-declare var copypaste :copypaste_api.CopypasteApi;
+declare module browserified_exports {
+  var copypaste :copypaste_api.CopypasteApi;
+}
+import copypaste = browserified_exports.copypaste;
 
 import I18nUtil = require('../i18n-util.types');
-declare var i18n :I18nUtil;
+declare var i18nUtil :I18nUtil;
 
 Polymer({
   model: copypaste.model,
@@ -28,6 +31,6 @@ Polymer({
     this.$.consumeMessageButton.disabled = true;
   },
   ready: function() {
-    i18n.translateStrings(this);
+    i18nUtil.translateStrings(this);
   }
 });
