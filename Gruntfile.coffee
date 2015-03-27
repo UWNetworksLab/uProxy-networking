@@ -224,6 +224,15 @@ module.exports = (grunt) ->
               cwd: path.join(uproxyLibPath, 'build/third_party'),
               src: ['freedom-typings/**/*', 'promise-polyfill.js'],
               dest: thirdPartyBuildPath
+          },
+          # Copy the relevant files from the build directory to create a
+          # third_party folder for freedom-pgp-e2e.
+          {
+              nonull: true,
+              expand: true,
+              cwd: path.join(pgpPath, 'build'),
+              src: ['**/*', '!demo', '!freedom.js', '!*.spec.js', '!playground'],
+              dest: path.join(thirdPartyBuildPath, 'freedom-pgp-e2e'),
           }
         ]
 
@@ -267,14 +276,18 @@ module.exports = (grunt) ->
           localDestPath: 'samples/copypaste-churn-chat-chromeapp/'
       libsForCopyPasteSocksChromeApp:
         Rule.copyLibs
-          npmLibNames: ['freedom-for-chrome']
+          npmLibNames: [
+            'freedom-for-chrome'
+          ]
           pathsFromDevBuild: ['churn-pipe']
           pathsFromThirdPartyBuild: [
             'uproxy-lib/loggingprovider'
             'uproxy-obfuscators'
             'i18n'
+            'bower/polymer'
+            'freedom-pgp-e2e'
           ]
-          localDestPath: 'samples/copypaste-churn-chat-chromeapp/'
+          localDestPath: 'samples/copypaste-socks-chromeapp/'
       libsForEchoServerChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
