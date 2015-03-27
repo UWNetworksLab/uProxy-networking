@@ -17,6 +17,7 @@ taskManager.add 'base', [
 ]
 
 taskManager.add 'test', [
+  'base'
   'browserify:churnSpec'
   'browserify:tcpSpec'
   'browserify:simpleTransformersCaesarSpec'
@@ -32,6 +33,7 @@ taskManager.add 'test', [
 # Sample Apps
 
 taskManager.add 'samples', [
+  'base'
   'sampleCopyPasteChurnChatChromeApp'
   'sampleCopyPasteSocksChromeApp'
   'sampleEchoServerChromeApp'

@@ -48,7 +48,6 @@
     "yargs": "^3.0.4"
   },
   "scripts": {
-    "test": "grunt unit_test",
     "benchmark": "node bin/run-benchmark.js -n 1024 -v"
   }
 }
