@@ -448,7 +448,7 @@ module RtcToNet {
         throw new Error('tried to connect to disallowed address: ' +
                         endpoint.address);
       }
-      return new tcp.Connection({endpoint: endpoint});
+      return new tcp.Connection({endpoint: endpoint}, true /* startPaused */);
     }
 
     // Fulfills once the connected endpoint has been returned to the SOCKS
@@ -512,7 +512,6 @@ module RtcToNet {
     // Invoked when a packet is received over the data channel.
     private sendOnSocket_ = (data:peerconnection.Data)
         : Promise<freedom_TcpSocket.WriteInfo> => {
-      this.channelReceivedBytes_ += data.buffer.byteLength;
       if (!data.buffer) {
         return Promise.reject(new Error(
             'received non-buffer data from datachannel'));
@@ -521,6 +520,7 @@ module RtcToNet {
           this.longId(),
           data.buffer.byteLength]);
       this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
+      this.channelReceivedBytes_ += data.buffer.byteLength;
 
       return this.tcpConnection_.send(data.buffer);
     }
@@ -529,33 +529,28 @@ module RtcToNet {
     // and vice versa. Should only be called once both socket and channel have
     // been successfully established.
     private linkSocketAndChannel_ = () : void => {
-      // Note that setTimeout is used by both loops to preserve system
-      // responsiveness when large amounts of data are being received:
-      //   https://github.com/uProxy/uproxy/issues/967
-      var socketReadLoop = (data:ArrayBuffer) => {
+      var socketReader = (data:ArrayBuffer) => {
         this.sendOnChannel_(data).then(() => {
           this.bytesSentToPeer_.handle(data.byteLength);
           this.channelSentBytes_ += data.byteLength;
-          // Shutdown once the TCP connection terminates and has drained,
-          // otherwise keep draining.
-          if (this.tcpConnection_.isClosed() &&
-              this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
-            log.info('%1: socket drained', this.longId());
-            this.fulfillStopping_();
-          } else {
-            Session.nextTick_(() => {
-              this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
-                  socketReadLoop);
-            });
-          }
         }, (e:Error) => {
           log.error('%1: failed to send data on datachannel: %2',
               this.longId(),
               e.message);
         });
       };
-      this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(socketReadLoop);
+      this.tcpConnection_.dataFromSocketQueue.setSyncHandler(socketReader);
 
+      // Now that the TCP socket has drained, shut down if it is already closed.
+      if (this.tcpConnection_.isClosed()) {
+        log.info('%1: drained closed socket', this.longId());
+        this.fulfillStopping_();
+        return;
+      }
+
+      // Session.nextTick_ (i.e. setTimeout) is used to preserve system
+      // responsiveness when large amounts of data are being sent:
+      //   https://github.com/uProxy/uproxy/issues/967
       var channelReadLoop = (data:peerconnection.Data) : void => {
         this.sendOnSocket_(data).then((writeInfo:freedom_TcpSocket.WriteInfo) => {
           this.socketSentBytes_ += data.buffer.byteLength;
@@ -590,6 +585,28 @@ module RtcToNet {
       };
       this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
           channelReadLoop);
+
+      // The TCP connection starts in the paused state.  However, in extreme
+      // cases, enough data can arrive before the pause takes effect to put
+      // the data channel into overflow.  In that case, the socket will
+      // eventually be resumed by the overflow listener below.
+      if (!this.dataChannel_.isInOverflow()) {
+        this.tcpConnection_.resume();
+      }
+
+      this.dataChannel_.setOverflowListener((overflow:boolean) => {
+        if (this.tcpConnection_.isClosed()) {
+          return;
+        }
+
+        if (overflow) {
+          this.tcpConnection_.pause();
+          log.debug('Hit overflow, pausing socket');
+        } else {
+          this.tcpConnection_.resume();
+          log.debug('Exited overflow, resuming socket');
+        }
+      });
     }
 
     private isAllowedAddress_ = (addressString:string) : boolean => {
