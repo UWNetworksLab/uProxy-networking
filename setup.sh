@@ -38,7 +38,7 @@ function installTools ()
 
 function installThirdParty ()
 {
-  runAndAssertCmd "bower install"
+  runAndAssertCmd "bower install --allow-root"
   runAndAssertCmd "node_modules/.bin/tsd reinstall --config ./third_party/tsd.json"
   runAndAssertCmd "grunt copy:thirdParty"
 }
