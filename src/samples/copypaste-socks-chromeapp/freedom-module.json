@@ -29,7 +29,7 @@
       "api": "churnPipe"
     },
     "pgp": {
-      "url": "lib/freedom-pgp-e2e/build/pgpapi.json",
+      "url": "lib/freedom-pgp-e2e/dist/pgpapi.json",
       "api": "crypto"
     }
   },
