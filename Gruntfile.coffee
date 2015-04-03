@@ -115,7 +115,7 @@ module.exports = (grunt) ->
         files: [
           expand: true
           cwd: pgpPath
-          src: ['build/*.js', 'build/pgpapi.json']
+          src: ['dist/*.js', 'dist/pgpapi.json']
           dest: 'build/freedom-pgp-e2e/'
         ]
 
