@@ -37,7 +37,8 @@ transform and restore the data being sent over the network.
 
 ## Building
 
- - Run `npm install` from the base directory to obtain all prerequisites.
+ - Run `npm install` from the base directory to obtain all required NPM packages.
+ - Run `bower install` from the base directory to obtain all required Bower packages.
  - Running `grunt` compiles all the TypeScript into JavaScript in the `dist/` directory.
  - Run Jasmine tests with `grunt test`.
 
@@ -70,7 +71,7 @@ To see debugging output, open the background page.
 This command may be used to test the proxy:
 
 ```bash
-curl -x socks5h://localhost:9999 www.example.com`
+curl -x socks5h://localhost:9999 www.example.com
 ```
 
 (the `-h` indicates that DNS requests are made through the proxy too, i.e. not resolved locally)
@@ -149,7 +150,7 @@ larger datagrams, see the
 
  * the [ant](http://ant.apache.org/) build system.
  * the [android-sdk](http://developer.android.com/sdk/installing/index.html)
-  * You will need `android` and `adb` are on your PATH (add `sdk/tools` and `sdk/platform-tools` to your PATH environment variable)
+  * You will need `android` and `adb` on your PATH (add `sdk/tools` and `sdk/platform-tools` to your PATH environment variable)
    * You'll also need to [install the various SDK support libraries](https://developer.android.com/sdk/installing/adding-packages.html) which you can do with the `android sdk` command.
  * [Configure an emulated Android device](https://developer.android.com/training/basics/firstapp/running-app.html#Emulator) using the `android avd` command.
    * So far tested on Ubuntu 14.04LTS using an emulated Nexus 4 device running Android L
