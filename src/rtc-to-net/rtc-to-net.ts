@@ -10,7 +10,11 @@ import ipaddr = require('ipaddr.js');
 
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
+import signal = require('../../../third_party/uproxy-lib/webrtc/signal');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
+
+import TransportToNet = require('./transport-to-net.interface');
+import ProxyConfig = require('./proxyconfig');
 
 import churn = require('../churn/churn');
 import net = require('../net/net.types');
@@ -19,15 +23,9 @@ import socks = require('../socks-common/socks-headers');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 
-module RtcToNet {
+// module RtcToNet {
 
   var log :logging.Log = new logging.Log('RtcToNet');
-
-  export interface ProxyConfig {
-    // If |allowNonUnicast === false| then any proxy attempt that results
-    // in a non-unicast (e.g. local network) address will fail.
-    allowNonUnicast :boolean;
-  }
 
   export interface SessionSnapshot {
     name :string;
@@ -55,7 +53,7 @@ module RtcToNet {
   // proxied connections.
   // TODO: Extract common code for this and SocksToRtc:
   //         https://github.com/uProxy/uproxy/issues/977
-  export class RtcToNet {
+  export class RtcToNet implements TransportToNet {
     // Time between outputting snapshots.
     private static SNAPSHOTTING_INTERVAL_MS = 5000;
 
@@ -64,7 +62,7 @@ module RtcToNet {
     public proxyConfig :ProxyConfig;
 
     // Message handler queues to/from the peer.
-    public signalsForPeer :handler.QueueHandler<peerconnection.SignallingMessage, void>;
+    public signalsForPeer :handler.QueueHandler<signal.Message, void>;
 
     // The two Queues below only count bytes transferred between the SOCKS
     // client and the remote host(s) the client wants to connect to. WebRTC
@@ -98,14 +96,14 @@ module RtcToNet {
     // This can happen in response to:
     //  - startup failure
     //  - peerconnection termination
-    //  - manual invocation of close()
+    //  - manual invocation of stop()
     // Should never reject.
-    // TODO: rename onceStopped, ala SocksToRtc (API breakage).
-    public onceClosed :Promise<void>;
+    public onceStopped :Promise<void>;
 
-    // The connection to the peer that is acting as a proxy client.
+    // The connection to the peer that is acting as a proxy client. Once
+    // assigned, is never un-assigned. Use in this class to tell if started.
     private peerConnection_
-        :peerconnection.PeerConnection<peerconnection.SignallingMessage> = null;
+        :peerconnection.PeerConnection<signal.Message> = null;
 
     // The |sessions_| map goes from WebRTC data-channel labels to the Session.
     // Most of the wiring to manage this relationship happens via promises. We
@@ -117,15 +115,15 @@ module RtcToNet {
     // removed.
     private sessions_ :{ [channelLabel:string] : Session } = {};
 
-    // As configure() but handles creation of peerconnection.
-    constructor(
-        pcConfig?:freedom_RTCPeerConnection.RTCConfiguration,
-        proxyConfig?:ProxyConfig,
-        obfuscate?:boolean) {
+    // As start() but handles creation of peerconnection.
+    public startFromConfig = (
+        proxyConfig:ProxyConfig,
+        pcConfig:freedom_RTCPeerConnection.RTCConfiguration,
+        obfuscate:boolean) => {
       if (pcConfig) {
         var pc :freedom_RTCPeerConnection.RTCPeerConnection =
             freedom['core.rtcpeerconnection'](pcConfig);
-        this.start(
+        return this.start(
             proxyConfig,
             obfuscate ?
                 new churn.Connection(pc, 'RtcToNet') :
@@ -138,13 +136,13 @@ module RtcToNet {
     public start = (
         proxyConfig:ProxyConfig,
         peerconnection:peerconnection.PeerConnection<
-          peerconnection.SignallingMessage>)
+          signal.Message>)
         : Promise<void> => {
       if (this.peerConnection_) {
         throw new Error('already configured');
       }
-      this.proxyConfig = proxyConfig;
       this.peerConnection_ = peerconnection;
+      this.proxyConfig = proxyConfig;
 
       this.signalsForPeer = this.peerConnection_.signalForPeerQueue;
       this.peerConnection_.peerOpenedChannelQueue.setSyncHandler(
@@ -161,7 +159,7 @@ module RtcToNet {
           log.error('peerconnection terminated with error: %1', [e.message]);
         })
         .then(this.fulfillStopping_, this.fulfillStopping_);
-      this.onceClosed = this.onceStopping_.then(this.stopResources_);
+      this.onceStopped = this.onceStopping_.then(this.stopResources_);
 
       // Uncomment this to see instrumentation data in the console.
       //this.onceReady.then(this.initiateSnapshotting);
@@ -169,10 +167,10 @@ module RtcToNet {
       return this.onceReady;
     }
 
-    // Loops until onceClosed fulfills.
+    // Loops until onceStopped fulfills.
     public initiateSnapshotting = () => {
       var loop = true;
-      this.onceClosed.then(() => {
+      this.onceStopped.then(() => {
         loop = false;
       });
       var writeSnapshot = () => {
@@ -227,12 +225,11 @@ module RtcToNet {
     }
 
     // Initiates shutdown of the peerconnection.
-    // Returns onceClosed.
-    // TODO: rename stop, ala SocksToRtc (API breakage).
-    public close = () : Promise<void> => {
+    // Returns onceStopped.
+    public stop = () : Promise<void> => {
       log.debug('stop requested');
       this.fulfillStopping_();
-      return this.onceClosed;
+      return this.onceStopped;
     }
 
     // Shuts down the peerconnection, fulfilling once it has terminated.
@@ -247,9 +244,8 @@ module RtcToNet {
       });
     }
 
-    public handleSignalFromPeer = (signal:peerconnection.SignallingMessage)
-        : void => {
-      this.peerConnection_.handleSignalMessage(signal);
+    public handleSignalFromPeer = (message:signal.Message) :void => {
+      return this.peerConnection_.handleSignalMessage(message);
     }
 
     public toString = () : string => {
@@ -660,5 +656,5 @@ module RtcToNet {
     }
   }  // Session
 
-}  // module RtcToNet
-export = RtcToNet;
+//}  // module RtcToNet
+//export = RtcToNet;

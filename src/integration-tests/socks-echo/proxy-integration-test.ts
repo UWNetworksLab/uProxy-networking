@@ -2,6 +2,7 @@
 
 import peerconnection = require('../../../../third_party/uproxy-lib/webrtc/peerconnection');
 
+import ProxyConfig = require('../../rtc-to-net/proxyconfig');
 import rtc_to_net = require('../../rtc-to-net/rtc-to-net');
 import socks_to_rtc = require('../../socks-to-rtc/socks-to-rtc');
 import net = require('../../net/net.types');
@@ -48,15 +49,16 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
     var rtcPcConfig :freedom_RTCPeerConnection.RTCConfiguration = {
       iceServers: [],
     };
-    var rtcToNetProxyConfig :rtc_to_net.ProxyConfig = {
+    var rtcToNetProxyConfig :ProxyConfig = {
       allowNonUnicast: !denyLocalhost  // Allow RtcToNet to contact the localhost server.
     };
 
     this.socksToRtc_ = new socks_to_rtc.SocksToRtc();
-    this.rtcToNet_ = new rtc_to_net.RtcToNet(rtcPcConfig, rtcToNetProxyConfig, obfuscate);
-    this.socksToRtc_.on('signalForPeer', this.rtcToNet_.handleSignalFromPeer);
+    this.rtcToNet_ = new rtc_to_net.RtcToNet();
+    this.rtcToNet_.startFromConfig(rtcToNetProxyConfig,rtcPcConfig,obfuscate);
     this.rtcToNet_.signalsForPeer.setSyncHandler(this.socksToRtc_.handleSignalFromPeer);
-    return this.socksToRtc_.start(socksToRtcEndpoint, rtcPcConfig, obfuscate);
+    this.socksToRtc_.on('signalForPeer', this.rtcToNet_.handleSignalFromPeer);
+    return this.socksToRtc_.startFromConfig(socksToRtcEndpoint, rtcPcConfig, obfuscate);
   }
 
   // Assumes webEndpoint is IPv4.

@@ -15,12 +15,11 @@
     "SocksToRtc"
   ],
   "api": {
-    "SocksToRtc": {
+    "transportToNet": {
       "start": {
         "value": [
           {
-            "address": "string",
-            "port": "number"
+            "allowNonUnicast": "boolean"
           },
           {
             "iceServers": ["array", {
