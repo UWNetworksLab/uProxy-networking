@@ -593,10 +593,10 @@ module RtcToNet {
 
         if (overflow) {
           this.tcpConnection_.pause();
-          log.debug('Hit overflow, pausing socket');
+          log.debug('%1: Hit overflow, pausing socket', this.longId());
         } else {
           this.tcpConnection_.resume();
-          log.debug('Exited overflow, resuming socket');
+          log.debug('%1: Exited  overflow, resuming socket', this.longId());
         }
       });
     }

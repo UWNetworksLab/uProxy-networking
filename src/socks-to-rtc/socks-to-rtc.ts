@@ -341,20 +341,6 @@ module SocksToRtc {
       this.onceReady.then(() => {
         this.linkSocketAndChannel_();
 
-        // Shutdown once the TCP connection terminates and has drained.
-        this.tcpConnection_.onceClosed.then((kind:tcp.SocketCloseKind) => {
-          if (this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
-            log.info('%1: socket closed (%2), all incoming data processed',
-                this.longId(),
-                tcp.SocketCloseKind[kind]);
-            this.fulfillStopping_();
-          } else {
-            log.info('%1: socket closed (%2), still processing incoming data',
-                this.longId(),
-                tcp.SocketCloseKind[kind]);
-          }
-        });
-
         // Shutdown once the data channel terminates and has drained.
         this.dataChannel_.onceClosed.then(() => {
           this.isChannelClosed_ = true;
@@ -529,12 +515,17 @@ module SocksToRtc {
       };
       this.tcpConnection_.dataFromSocketQueue.setSyncHandler(socketReader);
 
-      // Now that the TCP socket has drained, shut down if it is already closed.
-      if (this.tcpConnection_.isClosed()) {
-        log.info('%1: drained closed socket', this.longId());
+      // Shutdown the session once the TCP connection terminates.
+      // This should be safe now because
+      // (1) this.tcpConnection_.dataFromPeerQueue has now been emptied into
+      // this.dataChannel_.send() and (2) this.dataChannel_.close() should delay
+      // closing until all pending messages have been sent.
+      this.tcpConnection_.onceClosed.then((kind:tcp.SocketCloseKind) => {
+        log.info('%1: socket closed (%2)',
+            this.longId(),
+            tcp.SocketCloseKind[kind]);
         this.fulfillStopping_();
-        return;
-      }
+      });
 
       // Session.nextTick_ (i.e. setTimeout) is used to preserve system
       // responsiveness when large amounts of data are being sent:
@@ -553,7 +544,7 @@ module SocksToRtc {
                   channelReadLoop);
             });
           }
-        }, (e:{ errcode:string }) => {
+        }, (e:{ errcode: string }) => {
           // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // errcode values are defined here:
           //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
@@ -588,10 +579,10 @@ module SocksToRtc {
 
         if (overflow) {
           this.tcpConnection_.pause();
-          log.debug('Hit overflow, pausing socket');
+          log.debug('%1: Hit overflow, pausing socket', this.longId());
         } else {
           this.tcpConnection_.resume();
-          log.debug('Exited overflow, resuming socket');
+          log.debug('%1: Exited  overflow, resuming socket', this.longId());
         }
       });
     }
