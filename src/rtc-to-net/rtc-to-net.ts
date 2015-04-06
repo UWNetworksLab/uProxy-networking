@@ -329,20 +329,6 @@ module RtcToNet {
         .then((tcpConnection) => {
           this.tcpConnection_ = tcpConnection;
 
-          // Shutdown once the TCP connection terminates and has drained.
-          this.tcpConnection_.onceClosed.then((kind:tcp.SocketCloseKind) => {
-            if (this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
-              log.info('%1: socket closed (%2), all incoming data processed',
-                  this.longId(),
-                  tcp.SocketCloseKind[kind]);
-              this.fulfillStopping_();
-            } else {
-              log.info('%1: socket closed (%2), still processing incoming data',
-                  this.longId(),
-                  tcp.SocketCloseKind[kind]);
-            }
-          });
-
           return this.tcpConnection_.onceConnected
             .catch((e:freedom_types.Error) => {
               log.info('%1: failed to connect to remote endpoint', [this.longId()]);
@@ -542,12 +528,17 @@ module RtcToNet {
       };
       this.tcpConnection_.dataFromSocketQueue.setSyncHandler(socketReader);
 
-      // Now that the TCP socket has drained, shut down if it is already closed.
-      if (this.tcpConnection_.isClosed()) {
-        log.info('%1: drained closed socket', this.longId());
+      // Shutdown the session once the TCP connection terminates.
+      // This should be safe now because
+      // (1) this.tcpConnection_.dataFromPeerQueue has now been emptied into
+      // this.dataChannel_.send() and (2) this.dataChannel_.close() should delay
+      // closing until all pending messages have been sent.
+      this.tcpConnection_.onceClosed.then((kind:tcp.SocketCloseKind) => {
+        log.info('%1: socket closed (%2)',
+            this.longId(),
+            tcp.SocketCloseKind[kind]);
         this.fulfillStopping_();
-        return;
-      }
+      });
 
       // Session.nextTick_ (i.e. setTimeout) is used to preserve system
       // responsiveness when large amounts of data are being sent:
