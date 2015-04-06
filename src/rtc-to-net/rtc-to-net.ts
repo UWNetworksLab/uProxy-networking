@@ -39,6 +39,7 @@ module RtcToNet {
     channel_sent: number;
     channel_received: number;
     channel_buffered: number;
+    channel_js_buffered: number;
     channel_queue_size: number;
     channel_queue_handling: boolean;
     socket_sent: number;
@@ -632,6 +633,7 @@ module RtcToNet {
     public getSnapshot = () : Promise<SessionSnapshot> => {
       return this.dataChannel_.getBrowserBufferedAmount()
           .then((bufferedAmount:number) => {
+        var js_buffer = this.dataChannel_.getJavascriptBufferedAmount();
         return {
           name: this.channelLabel(),
           timestamp: performance.now(),
@@ -640,6 +642,7 @@ module RtcToNet {
           channel_buffered: bufferedAmount,
           channel_queue_size: this.dataChannel_.dataFromPeerQueue.getLength(),
           channel_queue_handling: this.dataChannel_.dataFromPeerQueue.isHandling(),
+          channel_js_buffered: js_buffer,
           socket_sent: this.socketSentBytes_,
           socket_received: this.socketReceivedBytes_,
           socket_queue_size: this.tcpConnection_.dataFromSocketQueue.getLength(),
