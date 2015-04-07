@@ -29,6 +29,11 @@ taskManager.add 'test', [
   'jasmine'
 ]
 
+taskManager.add 'integration', [
+  'tcpIntegrationTest'
+  'socksEchoIntegrationTest'
+]
+
 # -----------------------------------------------------------------------------
 # Sample Apps
 
@@ -107,11 +112,6 @@ taskManager.add 'sampleSimpleTurnChromeApp', [
 # -----------------------------------------------------------------------------
 # Integration tests
 
-taskManager.add 'integration', [
-  'tcpIntegrationTest'
-  'socksEchoIntegrationTest'
-]
-
 taskManager.add 'socksEchoIntegrationTestModule', [
   'base'
   'copy:libsForIntegrationSocksEcho'
@@ -174,7 +174,6 @@ browserifyIntegrationTest = (path) ->
   });
 
 #-------------------------------------------------------------------------
-
 freedomForChromePath = path.dirname(require.resolve('freedom-for-chrome/package.json'))
 uproxyLibPath = path.dirname(require.resolve('uproxy-lib/package.json'))
 #ipaddrjsPath = path.dirname(require.resolve('ipaddr.js/package.json'))
@@ -538,12 +537,11 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-browserify'
   grunt.loadNpmTasks 'grunt-contrib-clean'
   grunt.loadNpmTasks 'grunt-contrib-copy'
-  grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
+  grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-jasmine-chromeapp'
-  grunt.loadNpmTasks 'grunt-vulcanize'
-
   grunt.loadNpmTasks 'grunt-ts'
+  grunt.loadNpmTasks 'grunt-vulcanize'
 
   #-------------------------------------------------------------------------
   # Register the tasks

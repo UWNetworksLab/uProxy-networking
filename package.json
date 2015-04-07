@@ -1,7 +1,7 @@
 {
   "name": "uproxy-networking",
   "description": "uProxy's networking library: SOCKS5 over WebRTC",
-  "version": "6.0.1",
+  "version": "7.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/uProxy/uproxy-networking"
@@ -41,8 +41,7 @@
     "request": "^2.53.0",
     "socks5-http-client": "^0.1.6",
     "tsd": "^0.5.7",
-    "typescript": "^1.4.1",
-    "uproxy-lib": "^20.0.0",
+    "uproxy-lib": "^21.0.0",
     "utransformers": "^0.2.1",
     "wup": "^1.0.0",
     "yargs": "^3.0.4"
