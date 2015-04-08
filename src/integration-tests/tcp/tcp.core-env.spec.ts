@@ -43,12 +43,11 @@ describe('core.tcpsocket wrapper', function() {
   // Loads the testing Freedom module, emits a signal and returns
   // a promise which fulfills once the signal is echoed.
   function loadFreedom(signalName:string) : Promise<void> {
-    return freedom('scripts/build/dev/uproxy-networking/integration-tests/tcp/freedom-module.json',
-      {
+    return freedom('files/freedom-module.json', {
         'debug': 'debug'
-      }).then((integrationFactoryConstructor) => {
+      }).then((integrationTestFactory) => {
         return new Promise((F, R) => {
-          var testModule = integrationFactoryConstructor();
+          var testModule = integrationTestFactory();
           testModule.emit(signalName);
           testModule.on(signalName, () => {
               F(testModule);
@@ -56,7 +55,7 @@ describe('core.tcpsocket wrapper', function() {
         })
         // Cleanup! Note: this will not run if the test times out... TODO: do
         // we really want close on an promise rejection? better to error then?
-        .then(integrationFactoryConstructor.close,
+        .then(integrationTestFactory.close,
           (e) => {
             throw new Error('Failed to run test module: ' + e.toString());
           });

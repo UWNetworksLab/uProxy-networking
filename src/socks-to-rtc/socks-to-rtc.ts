@@ -284,7 +284,8 @@ module SocksToRtc {
     private bytesSentToPeer_ :handler.Queue<number,void>;
     private bytesReceivedFromPeer_ :handler.Queue<number,void>;
 
-    // There is no equivalent of datachannel.isClosed().
+    // TODO: There's no equivalent of datachannel.isClosed():
+    //         https://github.com/uProxy/uproxy/issues/1075
     private isChannelClosed_ :boolean = false;
 
     // Fulfills once the SOCKS negotiation process has successfully completed.
@@ -339,20 +340,6 @@ module SocksToRtc {
       // If handshake fails, shutdown.
       this.onceReady.then(() => {
         this.linkSocketAndChannel_();
-
-        // Shutdown once the TCP connection terminates and has drained.
-        this.tcpConnection_.onceClosed.then((kind:tcp.SocketCloseKind) => {
-          if (this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
-            log.info('%1: socket closed (%2), all incoming data processed',
-                this.longId(),
-                tcp.SocketCloseKind[kind]);
-            this.fulfillStopping_();
-          } else {
-            log.info('%1: socket closed (%2), still processing incoming data',
-                this.longId(),
-                tcp.SocketCloseKind[kind]);
-          }
-        });
 
         // Shutdown once the data channel terminates and has drained.
         this.dataChannel_.onceClosed.then(() => {
@@ -432,6 +419,7 @@ module SocksToRtc {
     // sent to the SOCKS client iff all the following steps succeed:
     //  - reads the next packet from the socket
     //  - parses this packet as a socks.Request instance
+    //  - pauses the socket to avoid receiving data before it can be forwarded
     //  - forwards this to RtcToNet
     //  - receives the next message from the channel
     //  - parses this message as a socks.Response instance
@@ -446,6 +434,7 @@ module SocksToRtc {
         .then((request:socks.Request) => {
           log.info('%1: received endpoint from SOCKS client: %2', [
               this.longId(), JSON.stringify(request.endpoint)]);
+          this.tcpConnection_.pause();
           return this.dataChannel_.send({ str: JSON.stringify(request) });
         })
         .then(() => {
@@ -497,7 +486,8 @@ module SocksToRtc {
 
     // Sends a packet over the TCP socket.
     // Invoked when a packet is received over the data channel.
-    private sendOnSocket_ = (data:peerconnection.Data) : Promise<freedom_TcpSocket.WriteInfo> => {
+    private sendOnSocket_ = (data:peerconnection.Data)
+        : Promise<freedom_TcpSocket.WriteInfo> => {
       if (!data.buffer) {
         return Promise.reject(new Error(
             'received non-buffer data from datachannel'));
@@ -514,32 +504,32 @@ module SocksToRtc {
     // and vice versa. Should only be called once both socket and channel have
     // been successfully established.
     private linkSocketAndChannel_ = () : void => {
-      // Note that setTimeout is used by both loops to preserve system
-      // responsiveness when large amounts of data are being received:
-      //   https://github.com/uProxy/uproxy/issues/967
-      var socketReadLoop = (data:ArrayBuffer) => {
+      var socketReader = (data:ArrayBuffer) => {
         this.sendOnChannel_(data).then(() => {
           this.bytesSentToPeer_.handle(data.byteLength);
-          // Shutdown once the TCP connection terminates and has drained,
-          // otherwise keep draining.
-          if (this.tcpConnection_.isClosed() &&
-              this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
-            log.info('%1: socket drained', this.longId());
-            this.fulfillStopping_();
-          } else {
-            Session.nextTick_(() => {
-              this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
-                  socketReadLoop);
-            });
-          }
         }, (e:Error) => {
           log.error('%1: failed to send data on datachannel: %2',
               this.longId(),
               e.message);
         });
       };
-      this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(socketReadLoop);
+      this.tcpConnection_.dataFromSocketQueue.setSyncHandler(socketReader);
 
+      // Shutdown the session once the TCP connection terminates.
+      // This should be safe now because
+      // (1) this.tcpConnection_.dataFromPeerQueue has now been emptied into
+      // this.dataChannel_.send() and (2) this.dataChannel_.close() should delay
+      // closing until all pending messages have been sent.
+      this.tcpConnection_.onceClosed.then((kind:tcp.SocketCloseKind) => {
+        log.info('%1: socket closed (%2)',
+            this.longId(),
+            tcp.SocketCloseKind[kind]);
+        this.fulfillStopping_();
+      });
+
+      // Session.nextTick_ (i.e. setTimeout) is used to preserve system
+      // responsiveness when large amounts of data are being sent:
+      //   https://github.com/uProxy/uproxy/issues/967
       var channelReadLoop = (data:peerconnection.Data) : void => {
         this.sendOnSocket_(data).then((writeInfo:freedom_TcpSocket.WriteInfo) => {
           // Shutdown once the data channel terminates and has drained,
@@ -554,7 +544,7 @@ module SocksToRtc {
                   channelReadLoop);
             });
           }
-        }, (e:any) => {
+        }, (e:{ errcode: string }) => {
           // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // errcode values are defined here:
           //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
@@ -573,6 +563,28 @@ module SocksToRtc {
       };
       this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
           channelReadLoop);
+
+      // The TCP connection starts in the paused state.  However, in extreme
+      // cases, enough data can arrive before the pause takes effect to put
+      // the data channel into overflow.  In that case, the socket will
+      // eventually be resumed by the overflow listener below.
+      if (!this.dataChannel_.isInOverflow()) {
+        this.tcpConnection_.resume();
+      }
+
+      this.dataChannel_.setOverflowListener((overflow:boolean) => {
+        if (this.tcpConnection_.isClosed()) {
+          return;
+        }
+
+        if (overflow) {
+          this.tcpConnection_.pause();
+          log.debug('%1: Hit overflow, pausing socket', this.longId());
+        } else {
+          this.tcpConnection_.resume();
+          log.debug('%1: Exited  overflow, resuming socket', this.longId());
+        }
+      });
     }
 
     // Runs callback once the current event loop has run to completion.

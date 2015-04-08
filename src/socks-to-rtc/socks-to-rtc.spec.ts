@@ -22,6 +22,17 @@ var mockEndpoint :net.Endpoint = {
   port: 1234
 };
 
+var mockRemoteEndpoint :net.Endpoint = {
+  // This address and port are both reserved for testing.
+  address: '192.0.2.111',
+  port: 1023
+};
+
+var mockConnectionInfo :tcp.ConnectionInfo = {
+  bound: mockEndpoint,
+  remote: mockRemoteEndpoint
+};
+
 var voidPromise = Promise.resolve<void>();
 
 // Neither fulfills nor rejects.
@@ -155,12 +166,17 @@ describe("SOCKS session", function() {
     mockTcpConnection = jasmine.createSpyObj('tcp connection', [
         'onceClosed',
         'close',
-        'isClosed'
+        'isClosed',
+        'send',
+        'pause',
+        'resume'
       ]);
     mockTcpConnection.dataFromSocketQueue = new handler.Queue<ArrayBuffer,void>();
     (<any>mockTcpConnection.close).and.returnValue(Promise.resolve(-1));
     mockTcpConnection.onceClosed = Promise.resolve(
         tcp.SocketCloseKind.REMOTELY_CLOSED);
+    (<any>mockTcpConnection.send).and.returnValue(Promise.resolve({ bytesWritten: 1 }));
+
     mockDataFromPeerQueue = new handler.Queue<peerconnection.Data,void>();
 
     mockDataChannel = <any>{
@@ -169,7 +185,9 @@ describe("SOCKS session", function() {
       getLabel: jasmine.createSpy('getLabel').and.returnValue('mock label'),
       onceClosed: noopPromise,
       onceOpened: noopPromise,
-      send: jasmine.createSpy('send')
+      send: jasmine.createSpy('send'),
+      isInOverflow: jasmine.createSpy('isInOverflow').and.returnValue(false),
+      setOverflowListener: jasmine.createSpy('setOverflowListener')
     };
 
     (<any>mockDataChannel.send).and.returnValue(voidPromise);
@@ -260,6 +278,142 @@ describe("SOCKS session", function() {
     });
     mockBytesReceived.setSyncNextHandler((numBytes:number) => {
       expect(numBytes).toEqual(message.buffer.byteLength);
+      done();
+    });
+  });
+
+  it('channel queue drains before termination', (done) => {
+    // TCP connection doesn't close "naturally" but the data
+    // channel is already closed when the session is started.
+    mockTcpConnection.onceClosed = new Promise<tcp.SocketCloseKind>((F, R) => {});
+    mockDataChannel.onceClosed = voidPromise;
+
+    spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
+
+    var message :peerconnection.Data = {
+      buffer: new Uint8Array([1,2,3]).buffer
+    };
+    var onceMessageHandled = mockDataFromPeerQueue.handle(message);
+
+    session.start(
+        mockTcpConnection,
+        mockDataChannel,
+        mockBytesSent,
+        mockBytesReceived);
+    session.onceStopped.then(() => {
+      return onceMessageHandled;
+    }).then(() => {
+      expect(mockDataChannel.dataFromPeerQueue.getLength()).toEqual(0);
+      done();
+    });
+  });
+
+  it('socket queue drains before termination', (done) => {
+    // The data channel doesn't close "naturally" but the
+    // TCP connection is already closed when the session is started.
+    mockTcpConnection.onceClosed = Promise.resolve(tcp.SocketCloseKind.WE_CLOSED_IT);
+    (<any>mockTcpConnection.isClosed).and.returnValue(true);
+    mockDataChannel.onceClosed = noopPromise;
+
+    spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
+
+    var buffer = new Uint8Array([1,2,3]).buffer;
+    var onceMessageHandled = mockTcpConnection.dataFromSocketQueue.handle(buffer);
+
+    session.start(
+        mockTcpConnection,
+        mockDataChannel,
+        mockBytesSent,
+        mockBytesReceived);
+    session.onceStopped.then(() => {
+      return onceMessageHandled;
+    }).then(() => {
+      expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
+      done();
+    });
+  });
+
+  it('backpressure', (done) => {
+    spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
+
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
+    mockTcpConnection.onceClosed = new Promise<tcp.SocketCloseKind>((F, R) => {});
+
+    var overflowListener :(overflow:boolean) => void;
+    mockDataChannel.setOverflowListener = (listener) => { overflowListener = listener; };
+
+    var buffer = new Uint8Array([1,2,3]).buffer;
+
+    // Messages received before start sit in the TCP receive queue.
+    mockTcpConnection.dataFromSocketQueue.handle(buffer);
+    expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(1);
+    expect(mockDataChannel.send).not.toHaveBeenCalled();
+
+    session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived).then(() => {
+      // After start, the TCP queue should be drained into the datachannel.
+      expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
+      expect(mockDataChannel.send).toHaveBeenCalled();
+
+      // After draining the queue, the TCP connection should be resumed.
+      expect(mockTcpConnection.pause).not.toHaveBeenCalled();
+      expect(mockTcpConnection.resume).toHaveBeenCalled();
+
+      // Enter overflow state.  This should trigger a call to pause.
+      overflowListener(true);
+      expect(mockTcpConnection.pause).toHaveBeenCalled();
+
+      // In the paused state, messages are still forwarded
+      mockTcpConnection.dataFromSocketQueue.handle(buffer);
+      expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
+      expect((<any>mockDataChannel.send).calls.count()).toEqual(2);
+
+      // Exit overflow state.  This should trigger a call to resume.
+      overflowListener(false);
+      expect((<any>mockTcpConnection.resume).calls.count()).toEqual(2);
+
+      done();
+    });
+  });
+
+  it('backpressure with early flood', (done) => {
+    spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
+
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
+    mockTcpConnection.onceClosed = new Promise<tcp.SocketCloseKind>((F, R) => {});
+
+    var overflowListener :(overflow:boolean) => void;
+    mockDataChannel.setOverflowListener = (listener) => { overflowListener = listener; };
+    mockDataChannel.isInOverflow = <any>jasmine.createSpy('isInOverflow').and.returnValue(true);
+
+    var buffer = new Uint8Array([1,2,3]).buffer;
+
+    // Messages received before start sit in the TCP receive queue.
+    mockTcpConnection.dataFromSocketQueue.handle(buffer);
+    expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(1);
+    expect(mockDataChannel.send).not.toHaveBeenCalled();
+
+    session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived).then(() => {
+      // After start, the TCP queue should be drained into the datachannel.
+      expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
+      expect(mockDataChannel.send).toHaveBeenCalled();
+
+      // If the initial queue is enough to trigger overflow, then the
+      // socket should not be resumed.
+      expect(mockTcpConnection.pause).not.toHaveBeenCalled();
+      expect(mockTcpConnection.resume).not.toHaveBeenCalled();
+
+      // Exit overflow state.  This should trigger a call to resume.
+      overflowListener(false);
+      expect(mockTcpConnection.resume).toHaveBeenCalled();
+
       done();
     });
   });

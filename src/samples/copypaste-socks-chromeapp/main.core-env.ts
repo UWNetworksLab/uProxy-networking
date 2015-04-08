@@ -9,7 +9,6 @@ import peerconnection = require('../../../../third_party/uproxy-lib/webrtc/peerc
 import freedom_types = require('freedom.types');
 import net = require('../../net/net.types');
 import copypaste_api = require('./copypaste-api');
-import i18n = require('./i18n-util');
 
 module copypaste_module {
 
@@ -177,4 +176,4 @@ module copypaste_module {
 
 }  // module copypaste_api
 
-var copypaste :copypaste_api.CopypasteApi = copypaste_module;
+export var copypaste :copypaste_api.CopypasteApi = copypaste_module;

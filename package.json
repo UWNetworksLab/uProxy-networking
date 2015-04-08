@@ -1,7 +1,7 @@
 {
   "name": "uproxy-networking",
   "description": "uProxy's networking library: SOCKS5 over WebRTC",
-  "version": "6.0.0",
+  "version": "6.0.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/uProxy/uproxy-networking"
@@ -25,29 +25,29 @@
     "es6-promise": "^2.0.0",
     "freedom-for-chrome": "^0.4.13",
     "freedom-for-firefox": "^0.6.8",
-    "freedom-pgp-e2e": "^0.2.3",
+    "freedom-pgp-e2e": "0.2.3",
     "grunt": "^0.4.5",
     "grunt-browserify": "^3.3.1",
     "grunt-contrib-clean": "^0.6.0",
     "grunt-contrib-copy": "^0.7.0",
     "grunt-contrib-jasmine": "^0.8.2",
     "grunt-contrib-symlink": "^0.3.0",
-    "grunt-jasmine-chromeapp": "^1.5.0",
+    "grunt-jasmine-chromeapp": "git://github.com/uproxy/grunt-jasmine-chromeapp",
     "grunt-template-jasmine-istanbul": "^0.3.3",
     "grunt-ts": "^3.0.0",
+    "grunt-vulcanize": "^0.6.0",
     "ipaddr.js": "^0.1.3",
     "regex2dfa": "^0.1.6",
     "request": "^2.53.0",
     "socks5-http-client": "^0.1.6",
     "tsd": "^0.5.7",
     "typescript": "^1.4.1",
-    "uproxy-lib": "git://github.com/uproxy/uproxy-lib.git#iislucas",
+    "uproxy-lib": "^20.1.0",
     "utransformers": "^0.2.1",
     "wup": "^1.0.0",
     "yargs": "^3.0.4"
   },
   "scripts": {
-    "test": "grunt unit_test",
     "benchmark": "node bin/run-benchmark.js -n 1024 -v"
   }
 }

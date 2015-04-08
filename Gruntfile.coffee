@@ -16,6 +16,7 @@ taskManager.add 'base', [
 ]
 
 taskManager.add 'test', [
+  'base'
   'browserify:churnSpec'
   'browserify:tcpSpec'
   'browserify:simpleTransformersCaesarSpec'
@@ -31,6 +32,7 @@ taskManager.add 'test', [
 # Sample Apps
 
 taskManager.add 'samples', [
+  'base'
   'sampleCopyPasteChurnChatChromeApp'
   'sampleCopyPasteSocksChromeApp'
   'sampleEchoServerChromeApp'
@@ -75,6 +77,7 @@ taskManager.add 'sampleCopyPasteChurnChatChromeApp', [
 taskManager.add 'sampleCopyPasteSocksChromeApp', [
   'base'
   'copy:libsForCopyPasteSocksChromeApp'
+  'vulcanize:sampleCopyPasteSocksChromeApp'
   'browserify:copyPasteSocksFreedomModule'
   'browserify:copyPasteSocksChromeApp'
 ]
@@ -119,7 +122,7 @@ taskManager.add 'socksEchoIntegrationTestModule', [
 
 taskManager.add 'socksEchoIntegrationTest', [
   'socksEchoIntegrationTestModule'
-  'jasmine_chromeapp:sockEcho'
+  'jasmine_chromeapp:socksEcho'
 ]
 
 taskManager.add 'tcpIntegrationTestModule', [
@@ -164,6 +167,11 @@ Rule = new rules.Rule({
 
 path = require('path');
 
+browserifyIntegrationTest = (path) ->
+  Rule.browserifySpec(path, {
+    browserifyOptions: { standalone: 'browserified_exports' }
+  });
+
 #-------------------------------------------------------------------------
 
 freedomForChromePath = path.dirname(require.resolve('freedom-for-chrome/package.json'))
@@ -196,7 +204,6 @@ module.exports = (grunt) ->
               cwd: 'third_party'
               src: ['**/*'],
               dest: thirdPartyBuildPath,
-              onlyIf: 'modified'
           }
           # Copy distribution directory of uproxy-lib so all paths can always
           # find their dependencies. Note that this also requires uproxy-lib
@@ -208,7 +215,6 @@ module.exports = (grunt) ->
               cwd: path.join(uproxyLibPath, 'build/dist'),
               src: ['**/*'],
               dest: path.join(thirdPartyBuildPath, 'uproxy-lib/'),
-              onlyIf: 'modified'
           },
           # Use the third_party definitions from uproxy-lib. Copied to the same
           # location relative to their compiled location in uproxy-lib so they
@@ -220,7 +226,15 @@ module.exports = (grunt) ->
               cwd: path.join(uproxyLibPath, 'build/third_party'),
               src: ['freedom-typings/**/*', 'promise-polyfill.js'],
               dest: thirdPartyBuildPath
-              onlyIf: 'modified'
+          },
+          # Copy the relevant files from the build directory to create a
+          # third_party folder for freedom-pgp-e2e.
+          {
+              nonull: true,
+              expand: true,
+              cwd: path.join(pgpPath, 'build'),
+              src: ['**/*', '!demo', '!freedom.js', '!*.spec.js', '!playground'],
+              dest: path.join(thirdPartyBuildPath, 'freedom-pgp-e2e'),
           }
         ]
 
@@ -264,13 +278,18 @@ module.exports = (grunt) ->
           localDestPath: 'samples/copypaste-churn-chat-chromeapp/'
       libsForCopyPasteSocksChromeApp:
         Rule.copyLibs
-          npmLibNames: ['freedom-for-chrome']
+          npmLibNames: [
+            'freedom-for-chrome'
+          ]
           pathsFromDevBuild: []
           pathsFromThirdPartyBuild: [
             'uproxy-lib/loggingprovider'
             'uproxy-obfuscators'
+            'i18n'
+            'bower/polymer'
+            'freedom-pgp-e2e'
           ]
-          localDestPath: 'samples/copypaste-churn-chat-chromeapp/'
+          localDestPath: 'samples/copypaste-socks-chromeapp/'
       libsForEchoServerChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
@@ -339,8 +358,13 @@ module.exports = (grunt) ->
       libsForIntegrationSocksEcho:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
-          pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider']
-          localDestPath: 'integration-tests/tcp'
+          pathsFromDevBuild: [
+            'churn-pipe'
+          ]
+          pathsFromThirdPartyBuild: [
+            'uproxy-lib/loggingprovider'
+          ]
+          localDestPath: 'integration-tests/socks-echo'
 
     # Typescript compilation rules
     ts:
@@ -419,75 +443,84 @@ module.exports = (grunt) ->
       integrationTcpFreedomModule:
         Rule.browserify 'integration-tests/tcp/freedom-module'
       integrationTcpSpec:
-        Rule.browserifySpec 'integration-tests/tcp/tcp.core-env'
+        browserifyIntegrationTest 'integration-tests/tcp/tcp.core-env'
 
       # Integration tests: socks-echo
       integrationSocksEchoFreedomModule:
         Rule.browserify 'integration-tests/socks-echo/freedom-module'
       integrationSocksEchoChurnSpec:
-        Rule.browserifySpec 'integration-tests/socks-echo/churn.core-env'
+        browserifyIntegrationTest 'integration-tests/socks-echo/churn.core-env'
       integrationSocksEchoNochurnSpec:
-        Rule.browserifySpec 'integration-tests/socks-echo/nochurn.core-env'
+        browserifyIntegrationTest 'integration-tests/socks-echo/nochurn.core-env'
       integrationSocksEchoSlowSpec:
-        Rule.browserifySpec 'integration-tests/socks-echo/slow.core-env'
+        browserifyIntegrationTest 'integration-tests/socks-echo/slow.core-env'
       # Browserify sample apps main freedom module and core environments
+
+    vulcanize:
+      sampleCopyPasteSocksChromeApp:
+        options:
+          inline: true
+          csp: true
+        files: [
+          {
+            src: path.join(devBuildPath, 'samples/copypaste-socks-chromeapp/polymer-components/root.html')
+            dest: path.join(devBuildPath, 'samples/copypaste-socks-chromeapp/polymer-components/vulcanized.html')
+          }
+        ]
 
     jasmine_chromeapp:
       tcp:
-        src: [
-          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.static.js'
-          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.json'
-          devBuildPath + '/integration-tests/tcp/freedom-module.static.js'
-          devBuildPath + '/integration-tests/tcp/freedom-module.json'
-          freedomForChromePath + '/freedom-for-chrome.js'
-          devBuildPath + '/integration-tests/tcp/tcp.core-env.spec.static.js'
+        files: [
+          {
+            cwd: devBuildPath + '/integration-tests/tcp/',
+            src: ['**/*', '!jasmine_chromeapp/**/*']
+            dest: './',
+            expand: true
+          }
+        ]
+        scripts: [
+          'freedom-for-chrome/freedom-for-chrome.js'
+          'tcp.core-env.spec.static.js'
         ]
         options:
-          paths: [
-            freedomForChromePath + '/freedom-for-chrome.js'
-            devBuildPath + '/integration-tests/tcp/tcp.core-env.spec.static.js'
-          ]
-          outfile: devBuildPath + '/integration-tests/tcp/jasmine_chromeapp/'
+          outDir: devBuildPath + '/integration-tests/tcp/jasmine_chromeapp/'
           keepRunner: true
       socksEcho:
-        src: [
-          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.static.js'
-          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.json'
-          devBuildPath + '/integration-tests/socks-echo/freedom-module.static.js'
-          devBuildPath + '/integration-tests/socks-echo/freedom-module.json'
-          freedomForChromePath + '/freedom-for-chrome.js'
-          devBuildPath + '/integration-tests/socks-echo/tcp.core-env.spec.static.js'
+        files: [
+          {
+            cwd: devBuildPath + '/integration-tests/socks-echo/',
+            src: ['**/*', '!jasmine_chromeapp/**/*']
+            dest: './',
+            expand: true
+          }
+        ]
+        scripts: [
+          'freedom-for-chrome/freedom-for-chrome.js'
+          'nochurn.core-env.spec.static.js'
+          'churn.core-env.spec.static.js'
         ]
         options:
-          paths: [
-            freedomForChromePath + '/freedom-for-chrome.js'
-            devBuildPath + '/integration-tests/socks-echo/nochurn.core-env.spec.static.js'
-            devBuildPath + '/integration-tests/socks-echo/churn.core-env.spec.static.js'
-          ]
-          outfile: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp/'
+          outDir: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp/'
           keepRunner: true
       socksEchoSlow:
-        src: [
-          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.static.js'
-          thirdPartyBuildPath + '/uproxy-lib/loggingprovider/freedom-module.json'
-          devBuildPath + '/integration-tests/socks-echo/freedom-module.static.js'
-          devBuildPath + '/integration-tests/socks-echo/freedom-module.json'
-          freedomForChromePath + '/freedom-for-chrome.js'
-          devBuildPath + '/integration-tests/socks-echo/slow.core-env.spec.static.js'
+        files: [
+          {
+            cwd: devBuildPath + '/integration-tests/socks-echo/',
+            src: ['**/*', '!jasmine_chromeapp']
+            dest: '/uproxy-networking/',
+            expand: true
+          }
+        ]
+        scripts: [
+          'freedom-for-chrome/freedom-for-chrome.js'
+          'slow.core-env.spec.static.js'
         ]
         options:
-          paths: [
-            freedomForChromePath + '/freedom-for-chrome.js'
-            devBuildPath + '/integration-tests/socks-echo/slow.core-env.spec.static.js'
-          ]
-          outfile: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp_slow/'
+          outDir: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp_slow/'
           keepRunner: true
 
     clean:
-      build:
-        [ 'build/dev', 'build/dist'
-          # Note: '.tscache/' is created by grunt-ts.
-          '.tscache/' ]
+      build: [ 'build/dev', 'build/dist', '.tscache/' ]
   }  # grunt.initConfig
 
   #-------------------------------------------------------------------------
@@ -497,6 +530,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-jasmine-chromeapp'
+  grunt.loadNpmTasks 'grunt-vulcanize'
 
   grunt.loadNpmTasks 'grunt-ts'
 
