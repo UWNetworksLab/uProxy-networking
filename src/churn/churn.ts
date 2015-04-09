@@ -18,6 +18,7 @@
 
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
+import signals = require('../../../third_party/uproxy-lib/webrtc/signals');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
 import random = require('../../../third_party/uproxy-lib/crypto/random');
 
@@ -179,7 +180,7 @@ var log :logging.Log = new logging.Log('churn');
     // A short-lived connection used to determine network addresses on which
     // we might be able to communicate with the remote host.
     private probeConnection_
-        :peerconnection.PeerConnection<peerconnection.SignallingMessage>;
+        :peerconnection.PeerConnection<signals.Message>;
 
     // The list of all candidates returned by the probe connection.
     private probeCandidates_ :freedom_RTCPeerConnection.RTCIceCandidate[] = [];
@@ -192,7 +193,7 @@ var log :logging.Log = new logging.Log('churn');
 
     // The obfuscated connection.
     private obfuscatedConnection_
-        :peerconnection.PeerConnection<peerconnection.SignallingMessage>;
+        :peerconnection.PeerConnection<signals.Message>;
 
     // Fulfills once we know on which port the local obfuscated RTCPeerConnection
     // is listening.
@@ -281,10 +282,10 @@ var log :logging.Log = new logging.Log('churn');
       this.probeConnection_ = new peerconnection.PeerConnectionClass(
           freedomPc, probePeerName);
       this.probeConnection_.signalForPeerQueue.setSyncHandler(
-          (signal:peerconnection.SignallingMessage) => {
-        if (signal.type === peerconnection.SignalType.CANDIDATE) {
+          (signal:signals.Message) => {
+        if (signal.type === signals.Type.CANDIDATE) {
           this.probeCandidates_.push(signal.candidate);
-        } else if (signal.type === peerconnection.SignalType.NO_MORE_CANDIDATES) {
+        } else if (signal.type === signals.Type.NO_MORE_CANDIDATES) {
           this.probeConnection_.close();
           this.probingComplete_(selectPublicAddress(this.probeCandidates_));
         }
@@ -379,17 +380,17 @@ var log :logging.Log = new logging.Log('churn');
       this.obfuscatedConnection_ = new peerconnection.PeerConnectionClass(
           freedomPc, obfPeerName);
       this.obfuscatedConnection_.signalForPeerQueue.setSyncHandler(
-          (signal:peerconnection.SignallingMessage) => {
+          (signal:signals.Message) => {
         // Super-paranoid check: remove candidates from SDP messages.
         // This can happen if a connection is re-negotiated.
         // TODO: We can safely remove this once we can reliably interrogate
         //       peerconnection endpoints.
-        if (signal.type === peerconnection.SignalType.OFFER ||
-            signal.type === peerconnection.SignalType.ANSWER) {
+        if (signal.type === signals.Type.OFFER ||
+            signal.type === signals.Type.ANSWER) {
           signal.description.sdp =
               filterCandidatesFromSdp(signal.description.sdp);
         }
-        if (signal.type === peerconnection.SignalType.CANDIDATE) {
+        if (signal.type === signals.Type.CANDIDATE) {
           // This will tell us on which port webrtc is operating.
           // Record it and inject a fake endpoint, to be sure the remote
           // side never knows the real address (can be an issue when both
@@ -448,7 +449,7 @@ var log :logging.Log = new logging.Log('churn');
       }
       if (message.webrtcMessage) {
         var signal = message.webrtcMessage;
-        if (signal.type === peerconnection.SignalType.CANDIDATE) {
+        if (signal.type === signals.Type.CANDIDATE) {
           this.onceHaveForwardingSocketEndpoint_.then(
               (forwardingSocketEndpoint:net.Endpoint) => {
             signal.candidate.candidate =
@@ -456,8 +457,8 @@ var log :logging.Log = new logging.Log('churn');
                     signal.candidate.candidate, forwardingSocketEndpoint);
             this.obfuscatedConnection_.handleSignalMessage(signal);
           });
-        } else if (signal.type == peerconnection.SignalType.OFFER ||
-                   signal.type == peerconnection.SignalType.ANSWER) {
+        } else if (signal.type == signals.Type.OFFER ||
+                   signal.type == signals.Type.ANSWER) {
           // Remove candidates from the SDP.  This is redundant, but ensures
           // that a bug in the remote client won't cause us to send
           // unobfuscated traffic.

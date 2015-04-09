@@ -7,6 +7,7 @@ freedom = freedomMocker.makeMockFreedomInModuleEnv();
 
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
+import signals = require('../../../third_party/uproxy-lib/webrtc/signals');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
 
 import rtc_to_net = require('./rtc-to-net');
