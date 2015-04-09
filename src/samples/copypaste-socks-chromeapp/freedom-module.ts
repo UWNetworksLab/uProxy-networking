@@ -7,7 +7,7 @@ import arraybuffers = require('../../../../third_party/uproxy-lib/arraybuffers/a
 import rtc_to_net = require('../../rtc-to-net/rtc-to-net');
 import socks_to_rtc = require('../../socks-to-rtc/socks-to-rtc');
 import net = require('../../net/net.types');
-import peerconnection = require('../../../../third_party/uproxy-lib/webrtc/peerconnection');
+import signals = require('../../../../third_party/uproxy-lib/webrtc/signals');
 
 import logging = require('../../../../third_party/uproxy-lib/logging/logging');
 
@@ -76,7 +76,7 @@ parentModule.on('start', () => {
     parentModule.emit('proxyingStopped');
   });
 
-  socksRtc.start(
+  socksRtc.startFromConfig(
       localhostEndpoint,
       pcConfig,
       false) // obfuscate
@@ -95,22 +95,21 @@ parentModule.on('start', () => {
 // Messages are dispatched to either the socks-to-rtc or rtc-to-net
 // modules depending on whether we're acting as the frontend or backend,
 // respectively.
-parentModule.on('handleSignalMessage', (signal:peerconnection.SignallingMessage) => {
+parentModule.on('handleSignalMessage', (message:signals.Message) => {
   if (socksRtc !== undefined) {
-    socksRtc.handleSignalFromPeer(signal);
+    socksRtc.handleSignalFromPeer(message);
   } else {
     if (rtcNet === undefined) {
-      rtcNet = new rtc_to_net.RtcToNet(
+      rtcNet = new rtc_to_net.RtcToNet();
+      rtcNet.startFromConfig(
+          { allowNonUnicast:true },
           pcConfig,
-          {
-            allowNonUnicast:true
-          },
           false); // obfuscate
       log.info('created rtc-to-net');
 
       // Forward signalling channel messages to the UI.
-      rtcNet.signalsForPeer.setSyncHandler((signal:peerconnection.SignallingMessage) => {
-          parentModule.emit('signalForPeer', signal);
+      rtcNet.signalsForPeer.setSyncHandler((message:signals.Message) => {
+          parentModule.emit('signalForPeer', message);
       });
 
       // Similarly to with SocksToRtc, emit the number of bytes sent/received
@@ -128,11 +127,11 @@ parentModule.on('handleSignalMessage', (signal:peerconnection.SignallingMessage)
         parentModule.emit('proxyingStarted', null);
       });
 
-      rtcNet.onceClosed.then(() => {
+      rtcNet.onceStopped.then(() => {
         parentModule.emit('proxyingStopped');
       });
     }
-    rtcNet.handleSignalFromPeer(signal);
+    rtcNet.handleSignalFromPeer(message);
   }
 });
 
@@ -166,6 +165,6 @@ parentModule.on('stop', () => {
   if (socksRtc !== undefined) {
     socksRtc.stop();
   } else if (rtcNet !== undefined) {
-    rtcNet.close();
+    rtcNet.stop();
   }
 });

@@ -17,20 +17,18 @@
 // import regex2dfa = require('regex2dfa');
 
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
-import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
-import signals = require('../../../third_party/uproxy-lib/webrtc/signals');
-import handler = require('../../../third_party/uproxy-lib/handler/queue');
-import random = require('../../../third_party/uproxy-lib/crypto/random');
-
-import net = require('../net/net.types');
 import churn_pipe_types = require('../churn-pipe/freedom-module.interface');
-
 import churn_types = require('./churn.types');
+import handler = require('../../../third_party/uproxy-lib/handler/queue');
+import ipaddr = require('ipaddr.js');
+import logging = require('../../../third_party/uproxy-lib/logging/logging');
+import net = require('../net/net.types');
+import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
+import random = require('../../../third_party/uproxy-lib/crypto/random');
+import signals = require('../../../third_party/uproxy-lib/webrtc/signals');
+
 import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
 
-import ipaddr = require('ipaddr.js');
-
-import logging = require('../../../third_party/uproxy-lib/logging/logging');
 var log :logging.Log = new logging.Log('churn');
 
   export var filterCandidatesFromSdp = (sdp:string) : string => {
@@ -282,10 +280,10 @@ var log :logging.Log = new logging.Log('churn');
       this.probeConnection_ = new peerconnection.PeerConnectionClass(
           freedomPc, probePeerName);
       this.probeConnection_.signalForPeerQueue.setSyncHandler(
-          (signal:signals.Message) => {
-        if (signal.type === signals.Type.CANDIDATE) {
-          this.probeCandidates_.push(signal.candidate);
-        } else if (signal.type === signals.Type.NO_MORE_CANDIDATES) {
+          (message:signals.Message) => {
+        if (message.type === signals.Type.CANDIDATE) {
+          this.probeCandidates_.push(message.candidate);
+        } else if (message.type === signals.Type.NO_MORE_CANDIDATES) {
           this.probeConnection_.close();
           this.probingComplete_(selectPublicAddress(this.probeCandidates_));
         }
@@ -380,48 +378,48 @@ var log :logging.Log = new logging.Log('churn');
       this.obfuscatedConnection_ = new peerconnection.PeerConnectionClass(
           freedomPc, obfPeerName);
       this.obfuscatedConnection_.signalForPeerQueue.setSyncHandler(
-          (signal:signals.Message) => {
+          (message:signals.Message) => {
         // Super-paranoid check: remove candidates from SDP messages.
         // This can happen if a connection is re-negotiated.
         // TODO: We can safely remove this once we can reliably interrogate
         //       peerconnection endpoints.
-        if (signal.type === signals.Type.OFFER ||
-            signal.type === signals.Type.ANSWER) {
-          signal.description.sdp =
-              filterCandidatesFromSdp(signal.description.sdp);
+        if (message.type === signals.Type.OFFER ||
+            message.type === signals.Type.ANSWER) {
+          message.description.sdp =
+              filterCandidatesFromSdp(message.description.sdp);
         }
-        if (signal.type === signals.Type.CANDIDATE) {
+        if (message.type === signals.Type.CANDIDATE) {
           // This will tell us on which port webrtc is operating.
           // Record it and inject a fake endpoint, to be sure the remote
           // side never knows the real address (can be an issue when both
           // hosts are on the same network).
           try {
-            if (!signal.candidate || !signal.candidate.candidate) {
+            if (!message.candidate || !message.candidate.candidate) {
               throw new Error('no candidate line');
             }
             var address = extractEndpointFromCandidateLine(
-                signal.candidate.candidate);
+                message.candidate.candidate);
             // TODO: We cannot currently support IPv6 addresses:
             //         https://github.com/uProxy/uproxy/issues/1107
             if (ipaddr.process(address.address).kind() === 'ipv6') {
               throw new Error('ipv6 unsupported');
             }
             this.haveWebRtcEndpoint_(address);
-            signal.candidate.candidate =
+            message.candidate.candidate =
               setCandidateLineEndpoint(
-                signal.candidate.candidate, {
+                message.candidate.candidate, {
                   address: '0.0.0.0',
                   port: 0
                 });
           } catch (e) {
             log.debug('%1: ignoring candidate line %2: %3',
                 this.peerName,
-                JSON.stringify(signal),
+                JSON.stringify(message),
                 e.message);
           }
         }
         var churnSignal :ChurnSignallingMessage = {
-          webrtcMessage: signal
+          webrtcMessage: message
         };
         this.signalForPeerQueue.handle(churnSignal);
       });
@@ -443,28 +441,28 @@ var log :logging.Log = new logging.Log('churn');
     // In the case of obfuscated signalling channel messages, we inject our
     // local forwarding socket's endpoint.
     public handleSignalMessage = (
-        message:ChurnSignallingMessage) : void => {
-      if (message.publicEndpoint !== undefined) {
-        this.haveRemoteEndpoint_(message.publicEndpoint);
+        churnMessage:ChurnSignallingMessage) : void => {
+      if (churnMessage.publicEndpoint !== undefined) {
+        this.haveRemoteEndpoint_(churnMessage.publicEndpoint);
       }
-      if (message.webrtcMessage) {
-        var signal = message.webrtcMessage;
-        if (signal.type === signals.Type.CANDIDATE) {
+      if (churnMessage.webrtcMessage) {
+        var message = churnMessage.webrtcMessage;
+        if (message.type === signals.Type.CANDIDATE) {
           this.onceHaveForwardingSocketEndpoint_.then(
               (forwardingSocketEndpoint:net.Endpoint) => {
-            signal.candidate.candidate =
+            message.candidate.candidate =
                 setCandidateLineEndpoint(
-                    signal.candidate.candidate, forwardingSocketEndpoint);
-            this.obfuscatedConnection_.handleSignalMessage(signal);
+                    message.candidate.candidate, forwardingSocketEndpoint);
+            this.obfuscatedConnection_.handleSignalMessage(message);
           });
-        } else if (signal.type == signals.Type.OFFER ||
-                   signal.type == signals.Type.ANSWER) {
+        } else if (message.type == signals.Type.OFFER ||
+                   message.type == signals.Type.ANSWER) {
           // Remove candidates from the SDP.  This is redundant, but ensures
           // that a bug in the remote client won't cause us to send
           // unobfuscated traffic.
-          signal.description.sdp =
-              filterCandidatesFromSdp(signal.description.sdp);
-          this.obfuscatedConnection_.handleSignalMessage(signal);
+          message.description.sdp =
+              filterCandidatesFromSdp(message.description.sdp);
+          this.obfuscatedConnection_.handleSignalMessage(message);
         }
       }
     }

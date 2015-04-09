@@ -17,6 +17,7 @@ import socks = require('../socks-common/socks-headers');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 
+import ProxyConfig = require('./proxyconfig');
 
 var log :logging.Log = new logging.Log('socks-to-rtc spec');
 
@@ -28,7 +29,7 @@ var mockBoundEndpoint :net.Endpoint = {
 
 var voidPromise = Promise.resolve<void>();
 
-var mockProxyConfig :rtc_to_net.ProxyConfig = {
+var mockProxyConfig :ProxyConfig = {
   allowNonUnicast: false
 };
 
@@ -52,7 +53,7 @@ describe('RtcToNet', function() {
   var server :rtc_to_net.RtcToNet;
 
   var mockPeerconnection
-      :peerconnection.PeerConnection<peerconnection.SignallingMessage>;
+      :peerconnection.PeerConnection<signals.Message>;
 
   beforeEach(function() {
     server = new rtc_to_net.RtcToNet();
@@ -83,22 +84,22 @@ describe('RtcToNet', function() {
     server.start(mockProxyConfig, mockPeerconnection).catch(done);
   });
 
-  it('onceClosed fulfills on peerconnection termination', (done) => {
+  it('onceStopped fulfills on peerconnection termination', (done) => {
     mockPeerconnection.onceConnected = voidPromise;
     mockPeerconnection.onceDisconnected = <any>Promise.resolve();
 
     server.start(mockProxyConfig, mockPeerconnection)
-      .then(() => { return server.onceClosed; })
+      .then(() => { return server.onceStopped; })
       .then(done);
   });
 
-  it('onceClosed fulfills on call to stop', (done) => {
+  it('onceStopped fulfills on call to stop', (done) => {
     mockPeerconnection.onceConnected = voidPromise;
     // Calling stop() alone should be sufficient to initiate shutdown.
 
     server.start(mockProxyConfig, mockPeerconnection)
-      .then(server.close)
-      .then(() => { return server.onceClosed; })
+      .then(server.stop)
+      .then(() => { return server.onceStopped; })
       .then(done);
   });
 });
@@ -133,7 +134,6 @@ describe("RtcToNet session", function() {
       send: jasmine.createSpy('send')
     };
     (<any>mockDataChannel.send).and.returnValue(voidPromise);
-
 
     mockBytesReceived = new handler.Queue<number, void>();
     mockBytesSent = new handler.Queue<number, void>();

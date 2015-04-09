@@ -1,6 +1,7 @@
 /// <reference path='../../../../third_party/freedom-typings/freedom-common.d.ts' />
 
 import peerconnection = require('../../../../third_party/uproxy-lib/webrtc/peerconnection');
+import signals = require('../../../../third_party/uproxy-lib/webrtc/signals');
 import churn_types = require('../../churn/churn.types');
 import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
 import churn = require('../../churn/churn');
@@ -20,15 +21,15 @@ export var pc = new churn.Connection(freedomPc);
 export var freedomParentModule = freedom();
 
 // Forward signalling channel messages to the UI.
-pc.signalForPeerQueue.setSyncHandler((signal:peerconnection.SignallingMessage) => {
+pc.signalForPeerQueue.setSyncHandler((message:signals.Message) => {
   // FIXME: Does signalForPeer want a ChurnSignallingMessage?  How is the stage
   // value supposed to get filled in.
-  freedomParentModule.emit('signalForPeer', signal);
+  freedomParentModule.emit('signalForPeer', message);
 });
 
 // Receive signalling channel messages from the UI.
-freedomParentModule.on('handleSignalMessage', (signal:ChurnSignallingMessage) => {
-  pc.handleSignalMessage(signal);
+freedomParentModule.on('handleSignalMessage', (message:ChurnSignallingMessage) => {
+  pc.handleSignalMessage(message);
 });
 
 pc.onceConnecting.then(() => { log.info('connecting...'); });
