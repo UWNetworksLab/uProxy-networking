@@ -34,6 +34,10 @@ taskManager.add 'integration', [
   'socksEchoIntegrationTest'
 ]
 
+taskManager.add 'dist', [
+  'base', 'samples', 'test', 'integration', 'copy:dist'
+]
+
 # -----------------------------------------------------------------------------
 # Sample Apps
 
@@ -260,7 +264,8 @@ module.exports = (grunt) ->
               cwd: devBuildPath,
               src: ['**/*',
                     '!**/*.spec.js',
-                    '!**/*.spec.*.js'],
+                    '!**/*.spec.*.js',
+                    '!samples/**/*',],
               dest: 'build/dist/',
               onlyIf: 'modified'
           }
