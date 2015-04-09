@@ -18,6 +18,7 @@
 
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import churn_pipe_types = require('../churn-pipe/freedom-module.interface');
+import ChurnPipe = churn_pipe_types.freedom_ChurnPipe;
 import churn_types = require('./churn.types');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
 import ipaddr = require('ipaddr.js');
@@ -149,6 +150,28 @@ var log :logging.Log = new logging.Log('churn');
     throw new Error('no srflx or host candidate found');
   };
 
+  var endpointKey_ = (endpoint:net.Endpoint) : string => {
+    return endpoint.address + ':' + endpoint.port;
+  };
+
+  // Retry an async function with exponential backoff for up to 2 seconds
+  // before failing.
+  var retry_ = (func:() => Promise<void>, delay?:number) : Promise<void> => {
+    var delay = delay || 10;  // milliseconds
+    var maxDelay = 2000;  // milliseconds
+    return func().catch((err) => {
+      if (delay > maxDelay) {
+        log.error('Timeout reached while retrying');
+        return Promise.reject(err);
+      }
+      return new Promise<void>((F, R) => {
+        setTimeout(() => {
+          this.retry_(func, delay * 2).then(F, R);
+        }, delay);
+      });
+    });
+  }
+
   /**
    * A uproxypeerconnection-like Freedom module which establishes obfuscated
    * connections.
@@ -206,13 +229,17 @@ var log :logging.Log = new logging.Log('churn');
       this.haveRemoteEndpoint_ = F;
     });
 
-    // Fulfills once we've successfully allocated the forwarding socket.
+    // Fulfills once we've successfully allocated the mirror pipe representing the
+    // remote peer's signalled transport address.
     // At that point, we can inject its address into candidate messages destined
     // for the local RTCPeerConnection.
     private haveForwardingSocketEndpoint_ :(endpoint:net.Endpoint) => void;
     private onceHaveForwardingSocketEndpoint_ = new Promise((F, R) => {
       this.haveForwardingSocketEndpoint_ = F;
     });
+
+    // A map from remote transport addresses to local pipes that represent them.
+    private mirrorPipes_ : { [k: string]: ChurnPipe } = {};
 
     private static internalConnectionId_ = 0;
 
@@ -284,24 +311,43 @@ var log :logging.Log = new logging.Log('churn');
         if (message.type === signals.Type.CANDIDATE) {
           this.probeCandidates_.push(message.candidate);
         } else if (message.type === signals.Type.NO_MORE_CANDIDATES) {
-          this.probeConnection_.close();
-          this.probingComplete_(selectPublicAddress(this.probeCandidates_));
+          this.probeConnection_.close().then(() => {
+            this.probingComplete_(selectPublicAddress(this.probeCandidates_));
+          });
         }
       });
       this.probeConnection_.negotiateConnection();
     }
 
-    // Establishes the two pipes required to sustain the obfuscated
-    // connection:
-    //  - a non-obfuscated, local only, between WebRTC and a new,
-    //    automatically allocated, port
-    //  - remote, obfuscated, port
-    private configurePipes_ = (
+    // Add and return a local pipe that represents a specific remote address
+    // for both send and receive.
+    private addLocalPipe_ = (
         webRtcEndpoint:net.Endpoint,
         remoteEndpoint:net.Endpoint,
-        natEndpoints:NatPair) : void => {
+        publicPipe:ChurnPipe)
+        : Promise<ChurnPipe> => {
+      var key = endpointKey_(remoteEndpoint);
+      if (this.mirrorPipes_[key]) {
+        log.warn('%1: Got redundant call to add local pipe for %2',
+            this.peerName,
+            key);
+        // Return the pipe, but wait until it's ready.
+        return this.mirrorPipes_[key].getLocalEndpoint().then(
+            (ignored:net.Endpoint) => {
+          return this.mirrorPipes_[key];
+        });
+      }
+
       var localPipe = freedom['churnPipe']();
-      localPipe.bind(
+      this.mirrorPipes_[key] = localPipe;
+
+      // Packets received by this pipe should be obfuscated and forwarded
+      // to the corresponding remote endpoint.
+      localPipe.on('message', (m:churn_pipe_types.Message) => {
+        publicPipe.sendTo(m.data, remoteEndpoint);
+      });
+
+      return localPipe.bind(
           '127.0.0.1',
           0,
           webRtcEndpoint.address,
@@ -316,21 +362,44 @@ var log :logging.Log = new logging.Log('churn');
       })
       .then(localPipe.getLocalEndpoint)
       .then((forwardingSocketEndpoint:net.Endpoint) => {
-        this.haveForwardingSocketEndpoint_(forwardingSocketEndpoint);
         log.info('%1: configured local pipe between %2 and %3',
             this.peerName,
             JSON.stringify(forwardingSocketEndpoint),
             JSON.stringify(webRtcEndpoint));
+        return localPipe;
+      });
+    }
 
-        var publicPipe = freedom['churnPipe']();
-        publicPipe.bind(
-            natEndpoints.internal.address,
-            natEndpoints.internal.port,
-            remoteEndpoint.address,
-            remoteEndpoint.port,
-            'caesar',
-            new Uint8Array([13]).buffer,
-            {})
+    private bindPublicPipe_ = (publicPipe:ChurnPipe, local:net.Endpoint,
+        remote:net.Endpoint) : Promise<void> => {
+      return publicPipe.bind(
+          local.address,
+          local.port,
+          remote.address,
+          remote.port,
+          'caesar',
+          new Uint8Array([13]).buffer,
+          '{}');
+    };
+
+    // Establishes the two pipes required to sustain the obfuscated
+    // connection:
+    //  - a non-obfuscated, local only, between WebRTC and a new,
+    //    automatically allocated, port
+    //  - remote, obfuscated, port
+    private configurePipes_ = (
+        webRtcEndpoint:net.Endpoint,
+        remoteEndpoint:net.Endpoint,
+        natEndpoints:NatPair) : void => {
+      log.debug('%1: configuring pipes...', this.peerName);
+      var publicPipe = freedom['churnPipe']();
+      // This retry is needed because the browser releases the UDP port
+      // asynchronously after we call close() on the RTCPeerConnection, so
+      // this.bindPublicPipe_ may initially fail, until the port is released.
+      retry_(() => {
+        return this.bindPublicPipe_(
+            publicPipe, natEndpoints.internal, remoteEndpoint);
+      })
         // TODO(ldixon): renable FTE support instead of caesar cipher.
         // publicPipe.bind(
         //     natEndpoints.internal.address,
@@ -351,21 +420,43 @@ var log :logging.Log = new logging.Log('churn');
               this.peerName,
               JSON.stringify(natEndpoints.internal),
               JSON.stringify(remoteEndpoint));
+        }, (e:Error) => {
+        log.error('%1: error establishing public pipe between %2 and %3: %4',
+            this.peerName,
+            endpointKey_(natEndpoints.internal),
+            endpointKey_(remoteEndpoint),
+            e.message);
+      });
 
-          // Connect the local pipe to the remote, obfuscating, pipe.
-          localPipe.on('message', (m:churn_pipe_types.Message) => {
-            publicPipe.send(m.data);
-          });
-          publicPipe.on('message', (m:churn_pipe_types.Message) => {
+      publicPipe.on('message', (m:churn_pipe_types.Message) => {
+        // This is the particular local pipe associated with this sender.
+        var localPipe = this.mirrorPipes_[endpointKey_(m.source)];
+        if (localPipe) {
+          // Note: due to asynchronous setup, it's possible that this pipe
+          // has not yet been bound.  Hopefully, the send call will be
+          // queued behind the bind call.  If not, the packet may just be
+          // dropped (which should be acceptable for a brief period).
+          localPipe.send(m.data);
+        } else if (this.pcState == peerconnection.State.WAITING ||
+                   this.pcState == peerconnection.State.CONNECTING) {
+          this.addLocalPipe_(webRtcEndpoint, m.source, publicPipe).then(
+              (localPipe:ChurnPipe) => {
             localPipe.send(m.data);
           });
-        })
-        .catch((e:Error) => {
-          log.error('%1: error establishing obfuscated pipe: %2',
-            this.peerName,
-            e.message);
-        });
+        } else {
+          log.warn('%1: Received unexpected packet of length %2 from %3' 
+                       + ' while in state %4',
+              this.peerName,
+              m.data.byteLength,
+              endpointKey_(m.source),
+              this.pcState);
+        }
       });
+
+      this.addLocalPipe_(webRtcEndpoint, remoteEndpoint, publicPipe).then(
+          (pipe:ChurnPipe) => {
+        return pipe.getLocalEndpoint();
+      }).then(this.haveForwardingSocketEndpoint_);
     }
 
     private configureObfuscatedConnection_ = () => {
