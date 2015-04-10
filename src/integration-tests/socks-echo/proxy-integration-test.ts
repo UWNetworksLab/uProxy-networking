@@ -1,4 +1,3 @@
-/// <reference path='../../arraybuffers/arraybuffers.d.ts' />
 /// <reference path='../../../../third_party/freedom-typings/freedom-common.d.ts' />
 
 import peerconnection = require('../../../../third_party/uproxy-lib/webrtc/peerconnection');
@@ -9,6 +8,7 @@ import net = require('../../net/net.types');
 import tcp = require('../../net/tcp');
 import socks = require('../../socks-common/socks-headers');
 import ProxyIntegrationTester = require('./proxy-integration-test.types');
+import arraybuffers = require('../../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 
 class ProxyIntegrationTestClass implements ProxyIntegrationTester {
   private socksToRtc_ :socks_to_rtc.SocksToRtc;
@@ -37,7 +37,7 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
         for (var i = 0; i < this.repeat_; ++i) {
           multiBuffer.push(buffer);
         }
-        var concatenated = ArrayBuffers.concat(multiBuffer);
+        var concatenated = arraybuffers.concat(multiBuffer);
         tcpConnection.send(concatenated);
       });
     });
@@ -127,7 +127,7 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
   public echo = (connectionId:string, content:ArrayBuffer) : Promise<ArrayBuffer> => {
     return this.echoMultiple(connectionId, [content])
         .then((responses:ArrayBuffer[]) : ArrayBuffer => {
-          return responses[0];
+          return arraybuffers.concat(responses);
         });
   }
 
@@ -170,6 +170,10 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
     } catch (e) {
       return Promise.reject(e);
     }
+  }
+
+  public on = (name:string, listener:(event:any) => void) : void => {
+    throw new Error('Placeholder function to keep Typescript happy');
   }
 }
 
