@@ -149,18 +149,21 @@ export function socksEchoTestDescription(useChurn:boolean) {
     }).then(done);
   });
 
-  var runUproxyOrg404Test = (testModule:any, done:Function) => {
+  var runUproxyOrg404Test = (testModule:ProxyIntegrationTester,
+      done:Function) => {
     var nonExistentPath = '/noSuchPath';
     var input = arraybuffers.stringToArrayBuffer(
         'GET ' + nonExistentPath + ' HTTP/1.0\r\n\r\n');
     testModule.connect(80, 'uproxy.org').then((connectionId:string) => {
       var isDone = false;
       var outputString = '';
-      testModule.on('pong', (response:ArrayBuffer) => {
+      testModule.on('pong',
+          (event:{connectionId:string; response:ArrayBuffer}) => {
         if (isDone) {
           return;
         }
-        outputString += arraybuffers.arrayBufferToString(response);
+        expect(event.connectionId).toEqual(connectionId);
+        outputString += arraybuffers.arrayBufferToString(event.response);
         if (outputString.indexOf('HTTP/1.0 404 Not Found') != -1 &&
             outputString.indexOf(nonExistentPath) != -1) {
           isDone = true;

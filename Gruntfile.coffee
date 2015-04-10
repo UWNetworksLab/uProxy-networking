@@ -147,6 +147,10 @@ taskManager.add 'integrationTestModules', [
   'socksEchoIntegrationTestModule'
 ]
 
+taskManager.add 'integrationSlow', [
+  'socksEchoIntegrationTestModule'
+  'jasmine_chromeapp:socksEchoSlow'
+]
 
 
 #-------------------------------------------------------------------------
@@ -528,7 +532,7 @@ module.exports = (grunt) ->
           {
             cwd: devBuildPath + '/integration-tests/socks-echo/',
             src: ['**/*', '!jasmine_chromeapp*/**']
-            dest: '/uproxy-networking/',
+            dest: './',
             expand: true
           }
         ]
