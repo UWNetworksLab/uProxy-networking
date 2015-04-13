@@ -41,7 +41,7 @@
     "request": "^2.53.0",
     "socks5-http-client": "^0.1.6",
     "tsd": "^0.5.7",
-    "uproxy-lib": "^21.0.0",
+    "uproxy-lib": "^23.0.0",
     "utransformers": "^0.2.1",
     "wup": "^1.0.0",
     "yargs": "^3.0.4"
