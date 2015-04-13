@@ -231,12 +231,13 @@ module.exports = (grunt) ->
           },
           # Copy the relevant files from the build directory to create a
           # third_party folder for freedom-pgp-e2e.
+          # .js and .json for freedom pgp module, plus compiled crypto lib .js
           {
             nonull: true,
-            expand: true,
-            cwd: path.join(pgpPath, 'build'),
-            src: ['**/*', '!demo', '!freedom.js', '!*.spec.js', '!playground'],
-            dest: path.join(thirdPartyBuildPath, 'freedom-pgp-e2e'),
+            expand: true
+            cwd: pgpPath
+            src: ['dist/*.js', 'dist/pgpapi.json']
+            dest: path.join(thirdPartyBuildPath, 'freedom-pgp-e2e')
           }
         ]
 
