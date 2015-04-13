@@ -16,8 +16,8 @@ function runAndAssertCmd ()
     set -e && cd $ROOT_DIR && eval $1
 }
 
-# Just run the command, ignore errors (e.g. cp fails if a file already exists
-# with "set -e")
+# Just run the command, ignore errors (e.g. with "set -e", the "cp" command
+# fails if a file already exists in the destination)
 function runCmd ()
 {
     echo "Running: $1"

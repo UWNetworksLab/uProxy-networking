@@ -5,7 +5,7 @@
 /// <reference path='../../../../third_party/freedom-typings/freedom-core-env.d.ts' />
 
 import arraybuffers = require('../../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
-import peerconnection = require('../../../../third_party/uproxy-lib/webrtc/peerconnection');
+import signals = require('../../../../third_party/uproxy-lib/webrtc/signals');
 import freedom_types = require('freedom.types');
 import net = require('../../net/net.types');
 import copypaste_api = require('./copypaste-api');
@@ -19,7 +19,7 @@ module copypaste_module {
       }).then((copypasteSocksFactory:() => freedom_types.OnAndEmit<any,any>) => {
     var copypaste :freedom_types.OnAndEmit<any,any> = copypasteSocksFactory();
 
-    copypaste.on('signalForPeer', (signal:peerconnection.SignallingMessage) => {
+    copypaste.on('signalForPeer', (message:signals.Message) => {
       model.readyForStep2 = true;
 
       // Append the new signalling message to the previous message(s), if any.
@@ -28,7 +28,7 @@ module copypaste_module {
       // into emoticons, whereas the base64 alphabet is much less prone to such
       // unintended transformation.
       var oldConcatenatedJson = base64Decode(model.outboundMessageValue.trim());
-      var newConcatenatedJson = oldConcatenatedJson + '\n' + JSON.stringify(signal);
+      var newConcatenatedJson = oldConcatenatedJson + '\n' + JSON.stringify(message);
       if (model.usingCrypto) {
         copypaste.emit('friendKey', model.friendPublicKey);
         copypaste.emit('signEncrypt', base64Encode(newConcatenatedJson));
@@ -95,7 +95,7 @@ module copypaste_module {
 
   // Stores the parsed messages for use later, if & when the user clicks the
   // button for consuming the messages.
-  var parsedInboundMessages :peerconnection.SignallingMessage[];
+  var parsedInboundMessages :signals.Message[];
 
 
   // Define basee64 helper functions that are type-annotated and meaningfully
@@ -124,22 +124,22 @@ module copypaste_module {
 
     var signals :string[] = signalsString.trim().split('\n');
 
-    // Each line should be a JSON representation of a peerconnection.SignallingMessage.
+    // Each line should be a JSON representation of a signals.Message.
     // Parse the lines here.
-    var parsedSignals :peerconnection.SignallingMessage[] = [];
+    var parsedSignals :signals.Message[] = [];
     for (var i = 0; i < signals.length; i++) {
       var s :string = signals[i].trim();
 
       // TODO: Consider detecting the error if the text is well-formed JSON but
-      // does not represent a peerconnection.SignallingMessage.
-      var signal :peerconnection.SignallingMessage;
+      // does not represent a signals.Message.
+      var message :signals.Message;
       try {
-        signal = JSON.parse(s);
+        message = JSON.parse(s);
       } catch (e) {
         parsedSignals = null;
         break;
       }
-      parsedSignals.push(signal);
+      parsedSignals.push(message);
     }
 
     // Enable/disable, as appropriate, the button for consuming the messages.

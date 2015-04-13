@@ -4,6 +4,7 @@
 
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
+import signals = require('../../../third_party/uproxy-lib/webrtc/signals');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
 
 import churn = require('../churn/churn');
@@ -67,7 +68,7 @@ module SocksToRtc {
     // The connection to the peer that is acting as the endpoint for the proxy
     // connection.
     private peerConnection_
-        :peerconnection.PeerConnection<peerconnection.SignallingMessage>;
+        :peerconnection.PeerConnection<signals.Message>;
 
     // Event listener registration function.  When running in freedom, this is
     // not defined, and the corresponding functionality is inserted by freedom
@@ -90,7 +91,9 @@ module SocksToRtc {
     // removed.
     private sessions_ :{ [channelLabel:string] : Session } = {};
 
-    constructor(private dispatchEvent_?:(t:string, m:any) => void) {
+    // Note: The optional |dispatchEvent_| is for when this class is loaded as a
+    // freedom module.
+    constructor(private dispatchEvent_?:(t:string, m:Object) => void) {
       if (!this.dispatchEvent_) {
         // CONSIDER: Remove this code once all users of this class move to
         // freedom.  See https://github.com/uProxy/uproxy/issues/733 for
@@ -101,17 +104,19 @@ module SocksToRtc {
       }
     }
 
-    // Handles creation of a TCP server and peerconnection.
-    // NOTE: Users of this class MUST add on-event listeners before calling this
-    // method.
-    public start = (
-        endpoint:net.Endpoint,
+    // Handles creation of a TCP server and peerconnection. Returns the endpoint
+    // it ended up listening on (if |localSocksServerEndpoint| has port set to
+    // 0, then a dynamic port is allocated and this port is returned within the
+    // promise's endpoint).  NOTE: Users of this class MUST add on-event
+    // listeners before calling this method.
+    public startFromConfig = (
+        localSocksServerEndpoint:net.Endpoint,
         pcConfig:freedom_RTCPeerConnection.RTCConfiguration,
         obfuscate?:boolean) : Promise<net.Endpoint> => {
       var pc :freedom_RTCPeerConnection.RTCPeerConnection =
           freedom['core.rtcpeerconnection'](pcConfig);
-      return this.startInternal(
-          new tcp.Server(endpoint),
+      return this.start(
+          new tcp.Server(localSocksServerEndpoint),
           obfuscate ?
               new churn.Connection(pc, 'SocksToRtc') :
               new peerconnection.PeerConnectionClass(pc));
@@ -120,11 +125,11 @@ module SocksToRtc {
     // Starts the SOCKS server with the supplied TCP server and peerconnection.
     // Returns a promise that resolves when the server is ready to use. This
     // method is public only for testing purposes.
-    public startInternal = (
+    public start = (
         tcpServer:tcp.Server,
         // TODO(iislucas): are the types correct here? Does an obfuscated
         // channel have a different signalling type?
-        peerconnection:peerconnection.PeerConnection<peerconnection.SignallingMessage>)
+        peerconnection:peerconnection.PeerConnection<signals.Message>)
         : Promise<net.Endpoint> => {
       if (this.tcpServer_) {
         throw new Error('already configured');
@@ -255,7 +260,7 @@ module SocksToRtc {
       });
     }
 
-    public handleSignalFromPeer = (signal:peerconnection.SignallingMessage)
+    public handleSignalFromPeer = (signal:signals.Message)
         : void => {
       this.peerConnection_.handleSignalMessage(signal);
     }

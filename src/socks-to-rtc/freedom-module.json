@@ -17,22 +17,19 @@
   "api": {
     "SocksToRtc": {
       "start": {
-        "value": [{
+        "value": [
+          {
             "address": "string",
             "port": "number"
           },
           {
-            "webrtcPcConfig": {
-              "iceServers": ["array", {
-                "urls": ["array", "string"],
-                "username": "string",
-                "credential": "string"
-              }],
-              "iceTransports": "string",
-              "peerIdentity": "string"
-            },
-            "peerName": "string",
-            "initiateConnection": "boolean"
+            "iceServers": ["array", {
+              "urls": ["array", "string"],
+              "username": "string",
+              "credential": "string"
+            }],
+            "iceTransports": "string",
+            "peerIdentity": "string"
           },
           "boolean"
         ],

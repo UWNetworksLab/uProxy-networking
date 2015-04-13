@@ -29,6 +29,15 @@ taskManager.add 'test', [
   'jasmine'
 ]
 
+taskManager.add 'integration', [
+  'tcpIntegrationTest'
+  'socksEchoIntegrationTest'
+]
+
+taskManager.add 'dist', [
+  'base', 'samples', 'test', 'integration', 'copy:dist'
+]
+
 # -----------------------------------------------------------------------------
 # Sample Apps
 
@@ -107,11 +116,6 @@ taskManager.add 'sampleSimpleTurnChromeApp', [
 # -----------------------------------------------------------------------------
 # Integration tests
 
-taskManager.add 'integration', [
-  'tcpIntegrationTest'
-  'socksEchoIntegrationTest'
-]
-
 taskManager.add 'socksEchoIntegrationTestModule', [
   'base'
   'copy:libsForIntegrationSocksEcho'
@@ -124,6 +128,7 @@ taskManager.add 'socksEchoIntegrationTestModule', [
 taskManager.add 'socksEchoIntegrationTest', [
   'socksEchoIntegrationTestModule'
   'jasmine_chromeapp:socksEcho'
+  #'jasmine_chromeapp:socksEchoChurn'
 ]
 
 taskManager.add 'tcpIntegrationTestModule', [
@@ -174,7 +179,6 @@ browserifyIntegrationTest = (path) ->
   });
 
 #-------------------------------------------------------------------------
-
 freedomForChromePath = path.dirname(require.resolve('freedom-for-chrome/package.json'))
 uproxyLibPath = path.dirname(require.resolve('uproxy-lib/package.json'))
 # TODO(ldixon): update utransformers package to uproxy-obfuscators
@@ -258,7 +262,8 @@ module.exports = (grunt) ->
             cwd: devBuildPath,
             src: ['**/*',
                   '!**/*.spec.js',
-                  '!**/*.spec.*.js'],
+                  '!**/*.spec.*.js',
+                  '!samples/**/*',],
             dest: 'build/dist/',
             onlyIf: 'modified'
           }
@@ -505,6 +510,21 @@ module.exports = (grunt) ->
         scripts: [
           'freedom-for-chrome/freedom-for-chrome.js'
           'nochurn.core-env.spec.static.js'
+        ]
+        options:
+          outDir: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp/'
+          keepRunner: true
+      socksEchoChurn:
+        files: [
+          {
+            cwd: devBuildPath + '/integration-tests/socks-echo/',
+            src: ['**/*', '!jasmine_chromeapp/**/*']
+            dest: './',
+            expand: true
+          }
+        ]
+        scripts: [
+          'freedom-for-chrome/freedom-for-chrome.js'
           'churn.core-env.spec.static.js'
         ]
         options:
@@ -535,12 +555,11 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-browserify'
   grunt.loadNpmTasks 'grunt-contrib-clean'
   grunt.loadNpmTasks 'grunt-contrib-copy'
-  grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
+  grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-jasmine-chromeapp'
-  grunt.loadNpmTasks 'grunt-vulcanize'
-
   grunt.loadNpmTasks 'grunt-ts'
+  grunt.loadNpmTasks 'grunt-vulcanize'
 
   #-------------------------------------------------------------------------
   # Register the tasks
