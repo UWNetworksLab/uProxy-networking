@@ -21,7 +21,7 @@ export var simpleSocks :OnEmitModule;
 script.onload = () => {
   freedom('uproxy-networking/simple-socks/freedom-module.json', {
       'logger': 'uproxy-lib/loggingprovider/freedom-module.json',
-      'debug': 'debug'
+      'debug': 'info'
   }).then((simpleSocksFactory:OnEmitModuleFactory) => {
     simpleSocks = simpleSocksFactory();
   }, (e:Error) => { throw e; });

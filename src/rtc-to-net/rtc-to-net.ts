@@ -241,7 +241,9 @@ module RtcToNet {
     // TODO: close all sessions before fulfilling
     private stopResources_ = () : Promise<void> => {
       log.debug('freeing resources');
-      // TODO(ldixon): why not just return this.peerConnection_.close();
+      // TODO(ldixon): explore why not not just return
+      // this.peerConnection_.close(); call the PeerConnection's close and
+      // return synchronously.
       return new Promise<void>((F, R) => {
         this.peerConnection_.close();
         F();

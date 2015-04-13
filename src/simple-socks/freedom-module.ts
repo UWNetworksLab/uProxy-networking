@@ -40,7 +40,7 @@ export var rtcNet = new rtc_to_net.RtcToNet(
     {
       allowNonUnicast: true
     },
-    true); // obfuscate
+    false); // obfuscate
 
 //-----------------------------------------------------------------------------
 export var socksRtc = new socks_to_rtc.SocksToRtc();
@@ -48,7 +48,7 @@ socksRtc.on('signalForPeer', rtcNet.handleSignalFromPeer);
 socksRtc.start(
     localhostEndpoint,
     pcConfig,
-    true) // obfuscate
+    false) // obfuscate
   .then((endpoint:net.Endpoint) => {
     log.info('SocksToRtc listening on: ' + JSON.stringify(endpoint));
     log.info('curl -x socks5h://' + endpoint.address + ':' + endpoint.port +
