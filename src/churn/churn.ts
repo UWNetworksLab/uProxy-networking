@@ -474,8 +474,8 @@ var log :logging.Log = new logging.Log('churn');
       return this.obfuscatedConnection_.openDataChannel(channelLabel);
     }
 
-    public close = () : void => {
-      this.obfuscatedConnection_.close();
+    public close = () : Promise<void> => {
+      return this.obfuscatedConnection_.close();
     }
 
     public toString = () : string => {
