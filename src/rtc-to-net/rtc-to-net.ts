@@ -37,6 +37,7 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
     channel_sent: number;
     channel_received: number;
     channel_buffered: number;
+    channel_js_buffered: number;
     channel_queue_size: number;
     channel_queue_handling: boolean;
     socket_sent: number;
@@ -324,20 +325,6 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
         .then((tcpConnection) => {
           this.tcpConnection_ = tcpConnection;
 
-          // Shutdown once the TCP connection terminates and has drained.
-          this.tcpConnection_.onceClosed.then((kind:tcp.SocketCloseKind) => {
-            if (this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
-              log.info('%1: socket closed (%2), all incoming data processed',
-                  this.longId(),
-                  tcp.SocketCloseKind[kind]);
-              this.fulfillStopping_();
-            } else {
-              log.info('%1: socket closed (%2), still processing incoming data',
-                  this.longId(),
-                  tcp.SocketCloseKind[kind]);
-            }
-          });
-
           return this.tcpConnection_.onceConnected
             .catch((e:freedom_types.Error) => {
               log.info('%1: failed to connect to remote endpoint', [this.longId()]);
@@ -444,7 +431,7 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
         throw new Error('tried to connect to disallowed address: ' +
                         endpoint.address);
       }
-      return new tcp.Connection({endpoint: endpoint});
+      return new tcp.Connection({endpoint: endpoint}, true /* startPaused */);
     }
 
     // Fulfills once the connected endpoint has been returned to the SOCKS
@@ -508,7 +495,6 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
     // Invoked when a packet is received over the data channel.
     private sendOnSocket_ = (data:peerconnection.Data)
         : Promise<freedom_TcpSocket.WriteInfo> => {
-      this.channelReceivedBytes_ += data.buffer.byteLength;
       if (!data.buffer) {
         return Promise.reject(new Error(
             'received non-buffer data from datachannel'));
@@ -517,6 +503,7 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
           this.longId(),
           data.buffer.byteLength]);
       this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
+      this.channelReceivedBytes_ += data.buffer.byteLength;
 
       return this.tcpConnection_.send(data.buffer);
     }
@@ -525,33 +512,33 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
     // and vice versa. Should only be called once both socket and channel have
     // been successfully established.
     private linkSocketAndChannel_ = () : void => {
-      // Note that setTimeout is used by both loops to preserve system
-      // responsiveness when large amounts of data are being received:
-      //   https://github.com/uProxy/uproxy/issues/967
-      var socketReadLoop = (data:ArrayBuffer) => {
+      var socketReader = (data:ArrayBuffer) => {
         this.sendOnChannel_(data).then(() => {
           this.bytesSentToPeer_.handle(data.byteLength);
           this.channelSentBytes_ += data.byteLength;
-          // Shutdown once the TCP connection terminates and has drained,
-          // otherwise keep draining.
-          if (this.tcpConnection_.isClosed() &&
-              this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
-            log.info('%1: socket drained', this.longId());
-            this.fulfillStopping_();
-          } else {
-            Session.nextTick_(() => {
-              this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
-                  socketReadLoop);
-            });
-          }
         }, (e:Error) => {
           log.error('%1: failed to send data on datachannel: %2',
               this.longId(),
               e.message);
         });
       };
-      this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(socketReadLoop);
+      this.tcpConnection_.dataFromSocketQueue.setSyncHandler(socketReader);
 
+      // Shutdown the session once the TCP connection terminates.
+      // This should be safe now because
+      // (1) this.tcpConnection_.dataFromPeerQueue has now been emptied into
+      // this.dataChannel_.send() and (2) this.dataChannel_.close() should delay
+      // closing until all pending messages have been sent.
+      this.tcpConnection_.onceClosed.then((kind:tcp.SocketCloseKind) => {
+        log.info('%1: socket closed (%2)',
+            this.longId(),
+            tcp.SocketCloseKind[kind]);
+        this.fulfillStopping_();
+      });
+
+      // Session.nextTick_ (i.e. setTimeout) is used to preserve system
+      // responsiveness when large amounts of data are being sent:
+      //   https://github.com/uProxy/uproxy/issues/967
       var channelReadLoop = (data:peerconnection.Data) : void => {
         this.sendOnSocket_(data).then((writeInfo:freedom_TcpSocket.WriteInfo) => {
           this.socketSentBytes_ += data.buffer.byteLength;
@@ -586,6 +573,28 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
       };
       this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
           channelReadLoop);
+
+      // The TCP connection starts in the paused state.  However, in extreme
+      // cases, enough data can arrive before the pause takes effect to put
+      // the data channel into overflow.  In that case, the socket will
+      // eventually be resumed by the overflow listener below.
+      if (!this.dataChannel_.isInOverflow()) {
+        this.tcpConnection_.resume();
+      }
+
+      this.dataChannel_.setOverflowListener((overflow:boolean) => {
+        if (this.tcpConnection_.isClosed()) {
+          return;
+        }
+
+        if (overflow) {
+          this.tcpConnection_.pause();
+          log.debug('%1: Hit overflow, pausing socket', this.longId());
+        } else {
+          this.tcpConnection_.resume();
+          log.debug('%1: Exited  overflow, resuming socket', this.longId());
+        }
+      });
     }
 
     private isAllowedAddress_ = (addressString:string) : boolean => {
@@ -611,6 +620,7 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
     public getSnapshot = () : Promise<SessionSnapshot> => {
       return this.dataChannel_.getBrowserBufferedAmount()
           .then((bufferedAmount:number) => {
+        var js_buffer = this.dataChannel_.getJavascriptBufferedAmount();
         return {
           name: this.channelLabel(),
           timestamp: performance.now(),
@@ -619,6 +629,7 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
           channel_buffered: bufferedAmount,
           channel_queue_size: this.dataChannel_.dataFromPeerQueue.getLength(),
           channel_queue_handling: this.dataChannel_.dataFromPeerQueue.isHandling(),
+          channel_js_buffered: js_buffer,
           socket_sent: this.socketSentBytes_,
           socket_received: this.socketReceivedBytes_,
           socket_queue_size: this.tcpConnection_.dataFromSocketQueue.getLength(),

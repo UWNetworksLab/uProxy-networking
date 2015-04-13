@@ -270,7 +270,7 @@ export class Connection {
   private fulfillClosed_ :(reason:SocketCloseKind)=>void;
 
   // A TCP connection for a given socket.
-  constructor(connectionKind:Connection.Kind) {
+  constructor(connectionKind:Connection.Kind, private startPaused_?:boolean) {
     this.connectionId = 'N' + Connection.globalConnectionId_++;
 
     this.dataFromSocketQueue = new handler.Queue<ArrayBuffer,void>();
@@ -313,7 +313,9 @@ export class Connection {
               .then(this.pause)
               .then(this.connectionSocket_.getInfo)
               .then((info:freedom_TcpSocket.SocketInfo) => {
-                this.resume();
+                if (!this.startPaused_) {
+                  this.resume();
+                }
                 return endpointOfSocketInfo(info);
               })
       this.state_ = Connection.State.CONNECTING;
