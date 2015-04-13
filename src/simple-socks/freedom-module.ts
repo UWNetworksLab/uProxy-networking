@@ -19,7 +19,6 @@ export var log :logging.Log = new logging.Log(moduleName);
 export var loggingController = freedom['loggingcontroller']();
 
 // Example to show how to manuall configure console filtering.
-//
 loggingController.setConsoleFilter([
     '*:W',
     'SocksToRtc:I',
