@@ -1,27 +1,30 @@
-// Server which handles SOCKS connections over WebRTC datachannels.
+// Server which handles SOCKS connections over WebRTC datachannels and send them
+// out to the internet and sending back over WebRTC the responses.
 
-/// <reference path='../socks-common/socks-headers.d.ts' />
-/// <reference path='../freedom/typings/freedom.d.ts' />
-/// <reference path='../freedom/typings/rtcpeerconnection.d.ts' />
-/// <reference path='../handler/queue.d.ts' />
-/// <reference path='../logging/logging.d.ts' />
-/// <reference path='../ipaddrjs/ipaddrjs.d.ts' />
-/// <reference path='../networking-typings/communications.d.ts' />
-/// <reference path="../churn/churn.d.ts" />
-/// <reference path='../webrtc/datachannel.d.ts' />
-/// <reference path='../webrtc/peerconnection.d.ts' />
-/// <reference path='../tcp/tcp.d.ts' />
-/// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../third_party/ipaddrjs/ipaddrjs.d.ts' />
 
-module RtcToNet {
+import freedom_types = require('freedom.types');
+import ipaddr = require('ipaddr.js');
 
-  var log :Logging.Log = new Logging.Log('RtcToNet');
+import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
+import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
+import signals = require('../../../third_party/uproxy-lib/webrtc/signals');
+import handler = require('../../../third_party/uproxy-lib/handler/queue');
 
-  export interface ProxyConfig {
-    // If |allowNonUnicast === false| then any proxy attempt that results
-    // in a non-unicast (e.g. local network) address will fail.
-    allowNonUnicast :boolean;
-  }
+import ProxyConfig = require('./proxyconfig');
+
+import churn = require('../churn/churn');
+import net = require('../net/net.types');
+import tcp = require('../net/tcp');
+import socks = require('../socks-common/socks-headers');
+
+import logging = require('../../../third_party/uproxy-lib/logging/logging');
+
+// module RtcToNet {
+
+  var log :logging.Log = new logging.Log('RtcToNet');
 
   export interface SessionSnapshot {
     name :string;
@@ -33,6 +36,7 @@ module RtcToNet {
     channel_sent: number;
     channel_received: number;
     channel_buffered: number;
+    channel_js_buffered: number;
     channel_queue_size: number;
     channel_queue_handling: boolean;
     socket_sent: number;
@@ -58,7 +62,7 @@ module RtcToNet {
     public proxyConfig :ProxyConfig;
 
     // Message handler queues to/from the peer.
-    public signalsForPeer :Handler.Queue<WebRtc.SignallingMessage, void>;
+    public signalsForPeer :handler.QueueHandler<signals.Message, void>;
 
     // The two Queues below only count bytes transferred between the SOCKS
     // client and the remote host(s) the client wants to connect to. WebRTC
@@ -69,13 +73,13 @@ module RtcToNet {
     // push numbers to the same queues (belonging to that instance of RtcToNet).
     // Queue of the number of bytes received from the peer. Handler is typically
     // defined in the class that creates an instance of RtcToNet.
-    public bytesReceivedFromPeer :Handler.Queue<number, void> =
-        new Handler.Queue<number, void>();
+    public bytesReceivedFromPeer :handler.Queue<number, void> =
+        new handler.Queue<number, void>();
 
     // Queue of the number of bytes sent to the peer. Handler is typically
     // defined in the class that creates an instance of RtcToNet.
-    public bytesSentToPeer :Handler.Queue<number, void> =
-        new Handler.Queue<number, void>();
+    public bytesSentToPeer :handler.Queue<number, void> =
+        new handler.Queue<number, void>();
 
     // Fulfills once the module is ready to allocate sockets.
     // Rejects if a peerconnection could not be made for any reason.
@@ -92,13 +96,14 @@ module RtcToNet {
     // This can happen in response to:
     //  - startup failure
     //  - peerconnection termination
-    //  - manual invocation of close()
+    //  - manual invocation of stop()
     // Should never reject.
-    // TODO: rename onceStopped, ala SocksToRtc (API breakage).
-    public onceClosed :Promise<void>;
+    public onceStopped :Promise<void>;
 
-    // The connection to the peer that is acting as a proxy client.
-    private peerConnection_  :WebRtc.PeerConnection = null;
+    // The connection to the peer that is acting as a proxy client. Once
+    // assigned, is never un-assigned. Use in this class to tell if started.
+    private peerConnection_
+        :peerconnection.PeerConnection<signals.Message> = null;
 
     // The |sessions_| map goes from WebRTC data-channel labels to the Session.
     // Most of the wiring to manage this relationship happens via promises. We
@@ -110,19 +115,19 @@ module RtcToNet {
     // removed.
     private sessions_ :{ [channelLabel:string] : Session } = {};
 
-    // As configure() but handles creation of peerconnection.
-    constructor(
-        pcConfig?:freedom_RTCPeerConnection.RTCConfiguration,
-        proxyConfig?:ProxyConfig,
-        obfuscate?:boolean) {
+    // As start() but handles creation of peerconnection.
+    public startFromConfig = (
+        proxyConfig:ProxyConfig,
+        pcConfig:freedom_RTCPeerConnection.RTCConfiguration,
+        obfuscate:boolean) => {
       if (pcConfig) {
         var pc :freedom_RTCPeerConnection.RTCPeerConnection =
             freedom['core.rtcpeerconnection'](pcConfig);
-        this.start(
+        return this.start(
             proxyConfig,
             obfuscate ?
-                new Churn.Connection(pc) :
-                WebRtc.PeerConnection.fromRtcPeerConnection(pc));
+                new churn.Connection(pc, 'RtcToNet') :
+                new peerconnection.PeerConnectionClass(pc));
       }
     }
 
@@ -130,13 +135,14 @@ module RtcToNet {
     // Returns this.onceReady.
     public start = (
         proxyConfig:ProxyConfig,
-        peerconnection:WebRtc.PeerConnection)
+        peerconnection:peerconnection.PeerConnection<
+          signals.Message>)
         : Promise<void> => {
       if (this.peerConnection_) {
         throw new Error('already configured');
       }
-      this.proxyConfig = proxyConfig;
       this.peerConnection_ = peerconnection;
+      this.proxyConfig = proxyConfig;
 
       this.signalsForPeer = this.peerConnection_.signalForPeerQueue;
       this.peerConnection_.peerOpenedChannelQueue.setSyncHandler(
@@ -153,7 +159,7 @@ module RtcToNet {
           log.error('peerconnection terminated with error: %1', [e.message]);
         })
         .then(this.fulfillStopping_, this.fulfillStopping_);
-      this.onceClosed = this.onceStopping_.then(this.stopResources_);
+      this.onceStopped = this.onceStopping_.then(this.stopResources_);
 
       // Uncomment this to see instrumentation data in the console.
       //this.onceReady.then(this.initiateSnapshotting);
@@ -161,10 +167,10 @@ module RtcToNet {
       return this.onceReady;
     }
 
-    // Loops until onceClosed fulfills.
+    // Loops until onceStopped fulfills.
     public initiateSnapshotting = () => {
       var loop = true;
-      this.onceClosed.then(() => {
+      this.onceStopped.then(() => {
         loop = false;
       });
       var writeSnapshot = () => {
@@ -191,7 +197,7 @@ module RtcToNet {
       });
     }
 
-    private onPeerOpenedChannel_ = (channel:WebRtc.DataChannel) => {
+    private onPeerOpenedChannel_ = (channel:peerconnection.DataChannel) => {
       var channelLabel = channel.getLabel();
       log.info('associating session %1 with new datachannel', [channelLabel]);
 
@@ -219,12 +225,11 @@ module RtcToNet {
     }
 
     // Initiates shutdown of the peerconnection.
-    // Returns onceClosed.
-    // TODO: rename stop, ala SocksToRtc (API breakage).
-    public close = () : Promise<void> => {
+    // Returns onceStopped.
+    public stop = () : Promise<void> => {
       log.debug('stop requested');
       this.fulfillStopping_();
-      return this.onceClosed;
+      return this.onceStopped;
     }
 
     // Shuts down the peerconnection, fulfilling once it has terminated.
@@ -232,11 +237,17 @@ module RtcToNet {
     // TODO: close all sessions before fulfilling
     private stopResources_ = () : Promise<void> => {
       log.debug('freeing resources');
-      return new Promise<void>((F, R) => { this.peerConnection_.close(); F(); });
+      // TODO(ldixon): explore why not not just return
+      // this.peerConnection_.close(); call the PeerConnection's close and
+      // return synchronously.
+      return new Promise<void>((F, R) => {
+        this.peerConnection_.close();
+        F();
+      });
     }
 
-    public handleSignalFromPeer = (signal:WebRtc.SignallingMessage) : void => {
-      this.peerConnection_.handleSignalMessage(signal);
+    public handleSignalFromPeer = (message:signals.Message) :void => {
+      return this.peerConnection_.handleSignalMessage(message);
     }
 
     public toString = () : string => {
@@ -262,7 +273,7 @@ module RtcToNet {
   // CONSIDER: this and the socks-rtc session are similar: maybe abstract
   // common parts into a super-class this inherits from?
   export class Session {
-    private tcpConnection_ :Tcp.Connection;
+    private tcpConnection_ :tcp.Connection;
 
     // TODO: There's no equivalent of datachannel.isClosed():
     //         https://github.com/uProxy/uproxy/issues/1075
@@ -286,10 +297,10 @@ module RtcToNet {
     //  - manual invocation of close()
     // Should never reject.
     private onceStopped_ :Promise<void>;
-    public onceStopped = () : Promise<void> => { return this.onceStopped_; }
+    public onceStopped = () :Promise<void> => { return this.onceStopped_; }
 
     // Getters.
-    public channelLabel = () : string => { return this.dataChannel_.getLabel(); }
+    public channelLabel = () :string => { return this.dataChannel_.getLabel(); }
 
     private socketSentBytes_ :number = 0;
     private socketReceivedBytes_ :number = 0;
@@ -298,52 +309,36 @@ module RtcToNet {
 
     // The supplied datachannel must already be successfully established.
     constructor(
-        private dataChannel_:WebRtc.DataChannel,
+        private dataChannel_:peerconnection.DataChannel,
         private proxyConfig_:ProxyConfig,
-        private bytesReceivedFromPeer_:Handler.Queue<number,void>,
-        private bytesSentToPeer_:Handler.Queue<number,void>) {}
+        private bytesReceivedFromPeer_:handler.QueueFeeder<number,void>,
+        private bytesSentToPeer_:handler.QueueFeeder<number,void>) {}
 
     // Returns onceReady.
     public start = () : Promise<void> => {
       this.onceReady = this.receiveEndpointFromPeer_()
-        .then(this.getTcpConnection_, (e:Error) => {
+        .catch((e:Error) => {
           // TODO: Add a unit test for this case.
-          this.replyToPeer_(Socks.Reply.UNSUPPORTED_COMMAND);
-          throw e;
-        }).then((tcpConnection:Tcp.Connection) => {
+          this.replyToPeer_(socks.Reply.UNSUPPORTED_COMMAND);
+          return Promise.reject(e);
+        })
+        .then(this.getTcpConnection_)
+        .then((tcpConnection) => {
           this.tcpConnection_ = tcpConnection;
 
-          // Shutdown once the TCP connection terminates and has drained.
-          this.tcpConnection_.onceClosed.then((kind:Tcp.SocketCloseKind) => {
-            if (this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
-              log.info('%1: socket closed (%2), all incoming data processed',
-                  this.longId(),
-                  Tcp.SocketCloseKind[kind]);
-              this.fulfillStopping_();
-            } else {
-              log.info('%1: socket closed (%2), still processing incoming data',
-                  this.longId(),
-                  Tcp.SocketCloseKind[kind]);
-            }
-          });
-
-          return this.tcpConnection_.onceConnected;
+          return this.tcpConnection_.onceConnected
+            .catch((e:freedom_types.Error) => {
+              log.info('%1: failed to connect to remote endpoint', [this.longId()]);
+              this.replyToPeer_(this.getReplyFromError_(e));
+              return Promise.reject(new Error(e.errcode));
+            });
         })
-        .then((info:Tcp.ConnectionInfo) => {
+        .then((info:tcp.ConnectionInfo) => {
           log.info('%1: connected to remote endpoint', [this.longId()]);
           log.debug('%1: bound address: %2', [this.longId(),
               JSON.stringify(info.bound)]);
           var reply = this.getReplyFromInfo_(info);
           this.replyToPeer_(reply, info);
-        }, (e:{ errcode: string }) => {
-          // TODO: e is actually a freedom.Error (uproxy-lib 20+)
-          // If this.tcpConnection_ is not defined, then getTcpConnection_
-          // failed and we've already replied with UNSUPPORTED_COMMAND.
-          if (this.tcpConnection_) {
-            var reply = this.getReplyFromError_(e);
-            this.replyToPeer_(reply);
-          }
-          throw e;
         });
 
       this.onceReady.then(this.linkSocketAndChannel_, this.fulfillStopping_);
@@ -394,80 +389,83 @@ module RtcToNet {
     // Rejects if the received message is not for an endpoint
     // or if the received endpoint cannot be parsed.
     // TODO: needs tests (mocked by several tests)
-    private receiveEndpointFromPeer_ = () : Promise<Net.Endpoint> => {
+    private receiveEndpointFromPeer_ = () : Promise<net.Endpoint> => {
       return new Promise((F,R) => {
-        this.dataChannel_.dataFromPeerQueue.setSyncNextHandler((data:WebRtc.Data) => {
+        this.dataChannel_.dataFromPeerQueue
+            .setSyncNextHandler((data:peerconnection.Data) => {
           if (!data.str) {
             R(new Error('received non-string data from peer: ' +
                 JSON.stringify(data)));
             return;
           }
-          try {
-            var r :any = JSON.parse(data.str);
-            if (!Socks.isValidRequest(r)) {
-              R(new Error('received invalid request from peer: ' +
-                  JSON.stringify(data.str)));
-              return;
-            }
-            var request :Socks.Request = r;
-            if (request.command != Socks.Command.TCP_CONNECT) {
-              R(new Error('unexpected type for endpoint message'));
-              return;
-            }
-            log.info('%1: received endpoint from peer: %2', [
-                this.longId(), JSON.stringify(request.endpoint)]);
-            F(request.endpoint);
-            return;
-          } catch (e) {
+
+          var request :socks.Request;
+          try { request = JSON.parse(data.str); }
+          catch (e) {
             R(new Error('received malformed message during handshake: ' +
                 data.str));
             return;
           }
+
+          if (!socks.isValidRequest(request)) {
+            R(new Error('received invalid request from peer: ' +
+                JSON.stringify(data.str)));
+            return;
+          }
+          if (request.command != socks.Command.TCP_CONNECT) {
+            R(new Error('unexpected type for endpoint message'));
+            return;
+          }
+
+          log.info('%1: received endpoint from peer: %2', [
+              this.longId(), JSON.stringify(request.endpoint)]);
+          F(request.endpoint);
+          return;
         });
       });
     }
 
-    private getTcpConnection_ = (endpoint:Net.Endpoint) : Tcp.Connection => {
+    private getTcpConnection_ = (endpoint:net.Endpoint) : tcp.Connection => {
       if (ipaddr.isValid(endpoint.address) &&
           !this.isAllowedAddress_(endpoint.address)) {
-        this.replyToPeer_(Socks.Reply.NOT_ALLOWED);
+        this.replyToPeer_(socks.Reply.NOT_ALLOWED);
         throw new Error('tried to connect to disallowed address: ' +
                         endpoint.address);
       }
-      return new Tcp.Connection({endpoint: endpoint});
+      return new tcp.Connection({endpoint: endpoint}, true /* startPaused */);
     }
 
-    // Fulfills once the connected endpoint has been returned to the SOCKS client.
-    // Rejects if the endpoint cannot be sent to the SOCKS client.
-    private replyToPeer_ = (reply:Socks.Reply, info?:Tcp.ConnectionInfo)
+    // Fulfills once the connected endpoint has been returned to the SOCKS
+    // client. Rejects if the endpoint cannot be sent to the SOCKS client.
+    private replyToPeer_ = (reply:socks.Reply, info?:tcp.ConnectionInfo)
         : Promise<void> => {
-      var response :Socks.Response = {
+      var response :socks.Response = {
         reply: reply,
         endpoint: info ? info.bound : undefined
       };
       return this.dataChannel_.send({
         str: JSON.stringify(response)
       }).then(() => {
-        if (reply != Socks.Reply.SUCCEEDED) {
+        if (reply != socks.Reply.SUCCEEDED) {
           this.stop();
         }
       });
     }
 
-    private getReplyFromInfo_ = (info:Tcp.ConnectionInfo) : Socks.Reply => {
-      // TODO: This code should really return Socks.Reply.NOT_ALLOWED,
+    private getReplyFromInfo_ = (info:tcp.ConnectionInfo) : socks.Reply => {
+      // TODO: This code should really return socks.Reply.NOT_ALLOWED,
       // but due to port-scanning concerns we return a generic error instead.
       // See https://github.com/uProxy/uproxy/issues/809
       return this.isAllowedAddress_(info.remote.address) ?
-          Socks.Reply.SUCCEEDED : Socks.Reply.FAILURE;
+          socks.Reply.SUCCEEDED : socks.Reply.FAILURE;
     }
 
-    private getReplyFromError_ = (e:any) : Socks.Reply => {
-      var reply :Socks.Reply = Socks.Reply.FAILURE;
+    private getReplyFromError_ = (e:freedom.Error) : socks.Reply => {
+      var reply :socks.Reply = socks.Reply.FAILURE;
       if (e.errcode == 'TIMED_OUT') {
-        reply = Socks.Reply.TTL_EXPIRED;
+        reply = socks.Reply.TTL_EXPIRED;
       } else if (e.errcode == 'NETWORK_CHANGED') {
-        reply = Socks.Reply.NETWORK_UNREACHABLE;
+        reply = socks.Reply.NETWORK_UNREACHABLE;
       } else if (e.errcode == 'CONNECTION_RESET' ||
                  e.errcode == 'CONNECTION_REFUSED') {
         // Due to port-scanning concerns, we return a generic error if the user
@@ -475,7 +473,7 @@ module RtcToNet {
         // address might be on the local network.
         // See https://github.com/uProxy/uproxy/issues/809
         if (this.proxyConfig_.allowNonUnicast) {
-          reply = Socks.Reply.CONNECTION_REFUSED;
+          reply = socks.Reply.CONNECTION_REFUSED;
         }
       }
       // TODO: report ConnectionInfo in cases where a port was bound.
@@ -496,7 +494,8 @@ module RtcToNet {
 
     // Sends a packet over the TCP socket.
     // Invoked when a packet is received over the data channel.
-    private sendOnSocket_ = (data:WebRtc.Data) : Promise<freedom_TcpSocket.WriteInfo> => {
+    private sendOnSocket_ = (data:peerconnection.Data)
+        : Promise<freedom_TcpSocket.WriteInfo> => {
       if (!data.buffer) {
         return Promise.reject(new Error(
             'received non-buffer data from datachannel'));
@@ -505,6 +504,7 @@ module RtcToNet {
           this.longId(),
           data.buffer.byteLength]);
       this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
+      this.channelReceivedBytes_ += data.buffer.byteLength;
 
       return this.tcpConnection_.send(data.buffer);
     }
@@ -513,34 +513,34 @@ module RtcToNet {
     // and vice versa. Should only be called once both socket and channel have
     // been successfully established.
     private linkSocketAndChannel_ = () : void => {
-      // Note that setTimeout is used by both loops to preserve system
-      // responsiveness when large amounts of data are being received:
-      //   https://github.com/uProxy/uproxy/issues/967
-      var socketReadLoop = (data:ArrayBuffer) => {
+      var socketReader = (data:ArrayBuffer) => {
         this.sendOnChannel_(data).then(() => {
           this.bytesSentToPeer_.handle(data.byteLength);
           this.channelSentBytes_ += data.byteLength;
-          // Shutdown once the TCP connection terminates and has drained,
-          // otherwise keep draining.
-          if (this.tcpConnection_.isClosed() &&
-              this.tcpConnection_.dataFromSocketQueue.getLength() === 0) {
-            log.info('%1: socket drained', this.longId());
-            this.fulfillStopping_();
-          } else {
-            Session.nextTick_(() => {
-              this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(
-                  socketReadLoop);
-            });
-          }
         }, (e:Error) => {
           log.error('%1: failed to send data on datachannel: %2',
               this.longId(),
               e.message);
         });
       };
-      this.tcpConnection_.dataFromSocketQueue.setSyncNextHandler(socketReadLoop);
+      this.tcpConnection_.dataFromSocketQueue.setSyncHandler(socketReader);
 
-      var channelReadLoop = (data:WebRtc.Data) : void => {
+      // Shutdown the session once the TCP connection terminates.
+      // This should be safe now because
+      // (1) this.tcpConnection_.dataFromPeerQueue has now been emptied into
+      // this.dataChannel_.send() and (2) this.dataChannel_.close() should delay
+      // closing until all pending messages have been sent.
+      this.tcpConnection_.onceClosed.then((kind:tcp.SocketCloseKind) => {
+        log.info('%1: socket closed (%2)',
+            this.longId(),
+            tcp.SocketCloseKind[kind]);
+        this.fulfillStopping_();
+      });
+
+      // Session.nextTick_ (i.e. setTimeout) is used to preserve system
+      // responsiveness when large amounts of data are being sent:
+      //   https://github.com/uProxy/uproxy/issues/967
+      var channelReadLoop = (data:peerconnection.Data) : void => {
         this.sendOnSocket_(data).then((writeInfo:freedom_TcpSocket.WriteInfo) => {
           this.socketSentBytes_ += data.buffer.byteLength;
           // Shutdown once the data channel terminates and has drained,
@@ -574,6 +574,28 @@ module RtcToNet {
       };
       this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
           channelReadLoop);
+
+      // The TCP connection starts in the paused state.  However, in extreme
+      // cases, enough data can arrive before the pause takes effect to put
+      // the data channel into overflow.  In that case, the socket will
+      // eventually be resumed by the overflow listener below.
+      if (!this.dataChannel_.isInOverflow()) {
+        this.tcpConnection_.resume();
+      }
+
+      this.dataChannel_.setOverflowListener((overflow:boolean) => {
+        if (this.tcpConnection_.isClosed()) {
+          return;
+        }
+
+        if (overflow) {
+          this.tcpConnection_.pause();
+          log.debug('%1: Hit overflow, pausing socket', this.longId());
+        } else {
+          this.tcpConnection_.resume();
+          log.debug('%1: Exited  overflow, resuming socket', this.longId());
+        }
+      });
     }
 
     private isAllowedAddress_ = (addressString:string) : boolean => {
@@ -597,7 +619,9 @@ module RtcToNet {
     }
 
     public getSnapshot = () : Promise<SessionSnapshot> => {
-      return this.dataChannel_.getBufferedAmount().then((bufferedAmount:number) => {
+      return this.dataChannel_.getBrowserBufferedAmount()
+          .then((bufferedAmount:number) => {
+        var js_buffer = this.dataChannel_.getJavascriptBufferedAmount();
         return {
           name: this.channelLabel(),
           timestamp: performance.now(),
@@ -606,6 +630,7 @@ module RtcToNet {
           channel_buffered: bufferedAmount,
           channel_queue_size: this.dataChannel_.dataFromPeerQueue.getLength(),
           channel_queue_handling: this.dataChannel_.dataFromPeerQueue.isHandling(),
+          channel_js_buffered: js_buffer,
           socket_sent: this.socketSentBytes_,
           socket_received: this.socketReceivedBytes_,
           socket_queue_size: this.tcpConnection_.dataFromSocketQueue.getLength(),
@@ -617,7 +642,7 @@ module RtcToNet {
     public longId = () : string => {
       var s = 'session ' + this.channelLabel();
       if (this.tcpConnection_) {
-        s += ' (socket ' + this.tcpConnection_.connectionId + ' ' +
+        s += ' (tcp-socket: ' + this.tcpConnection_.connectionId + ' ' +
             (this.tcpConnection_.isClosed() ? 'closed' : 'open') + ')';
       }
       return s;
@@ -643,4 +668,5 @@ module RtcToNet {
     }
   }  // Session
 
-}  // module RtcToNet
+//}  // module RtcToNet
+//export = RtcToNet;

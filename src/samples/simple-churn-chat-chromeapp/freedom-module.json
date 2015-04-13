@@ -3,21 +3,13 @@
   "description": "top-level freedom manifest",
   "app": {
     "script": [
-      "lib/arraybuffers/arraybuffers.js",
-      "lib/logging/logging.js",
-      "lib/handler/queue.js",
-      "lib/webrtc/datachannel.js",
-      "lib/webrtc/peerconnection.js",
-      "lib/regex2dfa/regex2dfa.js",
-      "lib/crypto/random.js",
-      "lib/churn/churn.js",
-      "freedom-module.js"
+      "freedom-module.static.js"
     ]
   },
   "dependencies": {
-    "loggingprovider": {
-      "url": "lib/loggingprovider/loggingprovider.json",
-      "api": "loggingprovider"
+    "loggingcontroller": {
+      "url": "uproxy-lib/loggingprovider/freedom-module.json",
+      "api": "loggingcontroller"
     },
     "churnPipe": {
       "url": "lib/churn-pipe/freedom.json",

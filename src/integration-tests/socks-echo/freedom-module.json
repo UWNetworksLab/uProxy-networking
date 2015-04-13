@@ -1,0 +1,63 @@
+{
+  "name": "fully proxying integration tests",
+  "app": {
+    "script": [
+      "freedom-module.static.js"
+    ]
+  },
+  "dependencies": {
+    "loggingcontroller": {
+      "url": "uproxy-lib/loggingprovider/freedom-module.json",
+      "api": "loggingcontroller"
+    },
+    "churnPipe": {
+      "url": "uproxy-networking/churn-pipe/freedom-module.json",
+      "api": "churnPipe"
+    }
+  },
+  "provides": [
+    "ProxyIntegrationTest"
+  ],
+  "default": "ProxyIntegrationTest",
+  "api": {
+    "ProxyIntegrationTest": {
+      "constructor": {
+        "value": ["boolean", "boolean"]
+      },
+      "startEchoServer": {
+        "type": "method",
+        "value": [],
+        "ret": "number"
+      },
+      "connect": {
+        "type": "method",
+        "value": ["number", "string"],
+        "ret": "string"
+      },
+      "echo": {
+        "type": "method",
+        "value": ["string", "buffer"],
+        "ret": "buffer"
+      },
+      "echoMultiple": {
+        "type": "method",
+        "value": ["string", ["array", "buffer"]],
+        "ret": ["array", "buffer"]
+      },
+      "ping": {
+        "type": "method",
+        "value": ["string", "buffer"]
+      },
+      "pong": {
+        "type": "event",
+        "value": "buffer"
+      }
+    }
+  },
+  "permissions": [
+    "core.rtcpeerconnection",
+    "core.rtcdatachannel",
+    "core.tcpsocket",
+    "core.udpsocket"
+  ]
+}

@@ -1,12 +1,13 @@
-/// <reference path='caesar.ts' />
-/// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/typings/jasmine/jasmine.d.ts' />
+
+import CaesarCipher = require('./caesar');
 
 describe("caesar cipher", function() {
-  var transformer :Transformers.CaesarCipher;
+  var transformer :CaesarCipher;
 
   beforeEach(function() {
-    transformer = new Transformers.CaesarCipher();
+    transformer = new CaesarCipher();
   });
 
   function setKey(shift:number) : void {

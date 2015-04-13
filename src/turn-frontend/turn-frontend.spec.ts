@@ -1,7 +1,9 @@
-/// <reference path='turn-frontend.ts' />
-/// <reference path='../freedom/typings/freedom.d.ts' />
-/// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/typings/jasmine/jasmine.d.ts' />
+
+import TurnFrontend = require('./turn-frontend');
+import messages = require('./messages');
+import net = require('../net/net.types');
 
 describe("turn frontend", function() {
 
@@ -13,11 +15,11 @@ describe("turn frontend", function() {
           0x31, 0x54, 0x46, 0x32, 0x36, 0x57]);
   }
 
-  var frontend:Turn.Frontend;
-  var endpoint:Turn.Endpoint;
+  var frontend:TurnFrontend;
+  var endpoint:net.Endpoint;
 
   beforeEach(function() {
-    frontend = new Turn.Frontend();
+    frontend = new TurnFrontend();
     endpoint = {
       address: '127.0.0.1',
       port: 10000
@@ -28,9 +30,9 @@ describe("turn frontend", function() {
   it('reject unsupported request', (done) => {
     var request = {
       method: 999, // unsupported!
-      clazz: Turn.MessageClass.REQUEST,
+      clazz: messages.MessageClass.REQUEST,
       transactionId: getTransactionIdBytes(),
-      attributes: <Turn.StunAttribute[]>[]
+      attributes: <messages.StunAttribute[]>[]
     };
     frontend.handleStunMessage(request, endpoint).catch(done);
   });
@@ -40,20 +42,20 @@ describe("turn frontend", function() {
   // failure, with NONCE and REALM attributes.
   it('initial allocate request', (done) => {
     var request = {
-      method: Turn.MessageMethod.ALLOCATE,
-      clazz: Turn.MessageClass.REQUEST,
+      method: messages.MessageMethod.ALLOCATE,
+      clazz: messages.MessageClass.REQUEST,
       transactionId: getTransactionIdBytes(),
       attributes: [{
-        type: Turn.MessageAttribute.REQUESTED_TRANSPORT
+        type: messages.MessageAttribute.REQUESTED_TRANSPORT
       }]
     };
     frontend.handleStunMessage(request, endpoint).then((response) => {
-      expect(response.method).toEqual(Turn.MessageMethod.ALLOCATE);
-      expect(response.clazz).toEqual(Turn.MessageClass.FAILURE_RESPONSE);
+      expect(response.method).toEqual(messages.MessageMethod.ALLOCATE);
+      expect(response.clazz).toEqual(messages.MessageClass.FAILURE_RESPONSE);
       // TODO: inspect these attributes
-      Turn.findFirstAttributeWithType(Turn.MessageAttribute.ERROR_CODE, response.attributes);
-      Turn.findFirstAttributeWithType(Turn.MessageAttribute.NONCE, response.attributes);
-      Turn.findFirstAttributeWithType(Turn.MessageAttribute.REALM, response.attributes);
+      messages.findFirstAttributeWithType(messages.MessageAttribute.ERROR_CODE, response.attributes);
+      messages.findFirstAttributeWithType(messages.MessageAttribute.NONCE, response.attributes);
+      messages.findFirstAttributeWithType(messages.MessageAttribute.REALM, response.attributes);
     }).then(done);
   });
 

@@ -1,21 +1,24 @@
-/// <reference path='../utransformers/interfaces/utransformer.d.ts' />
+// TODO(ldixon): update to a require-style inclusion.
+// e.g.
+//  import Transformer = require('uproxy-obfuscators/transformer');
+/// <reference path='../../../third_party/uTransformers/utransformers.d.ts' />
 
-module Transformers {
-  /** An obfuscator which does nothing. */
-  export class PassThrough implements UTransformers.Transformer {
+/** An obfuscator which does nothing. */
+class PassThrough implements Transformer {
 
-    public setKey = (key:ArrayBuffer) => {}
+  public setKey = (key:ArrayBuffer) => {}
 
-    public configure = (json:string) : void => {}
+  public configure = (json:string) : void => {}
 
-    public transform = (buffer:ArrayBuffer) : ArrayBuffer => {
-      return buffer;
-    }
-
-    public restore = (buffer:ArrayBuffer) : ArrayBuffer => {
-      return buffer;
-    }
-
-    public dispose = () : void => {}
+  public transform = (buffer:ArrayBuffer) : ArrayBuffer => {
+    return buffer;
   }
+
+  public restore = (buffer:ArrayBuffer) : ArrayBuffer => {
+    return buffer;
+  }
+
+  public dispose = () : void => {}
 }
+
+export = PassThrough;

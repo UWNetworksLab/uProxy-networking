@@ -1,16 +1,37 @@
-/// <reference path='socks-to-rtc.d.ts' />
-/// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/typings/jasmine/jasmine.d.ts' />
 
-/// <reference path='../socks-common/socks-headers.d.ts' />
-/// <reference path='../tcp/tcp.d.ts' />
-/// <reference path='../handler/queue.d.ts' />
-/// <reference path='../webrtc/datachannel.d.ts' />
-/// <reference path='../webrtc/peerconnection.d.ts' />
+import freedomMocker = require('../../../third_party/uproxy-lib/freedom/mocks/mock-freedom-in-module-env');
+freedom = freedomMocker.makeMockFreedomInModuleEnv();
 
-var mockEndpoint :Net.Endpoint = {
+import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
+import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
+import signals = require('../../../third_party/uproxy-lib/webrtc/signals');
+import handler = require('../../../third_party/uproxy-lib/handler/queue');
+
+import socks_to_rtc = require('./socks-to-rtc');
+import net = require('../net/net.types');
+import tcp = require('../net/tcp');
+import socks = require('../socks-common/socks-headers');
+
+import logging = require('../../../third_party/uproxy-lib/logging/logging');
+
+var log :logging.Log = new logging.Log('socks-to-rtc spec');
+
+var mockEndpoint :net.Endpoint = {
   address: '127.0.0.1',
   port: 1234
+};
+
+var mockRemoteEndpoint :net.Endpoint = {
+  // This address and port are both reserved for testing.
+  address: '192.0.2.111',
+  port: 1023
+};
+
+var mockConnectionInfo :tcp.ConnectionInfo = {
+  bound: mockEndpoint,
+  remote: mockRemoteEndpoint
 };
 
 var voidPromise = Promise.resolve<void>();
@@ -21,14 +42,14 @@ var voidPromise = Promise.resolve<void>();
 var noopPromise = new Promise<void>((F, R) => {});
 
 describe('SOCKS server', function() {
-  var server :SocksToRtc.SocksToRtc;
+  var server :socks_to_rtc.SocksToRtc;
   var onceServerStopped :() => Promise<void>;
 
-  var mockTcpServer :Tcp.Server;
-  var mockPeerConnection :WebRtc.PeerConnection;
+  var mockTcpServer :tcp.Server;
+  var mockPeerConnection :peerconnection.PeerConnection<signals.Message>;
 
   beforeEach(function() {
-    server = new SocksToRtc.SocksToRtc();
+    server = new socks_to_rtc.SocksToRtc();
 
     var serverStopped = new Promise<void>((F, R) => {
       server.on('stopped', F);
@@ -48,11 +69,11 @@ describe('SOCKS server', function() {
     // TODO: make a real mock of listen; this one is frgaile to implementation
     // changes and tests that might call onceListening before listen.
     mockTcpServer.listen = () => { return mockTcpServer.onceListening(); }
-    mockTcpServer.connectionsQueue = new Handler.Queue<Tcp.Connection, void>();
+    mockTcpServer.connectionsQueue = new handler.Queue<tcp.Connection, void>();
 
     mockPeerConnection = <any>{
       dataChannels: {},
-      signalForPeerQueue: new Handler.Queue<WebRtc.SignallingMessage, void>(),
+      signalForPeerQueue: new handler.Queue<signals.Message, void>(),
       negotiateConnection: jasmine.createSpy('negotiateConnection'),
       onceConnecting: noopPromise,
       onceConnected: noopPromise,
@@ -67,8 +88,8 @@ describe('SOCKS server', function() {
     // We're not testing termination.
     (<any>mockTcpServer.onceShutdown).and.returnValue(noopPromise);
 
-    server.startInternal(mockTcpServer, mockPeerConnection)
-      .then((result:Net.Endpoint) => {
+    server.start(mockTcpServer, mockPeerConnection)
+      .then((result:net.Endpoint) => {
         expect(result.address).toEqual(mockEndpoint.address);
         expect(result.port).toEqual(mockEndpoint.port);
       })
@@ -80,7 +101,7 @@ describe('SOCKS server', function() {
         .and.returnValue(Promise.reject(new Error('could not allocate port')));
     (<any>mockTcpServer.onceShutdown).and.returnValue(Promise.resolve());
 
-    server.startInternal(mockTcpServer, mockPeerConnection).catch(onceServerStopped).then(done);
+    server.start(mockTcpServer, mockPeerConnection).catch(onceServerStopped).then(done);
   });
 
   it('\'stopped\' fires, and start fails, on early peerconnection termination', (done) => {
@@ -89,7 +110,7 @@ describe('SOCKS server', function() {
     mockPeerConnection.onceConnected = voidPromise;
     mockPeerConnection.onceDisconnected = voidPromise;
 
-    server.startInternal(mockTcpServer, mockPeerConnection).catch(onceServerStopped).then(done);
+    server.start(mockTcpServer, mockPeerConnection).catch(onceServerStopped).then(done);
   });
 
   it('\'stopped\' fires on peerconnection termination', (done) => {
@@ -103,7 +124,7 @@ describe('SOCKS server', function() {
     mockPeerConnection.onceConnected = voidPromise;
     mockPeerConnection.onceDisconnected = terminatePromise;
 
-    server.startInternal(mockTcpServer, mockPeerConnection).then(onceServerStopped).then(done);
+    server.start(mockTcpServer, mockPeerConnection).then(onceServerStopped).then(done);
     terminate();
   });
 
@@ -113,7 +134,7 @@ describe('SOCKS server', function() {
     // Neither TCP connection nor datachannel close "naturally".
     (<any>mockTcpServer.onceShutdown).and.returnValue(noopPromise);
 
-    server.startInternal(mockTcpServer, mockPeerConnection).then(
+    server.start(mockTcpServer, mockPeerConnection).then(
         server.stop).then(onceServerStopped).then(done);
   });
 
@@ -125,54 +146,61 @@ describe('SOCKS server', function() {
     (<any>mockTcpServer.onceShutdown).and.returnValue(noopPromise);
 
     var onceStartFailed :Promise<void> = new Promise<void>((F, R) => {
-      server.startInternal(mockTcpServer, mockPeerConnection).then(R, F);
+      server.start(mockTcpServer, mockPeerConnection).then(R, F);
     });
     Promise.all([onceStartFailed, server.stop()]).then(done);
   });
 });
 
 describe("SOCKS session", function() {
-  var session :SocksToRtc.Session;
+  var session :socks_to_rtc.Session;
 
-  var mockTcpConnection :Tcp.Connection;
-  var mockDataChannel :WebRtc.DataChannel;
-  var mockBytesReceived :Handler.Queue<number,void>;
-  var mockBytesSent :Handler.Queue<number,void>;
+  var mockBytesReceived :handler.Queue<number,void>;
+  var mockBytesSent :handler.Queue<number,void>;
+  var mockDataChannel :peerconnection.DataChannel;
+  var mockDataFromPeerQueue :handler.Queue<peerconnection.Data,void>;
+  var mockTcpConnection :tcp.Connection;
 
   beforeEach(function() {
-    session = new SocksToRtc.Session();
+    session = new socks_to_rtc.Session();
 
     mockTcpConnection = jasmine.createSpyObj('tcp connection', [
         'onceClosed',
         'close',
         'isClosed',
-        'send'
+        'send',
+        'pause',
+        'resume'
       ]);
-    mockTcpConnection.dataFromSocketQueue = new Handler.Queue<ArrayBuffer,void>();
+    mockTcpConnection.dataFromSocketQueue = new handler.Queue<ArrayBuffer,void>();
     (<any>mockTcpConnection.close).and.returnValue(Promise.resolve(-1));
     mockTcpConnection.onceClosed = Promise.resolve(
-        Tcp.SocketCloseKind.REMOTELY_CLOSED);
+        tcp.SocketCloseKind.REMOTELY_CLOSED);
     (<any>mockTcpConnection.send).and.returnValue(Promise.resolve({ bytesWritten: 1 }));
 
+    mockDataFromPeerQueue = new handler.Queue<peerconnection.Data,void>();
+
     mockDataChannel = <any>{
+      close: jasmine.createSpy('close'),
+      dataFromPeerQueue: mockDataFromPeerQueue,
       getLabel: jasmine.createSpy('getLabel').and.returnValue('mock label'),
-      onceOpened: noopPromise,
       onceClosed: noopPromise,
-      dataFromPeerQueue: new Handler.Queue(),
+      onceOpened: noopPromise,
       send: jasmine.createSpy('send'),
-      close: jasmine.createSpy('close')
+      isInOverflow: jasmine.createSpy('isInOverflow').and.returnValue(false),
+      setOverflowListener: jasmine.createSpy('setOverflowListener')
     };
-    mockDataChannel.dataFromPeerQueue = new Handler.Queue<ArrayBuffer,void>();
+
     (<any>mockDataChannel.send).and.returnValue(voidPromise);
 
-    mockBytesReceived = new Handler.Queue<number, void>();
-    mockBytesSent = new Handler.Queue<number, void>()
+    mockBytesReceived = new handler.Queue<number, void>();
+    mockBytesSent = new handler.Queue<number, void>()
   });
 
   it('onceReady fulfills on successful negotiation', (done) => {
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(
-        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
 
     session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived).then(done);
   });
@@ -180,7 +208,7 @@ describe("SOCKS session", function() {
   it('onceReady rejects and onceStopped fulfills on unsuccessful negotiation', (done) => {
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(
-        Promise.resolve({reply: Socks.Reply.FAILURE}));
+        Promise.resolve({reply: socks.Reply.FAILURE}));
 
     session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived)
       .catch((e:Error) => { return session.onceStopped; }).then(done);
@@ -191,7 +219,7 @@ describe("SOCKS session", function() {
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(
-        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
 
     session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived)
       .then(() => { return session.onceStopped; }).then(done);
@@ -199,11 +227,11 @@ describe("SOCKS session", function() {
 
   it('onceStopped fulfills on call to stop', (done) => {
     // Neither TCP connection nor datachannel close "naturally".
-    mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
+    mockTcpConnection.onceClosed = new Promise<tcp.SocketCloseKind>((F, R) => {});
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(
-        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
 
     session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived)
       .then(session.stop).then(() => { return session.onceStopped; }).then(done);
@@ -211,11 +239,11 @@ describe("SOCKS session", function() {
 
   it('bytes sent counter', (done) => {
     // Neither TCP connection nor datachannel close "naturally".
-    mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
+    mockTcpConnection.onceClosed = new Promise<tcp.SocketCloseKind>((F, R) => {});
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(
-        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
 
     var buffer = new Uint8Array([1,2,3]).buffer;
     session.start(
@@ -233,13 +261,13 @@ describe("SOCKS session", function() {
 
   it('bytes received counter', (done) => {
     // Neither TCP connection nor datachannel close "naturally".
-    mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
+    mockTcpConnection.onceClosed = new Promise<tcp.SocketCloseKind>((F, R) => {});
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(
-        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
 
-    var message :WebRtc.Data = {
+    var message :peerconnection.Data = {
       buffer: new Uint8Array([1,2,3]).buffer
     };
     session.start(
@@ -247,7 +275,7 @@ describe("SOCKS session", function() {
         mockDataChannel,
         mockBytesSent,
         mockBytesReceived).then(() => {
-      mockDataChannel.dataFromPeerQueue.handle(message);
+      mockDataFromPeerQueue.handle(message);
     });
     mockBytesReceived.setSyncNextHandler((numBytes:number) => {
       expect(numBytes).toEqual(message.buffer.byteLength);
@@ -258,17 +286,17 @@ describe("SOCKS session", function() {
   it('channel queue drains before termination', (done) => {
     // TCP connection doesn't close "naturally" but the data
     // channel is already closed when the session is started.
-    mockTcpConnection.onceClosed = new Promise<Tcp.SocketCloseKind>((F, R) => {});
+    mockTcpConnection.onceClosed = new Promise<tcp.SocketCloseKind>((F, R) => {});
     mockDataChannel.onceClosed = voidPromise;
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(
-        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
 
-    var message :WebRtc.Data = {
+    var message :peerconnection.Data = {
       buffer: new Uint8Array([1,2,3]).buffer
     };
-    var onceMessageHandled = mockDataChannel.dataFromPeerQueue.handle(message);
+    var onceMessageHandled = mockDataFromPeerQueue.handle(message);
 
     session.start(
         mockTcpConnection,
@@ -286,13 +314,13 @@ describe("SOCKS session", function() {
   it('socket queue drains before termination', (done) => {
     // The data channel doesn't close "naturally" but the
     // TCP connection is already closed when the session is started.
-    mockTcpConnection.onceClosed = Promise.resolve(Tcp.SocketCloseKind.WE_CLOSED_IT);
+    mockTcpConnection.onceClosed = Promise.resolve(tcp.SocketCloseKind.WE_CLOSED_IT);
     (<any>mockTcpConnection.isClosed).and.returnValue(true);
     mockDataChannel.onceClosed = noopPromise;
 
     spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
     spyOn(session, 'doRequestHandshake_').and.returnValue(
-        Promise.resolve({reply: Socks.Reply.SUCCEEDED}));
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
 
     var buffer = new Uint8Array([1,2,3]).buffer;
     var onceMessageHandled = mockTcpConnection.dataFromSocketQueue.handle(buffer);
@@ -306,6 +334,87 @@ describe("SOCKS session", function() {
       return onceMessageHandled;
     }).then(() => {
       expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
+      done();
+    });
+  });
+
+  it('backpressure', (done) => {
+    spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
+
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
+    mockTcpConnection.onceClosed = new Promise<tcp.SocketCloseKind>((F, R) => {});
+
+    var overflowListener :(overflow:boolean) => void;
+    mockDataChannel.setOverflowListener = (listener) => { overflowListener = listener; };
+
+    var buffer = new Uint8Array([1,2,3]).buffer;
+
+    // Messages received before start sit in the TCP receive queue.
+    mockTcpConnection.dataFromSocketQueue.handle(buffer);
+    expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(1);
+    expect(mockDataChannel.send).not.toHaveBeenCalled();
+
+    session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived).then(() => {
+      // After start, the TCP queue should be drained into the datachannel.
+      expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
+      expect(mockDataChannel.send).toHaveBeenCalled();
+
+      // After draining the queue, the TCP connection should be resumed.
+      expect(mockTcpConnection.pause).not.toHaveBeenCalled();
+      expect(mockTcpConnection.resume).toHaveBeenCalled();
+
+      // Enter overflow state.  This should trigger a call to pause.
+      overflowListener(true);
+      expect(mockTcpConnection.pause).toHaveBeenCalled();
+
+      // In the paused state, messages are still forwarded
+      mockTcpConnection.dataFromSocketQueue.handle(buffer);
+      expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
+      expect((<any>mockDataChannel.send).calls.count()).toEqual(2);
+
+      // Exit overflow state.  This should trigger a call to resume.
+      overflowListener(false);
+      expect((<any>mockTcpConnection.resume).calls.count()).toEqual(2);
+
+      done();
+    });
+  });
+
+  it('backpressure with early flood', (done) => {
+    spyOn(session, 'doAuthHandshake_').and.returnValue(Promise.resolve());
+    spyOn(session, 'doRequestHandshake_').and.returnValue(
+        Promise.resolve({reply: socks.Reply.SUCCEEDED}));
+
+    mockTcpConnection.onceConnected = Promise.resolve(mockConnectionInfo);
+    mockTcpConnection.onceClosed = new Promise<tcp.SocketCloseKind>((F, R) => {});
+
+    var overflowListener :(overflow:boolean) => void;
+    mockDataChannel.setOverflowListener = (listener) => { overflowListener = listener; };
+    mockDataChannel.isInOverflow = <any>jasmine.createSpy('isInOverflow').and.returnValue(true);
+
+    var buffer = new Uint8Array([1,2,3]).buffer;
+
+    // Messages received before start sit in the TCP receive queue.
+    mockTcpConnection.dataFromSocketQueue.handle(buffer);
+    expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(1);
+    expect(mockDataChannel.send).not.toHaveBeenCalled();
+
+    session.start(mockTcpConnection, mockDataChannel, mockBytesSent, mockBytesReceived).then(() => {
+      // After start, the TCP queue should be drained into the datachannel.
+      expect(mockTcpConnection.dataFromSocketQueue.getLength()).toEqual(0);
+      expect(mockDataChannel.send).toHaveBeenCalled();
+
+      // If the initial queue is enough to trigger overflow, then the
+      // socket should not be resumed.
+      expect(mockTcpConnection.pause).not.toHaveBeenCalled();
+      expect(mockTcpConnection.resume).not.toHaveBeenCalled();
+
+      // Exit overflow state.  This should trigger a call to resume.
+      overflowListener(false);
+      expect(mockTcpConnection.resume).toHaveBeenCalled();
+
       done();
     });
   });

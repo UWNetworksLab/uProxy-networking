@@ -1,3 +1,0 @@
-Polymer({
-  model: model
-});

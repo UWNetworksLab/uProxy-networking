@@ -1,7 +1,11 @@
-/// <reference path='churn.d.ts' />
-/// <reference path='../churn-pipe/churn-pipe.d.ts' />
-/// <reference path='../webrtc/peerconnection.d.ts' />
-/// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/typings/jasmine/jasmine.d.ts' />
+
+import freedomMocker = require('../../../third_party/uproxy-lib/freedom/mocks/mock-freedom-in-module-env');
+freedom = freedomMocker.makeMockFreedomInModuleEnv();
+
+import churn = require('./churn');
+import net = require('../net/net.types');
 
 describe("filterCandidatesFromSdp", function() {
   it('with candidates', () => {
@@ -11,7 +15,7 @@ describe("filterCandidatesFromSdp", function() {
               'a=candidate:9097 1 udp 4175 127.0.0.1 50840 typ relay raddr 172.26.108.25 rport 56635\n' +
               'a=candidate:129713316 2 udp 2122129151 172.26.108.25 40762 typ host generation 0\n' +
               'a=ice-ufrag:ETnQpTTSTgfXZ6HZ\n';
-    expect(Churn.filterCandidatesFromSdp(sdp)).toEqual(
+    expect(churn.filterCandidatesFromSdp(sdp)).toEqual(
         'o=- 3055156452807570418 3 IN IP4 127.0.0.1\n' +
         'a=group:BUNDLE audio data\n' +
         'a=rtcp:40762 IN IP4 172.26.108.25\n' +
@@ -22,26 +26,26 @@ describe("filterCandidatesFromSdp", function() {
 describe("extractEndpointFromCandidateLine", function() {
   it('garbage test', () => {
     expect(function() {
-      Churn.extractEndpointFromCandidateLine('abc def');
+      churn.extractEndpointFromCandidateLine('abc def');
     }).toThrow();
   });
 
   it('reject non-host candidates', () => {
     expect(function() {
-      Churn.extractEndpointFromCandidateLine(
+      churn.extractEndpointFromCandidateLine(
         'a=candidate:9097 1 udp 4175 127.0.0.1 50840 typ relay raddr 172.26.108.25 rport 56635');
     }).toThrow();
   });
 
   it('reject invalid port numbers', () => {
     expect(function() {
-      Churn.extractEndpointFromCandidateLine(
+      churn.extractEndpointFromCandidateLine(
         'a=candidate:9097 1 udp 4175 xxx yyy typ host generation 0');
     }).toThrow();
   });
 
   it('simple valid test', () => {
-    var endpoint = Churn.extractEndpointFromCandidateLine(
+    var endpoint = churn.extractEndpointFromCandidateLine(
       'a=candidate:129713316 2 udp 2122129151 172.26.108.25 40762 typ host generation 0');
     expect(endpoint.address).toEqual('172.26.108.25');
     expect(endpoint.port).toEqual(40762);
@@ -50,7 +54,7 @@ describe("extractEndpointFromCandidateLine", function() {
   // Ensure TCP candidates don't cause a problem. See:
   //   http://tools.ietf.org/html/rfc6544
   it('tcp candidates', () => {
-    var endpoint = Churn.extractEndpointFromCandidateLine(
+    var endpoint = churn.extractEndpointFromCandidateLine(
       'a=candidate:1302982778 1 tcp 1518214911 172.29.18.131 0 typ host tcptype active generation 0');
     expect(endpoint.address).toEqual('172.29.18.131');
     expect(endpoint.port).toEqual(0);
@@ -58,31 +62,31 @@ describe("extractEndpointFromCandidateLine", function() {
 });
 
 describe("setCandidateLineEndpoint", function() {
-  var endpoint :freedom_ChurnPipe.Endpoint = {
+  var endpoint :net.Endpoint = {
     address: '127.0.0.1',
     port: 5000
   };
 
   it('garbage test', () => {
-    var endpoint :freedom_ChurnPipe.Endpoint = {
+    var endpoint :net.Endpoint = {
       address: '127.0.0.1',
       port: 5000
     };
     expect(function() {
-      Churn.setCandidateLineEndpoint('abc def', endpoint);
+      churn.setCandidateLineEndpoint('abc def', endpoint);
     }).toThrow();
   });
 
   it('reject non-host candidates', () => {
     expect(function() {
-      Churn.setCandidateLineEndpoint(
+      churn.setCandidateLineEndpoint(
         'a=candidate:9097 1 udp 4175 127.0.0.1 50840 typ relay raddr 172.26.108.25 rport 56635',
         endpoint);
     }).toThrow();
   });
 
   it('simple valid test', () => {
-    var candidate = Churn.setCandidateLineEndpoint(
+    var candidate = churn.setCandidateLineEndpoint(
       'a=candidate:129713316 2 udp 2122129151 172.26.108.25 40762 typ host generation 0',
       endpoint);
     expect(candidate).toEqual(
@@ -91,12 +95,12 @@ describe("setCandidateLineEndpoint", function() {
 });
 
 describe("selectPublicAddress", function() {
-  var srflxEndpoint :freedom_ChurnPipe.Endpoint = {
+  var srflxEndpoint :net.Endpoint = {
     address: '172.26.108.25',
     port: 40762
   };
 
-  var baseEndpoint :freedom_ChurnPipe.Endpoint = {
+  var baseEndpoint :net.Endpoint = {
     address: '192.168.0.28',
     port: 56635
   };
@@ -118,18 +122,18 @@ describe("selectPublicAddress", function() {
 
   it('garbage test', () => {
     expect(function() {
-      Churn.selectPublicAddress([{candidate: 'abc def'}, srflxCandidate]);
+      churn.selectPublicAddress([{candidate: 'abc def'}, srflxCandidate]);
     }).toThrow();
   });
 
   it('reject relay candidates', () => {
     expect(function() {
-      Churn.selectPublicAddress([relayCandidate]);
+      churn.selectPublicAddress([relayCandidate]);
     }).toThrow();
   });
 
   it('process srflx correctly', () => {
-    var endpoint = Churn.selectPublicAddress([srflxCandidate]);
+    var endpoint = churn.selectPublicAddress([srflxCandidate]);
     expect(endpoint).toEqual({
       internal: baseEndpoint,
       external: srflxEndpoint
@@ -142,11 +146,11 @@ describe("selectPublicAddress", function() {
       external: srflxEndpoint
     };
 
-    var natPair = Churn.selectPublicAddress([srflxCandidate, hostCandidate,
+    var natPair = churn.selectPublicAddress([srflxCandidate, hostCandidate,
         relayCandidate]);
     expect(natPair).toEqual(correctNatPair);
 
-    natPair = Churn.selectPublicAddress([hostCandidate, relayCandidate,
+    natPair = churn.selectPublicAddress([hostCandidate, relayCandidate,
         srflxCandidate]);
     expect(natPair).toEqual(correctNatPair);
   });
@@ -157,10 +161,10 @@ describe("selectPublicAddress", function() {
       external: baseEndpoint
     };
 
-    var natPair = Churn.selectPublicAddress([hostCandidate, relayCandidate]);
+    var natPair = churn.selectPublicAddress([hostCandidate, relayCandidate]);
     expect(natPair).toEqual(correctNatPair);
 
-    natPair = Churn.selectPublicAddress([hostCandidate, relayCandidate]);
+    natPair = churn.selectPublicAddress([hostCandidate, relayCandidate]);
     expect(natPair).toEqual(correctNatPair);
   });
 });

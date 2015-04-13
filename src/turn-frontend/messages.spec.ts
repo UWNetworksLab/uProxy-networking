@@ -1,6 +1,10 @@
-/// <reference path='../sha1/sha1.d.ts' />
-/// <reference path='../third_party/typings/es6-promise/es6-promise.d.ts' />
-/// <reference path='../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
+/// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
+/// <reference path='../../../third_party/typings/jasmine/jasmine.d.ts' />
+/// <reference path='../../../third_party/sha1/sha1.d.ts' />
+
+import net = require('../net/net.types');
+import messages = require('../turn-frontend/messages');
 
 describe("stun messages", function() {
 
@@ -54,17 +58,17 @@ describe("stun messages", function() {
   }
 
   /** Returns the message encoded by #getSimpleStunMessageBytes. */
-  function getSimpleStunMessage() : Turn.StunMessage {
+  function getSimpleStunMessage() : messages.StunMessage {
     return {
-      method: Turn.MessageMethod.CHANNEL_BIND,
-      clazz: Turn.MessageClass.SUCCESS_RESPONSE,
+      method: messages.MessageMethod.CHANNEL_BIND,
+      clazz: messages.MessageClass.SUCCESS_RESPONSE,
       transactionId: getTransactionIdBytes(),
       attributes: []
     };
   }
 
   /** Returns the message encoded by #getStunMessageWithAttributesBytes. */
-  function getStunMessageWithAttributes() : Turn.StunMessage {
+  function getStunMessageWithAttributes() : messages.StunMessage {
     var message = getSimpleStunMessage();
     message.attributes = [{
         type: 1200,
@@ -101,7 +105,7 @@ describe("stun messages", function() {
   /**
    * Returns the endpoint encoded by #getMappedAddressAttributeBytes
    * and #getXorMappedAddressAttributeBytes. */
-  function getEndpoint() : Turn.Endpoint {
+  function getEndpoint() : net.Endpoint {
     return {
       address: '192.168.1.1',
       port: 32000
@@ -110,7 +114,7 @@ describe("stun messages", function() {
 
   it('reject short messages', function() {
     expect(function() {
-      Turn.parseStunMessage(new Uint8Array(new ArrayBuffer(5)));
+      messages.parseStunMessage(new Uint8Array(new ArrayBuffer(5)));
     }).toThrow();
   });
 
@@ -118,15 +122,15 @@ describe("stun messages", function() {
     var bytes = getSimpleStunMessageBytes();
     bytes[0] = 0xd0;
     expect(function() {
-      Turn.parseStunMessage(bytes);
+      messages.parseStunMessage(bytes);
     }).toThrow();
   });
 
   it('parse simple message', function() {
     var bytes = getSimpleStunMessageBytes();
-    var req = Turn.parseStunMessage(bytes);
-    expect(req.clazz).toEqual(Turn.MessageClass.SUCCESS_RESPONSE);
-    expect(req.method).toEqual(Turn.MessageMethod.CHANNEL_BIND);
+    var req = messages.parseStunMessage(bytes);
+    expect(req.clazz).toEqual(messages.MessageClass.SUCCESS_RESPONSE);
+    expect(req.method).toEqual(messages.MessageMethod.CHANNEL_BIND);
     expect(compareUint8Array(req.transactionId,
         getTransactionIdBytes())).toBe(true);
     expect(req.attributes.length).toEqual(0);
@@ -134,7 +138,7 @@ describe("stun messages", function() {
 
   it('format simple message', function() {
     var message = getSimpleStunMessage();
-    var bytes = Turn.formatStunMessage(message);
+    var bytes = messages.formatStunMessage(message);
     var expectedBytes = getSimpleStunMessageBytes();
     expect(compareUint8Array(expectedBytes, bytes)).toBe(true);
   });
@@ -147,8 +151,8 @@ describe("stun messages", function() {
     var bytes = getSimpleStunMessageBytes();
     bytes[0] = 0x33;
     bytes[1] = 0xdd;
-    var req = Turn.parseStunMessage(bytes);
-    expect(req.clazz).toEqual(Turn.MessageClass.FAILURE_RESPONSE);
+    var req = messages.parseStunMessage(bytes);
+    expect(req.clazz).toEqual(messages.MessageClass.FAILURE_RESPONSE);
     expect(req.method).toEqual(0xced);
   });
 
@@ -160,13 +164,13 @@ describe("stun messages", function() {
     var bytes = getSimpleStunMessageBytes();
     bytes[6] = 0xFF;
     expect(function() {
-      Turn.parseStunMessage(bytes);
+      messages.parseStunMessage(bytes);
     }).toThrow();
   });
 
   it('reject short attributes', function() {
     expect(function() {
-      Turn.parseStunAttribute(new Uint8Array(new ArrayBuffer(3)));
+      messages.parseStunAttribute(new Uint8Array(new ArrayBuffer(3)));
     }).toThrow();
   });
 
@@ -176,7 +180,7 @@ describe("stun messages", function() {
       0, 2, // length
       0x55, 0x56]); // value
 
-    var attr = Turn.parseStunAttribute(bytes);
+    var attr = messages.parseStunAttribute(bytes);
     expect(attr.type).toEqual(1200);
     expect(attr.value.length).toEqual(2);
     expect(attr.value[0]).toEqual(0x55);
@@ -189,7 +193,7 @@ describe("stun messages", function() {
       value: new Uint8Array([0x55, 0x56])
     };
     var bytes = new Uint8Array(8);
-    Turn.formatStunAttribute(attr, bytes);
+    messages.formatStunAttribute(attr, bytes);
     var expectedBytes = new Uint8Array([
       1200 >> 8, 1200 & 0xFF, // type
       0, 2, // length
@@ -202,7 +206,7 @@ describe("stun messages", function() {
       0, 0, // type
       0, 0]); // length
 
-    var attr = Turn.parseStunAttribute(bytes);
+    var attr = messages.parseStunAttribute(bytes);
     expect(attr.value).toBeUndefined();
   });
 
@@ -211,7 +215,7 @@ describe("stun messages", function() {
       type: 1
     };
     var bytes = new Uint8Array(4);
-    Turn.formatStunAttribute(attr, bytes);
+    messages.formatStunAttribute(attr, bytes);
     var expectedBytes = new Uint8Array([
       0, 1, // type
       0, 0]); // length
@@ -224,13 +228,13 @@ describe("stun messages", function() {
     };
     var bytes = new Uint8Array(3);
     expect(function() {
-      Turn.formatStunAttribute(attr, bytes);
+      messages.formatStunAttribute(attr, bytes);
     }).toThrow();
   });
 
   it('parse message with attributes', function() {
     var bytes = getStunMessageWithAttributesBytes();
-    var req = Turn.parseStunMessage(bytes);
+    var req = messages.parseStunMessage(bytes);
     expect(req.attributes.length).toEqual(2);
     var attr1 = req.attributes[0];
     expect(attr1.type).toEqual(1200);
@@ -244,20 +248,20 @@ describe("stun messages", function() {
 
   it('format message with attributes', function() {
     var message = getStunMessageWithAttributes();
-    var bytes = Turn.formatStunMessage(message);
+    var bytes = messages.formatStunMessage(message);
     var expectedBytes = getStunMessageWithAttributesBytes();
     expect(compareUint8Array(expectedBytes, bytes)).toBe(true);
   });
 
   it('calculate padding', function() {
-    expect(Turn.calculatePadding(0, 4)).toEqual(0);
-    expect(Turn.calculatePadding(1, 4)).toEqual(4);
-    expect(Turn.calculatePadding(4, 4)).toEqual(4);
-    expect(Turn.calculatePadding(7, 4)).toEqual(8);
+    expect(messages.calculatePadding(0, 4)).toEqual(0);
+    expect(messages.calculatePadding(1, 4)).toEqual(4);
+    expect(messages.calculatePadding(4, 4)).toEqual(4);
+    expect(messages.calculatePadding(7, 4)).toEqual(8);
   });
 
   it('format error-code attribute', function() {
-    var bytes = Turn.formatErrorCodeAttribute(399, 'test');
+    var bytes = messages.formatErrorCodeAttribute(399, 'test');
     var expectedBytes = new Uint8Array([
           0x00, // reserved
           0x00, // reserved
@@ -274,48 +278,48 @@ describe("stun messages", function() {
     var message = getStunMessageWithAttributes();
 
     // The first attribute is type 1200 and has two bytes worth of data.
-    var attribute = Turn.findFirstAttributeWithType(1200, message.attributes);
+    var attribute = messages.findFirstAttributeWithType(1200, message.attributes);
     expect(attribute).toBeDefined();
     expect(attribute.value.byteLength).toEqual(2);
 
     // The second attribute is type 1000 and has four bytes worth of data.
-    attribute = Turn.findFirstAttributeWithType(1000, message.attributes);
+    attribute = messages.findFirstAttributeWithType(1000, message.attributes);
     expect(attribute).toBeDefined();
     expect(attribute.value.byteLength).toEqual(4);
 
     // This should not be found.
     expect(function() {
-      Turn.findFirstAttributeWithType(500, message.attributes);
+      messages.findFirstAttributeWithType(500, message.attributes);
     }).toThrow();
   });
 
   it('format bad MAPPED-ADDRESS attribute', function() {
     expect(function() {
-      Turn.formatMappedAddressAttribute('nonsense.xxx', 7);
+      messages.formatMappedAddressAttribute('nonsense.xxx', 7);
     }).toThrow();
   });
 
   it('format MAPPED-ADDRESS attribute', function() {
-    var bytes = Turn.formatMappedAddressAttribute('192.168.1.1', 32000);
+    var bytes = messages.formatMappedAddressAttribute('192.168.1.1', 32000);
     var expectedBytes = getMappedAddressAttributeBytes();
     expect(compareUint8Array(expectedBytes, bytes)).toBe(true);
   });
 
   it('format XOR-MAPPED-ADDRESS attribute', function() {
-    var bytes = Turn.formatXorMappedAddressAttribute('192.168.1.1', 32000);
+    var bytes = messages.formatXorMappedAddressAttribute('192.168.1.1', 32000);
     var expectedBytes = getXorMappedAddressAttributeBytes();
     expect(compareUint8Array(expectedBytes, bytes)).toBe(true);
   });
 
   it('parse MAPPED-ADDRESS attribute', function() {
     var bytes = getMappedAddressAttributeBytes();
-    var attribute = Turn.parseMappedAddressAttribute(bytes);
+    var attribute = messages.parseMappedAddressAttribute(bytes);
     expect(attribute).toEqual(getEndpoint());
   });
 
   it('parse XOR-MAPPED-ADDRESS attribute', function() {
     var bytes = getXorMappedAddressAttributeBytes();
-    var attribute = Turn.parseXorMappedAddressAttribute(bytes);
+    var attribute = messages.parseXorMappedAddressAttribute(bytes);
     expect(attribute).toEqual(getEndpoint());
   });
 
@@ -357,7 +361,7 @@ describe("stun messages", function() {
       0x8c, 0xae, 0xfc, 0xda,
       0x94, 0xaa, 0x99, 0x45,
       0x6a, 0x8f, 0x2b, 0x74]);
-    var hashBytes = Turn.computeHash(dataBytes);
+    var hashBytes = messages.computeHash(dataBytes);
     expect(compareUint8Array(expectedHashBytes, hashBytes)).toBe(true);
   });
 

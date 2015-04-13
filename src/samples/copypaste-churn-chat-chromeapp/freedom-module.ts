@@ -1,70 +1,75 @@
-/// <reference path="../../churn/churn.d.ts" />
-/// <reference path="../../webrtc/peerconnection.d.ts" />
-/// <reference path='../../logging/logging.d.ts' />
-/// <reference path="../../freedom/typings/freedom.d.ts" />
+/// <reference path='../../../../third_party/freedom-typings/freedom-common.d.ts' />
 
-freedom['loggingprovider']().setConsoleFilter(['*:D']);
+import peerconnection = require('../../../../third_party/uproxy-lib/webrtc/peerconnection');
+import signals = require('../../../../third_party/uproxy-lib/webrtc/signals');
+import churn_types = require('../../churn/churn.types');
+import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
+import churn = require('../../churn/churn');
 
-var log :Logging.Log = new Logging.Log('copypaste churn chat');
+freedom['loggingcontroller']().setConsoleFilter(['*:D']);
+
+import logging = require('../../../../third_party/uproxy-lib/logging/logging');
+var log :logging.Log = new logging.Log('copypaste churn chat');
 
 var config :freedom_RTCPeerConnection.RTCConfiguration = {
   iceServers: [{urls: ['stun:stun.l.google.com:19302']},
                {urls: ['stun:stun1.l.google.com:19302']}]
 };
 
-var freedomPc = freedom['core.rtcpeerconnection'](config);
-var pc = new Churn.Connection(freedomPc);
+export var freedomPc = freedom['core.rtcpeerconnection'](config);
+export var pc = new churn.Connection(freedomPc);
+export var freedomParentModule = freedom();
 
 // Forward signalling channel messages to the UI.
-pc.signalForPeerQueue.setSyncHandler((signal:WebRtc.SignallingMessage) => {
+pc.signalForPeerQueue.setSyncHandler((message:signals.Message) => {
   // FIXME: Does signalForPeer want a ChurnSignallingMessage?  How is the stage
   // value supposed to get filled in.
-  freedom().emit('signalForPeer', signal);
+  freedomParentModule.emit('signalForPeer', message);
 });
 
 // Receive signalling channel messages from the UI.
-freedom().on('handleSignalMessage', (signal:Churn.ChurnSignallingMessage) => {
-  pc.handleSignalMessage(signal);
+freedomParentModule.on('handleSignalMessage', (message:ChurnSignallingMessage) => {
+  pc.handleSignalMessage(message);
 });
 
 pc.onceConnecting.then(() => { log.info('connecting...'); });
 
 
-var connectDataChannel = (channel:WebRtc.DataChannel) => {
+export var connectDataChannel = (channel:peerconnection.DataChannel) => {
 	// Send messages over the datachannel, in response to events from the UI,
 	// and forward messages received on the datachannel to the UI.
-	freedom().on('send', (message:string) => {
+	freedomParentModule.on('send', (message:string) => {
     channel.send({ str: message }).catch((e:Error) => {
 			log.error('error sending message: ' + e.message);
 		});
 	});
-	channel.dataFromPeerQueue.setSyncHandler((d:WebRtc.Data) => {
+	channel.dataFromPeerQueue.setSyncHandler((d:peerconnection.Data) => {
 		if (d.str === undefined) {
 			log.error('only text messages are supported');
 			return;
 		}
-		freedom().emit('receive', d.str);
+		freedomParentModule.emit('receive', d.str);
 	});
 };
 
 // TODO: This is messy...would be great just to have both sides
 //       call onceConnected but it doesn't seem to fire :-/
-pc.peerOpenedChannelQueue.setSyncHandler((channel:WebRtc.DataChannel) => {
+pc.peerOpenedChannelQueue.setSyncHandler((channel:peerconnection.DataChannel) => {
   log.info('peer opened datachannel!');
 	connectDataChannel(channel);
-  freedom().emit('ready', {});
+  freedomParentModule.emit('ready', {});
 });
 
 // Negotiate a peerconnection.
-freedom().on('start', () => {
+freedomParentModule.on('start', () => {
   pc.negotiateConnection().then(() => {
-      pc.openDataChannel('text').then((channel:WebRtc.DataChannel) => {
+      pc.openDataChannel('text').then((channel:peerconnection.DataChannel) => {
       log.info('datachannel open!');
 		  connectDataChannel(channel);
-      freedom().emit('ready', {});
+      freedomParentModule.emit('ready', {});
     }, (e) => {
       log.error('could not setup datachannel: ' + e.message);
-      freedom().emit('error', {});
+      freedomParentModule.emit('error', {});
     });
   }, (e) => {
     log.error('could not negotiate peerconnection: ' + e.message);
