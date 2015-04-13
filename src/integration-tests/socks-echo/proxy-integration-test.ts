@@ -11,7 +11,10 @@ import socks = require('../../socks-common/socks-headers');
 import ProxyIntegrationTester = require('./proxy-integration-test.types');
 import arraybuffers = require('../../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 
-class ProxyIntegrationTestClass implements ProxyIntegrationTester {
+// This abstract class is converted into a real class by Freedom, which
+// fills in the unimplemented on(...) method in the process of
+// constructing a module.
+class AbstractProxyIntegrationTest implements ProxyIntegrationTester {
   private socksToRtc_ :socks_to_rtc.SocksToRtc;
   private rtcToNet_ :rtc_to_net.RtcToNet;
   private socksEndpoint_ : Promise<net.Endpoint>;
@@ -179,4 +182,4 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
   }
 }
 
-export = ProxyIntegrationTestClass;
+export = AbstractProxyIntegrationTest;
