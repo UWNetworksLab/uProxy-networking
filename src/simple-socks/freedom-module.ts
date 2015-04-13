@@ -20,11 +20,10 @@ export var loggingController = freedom['loggingcontroller']();
 
 // Example to show how to manuall configure console filtering.
 //
-// loggingController.setConsoleFilter([
-//     '*:W',
-//     'SocksToRtc:I',
-//     'RtcToNet:I']);
-
+loggingController.setConsoleFilter([
+    '*:W',
+    'SocksToRtc:I',
+    'RtcToNet:I']);
 
 //-----------------------------------------------------------------------------
 var localhostEndpoint:net.Endpoint = { address: '127.0.0.1', port:9999 };
