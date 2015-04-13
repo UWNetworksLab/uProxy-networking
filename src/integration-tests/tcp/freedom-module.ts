@@ -46,6 +46,113 @@ parentModule.on('listen', () => {
   });
 });
 
+parentModule.on('floodtwoclient', (data) => {
+  var firstport = 1224;
+  var secondport = 1225;
+  var last_out = performance.now();
+  var first_total = 0.0;
+  var second_total = 0.0;
+  var first_start = 0;
+  var second_start = 0;
+  var first_end = 0;
+  var second_end = 0;
+  if (data) {
+    if (data["firstport"]) {
+      firstport = data.firstport;
+    }
+    if (data["secondport"]) {
+      secondport = data.secondport;
+    }
+  }
+  var firstclient = new tcp.Connection({endpoint:{address:"localhost", port:firstport}});
+  var secondclient = new tcp.Connection({endpoint:{address:"localhost", port:secondport}});
+  log.info("Starting flood client to localhost:[" + firstport + "," + secondport + "]");
+  var fun = () => {
+    if (first_end == 0 && second_end == 0) {
+      var fstats = firstclient.dataFromSocketQueue.getStats();
+      var sstats = secondclient.dataFromSocketQueue.getStats();
+      var now = performance.now();
+      var frate = (first_total / (now - first_start)) / 1000.0;
+      var srate = (second_total / (now - second_start)) / 1000.0;
+      log.info("{\"now\": " + now + ", \"nr\": 1, \"rate\": " + frate + ", " +
+               "\"queued_events\": " + fstats.queued_events + ", " +
+               "\"handled_events\": " + fstats.handled_events + ", " +
+               "\"following_queued_events\": " + fstats.following_queued_events + ", " +
+               "\"num_handlers_set\": " + fstats.num_handlers_set + ", " +
+               "\"dropped_events\": " + fstats.dropped_events  +
+               "}, {\"now\": " + now + ", \"nr\": 2, \"rate\": " + srate + ", " +
+               "\"queued_events\": " + sstats.queued_events + ", " +
+               "\"handled_events\": " + sstats.handled_events + ", " +
+               "\"following_queued_events\": " + sstats.following_queued_events + ", " +
+               "\"num_handlers_set\": " + sstats.num_handlers_set + ", " +
+               "\"dropped_events\": " + sstats.dropped_events + "}");
+      setTimeout(fun, 1000);
+    }
+  };
+  setTimeout(fun, 1000);
+  firstclient.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
+    var bytes = new Uint8Array(buffer);
+    first_total += bytes.length;
+  });
+  firstclient.onceConnected.then((info:tcp.ConnectionInfo) => {
+    first_start = performance.now();
+  });
+  firstclient.onceClosed.then((info:tcp.ConnectionInfo) => {
+    first_end = performance.now();
+  });
+  secondclient.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
+    var bytes = new Uint8Array(buffer);
+    second_total += bytes.length;
+  });
+  secondclient.onceConnected.then((info:tcp.ConnectionInfo) => {
+    second_start = performance.now();
+  });
+  secondclient.onceClosed.then((info:tcp.ConnectionInfo) => {
+    second_end = performance.now();
+  });
+});
+
+parentModule.on('floodclient', (port) => {
+  if (!port) {
+    port = 1224;
+  }
+  var client = new tcp.Connection({endpoint:{address:"localhost", port:port}});
+  log.info("Starting flood client to localhost:1224");
+  var fun = () => {
+    var stats = client.dataFromSocketQueue.getStats();
+    var now = performance.now();
+    log.info("now: " + now + ", " +
+             "tcp_queued_events: " + stats.queued_events + ", " +
+             "tcp_handled_events: " + stats.handled_events + ", " +
+             "tcp_following_queued_events: " + stats.following_queued_events + ", " +
+             "tcp_num_handlers_set: " + stats.num_handlers_set + ", " +
+             "tcp.dropped_events: " + stats.dropped_events);
+    setTimeout(1000, fun);
+  };
+  setTimeout(1000, fun);
+  var last_out = performance.now();
+  client.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
+    var bytes = new Uint8Array(buffer);
+    var stats = client.dataFromSocketQueue.getStats();
+    var now = performance.now();
+    if (now - last_out >= 1000.0) {
+      last_out = now;
+      log.info("now: " + now + ", data_len: " + bytes.length + ", " +
+               "tcp_queued_events: " + stats.queued_events + ", " +
+               "tcp_handled_events: " + stats.handled_events + ", " +
+               "tcp_following_queued_events: " + stats.following_queued_events + ", " +
+               "tcp_num_handlers_set: " + stats.num_handlers_set + ", " +
+               "tcp.dropped_events: " + stats.dropped_events);
+    }
+    buffer = null;
+    bytes = null;
+    stats = null;
+  });
+  client.onceConnected.then((info:tcp.ConnectionInfo) => {
+    log.info("Connected.");
+  });
+});
+
 // Starts a server on a free port and makes a connection to that
 // port before shutting down the server, verifying that onceShutdown
 // fulfills.
