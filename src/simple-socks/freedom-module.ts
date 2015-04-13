@@ -17,12 +17,10 @@ export var log :logging.Log = new logging.Log(moduleName);
 export var loggingController = freedom['loggingcontroller']();
 
 // Example to show how to manuall configure console filtering.
-//
-// loggingController.setConsoleFilter([
-//     '*:W',
-//     'SocksToRtc:I',
-//     'RtcToNet:I']);
-
+loggingController.setConsoleFilter([
+    '*:W',
+    'SocksToRtc:I',
+    'RtcToNet:I']);
 
 //-----------------------------------------------------------------------------
 var localhostEndpoint:net.Endpoint = { address: '127.0.0.1', port:9999 };
@@ -34,7 +32,7 @@ var pcConfig :freedom_RTCPeerConnection.RTCConfiguration = {
 };
 
 export var rtcNet = new rtc_to_net.RtcToNet();
-rtcNet.startFromConfig({ allowNonUnicast: true }, pcConfig, true); // obfuscate
+rtcNet.startFromConfig({ allowNonUnicast: true }, pcConfig, false); // obfuscate
 
 //-----------------------------------------------------------------------------
 export var socksRtc = new socks_to_rtc.SocksToRtc();
@@ -42,7 +40,7 @@ socksRtc.on('signalForPeer', rtcNet.handleSignalFromPeer);
 socksRtc.startFromConfig(
     localhostEndpoint,
     pcConfig,
-    true) // obfuscate
+    false) // obfuscate
   .then((endpoint:net.Endpoint) => {
     log.info('SocksToRtc listening on: ' + JSON.stringify(endpoint));
     log.info('curl -x socks5h://' + endpoint.address + ':' + endpoint.port +

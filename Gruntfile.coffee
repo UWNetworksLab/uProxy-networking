@@ -5,7 +5,7 @@ TaskManager = require './build/tools/taskmanager'
 # of specific grunt rules below and given to grunt.initConfig
 taskManager = new TaskManager.Manager();
 
-taskManager.add 'default', [ 'base', 'samples', 'test' ]
+taskManager.add 'default', [ 'base' ]
 
 taskManager.add 'base', [
   'copy:dev'
@@ -181,13 +181,10 @@ browserifyIntegrationTest = (path) ->
 #-------------------------------------------------------------------------
 freedomForChromePath = path.dirname(require.resolve('freedom-for-chrome/package.json'))
 uproxyLibPath = path.dirname(require.resolve('uproxy-lib/package.json'))
-#ipaddrjsPath = path.dirname(require.resolve('ipaddr.js/package.json'))
 # TODO(ldixon): update utransformers package to uproxy-obfuscators
 # uproxyObfuscatorsPath = path.dirname(require.resolve('uproxy-obfuscators/package.json'))
 uproxyObfuscatorsPath = path.dirname(require.resolve('utransformers/package.json'))
 regex2dfaPath = path.dirname(require.resolve('regex2dfa/package.json'))
-# Cordova testing
-ccaPath = path.dirname(require.resolve('cca/package.json'))
 pgpPath = path.dirname(require.resolve('freedom-pgp-e2e/package.json'))
 
 #-------------------------------------------------------------------------
@@ -204,42 +201,42 @@ module.exports = (grunt) ->
           # This allows path to reference typescript definitions for ambient
           # contexts to always be found, even in generated `.d.ts` files..
           {
-              nonull: true,
-              expand: true,
-              cwd: 'third_party'
-              src: ['**/*'],
-              dest: thirdPartyBuildPath,
+            nonull: true,
+            expand: true,
+            cwd: 'third_party'
+            src: ['**/*'],
+            dest: thirdPartyBuildPath,
           }
           # Copy distribution directory of uproxy-lib so all paths can always
           # find their dependencies. Note that this also requires uproxy-lib
           # references to find those in |build/third_party/|. These paths
           # are delicate.
           {
-              nonull: true,
-              expand: true,
-              cwd: path.join(uproxyLibPath, 'build/dist'),
-              src: ['**/*'],
-              dest: path.join(thirdPartyBuildPath, 'uproxy-lib/'),
+            nonull: true,
+            expand: true,
+            cwd: path.join(uproxyLibPath, 'build/dist'),
+            src: ['**/*'],
+            dest: path.join(thirdPartyBuildPath, 'uproxy-lib/'),
           },
           # Use the third_party definitions from uproxy-lib. Copied to the same
           # location relative to their compiled location in uproxy-lib so they
           # have the same relative path to the created `.d.ts` files from
           # |build/dev|.
           {
-              nonull: true,
-              expand: true,
-              cwd: path.join(uproxyLibPath, 'build/third_party'),
-              src: ['freedom-typings/**/*', 'promise-polyfill.js'],
-              dest: thirdPartyBuildPath
+            nonull: true,
+            expand: true,
+            cwd: path.join(uproxyLibPath, 'build/third_party'),
+            src: ['freedom-typings/**/*', 'promise-polyfill.js'],
+            dest: thirdPartyBuildPath
           },
           # Copy the relevant files from the build directory to create a
           # third_party folder for freedom-pgp-e2e.
           {
-              nonull: true,
-              expand: true,
-              cwd: path.join(pgpPath, 'build'),
-              src: ['**/*', '!demo', '!freedom.js', '!*.spec.js', '!playground'],
-              dest: path.join(thirdPartyBuildPath, 'freedom-pgp-e2e'),
+            nonull: true,
+            expand: true,
+            cwd: path.join(pgpPath, 'build'),
+            src: ['**/*', '!demo', '!freedom.js', '!*.spec.js', '!playground'],
+            dest: path.join(thirdPartyBuildPath, 'freedom-pgp-e2e'),
           }
         ]
 
@@ -247,12 +244,12 @@ module.exports = (grunt) ->
       dev:
         files: [
           {
-              nonull: true,
-              expand: true,
-              cwd: 'src/',
-              src: ['**/*'],
-              dest: devBuildPath,
-              onlyIf: 'modified'
+            nonull: true,
+            expand: true,
+            cwd: 'src/',
+            src: ['**/*'],
+            dest: devBuildPath,
+            onlyIf: 'modified'
           }
         ]
 
@@ -260,15 +257,15 @@ module.exports = (grunt) ->
       dist:
         files: [
           {
-              nonull: true,
-              expand: true,
-              cwd: devBuildPath,
-              src: ['**/*',
-                    '!**/*.spec.js',
-                    '!**/*.spec.*.js',
-                    '!samples/**/*',],
-              dest: 'build/dist/',
-              onlyIf: 'modified'
+            nonull: true,
+            expand: true,
+            cwd: devBuildPath,
+            src: ['**/*',
+                  '!**/*.spec.js',
+                  '!**/*.spec.*.js',
+                  '!samples/**/*',],
+            dest: 'build/dist/',
+            onlyIf: 'modified'
           }
         ]
 
