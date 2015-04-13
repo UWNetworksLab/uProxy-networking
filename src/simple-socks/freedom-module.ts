@@ -18,7 +18,7 @@ export var loggingController = freedom['loggingcontroller']();
 
 // Example to show how to manuall configure console filtering.
 loggingController.setConsoleFilter([
-    '*:W',
+    'simple-socks:D',
     'SocksToRtc:I',
     'RtcToNet:I']);
 
