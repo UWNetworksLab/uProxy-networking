@@ -12,11 +12,11 @@ taskManager.add 'base', [
   'ts:devInModuleEnv'
   'ts:devInCoreEnv'
   'browserify:echoFreedomModule'
-  'browserify:churnPipeFreedomModule'
   'browserify:simpleSocksFreedomModule'
 ]
 
 taskManager.add 'test', [
+  'base'
   'browserify:churnSpec'
   'browserify:tcpSpec'
   'browserify:simpleTransformersCaesarSpec'
@@ -32,6 +32,7 @@ taskManager.add 'test', [
 # Sample Apps
 
 taskManager.add 'samples', [
+  'base'
   'sampleCopyPasteChurnChatChromeApp'
   'sampleCopyPasteSocksChromeApp'
   'sampleEchoServerChromeApp'
@@ -76,6 +77,7 @@ taskManager.add 'sampleCopyPasteChurnChatChromeApp', [
 taskManager.add 'sampleCopyPasteSocksChromeApp', [
   'base'
   'copy:libsForCopyPasteSocksChromeApp'
+  'vulcanize:sampleCopyPasteSocksChromeApp'
   'browserify:copyPasteSocksFreedomModule'
   'browserify:copyPasteSocksChromeApp'
 ]
@@ -224,6 +226,15 @@ module.exports = (grunt) ->
               cwd: path.join(uproxyLibPath, 'build/third_party'),
               src: ['freedom-typings/**/*', 'promise-polyfill.js'],
               dest: thirdPartyBuildPath
+          },
+          # Copy the relevant files from the build directory to create a
+          # third_party folder for freedom-pgp-e2e.
+          {
+              nonull: true,
+              expand: true,
+              cwd: path.join(pgpPath, 'build'),
+              src: ['**/*', '!demo', '!freedom.js', '!*.spec.js', '!playground'],
+              dest: path.join(thirdPartyBuildPath, 'freedom-pgp-e2e'),
           }
         ]
 
@@ -259,7 +270,7 @@ module.exports = (grunt) ->
       libsForCopyPasteChurnChatChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
-          pathsFromDevBuild: ['churn-pipe']
+          pathsFromDevBuild: []
           pathsFromThirdPartyBuild: [
             'uproxy-lib/loggingprovider'
             'uproxy-obfuscators'
@@ -267,13 +278,18 @@ module.exports = (grunt) ->
           localDestPath: 'samples/copypaste-churn-chat-chromeapp/'
       libsForCopyPasteSocksChromeApp:
         Rule.copyLibs
-          npmLibNames: ['freedom-for-chrome']
-          pathsFromDevBuild: ['churn-pipe']
+          npmLibNames: [
+            'freedom-for-chrome'
+          ]
+          pathsFromDevBuild: []
           pathsFromThirdPartyBuild: [
             'uproxy-lib/loggingprovider'
             'uproxy-obfuscators'
+            'i18n'
+            'bower/polymer'
+            'freedom-pgp-e2e'
           ]
-          localDestPath: 'samples/copypaste-churn-chat-chromeapp/'
+          localDestPath: 'samples/copypaste-socks-chromeapp/'
       libsForEchoServerChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
@@ -289,7 +305,7 @@ module.exports = (grunt) ->
       libsForSimpleSocksChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
-          pathsFromDevBuild: ['simple-socks', 'churn-pipe']
+          pathsFromDevBuild: ['simple-socks']
           pathsFromThirdPartyBuild: [
             'uproxy-lib/loggingprovider'
             'uproxy-obfuscators'
@@ -298,7 +314,7 @@ module.exports = (grunt) ->
       libsForSimpleSocksFirefoxApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-firefox']
-          pathsFromDevBuild: ['simple-socks', 'churn-pipe']
+          pathsFromDevBuild: ['simple-socks']
           pathsFromThirdPartyBuild: [
             'uproxy-lib/loggingprovider'
             'uproxy-obfuscators'
@@ -307,7 +323,7 @@ module.exports = (grunt) ->
       libsForSimpleChurnChatChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
-          pathsFromDevBuild: ['churn-pipe']
+          pathsFromDevBuild: []
           pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider']
           localDestPath: 'samples/simple-socks-chromeapp/'
       libsForSimpleTurnChromeApp:
@@ -320,7 +336,6 @@ module.exports = (grunt) ->
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
           pathsFromDevBuild: [
-            'churn-pipe'
             'echo'
             'integration-tests'
             'simple-socks'
@@ -406,15 +421,6 @@ module.exports = (grunt) ->
       turnFrontEndSpec: Rule.browserifySpec 'turn-frontend/turn-frontend'
 
       # Freedom Modules
-      churnPipeFreedomModule: Rule.browserify(
-          'churn-pipe/freedom-module',
-          {
-            # Emscripten, used to compile FTE and Rabbit to JS has unused
-            # require statements for `ws` and for `path` that need to be
-            # ignored.
-            ignore: ['ws', 'path']
-            browserifyOptions: { standalone: 'browserified_exports' }
-          })
       copyPasteChurnChatFreedomModule: Rule.browserify 'samples/copypaste-churn-chat-chromeapp/freedom-module'
       copyPasteSocksFreedomModule: Rule.browserify 'samples/copypaste-socks-chromeapp/freedom-module'
       echoFreedomModule: Rule.browserify 'echo/freedom-module'
@@ -449,6 +455,18 @@ module.exports = (grunt) ->
       integrationSocksEchoSlowSpec:
         browserifyIntegrationTest 'integration-tests/socks-echo/slow.core-env'
       # Browserify sample apps main freedom module and core environments
+
+    vulcanize:
+      sampleCopyPasteSocksChromeApp:
+        options:
+          inline: true
+          csp: true
+        files: [
+          {
+            src: path.join(devBuildPath, 'samples/copypaste-socks-chromeapp/polymer-components/root.html')
+            dest: path.join(devBuildPath, 'samples/copypaste-socks-chromeapp/polymer-components/vulcanized.html')
+          }
+        ]
 
     jasmine_chromeapp:
       tcp:
@@ -512,6 +530,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-symlink'
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-jasmine-chromeapp'
+  grunt.loadNpmTasks 'grunt-vulcanize'
 
   grunt.loadNpmTasks 'grunt-ts'
 

@@ -22,12 +22,14 @@ import handler = require('../../../third_party/uproxy-lib/handler/queue');
 import random = require('../../../third_party/uproxy-lib/crypto/random');
 
 import net = require('../net/net.types');
-import churn_pipe_types = require('../churn-pipe/freedom-module.interface');
 
 import churn_types = require('./churn.types');
 import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
 
 import ipaddr = require('ipaddr.js');
+
+import PassThrough = require('../simple-transformers/passthrough');
+import CaesarCipher = require('../simple-transformers/caesar');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 var log :logging.Log = new logging.Log('churn');
@@ -207,14 +209,6 @@ var log :logging.Log = new logging.Log('churn');
       this.haveRemoteEndpoint_ = F;
     });
 
-    // Fulfills once we've successfully allocated the forwarding socket.
-    // At that point, we can inject its address into candidate messages destined
-    // for the local RTCPeerConnection.
-    private haveForwardingSocketEndpoint_ :(endpoint:net.Endpoint) => void;
-    private onceHaveForwardingSocketEndpoint_ = new Promise((F, R) => {
-      this.haveForwardingSocketEndpoint_ = F;
-    });
-
     private static internalConnectionId_ = 0;
 
     constructor(probeRtcPc:freedom_RTCPeerConnection.RTCPeerConnection,
@@ -292,78 +286,72 @@ var log :logging.Log = new logging.Log('churn');
       this.probeConnection_.negotiateConnection();
     }
 
-    // Establishes the two pipes required to sustain the obfuscated
-    // connection:
-    //  - a non-obfuscated, local only, between WebRTC and a new,
-    //    automatically allocated, port
-    //  - remote, obfuscated, port
     private configurePipes_ = (
         webRtcEndpoint:net.Endpoint,
         remoteEndpoint:net.Endpoint,
         natEndpoints:NatPair) : void => {
-      var localPipe = freedom['churnPipe']();
-      localPipe.bind(
-          '127.0.0.1',
-          0,
-          webRtcEndpoint.address,
-          webRtcEndpoint.port,
-          'none', // no need to obfuscate local-only traffic.
-          undefined,
-          undefined)
-      .catch((e:Error) => {
-        log.error('%1: error establishing local pipe: %2',
-            this.peerName,
-            e.message);
-      })
-      .then(localPipe.getLocalEndpoint)
-      .then((forwardingSocketEndpoint:net.Endpoint) => {
-        this.haveForwardingSocketEndpoint_(forwardingSocketEndpoint);
-        log.info('%1: configured local pipe between %2 and %3',
-            this.peerName,
-            JSON.stringify(forwardingSocketEndpoint),
-            JSON.stringify(webRtcEndpoint));
-
-        var publicPipe = freedom['churnPipe']();
-        publicPipe.bind(
-            natEndpoints.internal.address,
-            natEndpoints.internal.port,
-            remoteEndpoint.address,
-            remoteEndpoint.port,
-            'caesar',
-            new Uint8Array([13]).buffer,
-            {})
-        // TODO(ldixon): renable FTE support instead of caesar cipher.
-        // publicPipe.bind(
-        //     natEndpoints.internal.address,
-        //     natEndpoints.internal.port,
-        //     remoteEndpoint.address,
-        //     remoteEndpoint.port,
-        //     'fte',
-        //     arraybuffers.stringToArrayBuffer('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'),
-        //     JSON.stringify({
-        //       'plaintext_dfa': regex2dfa('^.*$'),
-        //       'plaintext_max_len': 1400,
-        //       // This is equivalent to Rabbit cipher.
-        //       'ciphertext_dfa': regex2dfa('^.*$'),
-        //       'ciphertext_max_len': 1450
-        //     }))
-        .then(() => {
-          log.info('%1: configured obfuscating pipe between %2 and %3',
+      // TODO: This throwaway socket helps avoid a timing condition by
+      //       which the probe connection isn't *quite* ready immediately.
+      //       We didn't encounter this before because we used to bind two
+      //       ports, this one second.
+      freedom['core.udpsocket']().bind('127.0.0.1', 0).then((unused:any) => {
+        // Bind to the internal side of the NAT mapping.
+        // We need to be bound to this port in order to send and
+        // receive packets from the remote peer.
+        var socket = freedom['core.udpsocket']();
+        socket.bind(natEndpoints.internal.address,
+            natEndpoints.internal.port).then((resultCode:number) => {
+          log.info('%1: churn is bound to %2, mediating between local ' +
+              'webrtc on %3 and remote churn at %4',
               this.peerName,
               JSON.stringify(natEndpoints.internal),
+              JSON.stringify(webRtcEndpoint),
               JSON.stringify(remoteEndpoint));
+        }).then(() => {
+          // Make our transformer.
+          // This is a Caesar Cipher with a key of 13, which is
+          // equivalent to ROT13.
+          var transformer = new CaesarCipher();
+          transformer.setKey(new Uint8Array([13]).buffer);
 
-          // Connect the local pipe to the remote, obfuscating, pipe.
-          localPipe.on('message', (m:churn_pipe_types.Message) => {
-            publicPipe.send(m.data);
+          // Configure packet forwarding.
+          socket.on('onData', (recvFromInfo:freedom_UdpSocket.RecvFromInfo) => {
+            if (recvFromInfo.address === webRtcEndpoint.address &&
+                recvFromInfo.port === webRtcEndpoint.port) {
+              // Forward packets from WebRTC to the remote side,
+              // first obfuscating.
+              var transformedBuffer = transformer.transform(recvFromInfo.data);
+              socket.sendTo(
+                  transformedBuffer,
+                  remoteEndpoint.address,
+                  remoteEndpoint.port).catch((e:Error) => {
+                log.info('%1: failed to forward packet to remote webrtc: %2',
+                    this.peerName,
+                    e.message);
+              });
+            } else if (recvFromInfo.address === remoteEndpoint.address &&
+                recvFromInfo.port === remoteEndpoint.port) {
+              // Forward packets from the remote side to WebRTC,
+              // first deobfuscating.
+              var buffer = transformer.restore(recvFromInfo.data);
+              socket.sendTo(
+                  buffer,
+                  webRtcEndpoint.address,
+                  webRtcEndpoint.port).catch((e:Error) => {
+                log.info('%1: failed to forward packet to local webrtc: %2',
+                    this.peerName,
+                    e.message);
+              });
+            } else {
+              log.warn('%1: ignoring packet from unknown origin: %2',
+                  this.peerName,
+                  JSON.stringify(recvFromInfo));
+            }
           });
-          publicPipe.on('message', (m:churn_pipe_types.Message) => {
-            localPipe.send(m.data);
-          });
-        })
-        .catch((e:Error) => {
-          log.error('%1: error establishing obfuscated pipe: %2',
+        }).catch((e:Error) => {
+          log.error('%1: failed to configure churn piping on %2: %3',
             this.peerName,
+            JSON.stringify(natEndpoints.internal),
             e.message);
         });
       });
@@ -449,11 +437,10 @@ var log :logging.Log = new logging.Log('churn');
       if (message.webrtcMessage) {
         var signal = message.webrtcMessage;
         if (signal.type === peerconnection.SignalType.CANDIDATE) {
-          this.onceHaveForwardingSocketEndpoint_.then(
-              (forwardingSocketEndpoint:net.Endpoint) => {
+          this.onceProbingComplete_.then((natEndpoints:NatPair) => {
             signal.candidate.candidate =
                 setCandidateLineEndpoint(
-                    signal.candidate.candidate, forwardingSocketEndpoint);
+                    signal.candidate.candidate, natEndpoints.internal);
             this.obfuscatedConnection_.handleSignalMessage(signal);
           });
         } else if (signal.type == peerconnection.SignalType.OFFER ||
@@ -474,8 +461,8 @@ var log :logging.Log = new logging.Log('churn');
       return this.obfuscatedConnection_.openDataChannel(channelLabel);
     }
 
-    public close = () : void => {
-      this.obfuscatedConnection_.close();
+    public close = () : Promise<void> => {
+      return this.obfuscatedConnection_.close();
     }
 
     public toString = () : string => {

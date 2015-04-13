@@ -56,7 +56,7 @@ export function endpointOfSocketInfo(info:freedom_TcpSocket.SocketInfo)
 function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket)
     : Promise<void> {
   // Note that :
-  // freedom['core.tcpsocket'].close =/= freedom['core.tcpsocket']().close
+  // freedom['core.tcpsocket'].close != freedom['core.tcpsocket']().close
   // The former destroys the freedom interface & communication channels.
   // The latter is a method on the constructed interface object that is on
   // the instance of the freedom tcp-socket's API.
@@ -270,7 +270,7 @@ export class Connection {
   private fulfillClosed_ :(reason:SocketCloseKind)=>void;
 
   // A TCP connection for a given socket.
-  constructor(connectionKind:Connection.Kind) {
+  constructor(connectionKind:Connection.Kind, private startPaused_?:boolean) {
     this.connectionId = 'N' + Connection.globalConnectionId_++;
 
     this.dataFromSocketQueue = new handler.Queue<ArrayBuffer,void>();
@@ -302,12 +302,22 @@ export class Connection {
     } else if (connectionKind.endpoint) {
       // Create a new tcp socket to the given endpoint.
       this.connectionSocket_ = freedom['core.tcpsocket']();
+      // We don't declare ourselves connected until we know the IP address to
+      // which we have connected.  To speed this process up, we immediately
+      // pause the socket as soon as it's connected, so that CPU time is not
+      // wasted sending events that we can't pass on until getInfo returns.
       this.onceConnected =
           this.connectionSocket_
               .connect(connectionKind.endpoint.address,
                        connectionKind.endpoint.port)
+              .then(this.pause)
               .then(this.connectionSocket_.getInfo)
-              .then(endpointOfSocketInfo)
+              .then((info:freedom_TcpSocket.SocketInfo) => {
+                if (!this.startPaused_) {
+                  this.resume();
+                }
+                return endpointOfSocketInfo(info);
+              })
       this.state_ = Connection.State.CONNECTING;
       this.onceConnected
           .then(() => {
@@ -382,6 +392,14 @@ export class Connection {
         this.fulfillClosed_(SocketCloseKind.UNKOWN);
       }
     });
+  }
+
+  public pause = () => {
+    this.connectionSocket_.pause();
+  }
+
+  public resume = () => {
+    this.connectionSocket_.resume();
   }
 
   // This is called to close the underlying socket. This fulfills the

@@ -38,7 +38,7 @@ function installTools ()
 
 function installThirdParty ()
 {
-  runAndAssertCmd "bower install"
+  runAndAssertCmd "bower install --allow-root"
   runAndAssertCmd "node_modules/.bin/tsd reinstall --config ./third_party/tsd.json"
   runAndAssertCmd "grunt copy:thirdParty"
 }
@@ -47,7 +47,7 @@ function installDevDependencies ()
 {
   runAndAssertCmd "npm install"
   # TODO: remove this line when uproxy-lib is npm published.
-  runAndAssertCmd "cd node_modules/uproxy-lib && ./setup.sh install && grunt dist"
+  # runAndAssertCmd "cd node_modules/uproxy-lib && ./setup.sh install && grunt dist"
   installTools
   installThirdParty
 }
