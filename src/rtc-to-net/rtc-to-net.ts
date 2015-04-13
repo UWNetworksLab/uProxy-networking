@@ -13,7 +13,6 @@ import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconn
 import signals = require('../../../third_party/uproxy-lib/webrtc/signals');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
 
-import TransportToNet = require('./transport-to-net.interface');
 import ProxyConfig = require('./proxyconfig');
 
 import churn = require('../churn/churn');
@@ -54,7 +53,7 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
   // proxied connections.
   // TODO: Extract common code for this and SocksToRtc:
   //         https://github.com/uProxy/uproxy/issues/977
-  export class RtcToNet implements TransportToNet {
+  export class RtcToNet {
     // Time between outputting snapshots.
     private static SNAPSHOTTING_INTERVAL_MS = 5000;
 

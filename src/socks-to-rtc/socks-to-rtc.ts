@@ -7,8 +7,6 @@ import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconn
 import signals = require('../../../third_party/uproxy-lib/webrtc/signals');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
 
-import SocksToTransport = require('./socks-to-transport.interface');
-
 import churn = require('../churn/churn');
 import net = require('../net/net.types');
 import tcp = require('../net/tcp');
@@ -30,7 +28,7 @@ module SocksToRtc {
   // TODO: rename this 'Server'.
   // TODO: Extract common code for this and SocksToRtc:
   //         https://github.com/uProxy/uproxy/issues/977
-  export class SocksToRtc implements SocksToTransport {
+  export class SocksToRtc {
 
     // Call this to initiate shutdown.
     private fulfillStopping_ :() => void;
