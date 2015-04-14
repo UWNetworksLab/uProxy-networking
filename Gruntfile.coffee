@@ -305,7 +305,7 @@ module.exports = (grunt) ->
           npmLibNames: ['freedom-for-firefox']
           pathsFromDevBuild: ['echo']
           pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider']
-          localDestPath: 'samples/echo-server-firefoxapp/lib/'
+          localDestPath: 'samples/echo-server-firefoxapp/data/'
       libsForSimpleSocksChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
@@ -323,7 +323,7 @@ module.exports = (grunt) ->
             'uproxy-lib/loggingprovider'
             'uproxy-obfuscators'
           ]
-          localDestPath: 'samples/simple-socks-firefoxapp/lib/'
+          localDestPath: 'samples/simple-socks-firefoxapp/data/'
       libsForSimpleChurnChatChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
