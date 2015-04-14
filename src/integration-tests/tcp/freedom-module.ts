@@ -4,10 +4,13 @@ import arraybuffers = require('../../../../third_party/uproxy-lib/arraybuffers/a
 import tcp = require('../../net/tcp');
 import net = require('../../net/net.types');
 
-export var loggingController = freedom['loggingcontroller']();
-loggingController.setConsoleFilter(['*:D']);
-
 import logging = require('../../../../third_party/uproxy-lib/logging/logging');
+import loggingTypes = require('../../../../third_party/uproxy-lib/loggingprovider/loggingprovider.types');
+
+export var loggingController = freedom['loggingcontroller']();
+loggingController.setDefaultFilter(loggingTypes.Destination.console,
+                                   loggingTypes.Level.debug);
+
 export var moduleName = 'integration-tests/tcp';
 export var log :logging.Log = new logging.Log(moduleName);
 

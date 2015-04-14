@@ -10,15 +10,18 @@ import net = require('../../net/net.types');
 import signals = require('../../../../third_party/uproxy-lib/webrtc/signals');
 
 import logging = require('../../../../third_party/uproxy-lib/logging/logging');
+import loggingTypes = require('../../../../third_party/uproxy-lib/loggingprovider/loggingprovider.types');
 
 // Set each module to I, W, E, or D depending on which module
 // you're debugging. Since the proxy outputs quite a lot of messages,
 // show only warnings by default from the rest of the system.
 // Note that the proxy is extremely slow in debug (D) mode.
-freedom['loggingcontroller']().setConsoleFilter([
-    '*:I',
-    'SocksToRtc:I',
-    'RtcToNet:I']);
+freedom['loggingcontroller']().setDefaultFilter(loggingTypes.Destination.console,
+                                                loggingTypes.Level.info);
+freedom['loggingcontroller']().setFilters(loggingTypes.Destination.console, {
+  'SocksToRtc': loggingTypes.Level.info,
+  'RtcToNet': loggingTypes.Level.info
+});
 
 var log :logging.Log = new logging.Log('copypaste-socks');
 

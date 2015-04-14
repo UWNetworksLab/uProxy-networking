@@ -6,6 +6,7 @@ import socks_to_rtc = require('../socks-to-rtc/socks-to-rtc');
 import net = require('../net/net.types');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
+import loggingTypes = require('../../../third_party/uproxy-lib/loggingprovider/loggingprovider.types');
 
 export var moduleName = 'simple-socks';
 export var log :logging.Log = new logging.Log(moduleName);
@@ -17,10 +18,11 @@ export var log :logging.Log = new logging.Log(moduleName);
 export var loggingController = freedom['loggingcontroller']();
 
 // Example to show how to manuall configure console filtering.
-loggingController.setConsoleFilter([
-    'simple-socks:D',
-    'SocksToRtc:I',
-    'RtcToNet:I']);
+loggingController.setFilters(loggingTypes.Destination.console, {
+  'simple-socks': loggingTypes.Level.debug,
+  'SocksToRtc': loggingTypes.Level.info,
+  'RtcToNet': loggingTypes.Level.info
+});
 
 //-----------------------------------------------------------------------------
 var localhostEndpoint:net.Endpoint = { address: '127.0.0.1', port:9999 };
