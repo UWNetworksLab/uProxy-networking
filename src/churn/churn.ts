@@ -18,7 +18,6 @@
 
 import arraybuffers = require('../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 import churn_pipe_types = require('../churn-pipe/freedom-module.interface');
-import ChurnPipe = churn_pipe_types.freedom_ChurnPipe;
 import churn_types = require('./churn.types');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
 import ipaddr = require('ipaddr.js');
@@ -29,6 +28,7 @@ import random = require('../../../third_party/uproxy-lib/crypto/random');
 import signals = require('../../../third_party/uproxy-lib/webrtc/signals');
 
 import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
+import ChurnPipe = churn_pipe_types.freedom_ChurnPipe;
 
 var log :logging.Log = new logging.Log('churn');
 
@@ -150,24 +150,24 @@ var log :logging.Log = new logging.Log('churn');
     throw new Error('no srflx or host candidate found');
   };
 
-  var endpointKey_ = (endpoint:net.Endpoint) : string => {
+  // Returns a key for use with mirrorPipes_.
+  var makeEndpointKey_ = (endpoint:net.Endpoint) : string => {
     return endpoint.address + ':' + endpoint.port;
   };
 
   // Retry an async function with exponential backoff for up to 2 seconds
   // before failing.
-  var retry_ = (func:() => Promise<void>, delay?:number) : Promise<void> => {
-    var delay = delay || 10;  // milliseconds
-    var maxDelay = 2000;  // milliseconds
+  var retry_ = (func:() => Promise<void>, delayMs?:number) : Promise<void> => {
+    delayMs = delayMs || 10;  // milliseconds
     return func().catch((err) => {
-      if (delay > maxDelay) {
-        log.error('Timeout reached while retrying');
+      delayMs *= 2;
+      if (delayMs > 2000) {
         return Promise.reject(err);
       }
       return new Promise<void>((F, R) => {
         setTimeout(() => {
-          this.retry_(func, delay * 2).then(F, R);
-        }, delay);
+          this.retry_(func, delayMs).then(F, R);
+        }, delayMs);
       });
     });
   }
@@ -326,7 +326,7 @@ var log :logging.Log = new logging.Log('churn');
         remoteEndpoint:net.Endpoint,
         publicPipe:ChurnPipe)
         : Promise<ChurnPipe> => {
-      var key = endpointKey_(remoteEndpoint);
+      var key = makeEndpointKey_(remoteEndpoint);
       if (this.mirrorPipes_[key]) {
         log.warn('%1: Got redundant call to add local pipe for %2',
             this.peerName,
@@ -423,14 +423,14 @@ var log :logging.Log = new logging.Log('churn');
         }, (e:Error) => {
         log.error('%1: error establishing public pipe between %2 and %3: %4',
             this.peerName,
-            endpointKey_(natEndpoints.internal),
-            endpointKey_(remoteEndpoint),
+            makeEndpointKey_(natEndpoints.internal),
+            makeEndpointKey_(remoteEndpoint),
             e.message);
       });
 
       publicPipe.on('message', (m:churn_pipe_types.Message) => {
         // This is the particular local pipe associated with this sender.
-        var localPipe = this.mirrorPipes_[endpointKey_(m.source)];
+        var localPipe = this.mirrorPipes_[makeEndpointKey_(m.source)];
         if (localPipe) {
           // Note: due to asynchronous setup, it's possible that this pipe
           // has not yet been bound.  Hopefully, the send call will be
@@ -448,7 +448,7 @@ var log :logging.Log = new logging.Log('churn');
                        + ' while in state %4',
               this.peerName,
               m.data.byteLength,
-              endpointKey_(m.source),
+              makeEndpointKey_(m.source),
               this.pcState);
         }
       });
