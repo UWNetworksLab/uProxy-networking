@@ -305,7 +305,7 @@ module.exports = (grunt) ->
           npmLibNames: ['freedom-for-firefox']
           pathsFromDevBuild: ['echo']
           pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider']
-          localDestPath: 'samples/echo-server-firefoxapp/lib/'
+          localDestPath: 'samples/echo-server-firefoxapp/data/'
       libsForSimpleSocksChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
