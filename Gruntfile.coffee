@@ -261,10 +261,18 @@ module.exports = (grunt) ->
             nonull: true,
             expand: true,
             cwd: devBuildPath,
-            src: ['**/*',
-                  '!**/*.spec.js',
-                  '!**/*.spec.*.js',
-                  '!samples/**/*',],
+            src: ['**/*'
+                  '!**/*.ts'
+                  '**/*.d.ts'
+                  '!**/*.spec.d.ts'
+                  '!**/*.spec.js'
+                  '!**/*.spec.*.js'
+                  '!**/SpecRunner.html'
+                  '!samples'
+                  '!samples/**/*'
+                  '!**/jasmine_chromeapp'
+                  '!**/jasmine_chromeapp/**/*'
+                  ],
             dest: 'build/dist/',
             onlyIf: 'modified'
           }
@@ -498,7 +506,7 @@ module.exports = (grunt) ->
         ]
         options:
           outDir: devBuildPath + '/integration-tests/tcp/jasmine_chromeapp/'
-          keepRunner: true
+          keepRunner: false
       socksEcho:
         files: [
           {
@@ -514,7 +522,7 @@ module.exports = (grunt) ->
         ]
         options:
           outDir: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp/'
-          keepRunner: true
+          keepRunner: false
       socksEchoChurn:
         files: [
           {
@@ -530,7 +538,7 @@ module.exports = (grunt) ->
         ]
         options:
           outDir: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp/'
-          keepRunner: true
+          keepRunner: false
       socksEchoSlow:
         files: [
           {
@@ -546,7 +554,7 @@ module.exports = (grunt) ->
         ]
         options:
           outDir: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp_slow/'
-          keepRunner: true
+          keepRunner: false
 
     clean:
       build: [ 'build/dev', 'build/dist', '.tscache/' ]
