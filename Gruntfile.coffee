@@ -35,7 +35,7 @@ taskManager.add 'integration', [
 ]
 
 taskManager.add 'dist', [
-  'base', 'samples', 'test', 'integration', 'copy:dist'
+  'base', 'samples', 'test', 'copy:dist', 'integration'
 ]
 
 # -----------------------------------------------------------------------------
