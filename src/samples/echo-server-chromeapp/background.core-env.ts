@@ -21,7 +21,7 @@ var echo :OnEmitModule;
 script.onload = () => {
   freedom('uproxy-networking/echo/freedom-module.json', {
       'logger': 'uproxy-lib/loggingprovider/freedom-module.json',
-      'debug': 'log'
+      'debug': 'debug'
   }).then((echoFactory:OnEmitModuleFactory) => {
     echo = echoFactory();
     echo.emit('start', { address: '127.0.0.1', port: 9998 });

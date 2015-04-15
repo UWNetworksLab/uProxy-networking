@@ -15,7 +15,7 @@ export var simpleTurn :OnEmitModule;
 script.onload = () => {
   freedom('freedom-module.json', {
       'logger': 'uproxy-lib/loggingprovider/freedom-module.json',
-      'debug': 'log'
+      'debug': 'debug'
   }).then(function(simpleTurnFactory:OnEmitModuleFactory) {
     simpleTurn = simpleTurnFactory();
   }, (e:Error) => {

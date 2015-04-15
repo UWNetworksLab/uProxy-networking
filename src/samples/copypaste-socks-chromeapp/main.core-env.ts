@@ -15,7 +15,7 @@ module copypaste_module {
   export var onceReady :Promise<freedom_types.OnAndEmit<any,any>> =
       freedom('freedom-module.json', {
           'logger': 'uproxy-lib/loggingprovider/freedom-module.json',
-          'debug': 'log'
+          'debug': 'debug'
       }).then((copypasteSocksFactory:() => freedom_types.OnAndEmit<any,any>) => {
     var copypaste :freedom_types.OnAndEmit<any,any> = copypasteSocksFactory();
 
