@@ -7,8 +7,11 @@
 import TcpEchoServer = require('./tcp-echo-server');
 import net = require('../net/net.types');
 
+import loggingTypes = require('../../../third_party/uproxy-lib/loggingprovider/loggingprovider.types');
+
 // Example of how to add custom setting for the logging controller's filtering.
-freedom['loggingcontroller']().setConsoleFilter(['*:D']);
+freedom['loggingcontroller']().setDefaultFilter(loggingTypes.Destination.console,
+                                                loggingTypes.Level.debug);
 
 // The underlying TCP echo server.
 var tcpServer :TcpEchoServer;

@@ -11,7 +11,8 @@ import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
 import logging = require('../../../../third_party/uproxy-lib/logging/logging');
 
 // Example of how to configure logging level
-// freedom['loggingcontroller']().setConsoleFilter(['*:D']);
+// freedom['loggingcontroller']().setDefaultFilter(loggingTypes.Destination.console,
+//     loggingTypes.Level.info);
 
 export var log :logging.Log = new logging.Log('simple churn chat');
 
