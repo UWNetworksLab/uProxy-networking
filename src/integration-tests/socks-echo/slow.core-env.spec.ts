@@ -8,7 +8,7 @@ import ProxyIntegrationTester = require('./proxy-integration-test.types');
 // The real work is done in the Freedom module which performs each test.
 describe('proxy integration tests', function() {
   var getTestModule = function(denyLocalhost?:boolean) : Promise<ProxyIntegrationTester> {
-    return freedom('files/freedom-module.json', { 'debug': 'log' })
+    return freedom('files/freedom-module.json', { 'debug': 'debug' })
       .then((integrationTestFactory) => {
         return integrationTestFactory(denyLocalhost);
       });
