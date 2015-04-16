@@ -19,6 +19,7 @@ import churn = require('../churn/churn');
 import net = require('../net/net.types');
 import tcp = require('../net/tcp');
 import socks = require('../socks-common/socks-headers');
+import pool = require('../pool/pool');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 
@@ -105,6 +106,9 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
     private peerConnection_
         :peerconnection.PeerConnection<signals.Message> = null;
 
+    // This pool manages the data channels for the PeerConnection.
+    private pool_ :pool.Pool;
+
     // The |sessions_| map goes from WebRTC data-channel labels to the Session.
     // Most of the wiring to manage this relationship happens via promises. We
     // need this only for data being received from a peer-connection data
@@ -142,10 +146,11 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
         throw new Error('already configured');
       }
       this.peerConnection_ = peerconnection;
+      this.pool_ = new pool.Pool(peerconnection);
       this.proxyConfig = proxyConfig;
 
       this.signalsForPeer = this.peerConnection_.signalForPeerQueue;
-      this.peerConnection_.peerOpenedChannelQueue.setSyncHandler(
+      this.pool_.peerOpenedChannelQueue.setSyncHandler(
           this.onPeerOpenedChannel_);
 
       // TODO: this.onceReady should reject if |this.onceStopping_|
