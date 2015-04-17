@@ -14,7 +14,8 @@ var log :logging.Log = new logging.Log('pool');
 // of channels that keeps old channels for reuse instead of closing them, and
 // makes new channels as needed when the pool runs dry.
 export class Pool {
-  public peerOpenedChannelQueue :handler.QueueHandler<datachannel.DataChannel, void>;
+  public peerOpenedChannelQueue
+      :handler.QueueHandler<datachannel.DataChannel, void>;
 
   private localPool_ :LocalPool;
 
@@ -60,7 +61,8 @@ class LocalPool {
     // TODO: limit the number of channels (probably should be <=256).
     if (this.pool_.length > 0) {
       var channel = this.pool_.shift();
-      log.debug('%1: channel requested...re-using %2', this.name_, channel.getLabel());
+      log.debug('%1: channel requested...re-using %2',
+          this.name_, channel.getLabel());
       return Promise.resolve(channel);
     } else {
       log.debug('%1: channel requested...creating new', this.name_);
@@ -70,7 +72,8 @@ class LocalPool {
 
   // Creates and returns a new channel, wrapping it.
   private openNewChannel_ = () : Promise<PoolChannel> => {
-    return this.pc_.openDataChannel('pool' + this.numChannels_++).then((dc:datachannel.DataChannel) => {
+    return this.pc_.openDataChannel('pool' + this.numChannels_++).
+        then((dc:datachannel.DataChannel) => {
       return new PoolChannel(dc);
     });
   }
