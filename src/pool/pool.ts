@@ -138,6 +138,7 @@ class PoolChannel implements datachannel.DataChannel {
   public onceClosed : Promise<void>;
 
   public dataFromPeerQueue :handler.Queue<datachannel.Data,void>;
+  private lastDataFromPeerHandled_ : Promise<void>;
 
   private isOpen_ :boolean;
 
@@ -148,6 +149,7 @@ class PoolChannel implements datachannel.DataChannel {
 
   public reset = () => {
     this.dataFromPeerQueue = new handler.Queue<datachannel.Data,void>();
+    this.lastDataFromPeerHandled_ = Promise.resolve<void>();
     this.onceOpened = new Promise<void>((F, R) => {
       this.fulfillOpened_ = F;
     });
@@ -197,7 +199,7 @@ class PoolChannel implements datachannel.DataChannel {
     if (data.str) {
       var msg = JSON.parse(data.str);
       if (typeof msg.data === 'string') {
-        this.dataFromPeerQueue.handle({str: msg.data});
+        this.onDataForClient_({str: msg.data});
       } else if (typeof msg.control === 'string') {
         this.onControlMessage_(msg.control);
       } else {
@@ -205,7 +207,11 @@ class PoolChannel implements datachannel.DataChannel {
       }
       return;
     }
-    this.dataFromPeerQueue.handle(data);
+    this.onDataForClient_(data);
+  }
+
+  private onDataForClient_ = (data:datachannel.Data) : void => {
+    this.lastDataFromPeerHandled_ = this.dataFromPeerQueue.handle(data);
   }
 
   private onControlMessage_ = (controlMessage:string) : void => {
@@ -214,7 +220,9 @@ class PoolChannel implements datachannel.DataChannel {
     if (controlMessage === OPEN) {
       this.fulfillOpened_();
     } else if (controlMessage === CLOSE) {
-      this.sendControlMessage_(CLOSE_ACK).then(this.fulfillClosed_);
+      this.lastDataFromPeerHandled_.then(() => {
+        return this.sendControlMessage_(CLOSE_ACK);
+      }).then(this.fulfillClosed_);
     } else if (controlMessage === CLOSE_ACK) {
       this.fulfillClosed_();
     }
