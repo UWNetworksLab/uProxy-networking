@@ -134,7 +134,7 @@ class PoolChannel implements datachannel.DataChannel {
   private fulfillClosed_ :() => void;
   public onceClosed : Promise<void>;
 
-  public dataFromPeerQueue = new handler.Queue<datachannel.Data,void>();
+  public dataFromPeerQueue :handler.Queue<datachannel.Data,void>;
 
   private isOpen_ :boolean;
 
@@ -144,6 +144,7 @@ class PoolChannel implements datachannel.DataChannel {
   }
 
   public reset = () => {
+    this.dataFromPeerQueue = new handler.Queue<datachannel.Data,void>();
     this.onceOpened = new Promise<void>((F, R) => {
       this.fulfillOpened_ = F;
     });
@@ -166,7 +167,6 @@ class PoolChannel implements datachannel.DataChannel {
 
   public send = (data:datachannel.Data) : Promise<void> => {
     if (!this.isOpen_) {
-      // debugger;
       return Promise.reject(new Error('Can\'t send while closed'));
     }
 
