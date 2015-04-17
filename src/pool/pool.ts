@@ -74,8 +74,10 @@ class LocalPool {
   private openNewChannel_ = () : Promise<PoolChannel> => {
     return this.pc_.openDataChannel('pool' + this.numChannels_++).
         then((dc:datachannel.DataChannel) => {
-      return new PoolChannel(dc);
-    });
+          return dc.onceOpened.then(() => {
+            return new PoolChannel(dc);
+          });
+        });
   }
 
   // Resets the channel, making it ready for use again, and adds it
@@ -102,8 +104,10 @@ class RemotePool {
 
   private onNewChannel_ = (dc:datachannel.DataChannel) => {
     log.debug('%1: new channel event received', this.name_);
-    var poolChannel = new PoolChannel(dc);
-    this.listenForOpenAndClose_(poolChannel);
+    dc.onceOpened.then(() => {
+      var poolChannel = new PoolChannel(dc);
+      this.listenForOpenAndClose_(poolChannel);
+    });
   }
 
   private listenForOpenAndClose_ = (poolChannel:PoolChannel) : void => {
@@ -143,6 +147,7 @@ class PoolChannel implements datachannel.DataChannel {
   private isOpen_ :boolean;
   private isClosing_ :boolean;  // True while waiting for CLOSE_ACK
 
+  // dc_.onceOpened must already have resolved
   constructor(private dc_:datachannel.DataChannel) {
     this.reset();
     this.dc_.dataFromPeerQueue.setSyncHandler(this.onDataFromPeer_);
@@ -264,11 +269,9 @@ class PoolChannel implements datachannel.DataChannel {
       return Promise.reject(new Error('channel is already open'));
     }
 
-    this.dc_.onceOpened.then(() => {
-      this.sendControlMessage_(OPEN);
-      // Immediate open; there is no open-ack
-      this.fulfillOpened_();
-    });
+    this.sendControlMessage_(OPEN);
+    // Immediate open; there is no open-ack
+    this.fulfillOpened_();
 
     return this.onceOpened;
   }
@@ -280,10 +283,7 @@ class PoolChannel implements datachannel.DataChannel {
     }
     this.isClosing_ = true;
 
-    this.dc_.onceOpened.then(() => {
-      this.sendControlMessage_(CLOSE);
-    });
-
+    this.sendControlMessage_(CLOSE);
     return this.onceClosed;
   }
 
