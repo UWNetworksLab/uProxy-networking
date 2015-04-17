@@ -3,6 +3,7 @@
 import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
 import datachannel = require('../../../third_party/uproxy-lib/webrtc/datachannel');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
+import queue = require('../../../third_party/uproxy-lib/queue/queue');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 
@@ -33,69 +34,56 @@ export class Pool {
 // Manages a pool of data channels opened by this peer.  The only public method
 // is openDataChannel.
 class LocalPool {
-  private numberOfChannels_ :number = 0;
-  private availableChannels_ = new handler.Queue<PoolChannel,PoolChannel>();
-  // The first type should be void, or Undefined, but typescript
-  // doesn't let you call a method of type (x:void) => ... and you
-  // can't reference the Undefined type explicitly.
-  private requests_ = new handler.Queue<string,PoolChannel>();
+  private numChannels_ = 0;
+
+  // Channels which have been closed, and may be re-opened.
+  private pool_ = new queue.Queue<PoolChannel>();
 
   constructor(
       private pc_:peerconnection.PeerConnection<any>,
-      private name_:string) {
-    this.requests_.setHandler(this.onRequest_);
-  }
+      private name_:string) {}
 
   public openDataChannel = () : Promise<PoolChannel> => {
-    log.debug('%1: channel requested', this.name_);
+    return this.reuseOrCreate_().then((channel:PoolChannel) => {
+      return channel.open().then(() => {
+        // When this channel closes, reset it and return it to the pool.
+        channel.onceClosed.then(() => {
+          this.onChannelClosed_(channel);
+        });
+        return channel;
+      });
+    });
+  }
+
+  private reuseOrCreate_ = () : Promise<PoolChannel> => {
     // If there are no channels available right now, open a new one.
     // TODO: limit the number of channels (probably should be <=256).
-    if (this.availableChannels_.getLength() === 0) {
-      this.openNewChannel_();
+    if (this.pool_.length > 0) {
+      var channel = this.pool_.shift();
+      log.debug('%1: channel requested...re-using %2', this.name_, channel.getLabel());
+      return Promise.resolve(channel);
+    } else {
+      log.debug('%1: channel requested...creating new', this.name_);
+      return this.openNewChannel_();
     }
-    return this.requests_.handle('dummy');
   }
 
-  // Creates a brand new channel, adding it to availableChannels_.
-  private openNewChannel_ = () => {
-    log.debug('%1: opening new channel (currently %2)',
-        this.name_,
-        this.numberOfChannels_);
-    this.numberOfChannels_++;
-    this.pc_.openDataChannel('c' + this.numberOfChannels_).then(this.wrapChannel_).then(this.availableChannels_.handle);
-  }
-
-  private onRequest_ = (unused:string) : Promise<PoolChannel> => {
-    return this.availableChannels_.setNextHandler(this.activateChannel_);
-  }
-
-  private activateChannel_ = (poolChannel:PoolChannel) : Promise<PoolChannel> => {
-    return poolChannel.open().then(() => {
-      return poolChannel;
+  // Creates and returns a new channel, wrapping it.
+  private openNewChannel_ = () : Promise<PoolChannel> => {
+    return this.pc_.openDataChannel('pool' + this.numChannels_++).then((dc:datachannel.DataChannel) => {
+      return new PoolChannel(dc);
     });
   }
 
-  private wrapChannel_ = (dc:datachannel.DataChannel) : Promise<PoolChannel> => {
-    return dc.onceOpened.then(() => {
-      var poolChannel = new PoolChannel(dc);
-      poolChannel.onceClosed.then(() => {
-        this.onChannelClosed_(poolChannel);
-      });
-      
-      return poolChannel;
-    });
-  }
-
+  // Resets the channel, making it ready for use again, and adds it
+  // to the pool.
   private onChannelClosed_ = (poolChannel:PoolChannel) : void => {
-    log.debug('%1: returning channel %2 to the available pool',
+    log.debug('%1: returning channel %2 to the pool (size: %3)',
         this.name_,
-        poolChannel.getLabel());
+        poolChannel.getLabel(),
+        this.pool_.length);
     poolChannel.reset();
-    poolChannel.onceClosed.then(() => {
-      this.onChannelClosed_(poolChannel);
-    });
-
-    this.availableChannels_.handle(poolChannel);
+    this.pool_.push(poolChannel);
   }
 }
 
