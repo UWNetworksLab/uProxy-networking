@@ -37,14 +37,9 @@ transform and restore the data being sent over the network.
 
 ## Building
 
-1. Run `npm install` from the base directory to obtain all required NPM packages.
-2. Run `bower install` from the base directory to obtain all required Bower packages.
-3. Run `./setup.sh tools` from the base directory to copy [uproxy-lib tools](https://github.com/uProxy/uproxy-lib)
-4. Run `./setup.sh third_party` from the base directory to copy needed third party libraries
-5. Running `grunt` compiles all the TypeScript into JavaScript in the `dist/` directory.
-6. Run Jasmine tests with `grunt test`.
-
-Alternatively, `./setup.sh install` to do steps 1-4 in one go, and then run `grunt` commands at your leisure.
+1. Run `setup.sh install` to get dependencies (from npm, bower, and [uproxy-lib tools](https://github.com/uProxy/uproxy-lib))
+2. Running `grunt` compiles all the TypeScript into JavaScript in the `dist/` directory.
+3. Run Jasmine tests with `grunt test`.
 
 ## Usage
 
