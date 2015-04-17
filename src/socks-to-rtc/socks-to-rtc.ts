@@ -437,8 +437,12 @@ module SocksToRtc {
       return this.tcpConnection_.receiveNext()
         .then(socks.interpretRequestBuffer)
         .then((request:socks.Request) => {
-          log.info('%1: received endpoint from SOCKS client: %2', [
-              this.longId(), JSON.stringify(request.endpoint)]);
+          // The domain name is very sensitive, so we keep it out of the
+          // info-level logs, which may be uploaded.
+          log.debug('%1: received address from SOCKS client: %2', [
+              this.longId(), request.endpoint.address]);
+          log.info('%1: received port from SOCKS client: %2', [
+            this.longId(), request.endpoint.port]);
           this.tcpConnection_.pause();
           return this.dataChannel_.send({ str: JSON.stringify(request) });
         })

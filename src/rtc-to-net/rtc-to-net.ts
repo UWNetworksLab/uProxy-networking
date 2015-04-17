@@ -417,8 +417,12 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
             return;
           }
 
-          log.info('%1: received endpoint from peer: %2', [
-              this.longId(), JSON.stringify(request.endpoint)]);
+          // The domain name is very sensitive, so we keep it out of the
+          // info-level logs, which may be uploaded.
+          log.debug('%1: received address from peer: %2', [
+              this.longId(), request.endpoint.address]);
+          log.info('%1: received port from peer: %2', [
+            this.longId(), request.endpoint.port]);
           F(request.endpoint);
           return;
         });
