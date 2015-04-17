@@ -146,7 +146,7 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
         throw new Error('already configured');
       }
       this.peerConnection_ = peerconnection;
-      this.pool_ = new pool.Pool(peerconnection);
+      this.pool_ = new pool.Pool(peerconnection, 'RtcToNet');
       this.proxyConfig = proxyConfig;
 
       this.signalsForPeer = this.peerConnection_.signalForPeerQueue;
@@ -489,9 +489,6 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
     // Sends a packet over the data channel.
     // Invoked when a packet is received over the TCP socket.
     private sendOnChannel_ = (data:ArrayBuffer) : Promise<void> => {
-      log.debug('%1: socket received %2 bytes', [
-          this.longId(),
-          data.byteLength]);
       this.socketReceivedBytes_ += data.byteLength;
 
       return this.dataChannel_.send({buffer: data});
@@ -505,9 +502,6 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
         return Promise.reject(new Error(
             'received non-buffer data from datachannel'));
       }
-      log.debug('%1: datachannel received %2 bytes', [
-          this.longId(),
-          data.buffer.byteLength]);
       this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
       this.channelReceivedBytes_ += data.buffer.byteLength;
 
