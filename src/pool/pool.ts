@@ -226,19 +226,19 @@ class PoolChannel implements datachannel.DataChannel {
               this.getLabel(), controlMessage);
     if (controlMessage === OPEN) {
       if (this.isOpen_) {
-        log.warn('%1: Got redundant open message');
+        log.warn('%1: Got redundant open message', this.getLabel());
       }
       this.fulfillOpened_();
     } else if (controlMessage === CLOSE) {
       if (!this.isOpen_) {
-        log.warn('%1: Got redundant close message');
+        log.warn('%1: Got redundant close message', this.getLabel());
       }
       this.lastDataFromPeerHandled_.then(() => {
         return this.sendControlMessage_(CLOSE_ACK);
       }).then(this.fulfillClosed_);
     } else if (controlMessage === CLOSE_ACK) {
       if (!this.isClosing_) {
-        log.warn('%1: Got unexpected CLOSE_ACK');
+        log.warn('%1: Got unexpected CLOSE_ACK', this.getLabel());
         return;
       }
       this.fulfillClosed_();
