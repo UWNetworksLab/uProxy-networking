@@ -74,8 +74,10 @@ class LocalPool {
   private openNewChannel_ = () : Promise<PoolChannel> => {
     return this.pc_.openDataChannel('p' + this.numChannels_++).
         then((dc:datachannel.DataChannel) => {
-      return new PoolChannel(dc);
-    });
+          return dc.onceOpened.then(() => {
+            return new PoolChannel(dc);
+          });
+        });
   }
 
   // Resets the channel, making it ready for use again, and adds it
@@ -101,8 +103,10 @@ class RemotePool {
   private onNewChannel_ = (dc:datachannel.DataChannel) => {
     log.debug('%1: remote side created new channel: %2',
         this.name_, dc.getLabel());
-    var poolChannel = new PoolChannel(dc);
-    this.listenForOpenAndClose_(poolChannel);
+    dc.onceOpened.then(() => {
+      var poolChannel = new PoolChannel(dc);
+      this.listenForOpenAndClose_(poolChannel);
+    });
   }
 
   private listenForOpenAndClose_ = (poolChannel:PoolChannel) : void => {
@@ -137,9 +141,12 @@ class PoolChannel implements datachannel.DataChannel {
   public onceClosed : Promise<void>;
 
   public dataFromPeerQueue :handler.Queue<datachannel.Data,void>;
+  private lastDataFromPeerHandled_ : Promise<void>;
 
   private isOpen_ :boolean;
+  private isClosing_ :boolean;  // True while waiting for CLOSE_ACK
 
+  // dc_.onceOpened must already have resolved
   constructor(private dc_:datachannel.DataChannel) {
     this.reset();
     this.dc_.dataFromPeerQueue.setSyncHandler(this.onDataFromPeer_);
@@ -147,6 +154,7 @@ class PoolChannel implements datachannel.DataChannel {
 
   public reset = () => {
     this.dataFromPeerQueue = new handler.Queue<datachannel.Data,void>();
+    this.lastDataFromPeerHandled_ = Promise.resolve<void>();
     this.onceOpened = new Promise<void>((F, R) => {
       this.fulfillOpened_ = F;
     });
@@ -160,7 +168,9 @@ class PoolChannel implements datachannel.DataChannel {
     });
     this.onceClosed.then(() => {
       this.isOpen_ = false;
+      this.isClosing_ = false;
     });
+    this.isClosing_ = false;
   }
 
   public getLabel = () : string => {
@@ -196,7 +206,7 @@ class PoolChannel implements datachannel.DataChannel {
     if (data.str) {
       var msg = JSON.parse(data.str);
       if (typeof msg.data === 'string') {
-        this.dataFromPeerQueue.handle({str: msg.data});
+        this.onDataForClient_({str: msg.data});
       } else if (typeof msg.control === 'string') {
         this.onControlMessage_(msg.control);
       } else {
@@ -204,17 +214,33 @@ class PoolChannel implements datachannel.DataChannel {
       }
       return;
     }
-    this.dataFromPeerQueue.handle(data);
+    this.onDataForClient_(data);
+  }
+
+  private onDataForClient_ = (data:datachannel.Data) : void => {
+    this.lastDataFromPeerHandled_ = this.dataFromPeerQueue.handle(data);
   }
 
   private onControlMessage_ = (controlMessage:string) : void => {
     log.debug('%1: received control message: %2',
               this.getLabel(), controlMessage);
     if (controlMessage === OPEN) {
+      if (this.isOpen_) {
+        log.warn('%1: Got redundant open message');
+      }
       this.fulfillOpened_();
     } else if (controlMessage === CLOSE) {
-      this.sendControlMessage_(CLOSE_ACK).then(this.fulfillClosed_);
+      if (!this.isOpen_) {
+        log.warn('%1: Got redundant close message');
+      }
+      this.lastDataFromPeerHandled_.then(() => {
+        return this.sendControlMessage_(CLOSE_ACK);
+      }).then(this.fulfillClosed_);
     } else if (controlMessage === CLOSE_ACK) {
+      if (!this.isClosing_) {
+        log.warn('%1: Got unexpected CLOSE_ACK');
+        return;
+      }
       this.fulfillClosed_();
     }
   }
@@ -242,11 +268,9 @@ class PoolChannel implements datachannel.DataChannel {
       return Promise.reject(new Error('channel is already open'));
     }
 
-    this.dc_.onceOpened.then(() => {
-      this.sendControlMessage_(OPEN);
-      // Immediate open; there is no open-ack
-      this.fulfillOpened_();
-    });
+    this.sendControlMessage_(OPEN);
+    // Immediate open; there is no open-ack
+    this.fulfillOpened_();
 
     return this.onceOpened;
   }
@@ -256,11 +280,9 @@ class PoolChannel implements datachannel.DataChannel {
     if (!this.isOpen_) {
       return;
     }
+    this.isClosing_ = true;
 
-    this.dc_.onceOpened.then(() => {
-      this.sendControlMessage_(CLOSE);
-    });
-
+    this.sendControlMessage_(CLOSE);
     return this.onceClosed;
   }
 
