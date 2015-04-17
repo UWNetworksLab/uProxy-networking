@@ -141,6 +141,7 @@ class PoolChannel implements datachannel.DataChannel {
   private lastDataFromPeerHandled_ : Promise<void>;
 
   private isOpen_ :boolean;
+  private isClosing_ :boolean;  // True while waiting for CLOSE_ACK
 
   constructor(private dc_:datachannel.DataChannel) {
     this.reset();
@@ -163,7 +164,9 @@ class PoolChannel implements datachannel.DataChannel {
     });
     this.onceClosed.then(() => {
       this.isOpen_ = false;
+      this.isClosing_ = false;
     });
+    this.isClosing_ = false;
   }
 
   public getLabel = () : string => {
@@ -218,12 +221,22 @@ class PoolChannel implements datachannel.DataChannel {
     log.debug('%1: received control message: %2',
               this.getLabel(), controlMessage);
     if (controlMessage === OPEN) {
+      if (this.isOpen_) {
+        log.warn('%1: Got redundant open message');
+      }
       this.fulfillOpened_();
     } else if (controlMessage === CLOSE) {
+      if (!this.isOpen_) {
+        log.warn('%1: Got redundant close message');
+      }
       this.lastDataFromPeerHandled_.then(() => {
         return this.sendControlMessage_(CLOSE_ACK);
       }).then(this.fulfillClosed_);
     } else if (controlMessage === CLOSE_ACK) {
+      if (!this.isClosing_) {
+        log.warn('%1: Got unexpected CLOSE_ACK');
+        return;
+      }
       this.fulfillClosed_();
     }
   }
@@ -265,6 +278,7 @@ class PoolChannel implements datachannel.DataChannel {
     if (!this.isOpen_) {
       return;
     }
+    this.isClosing_ = true;
 
     this.dc_.onceOpened.then(() => {
       this.sendControlMessage_(CLOSE);
