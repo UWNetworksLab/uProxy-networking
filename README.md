@@ -38,7 +38,7 @@ transform and restore the data being sent over the network.
 ## Building
 
 1. Run `setup.sh install` to get dependencies (from npm, bower, and [uproxy-lib tools](https://github.com/uProxy/uproxy-lib))
-2. Running `grunt` compiles all the TypeScript into JavaScript in the `dist/` directory.
+2. Running `grunt` compiles all the TypeScript into JavaScript in the `build/dev/` directory.
 3. Run Jasmine tests with `grunt test`.
 
 ## Usage
