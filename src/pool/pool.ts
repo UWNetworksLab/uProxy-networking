@@ -3,6 +3,7 @@
 import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
 import datachannel = require('../../../third_party/uproxy-lib/webrtc/datachannel');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
+import queue = require('../../../third_party/uproxy-lib/queue/queue');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 
@@ -17,9 +18,11 @@ export class Pool {
 
   private localPool_ :LocalPool;
 
-  constructor(pc:peerconnection.PeerConnection<any>) {
-    this.localPool_ = new LocalPool(pc);
-    var remotePool = new RemotePool(pc);
+  constructor(
+      pc:peerconnection.PeerConnection<any>,
+      name_:string) {
+    this.localPool_ = new LocalPool(pc, name_);
+    var remotePool = new RemotePool(pc, name_);
     this.peerOpenedChannelQueue = remotePool.peerOpenedChannelQueue;
   }
 
@@ -31,65 +34,56 @@ export class Pool {
 // Manages a pool of data channels opened by this peer.  The only public method
 // is openDataChannel.
 class LocalPool {
-  private numberOfChannels_ :number = 0;
-  private availableChannels_ = new handler.Queue<PoolChannel,PoolChannel>();
-  // The first type should be void, or Undefined, but typescript
-  // doesn't let you call a method of type (x:void) => ... and you
-  // can't reference the Undefined type explicitly.
-  private requests_ = new handler.Queue<string,PoolChannel>();
+  private numChannels_ = 0;
 
-  constructor(private pc_:peerconnection.PeerConnection<any>) {
-    this.requests_.setNextHandler(this.onRequest_);
-  }
+  // Channels which have been closed, and may be re-opened.
+  private pool_ = new queue.Queue<PoolChannel>();
+
+  constructor(
+      private pc_:peerconnection.PeerConnection<any>,
+      private name_:string) {}
 
   public openDataChannel = () : Promise<PoolChannel> => {
-    log.debug('Processing request for a channel');
-    return this.requests_.handle('dummy');
-  }
-
-  private onRequest_ = (dummy:string) : Promise<PoolChannel> => {
-    if (this.availableChannels_.getLength() === 0) {
-      log.debug('No channels available');
-      this.openNewChannel_();
-    }
-
-    return this.availableChannels_.setNextHandler(this.activateChannel_).then((poolChannel:PoolChannel) : PoolChannel => {
-      this.requests_.setNextHandler(this.onRequest_);
-      return poolChannel;
-    });
-  }
-
-  private openNewChannel_ = () => {
-    log.debug('Opening a new channel');
-    this.numberOfChannels_++;
-    this.pc_.openDataChannel('c' + this.numberOfChannels_).then(this.wrapChannel_).then(this.availableChannels_.handle);
-  }
-
-  private activateChannel_ = (poolChannel:PoolChannel) : Promise<PoolChannel> => {
-    return poolChannel.open().then(() => {
-      return poolChannel;
-    });
-  }
-
-  private wrapChannel_ = (dc:datachannel.DataChannel) : Promise<PoolChannel> => {
-    return dc.onceOpened.then(() => {
-      var poolChannel = new PoolChannel(dc);
-      poolChannel.onceClosed.then(() => {
-        this.onChannelClosed_(poolChannel);
+    return this.reuseOrCreate_().then((channel:PoolChannel) => {
+      return channel.open().then(() => {
+        // When this channel closes, reset it and return it to the pool.
+        channel.onceClosed.then(() => {
+          this.onChannelClosed_(channel);
+        });
+        return channel;
       });
-      
-      return poolChannel;
     });
   }
 
-  private onChannelClosed_ = (poolChannel:PoolChannel) : void => {
-    log.debug('Returning closed channel to the available pool');
-    poolChannel.reset();
-    poolChannel.onceClosed.then(() => {
-      this.onChannelClosed_(poolChannel);
-    });
+  private reuseOrCreate_ = () : Promise<PoolChannel> => {
+    // If there are no channels available right now, open a new one.
+    // TODO: limit the number of channels (probably should be <=256).
+    if (this.pool_.length > 0) {
+      var channel = this.pool_.shift();
+      log.debug('%1: channel requested...re-using %2', this.name_, channel.getLabel());
+      return Promise.resolve(channel);
+    } else {
+      log.debug('%1: channel requested...creating new', this.name_);
+      return this.openNewChannel_();
+    }
+  }
 
-    this.availableChannels_.handle(poolChannel);
+  // Creates and returns a new channel, wrapping it.
+  private openNewChannel_ = () : Promise<PoolChannel> => {
+    return this.pc_.openDataChannel('pool' + this.numChannels_++).then((dc:datachannel.DataChannel) => {
+      return new PoolChannel(dc);
+    });
+  }
+
+  // Resets the channel, making it ready for use again, and adds it
+  // to the pool.
+  private onChannelClosed_ = (poolChannel:PoolChannel) : void => {
+    log.debug('%1: returning channel %2 to the pool (size: %3)',
+        this.name_,
+        poolChannel.getLabel(),
+        this.pool_.length);
+    poolChannel.reset();
+    this.pool_.push(poolChannel);
   }
 }
 
@@ -97,12 +91,14 @@ class LocalPool {
 class RemotePool {
   public peerOpenedChannelQueue = new handler.Queue<PoolChannel,void>();
 
-  constructor(private pc_:peerconnection.PeerConnection<any>) {
+  constructor(
+      private pc_:peerconnection.PeerConnection<any>,
+      private name_:string) {
     this.pc_.peerOpenedChannelQueue.setSyncHandler(this.onNewChannel_);
   }
 
   private onNewChannel_ = (dc:datachannel.DataChannel) => {
-    log.debug('New channel event received');
+    log.debug('%1: new channel event received', this.name_);
     var poolChannel = new PoolChannel(dc);
     this.listenForOpenAndClose_(poolChannel);
   }
@@ -170,7 +166,7 @@ class PoolChannel implements datachannel.DataChannel {
 
   public send = (data:datachannel.Data) : Promise<void> => {
     if (!this.isOpen_) {
-      debugger;
+      // debugger;
       return Promise.reject(new Error('Can\'t send while closed'));
     }
 
@@ -239,9 +235,9 @@ class PoolChannel implements datachannel.DataChannel {
 
   // New method for PoolChannel, not present in the DataChannel interface.
   public open = () : Promise<void> => {
-    log.debug(this.getLabel() + ' open');
+    log.debug(this.getLabel() + ': open');
     if (this.isOpen_) {
-      return Promise.reject(new Error('Channel is already open'));
+      return Promise.reject(new Error('channel is already open'));
     }
 
     this.dc_.onceOpened.then(() => {
@@ -256,7 +252,6 @@ class PoolChannel implements datachannel.DataChannel {
   public close = () : Promise<void> => {
     log.debug('%1: close', this.getLabel());
     if (!this.isOpen_) {
-      log.debug('Double close');
       return;
     }
 
