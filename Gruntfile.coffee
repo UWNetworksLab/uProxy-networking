@@ -128,7 +128,6 @@ taskManager.add 'socksEchoIntegrationTestModule', [
 taskManager.add 'socksEchoIntegrationTest', [
   'socksEchoIntegrationTestModule'
   'jasmine_chromeapp:socksEcho'
-  #'jasmine_chromeapp:socksEchoChurn'
 ]
 
 taskManager.add 'tcpIntegrationTestModule', [
@@ -511,23 +510,7 @@ module.exports = (grunt) ->
         files: [
           {
             cwd: devBuildPath + '/integration-tests/socks-echo/',
-            src: ['**/*', '!jasmine_chromeapp/**/*']
-            dest: './',
-            expand: true
-          }
-        ]
-        scripts: [
-          'freedom-for-chrome/freedom-for-chrome.js'
-          'nochurn.core-env.spec.static.js'
-        ]
-        options:
-          outDir: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp/'
-          keepRunner: false
-      socksEchoChurn:
-        files: [
-          {
-            cwd: devBuildPath + '/integration-tests/socks-echo/',
-            src: ['**/*', '!jasmine_chromeapp/**/*']
+            src: ['**/*', '!jasmine_chromeapp*/**']
             dest: './',
             expand: true
           }
@@ -535,6 +518,7 @@ module.exports = (grunt) ->
         scripts: [
           'freedom-for-chrome/freedom-for-chrome.js'
           'churn.core-env.spec.static.js'
+          'nochurn.core-env.spec.static.js'
         ]
         options:
           outDir: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp/'
@@ -543,7 +527,7 @@ module.exports = (grunt) ->
         files: [
           {
             cwd: devBuildPath + '/integration-tests/socks-echo/',
-            src: ['**/*', '!jasmine_chromeapp']
+            src: ['**/*', '!jasmine_chromeapp*/**']
             dest: '/uproxy-networking/',
             expand: true
           }

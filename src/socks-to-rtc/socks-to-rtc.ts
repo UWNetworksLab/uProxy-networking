@@ -11,17 +11,13 @@ import churn = require('../churn/churn');
 import net = require('../net/net.types');
 import tcp = require('../net/tcp');
 import socks = require('../socks-common/socks-headers');
+import pool = require('../pool/pool');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 
 // SocksToRtc passes socks requests over WebRTC datachannels.
 module SocksToRtc {
   var log :logging.Log = new logging.Log('SocksToRtc');
-
-  var tagNumber_ = 0;
-  function obtainTag() {
-    return 'c' + (tagNumber_++);
-  }
 
   // The |SocksToRtc| class runs a SOCKS5 proxy server which passes requests
   // remotely through WebRTC peer connections.
@@ -69,6 +65,9 @@ module SocksToRtc {
     // connection.
     private peerConnection_
         :peerconnection.PeerConnection<signals.Message>;
+
+    // This pool manages the PeerConnection's datachannels.
+    private pool_ : pool.Pool;
 
     // Event listener registration function.  When running in freedom, this is
     // not defined, and the corresponding functionality is inserted by freedom
@@ -138,6 +137,7 @@ module SocksToRtc {
       this.tcpServer_.connectionsQueue
           .setSyncHandler(this.makeTcpToRtcSession_);
       this.peerConnection_ = peerconnection;
+      this.pool_ = new pool.Pool(this.peerConnection_, 'SocksToRtc');
 
       this.peerConnection_.signalForPeerQueue.setSyncHandler(
           this.dispatchEvent_.bind(this, 'signalForPeer'));
@@ -226,12 +226,15 @@ module SocksToRtc {
     // Invoked when a SOCKS client establishes a connection with the TCP server.
     // Note that Session closes the TCP connection and datachannel on any error.
     private makeTcpToRtcSession_ = (tcpConnection:tcp.Connection) : void => {
-      var tag = obtainTag();
-      log.info('associating session %1 with new TCP connection', [tag]);
-
-	    this.peerConnection_.openDataChannel(tag)
+	    this.pool_.openDataChannel()
           .then((channel:peerconnection.DataChannel) => {
-        log.info('opened datachannel for session %1', [tag]);
+        var tag = channel.getLabel();
+        if (tag in this.sessions_) {
+          throw new Error('pool returned a channel already associated ' +
+              'with a session: ' + tag);
+        }
+
+        log.info('associating channel %1 with new SOCKS client', tag);
         var session = new Session();
         session.start(
             tcpConnection,
@@ -256,7 +259,9 @@ module SocksToRtc {
           discard();
         });
       }, (e:Error) => {
-        log.error('failed to open datachannel for session %1: %2 ', [tag, e.message]);
+        log.error('failed to open channel for new SOCKS client: %2 ',
+            e.message);
+        // TODO: return bytes to the client!
       });
     }
 
@@ -482,10 +487,6 @@ module SocksToRtc {
     // Sends a packet over the data channel.
     // Invoked when a packet is received over the TCP socket.
     private sendOnChannel_ = (data:ArrayBuffer) : Promise<void> => {
-      log.debug('%1: socket received %2 bytes', [
-          this.longId(),
-          data.byteLength]);
-
       return this.dataChannel_.send({buffer: data});
     }
 
@@ -497,9 +498,6 @@ module SocksToRtc {
         return Promise.reject(new Error(
             'received non-buffer data from datachannel'));
       }
-      log.debug('%1: datachannel received %2 bytes', [
-          this.longId(),
-          data.buffer.byteLength]);
       this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
 
       return this.tcpConnection_.send(data.buffer);
