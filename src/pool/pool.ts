@@ -61,18 +61,18 @@ class LocalPool {
     // TODO: limit the number of channels (probably should be <=256).
     if (this.pool_.length > 0) {
       var channel = this.pool_.shift();
-      log.debug('%1: channel requested...re-using %2',
-          this.name_, channel.getLabel());
+      log.debug('%1: channel requested, pulled %2 from pool (%3 remaining)',
+          this.name_, channel.getLabel(), this.pool_.length);
       return Promise.resolve(channel);
     } else {
-      log.debug('%1: channel requested...creating new', this.name_);
+      log.debug('%1: channel requested, creating new', this.name_);
       return this.openNewChannel_();
     }
   }
 
   // Creates and returns a new channel, wrapping it.
   private openNewChannel_ = () : Promise<PoolChannel> => {
-    return this.pc_.openDataChannel('pool' + this.numChannels_++).
+    return this.pc_.openDataChannel('p' + this.numChannels_++).
         then((dc:datachannel.DataChannel) => {
           return dc.onceOpened.then(() => {
             return new PoolChannel(dc);
@@ -83,12 +83,10 @@ class LocalPool {
   // Resets the channel, making it ready for use again, and adds it
   // to the pool.
   private onChannelClosed_ = (poolChannel:PoolChannel) : void => {
-    log.debug('%1: returning channel %2 to the pool (size: %3)',
-        this.name_,
-        poolChannel.getLabel(),
-        this.pool_.length);
     poolChannel.reset();
     this.pool_.push(poolChannel);
+    log.debug('%1: returned channel %2 to the pool (new size: %3)',
+        this.name_, poolChannel.getLabel(), this.pool_.length);
   }
 }
 
@@ -103,7 +101,8 @@ class RemotePool {
   }
 
   private onNewChannel_ = (dc:datachannel.DataChannel) => {
-    log.debug('%1: new channel event received', this.name_);
+    log.debug('%1: remote side created new channel: %2',
+        this.name_, dc.getLabel());
     dc.onceOpened.then(() => {
       var poolChannel = new PoolChannel(dc);
       this.listenForOpenAndClose_(poolChannel);
