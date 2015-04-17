@@ -19,11 +19,6 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
 module SocksToRtc {
   var log :logging.Log = new logging.Log('SocksToRtc');
 
-  var tagNumber_ = 0;
-  function obtainTag() {
-    return 'c' + (tagNumber_++);
-  }
-
   // The |SocksToRtc| class runs a SOCKS5 proxy server which passes requests
   // remotely through WebRTC peer connections.
   // TODO: rename this 'Server'.
@@ -231,12 +226,15 @@ module SocksToRtc {
     // Invoked when a SOCKS client establishes a connection with the TCP server.
     // Note that Session closes the TCP connection and datachannel on any error.
     private makeTcpToRtcSession_ = (tcpConnection:tcp.Connection) : void => {
-      var tag = obtainTag();
-      log.info('associating session %1 with new TCP connection', [tag]);
-
 	    this.pool_.openDataChannel()
           .then((channel:peerconnection.DataChannel) => {
-        log.info('opened datachannel for session %1', [tag]);
+        var tag = channel.getLabel();
+        if (tag in this.sessions_) {
+          throw new Error('pool returned a channel already associated ' +
+              'with a session: ' + tag);
+        }
+
+        log.info('associating channel %1 with new SOCKS client', tag);
         var session = new Session();
         session.start(
             tcpConnection,
@@ -261,7 +259,9 @@ module SocksToRtc {
           discard();
         });
       }, (e:Error) => {
-        log.error('failed to open datachannel for session %1: %2 ', [tag, e.message]);
+        log.error('failed to open channel for new SOCKS client: %2 ',
+            e.message);
+        // TODO: return bytes to the client!
       });
     }
 
