@@ -10,8 +10,9 @@ import net = require('../../net/net.types');
 import logging = require('../../../../third_party/uproxy-lib/logging/logging');
 import loggingTypes = require('../../../../third_party/uproxy-lib/loggingprovider/loggingprovider.types');
 
-freedom['loggingcontroller']().setDefaultFilter(loggingTypes.Destination.console,
-                                                loggingTypes.Level.info);
+var loggingController = freedom['loggingcontroller']();
+loggingController = setDefaultFilter(loggingTypes.Destination.console,
+                                     loggingTypes.Level.info);
 
 var log :logging.Log = new logging.Log('simple TURN');
 
