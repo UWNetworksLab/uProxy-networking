@@ -138,19 +138,18 @@ class RemotePool {
   }
 }
 
-// These are the three control messages used.  To help debugging, and
+// These are the two control messages used.  To help debugging, and
 // improve forward-compatibility, we send the string name on the wire,
 // not the numerical enum value.  Therefore, these names are part of
 // the normative protocol, and will break compatibility if changed.
 enum ControlMessage {
   open,
-  close,
-  close_ack
+  close
 }
 
 enum State {
   open,
-  closing,  // Waiting for close_ack
+  closing,  // Waiting for close ack
   closed
 }
 
@@ -262,21 +261,17 @@ class PoolChannel implements datachannel.DataChannel {
       this.fulfillOpened_();
     } else if (controlMessage === ControlMessage[ControlMessage.close]) {
       if (this.state_ === State.open) {
+        this.state_ = State.closing;
+        // Drain messages, then ack the close.
         this.lastDataFromPeerHandled_.then(() => {
-          return this.sendControlMessage_(ControlMessage.close_ack);
+          return this.sendControlMessage_(ControlMessage.close);
         }).then(this.fulfillClosed_);
       } else if (this.state_ === State.closing) {
-        // We both sent a "close" command at the same time.  No need to ack.
+        // We both sent a "close" command at the same time.
         this.fulfillClosed_();
       } else if (this.state_ === State.closed) {
         log.warn('%1: Got redundant close message', this.getLabel());
       }
-    } else if (controlMessage === ControlMessage[ControlMessage.close_ack]) {
-      if (this.state_ !== State.closing) {
-        log.error('%1: Got unexpected close_ack', this.getLabel());
-        return;
-      }
-      this.fulfillClosed_();
     } else {
       log.error('%1: unknown control message: %2',
           this.getLabel(), controlMessage);
