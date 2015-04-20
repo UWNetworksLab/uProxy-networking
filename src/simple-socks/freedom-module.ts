@@ -17,8 +17,14 @@ export var log :logging.Log = new logging.Log(moduleName);
 // extremely slow in debug mode.
 export var loggingController = freedom['loggingcontroller']();
 
+// Example to show how to manuall configure console filtering.
 loggingController.setDefaultFilter(loggingTypes.Destination.console,
-                                   loggingTypes.Level.debug);
+                                   loggingTypes.Level.info);
+loggingController.setFilters(loggingTypes.Destination.console, {
+  'simple-socks': loggingTypes.Level.debug,
+  'SocksToRtc': loggingTypes.Level.info,
+  'RtcToNet': loggingTypes.Level.info
+});
 
 //-----------------------------------------------------------------------------
 var localhostEndpoint:net.Endpoint = { address: '127.0.0.1', port:9999 };

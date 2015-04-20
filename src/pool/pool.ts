@@ -38,7 +38,7 @@ class Pool {
   private localPool_ :LocalPool;
 
   constructor(
-      pc:peerconnection.PeerConnection<any>,
+      pc:peerconnection.PeerConnection<Object>,
       name_:string) {
     this.localPool_ = new LocalPool(pc, name_);
     var remotePool = new RemotePool(pc, name_);
@@ -59,7 +59,7 @@ class LocalPool {
   private pool_ = new queue.Queue<PoolChannel>();
 
   constructor(
-      private pc_:peerconnection.PeerConnection<any>,
+      private pc_:peerconnection.PeerConnection<Object>,
       private name_:string) {}
 
   public openDataChannel = () : Promise<PoolChannel> => {
@@ -113,7 +113,7 @@ class RemotePool {
   public peerOpenedChannelQueue = new handler.Queue<PoolChannel,void>();
 
   constructor(
-      private pc_:peerconnection.PeerConnection<any>,
+      private pc_:peerconnection.PeerConnection<Object>,
       private name_:string) {
     this.pc_.peerOpenedChannelQueue.setSyncHandler(this.onNewChannel_);
   }
@@ -138,19 +138,18 @@ class RemotePool {
   }
 }
 
-// These are the three control messages used.  To help debugging, and
+// These are the two control messages used.  To help debugging, and
 // improve forward-compatibility, we send the string name on the wire,
 // not the numerical enum value.  Therefore, these names are part of
 // the normative protocol, and will break compatibility if changed.
 enum ControlMessage {
   open,
-  close,
-  close_ack
+  close
 }
 
 enum State {
   open,
-  closing,  // Waiting for CLOSE_ACK
+  closing,  // Waiting for close ack
   closed
 }
 
@@ -167,6 +166,9 @@ class PoolChannel implements datachannel.DataChannel {
   private fulfillClosed_ :() => void;
   public onceClosed : Promise<void>;
 
+  // Every call to dataFromPeerQueue.handle() must also set
+  // lastDataFromPeerHandled_ to the new return value, so that we can
+  // tell when all pending data from the peer has been drained.
   public dataFromPeerQueue :handler.Queue<datachannel.Data,void>;
   private lastDataFromPeerHandled_ : Promise<void>;
 
@@ -230,20 +232,22 @@ class PoolChannel implements datachannel.DataChannel {
 
   private onDataFromPeer_ = (data:datachannel.Data) : void => {
     if (data.str) {
-      var msg = JSON.parse(data.str);
+      try {
+        var msg = JSON.parse(data.str);
+      } catch (e) {
+        log.error('%1: Got non-JSON string: %2', this.getLabel(), data.str);
+        return;
+      }
       if (typeof msg.data === 'string') {
-        this.onDataForClient_({str: msg.data});
+        this.lastDataFromPeerHandled_ =
+            this.dataFromPeerQueue.handle({str: msg.data});
       } else if (typeof msg.control === 'string') {
         this.onControlMessage_(msg.control);
       } else {
-        throw new Error('No data or control message found');
+        log.error('No data or control message found');
       }
       return;
     }
-    this.onDataForClient_(data);
-  }
-
-  private onDataForClient_ = (data:datachannel.Data) : void => {
     this.lastDataFromPeerHandled_ = this.dataFromPeerQueue.handle(data);
   }
 
@@ -256,18 +260,18 @@ class PoolChannel implements datachannel.DataChannel {
       }
       this.fulfillOpened_();
     } else if (controlMessage === ControlMessage[ControlMessage.close]) {
-      if (this.state_ === State.closed) {
+      if (this.state_ === State.open) {
+        this.state_ = State.closing;
+        // Drain messages, then ack the close.
+        this.lastDataFromPeerHandled_.then(() => {
+          return this.sendControlMessage_(ControlMessage.close);
+        }).then(this.fulfillClosed_);
+      } else if (this.state_ === State.closing) {
+        // We both sent a "close" command at the same time.
+        this.fulfillClosed_();
+      } else if (this.state_ === State.closed) {
         log.warn('%1: Got redundant close message', this.getLabel());
       }
-      this.lastDataFromPeerHandled_.then(() => {
-        return this.sendControlMessage_(ControlMessage.close_ack);
-      }).then(this.fulfillClosed_);
-    } else if (controlMessage === ControlMessage[ControlMessage.close_ack]) {
-      if (this.state_ !== State.closing) {
-        log.warn('%1: Got unexpected CLOSE_ACK', this.getLabel());
-        return;
-      }
-      this.fulfillClosed_();
     } else {
       log.error('%1: unknown control message: %2',
           this.getLabel(), controlMessage);
@@ -316,7 +320,7 @@ class PoolChannel implements datachannel.DataChannel {
   }
 
   public toString = () : string => {
-    return "PoolChannel wrapping " + this.dc_.toString();
+    return 'PoolChannel(' + this.dc_.toString() + ')';
   }
 }
 

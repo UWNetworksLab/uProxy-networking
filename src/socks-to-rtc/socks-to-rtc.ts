@@ -231,7 +231,7 @@ module SocksToRtc {
         var tag = channel.getLabel();
         if (tag in this.sessions_) {
           throw new Error('pool returned a channel already associated ' +
-              'with a session: ' + tag);
+              'with a SOCKS client: ' + tag);
         }
 
         log.info('associating channel %1 with new SOCKS client', tag);
