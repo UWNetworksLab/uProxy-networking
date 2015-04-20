@@ -150,7 +150,7 @@ enum ControlMessage {
 
 enum State {
   open,
-  closing,  // Waiting for CLOSE_ACK
+  closing,  // Waiting for close_ack
   closed
 }
 
@@ -261,23 +261,19 @@ class PoolChannel implements datachannel.DataChannel {
       }
       this.fulfillOpened_();
     } else if (controlMessage === ControlMessage[ControlMessage.close]) {
-      if (this.state_ === State.closed) {
+      if (this.state_ === State.open) {
+        this.lastDataFromPeerHandled_.then(() => {
+          return this.sendControlMessage_(ControlMessage.close_ack);
+        }).then(this.fulfillClosed_);
+      } else if (this.state_ === State.closing) {
+        // We both sent a "close" command at the same time.  No need to ack.
+        this.fulfillClosed_();
+      } else if (this.state_ === State.closed) {
         log.warn('%1: Got redundant close message', this.getLabel());
       }
-      this.lastDataFromPeerHandled_.then(() => {
-        return this.sendControlMessage_(ControlMessage.close_ack);
-      }).then(this.fulfillClosed_);
     } else if (controlMessage === ControlMessage[ControlMessage.close_ack]) {
       if (this.state_ !== State.closing) {
-        log.warn('%1: Got unexpected CLOSE_ACK', this.getLabel());
-        // We return immediately in this case to handle the following situation:
-        // A: send close
-        // B: send close (simultaneous close; this is allowed)
-        // A: receive close (change state to closed), send close_ack
-        // B: receive close (change state to closed), send close_ack
-        // B: channel is reused, send open
-        // B: receive close_ack from A
-        // At this point we want to ignore this late close_ack.
+        log.error('%1: Got unexpected close_ack', this.getLabel());
         return;
       }
       this.fulfillClosed_();
