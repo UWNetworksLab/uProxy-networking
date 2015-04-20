@@ -11,7 +11,7 @@ import churn = require('../churn/churn');
 import net = require('../net/net.types');
 import tcp = require('../net/tcp');
 import socks = require('../socks-common/socks-headers');
-import pool = require('../pool/pool');
+import Pool = require('../pool/pool');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 
@@ -67,7 +67,7 @@ module SocksToRtc {
         :peerconnection.PeerConnection<signals.Message>;
 
     // This pool manages the PeerConnection's datachannels.
-    private pool_ : pool.Pool;
+    private pool_ : Pool;
 
     // Event listener registration function.  When running in freedom, this is
     // not defined, and the corresponding functionality is inserted by freedom
@@ -137,7 +137,7 @@ module SocksToRtc {
       this.tcpServer_.connectionsQueue
           .setSyncHandler(this.makeTcpToRtcSession_);
       this.peerConnection_ = peerconnection;
-      this.pool_ = new pool.Pool(this.peerConnection_, 'SocksToRtc');
+      this.pool_ = new Pool(this.peerConnection_, 'SocksToRtc');
 
       this.peerConnection_.signalForPeerQueue.setSyncHandler(
           this.dispatchEvent_.bind(this, 'signalForPeer'));

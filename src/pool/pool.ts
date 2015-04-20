@@ -1,5 +1,20 @@
 /// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
 
+// This module provides a pool for managing data channels.  It mimics the
+// interface for creating data channels in uproxy-lib's PeerConnection,
+// but the channel objects it produces are actually "virtual channels",
+// which wrap an actual DataChannel.  The key difference is that when the
+// virtual channel is closed, the underlying DataChannel remains open, and
+// is returned to the pool, to be released again upon a later call to
+// CreateDataChannel.
+
+// This class was written principally as a workaround for bugs related to
+// RTCDataChannel.close behavior, such as https://crbug.com/474688.
+// However, it should also help to reduce startup latency, by removing a
+// roundtrip from each connection request (waiting for the "open ack").
+// It may therefore be worth preserving even after any platform bugs are
+// resolved.
+
 import peerconnection = require('../../../third_party/uproxy-lib/webrtc/peerconnection');
 import datachannel = require('../../../third_party/uproxy-lib/webrtc/datachannel');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
@@ -12,8 +27,11 @@ var log :logging.Log = new logging.Log('pool');
 // This is the only exported class in this module.  It mimics the data channel
 // aspects of the PeerConnection interface.  Internally, it provides a pool
 // of channels that keeps old channels for reuse instead of closing them, and
-// makes new channels as needed when the pool runs dry.
-export class Pool {
+// makes new channels as needed when the pool runs dry.  Crucially, the local
+// and remote pools do not interfere with each other, even if they use the
+// same labels, because the browser ensures that data channels created by each
+// peer are drawn from separate ID spaces (odd vs. even).
+class Pool {
   public peerOpenedChannelQueue
       :handler.QueueHandler<datachannel.DataChannel, void>;
 
@@ -120,12 +138,21 @@ class RemotePool {
   }
 }
 
-// These are the three control messages used.  To distinguish control
-// messages from application data, all string messages are encapsulated
-// in a JSON layer.  (Binary messages are unaffected.)
-var OPEN = "open";
-var CLOSE = "close";
-var CLOSE_ACK = "close-ack";
+// These are the three control messages used.  To help debugging, and
+// improve forward-compatibility, we send the string name on the wire,
+// not the numerical enum value.  Therefore, these names are part of
+// the normative protocol, and will break compatibility if changed.
+enum ControlMessage {
+  open,
+  close,
+  close_ack
+}
+
+enum State {
+  open,
+  closing,  // Waiting for CLOSE_ACK
+  closed
+}
 
 // Each PoolChannel wraps an actual DataChannel, and provides behavior
 // that is intended to be indistinguishable to the caller.  However,
@@ -143,8 +170,7 @@ class PoolChannel implements datachannel.DataChannel {
   public dataFromPeerQueue :handler.Queue<datachannel.Data,void>;
   private lastDataFromPeerHandled_ : Promise<void>;
 
-  private isOpen_ :boolean;
-  private isClosing_ :boolean;  // True while waiting for CLOSE_ACK
+  private state_ :State;
 
   // dc_.onceOpened must already have resolved
   constructor(private dc_:datachannel.DataChannel) {
@@ -162,15 +188,13 @@ class PoolChannel implements datachannel.DataChannel {
       this.fulfillClosed_ = F;
     });
 
-    this.isOpen_ = false;
+    this.state_ = State.closed;
     this.onceOpened.then(() => {
-      this.isOpen_ = true;
+      this.state_ = State.open;
     });
     this.onceClosed.then(() => {
-      this.isOpen_ = false;
-      this.isClosing_ = false;
+      this.state_ = State.closed;
     });
-    this.isClosing_ = false;
   }
 
   public getLabel = () : string => {
@@ -178,10 +202,12 @@ class PoolChannel implements datachannel.DataChannel {
   }
 
   public send = (data:datachannel.Data) : Promise<void> => {
-    if (!this.isOpen_) {
+    if (this.state_ !== State.open) {
       return Promise.reject(new Error('Can\'t send while closed'));
     }
 
+    // To distinguish control messages from application data, all string
+    // messages are encapsulated in a JSON layer. Binary messages are unaffected.
     if (data.str) {
       return this.dc_.send({
         str: JSON.stringify({
@@ -192,12 +218,12 @@ class PoolChannel implements datachannel.DataChannel {
     return this.dc_.send(data);
   }
 
-  private sendControlMessage_ = (controlMessage:string) : Promise<void> => {
+  private sendControlMessage_ = (controlMessage:ControlMessage) : Promise<void> => {
     log.debug('%1: sending control message: %2',
-              this.getLabel(), controlMessage);
+              this.getLabel(), ControlMessage[controlMessage]);
     return this.dc_.send({
       str: JSON.stringify({
-        control: controlMessage
+        control: ControlMessage[controlMessage]
       })
     });
   }
@@ -224,24 +250,27 @@ class PoolChannel implements datachannel.DataChannel {
   private onControlMessage_ = (controlMessage:string) : void => {
     log.debug('%1: received control message: %2',
               this.getLabel(), controlMessage);
-    if (controlMessage === OPEN) {
-      if (this.isOpen_) {
+    if (controlMessage === ControlMessage[ControlMessage.open]) {
+      if (this.state_ === State.open) {
         log.warn('%1: Got redundant open message', this.getLabel());
       }
       this.fulfillOpened_();
-    } else if (controlMessage === CLOSE) {
-      if (!this.isOpen_) {
+    } else if (controlMessage === ControlMessage[ControlMessage.close]) {
+      if (this.state_ === State.closed) {
         log.warn('%1: Got redundant close message', this.getLabel());
       }
       this.lastDataFromPeerHandled_.then(() => {
-        return this.sendControlMessage_(CLOSE_ACK);
+        return this.sendControlMessage_(ControlMessage.close_ack);
       }).then(this.fulfillClosed_);
-    } else if (controlMessage === CLOSE_ACK) {
-      if (!this.isClosing_) {
+    } else if (controlMessage === ControlMessage[ControlMessage.close_ack]) {
+      if (this.state_ !== State.closing) {
         log.warn('%1: Got unexpected CLOSE_ACK', this.getLabel());
         return;
       }
       this.fulfillClosed_();
+    } else {
+      log.error('%1: unknown control message: %2',
+          this.getLabel(), controlMessage);
     }
   }
 
@@ -264,11 +293,11 @@ class PoolChannel implements datachannel.DataChannel {
   // New method for PoolChannel, not present in the DataChannel interface.
   public open = () : Promise<void> => {
     log.debug(this.getLabel() + ': open');
-    if (this.isOpen_) {
+    if (this.state_ === State.open) {
       return Promise.reject(new Error('channel is already open'));
     }
 
-    this.sendControlMessage_(OPEN);
+    this.sendControlMessage_(ControlMessage.open);
     // Immediate open; there is no open-ack
     this.fulfillOpened_();
 
@@ -277,12 +306,12 @@ class PoolChannel implements datachannel.DataChannel {
 
   public close = () : Promise<void> => {
     log.debug('%1: close', this.getLabel());
-    if (!this.isOpen_) {
+    if (this.state_ !== State.open) {
       return;
     }
-    this.isClosing_ = true;
+    this.state_ = State.closing;
 
-    this.sendControlMessage_(CLOSE);
+    this.sendControlMessage_(ControlMessage.close);
     return this.onceClosed;
   }
 
@@ -290,3 +319,5 @@ class PoolChannel implements datachannel.DataChannel {
     return "PoolChannel wrapping " + this.dc_.toString();
   }
 }
+
+export = Pool;
