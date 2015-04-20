@@ -15,18 +15,16 @@ class TcpEchoServer {
   public static CTRL_D_HEX_STR_CODE = '4'
 
   constructor(public endpoint:net.Endpoint) {
-    log.info('Starting TcpEchoServer(' + JSON.stringify(endpoint) + ')...');
     this.server = new tcp.Server(endpoint);
 
     // Start listening to connections.
     this.server.listen().then((listeningEndpoint) => {
-      log.info('TCP echo server listening on ' +
-          JSON.stringify(listeningEndpoint));
-    })
-    .catch((e:Error) => {
-      log.error('Failed to listen to: ' + JSON.stringify(endpoint) +
-          e.toString);
-      this.server.shutdown();
+      log.info('listening on %1', listeningEndpoint);
+      this.server.onceShutdown().then((kind:tcp.SocketCloseKind) => {
+        log.info('server shutdown: %1', tcp.SocketCloseKind[kind]);
+      });
+    }).catch((e:Error) => {
+      log.error('failed to listen on %1: %2', endpoint, e.toString);
     });
 
     // Handle any new connections using |this.onConnection_|.
