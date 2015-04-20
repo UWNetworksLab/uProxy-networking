@@ -280,10 +280,6 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
   export class Session {
     private tcpConnection_ :tcp.Connection;
 
-    // TODO: There's no equivalent of datachannel.isClosed():
-    //         https://github.com/uProxy/uproxy/issues/1075
-    private isChannelClosed_ :boolean = false;
-
     // Fulfills once a connection has been established with the remote peer.
     // Rejects if a connection cannot be made for any reason.
     public onceReady :Promise<void>;
@@ -348,15 +344,10 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
 
       this.onceReady.then(this.linkSocketAndChannel_, this.fulfillStopping_);
 
-      // Shutdown once the data channel terminates and has drained.
+      // Shutdown once the data channel terminates.
       this.dataChannel_.onceClosed.then(() => {
-        this.isChannelClosed_ = true;
-        if (this.dataChannel_.dataFromPeerQueue.getLength() === 0) {
-          log.info('%1: channel closed, all incoming data processed', this.longId());
-          this.fulfillStopping_();
-        } else {
-          log.info('%1: channel closed, still processing incoming data', this.longId());
-        }
+        log.info('%1: channel closed', this.longId());
+        this.fulfillStopping_();
       });
 
       this.onceStopped_ = this.onceStopping_.then(this.stopResources_);
@@ -536,24 +527,9 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
         this.fulfillStopping_();
       });
 
-      // Session.nextTick_ (i.e. setTimeout) is used to preserve system
-      // responsiveness when large amounts of data are being sent:
-      //   https://github.com/uProxy/uproxy/issues/967
-      var channelReadLoop = (data:peerconnection.Data) : void => {
+      var channelReader = (data:peerconnection.Data) : void => {
         this.sendOnSocket_(data).then((writeInfo:freedom_TcpSocket.WriteInfo) => {
           this.socketSentBytes_ += data.buffer.byteLength;
-          // Shutdown once the data channel terminates and has drained,
-          // otherwise keep draining.
-          if (this.isChannelClosed_ &&
-              this.dataChannel_.dataFromPeerQueue.getLength() === 0) {
-            log.info('%1: channel drained', this.longId());
-            this.fulfillStopping_();
-          } else {
-            Session.nextTick_(() => {
-              this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
-                  channelReadLoop);
-            });
-          }
         }, (e:{ errcode: string }) => {
           // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // errcode values are defined here:
@@ -571,8 +547,7 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
           }
         });
       };
-      this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
-          channelReadLoop);
+      this.dataChannel_.dataFromPeerQueue.setSyncHandler(channelReader);
 
       // The TCP connection starts in the paused state.  However, in extreme
       // cases, enough data can arrive before the pause takes effect to put

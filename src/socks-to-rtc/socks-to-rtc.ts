@@ -294,10 +294,6 @@ module SocksToRtc {
     private bytesSentToPeer_ :handler.Queue<number,void>;
     private bytesReceivedFromPeer_ :handler.Queue<number,void>;
 
-    // TODO: There's no equivalent of datachannel.isClosed():
-    //         https://github.com/uProxy/uproxy/issues/1075
-    private isChannelClosed_ :boolean = false;
-
     // Fulfills once the SOCKS negotiation process has successfully completed.
     // Rejects if negotiation fails for any reason.
     public onceReady :Promise<void>;
@@ -351,15 +347,10 @@ module SocksToRtc {
       this.onceReady.then(() => {
         this.linkSocketAndChannel_();
 
-        // Shutdown once the data channel terminates and has drained.
+        // Shutdown once the data channel terminates.
         this.dataChannel_.onceClosed.then(() => {
-          this.isChannelClosed_ = true;
-          if (this.dataChannel_.dataFromPeerQueue.getLength() === 0) {
-            log.info('%1: channel closed, all incoming data processed', this.longId());
-            this.fulfillStopping_();
-          } else {
-            log.info('%1: channel closed, still processing incoming data', this.longId());
-          }
+          log.info('%1: channel closed', this.longId());
+          this.fulfillStopping_();
         });
       }, this.fulfillStopping_);
 
@@ -530,24 +521,8 @@ module SocksToRtc {
         this.fulfillStopping_();
       });
 
-      // Session.nextTick_ (i.e. setTimeout) is used to preserve system
-      // responsiveness when large amounts of data are being sent:
-      //   https://github.com/uProxy/uproxy/issues/967
-      var channelReadLoop = (data:peerconnection.Data) : void => {
-        this.sendOnSocket_(data).then((writeInfo:freedom_TcpSocket.WriteInfo) => {
-          // Shutdown once the data channel terminates and has drained,
-          // otherwise keep draining.
-          if (this.isChannelClosed_ &&
-              this.dataChannel_.dataFromPeerQueue.getLength() === 0) {
-            log.info('%1: channel drained', this.longId());
-            this.fulfillStopping_();
-          } else {
-            Session.nextTick_(() => {
-              this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
-                  channelReadLoop);
-            });
-          }
-        }, (e:{ errcode: string }) => {
+      var channelReader = (data:peerconnection.Data) : void => {
+        this.sendOnSocket_(data).catch((e:{ errcode: string }) => {
           // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // errcode values are defined here:
           //   https://github.com/freedomjs/freedom/blob/master/interface/core.tcpsocket.json
@@ -564,8 +539,7 @@ module SocksToRtc {
           }
         });
       };
-      this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
-          channelReadLoop);
+      this.dataChannel_.dataFromPeerQueue.setSyncHandler(channelReader);
 
       // The TCP connection starts in the paused state.  However, in extreme
       // cases, enough data can arrive before the pause takes effect to put
@@ -588,13 +562,6 @@ module SocksToRtc {
           log.debug('%1: Exited  overflow, resuming socket', this.longId());
         }
       });
-    }
-
-    // Runs callback once the current event loop has run to completion.
-    // Uses setTimeout in lieu of something like Node's process.nextTick:
-    //   https://github.com/uProxy/uproxy/issues/967
-    private static nextTick_ = (callback:Function) : void => {
-      setTimeout(callback, 0);
     }
   }  // Session
 
