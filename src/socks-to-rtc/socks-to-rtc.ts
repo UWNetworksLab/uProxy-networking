@@ -349,7 +349,12 @@ module SocksToRtc {
 
         // Shutdown once the data channel terminates.
         this.dataChannel_.onceClosed.then(() => {
-          log.info('%1: channel closed', this.longId());
+          if (this.dataChannel_.dataFromPeerQueue.getLength() > 0) {
+            log.warn('%1: channel closed with %2 unprocessed incoming messages',
+                this.longId(), this.dataChannel_.dataFromPeerQueue.getLength());
+          } else {
+            log.info('%1: channel closed', this.longId());
+          }
           this.fulfillStopping_();
         });
       }, this.fulfillStopping_);
