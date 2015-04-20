@@ -113,7 +113,7 @@ class RemotePool {
   public peerOpenedChannelQueue = new handler.Queue<PoolChannel,void>();
 
   constructor(
-      private pc_:peerconnection.PeerConnection<any>,
+      private pc_:peerconnection.PeerConnection<Object>,
       private name_:string) {
     this.pc_.peerOpenedChannelQueue.setSyncHandler(this.onNewChannel_);
   }
@@ -167,6 +167,9 @@ class PoolChannel implements datachannel.DataChannel {
   private fulfillClosed_ :() => void;
   public onceClosed : Promise<void>;
 
+  // Every call to dataFromPeerQueue.handle() must also set
+  // lastDataFromPeerHandled_ to the new return value, so that we can
+  // tell when all pending data from the peer has been drained.
   public dataFromPeerQueue :handler.Queue<datachannel.Data,void>;
   private lastDataFromPeerHandled_ : Promise<void>;
 
@@ -230,20 +233,22 @@ class PoolChannel implements datachannel.DataChannel {
 
   private onDataFromPeer_ = (data:datachannel.Data) : void => {
     if (data.str) {
-      var msg = JSON.parse(data.str);
+      try {
+        var msg = JSON.parse(data.str);
+      } catch (e) {
+        log.error('%1: Got non-JSON string: %2', this.getLabel(), data.str);
+        return;
+      }
       if (typeof msg.data === 'string') {
-        this.onDataForClient_({str: msg.data});
+        this.lastDataFromPeerHandled_ =
+            this.dataFromPeerQueue.handle({str: msg.data});
       } else if (typeof msg.control === 'string') {
         this.onControlMessage_(msg.control);
       } else {
-        throw new Error('No data or control message found');
+        log.error('No data or control message found');
       }
       return;
     }
-    this.onDataForClient_(data);
-  }
-
-  private onDataForClient_ = (data:datachannel.Data) : void => {
     this.lastDataFromPeerHandled_ = this.dataFromPeerQueue.handle(data);
   }
 
@@ -265,6 +270,14 @@ class PoolChannel implements datachannel.DataChannel {
     } else if (controlMessage === ControlMessage[ControlMessage.close_ack]) {
       if (this.state_ !== State.closing) {
         log.warn('%1: Got unexpected CLOSE_ACK', this.getLabel());
+        // We return immediately in this case to handle the following situation:
+        // A: send close
+        // B: send close (simultaneous close; this is allowed)
+        // A: receive close (change state to closed), send close_ack
+        // B: receive close (change state to closed), send close_ack
+        // B: channel is reused, send open
+        // B: receive close_ack from A
+        // At this point we want to ignore this late close_ack.
         return;
       }
       this.fulfillClosed_();
