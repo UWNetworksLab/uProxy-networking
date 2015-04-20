@@ -417,7 +417,9 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
             return;
           }
 
-          log.info('%1: received endpoint from peer: %2', [
+          // The domain name is very sensitive, so we keep it out of the
+          // info-level logs, which may be uploaded.
+          log.debug('%1: received endpoint from peer: %2', [
               this.longId(), JSON.stringify(request.endpoint)]);
           F(request.endpoint);
           return;
@@ -513,6 +515,7 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
     // and vice versa. Should only be called once both socket and channel have
     // been successfully established.
     private linkSocketAndChannel_ = () : void => {
+      log.info('%1: linking socket and channel', this.longId());
       var socketReader = (data:ArrayBuffer) => {
         this.sendOnChannel_(data).then(() => {
           this.bytesSentToPeer_.handle(data.byteLength);
