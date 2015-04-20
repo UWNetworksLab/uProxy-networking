@@ -226,10 +226,14 @@ module SocksToRtc {
     // Invoked when a SOCKS client establishes a connection with the TCP server.
     // Note that Session closes the TCP connection and datachannel on any error.
     private makeTcpToRtcSession_ = (tcpConnection:tcp.Connection) : void => {
-	    this.pool_.openDataChannel()
+      this.pool_.openDataChannel()
           .then((channel:peerconnection.DataChannel) => {
         var tag = channel.getLabel();
         if (tag in this.sessions_) {
+          // TODO: This logic is buggy: channels may be reused as soon as
+          // they are closed, but the session discard doesn't run until the
+          // session is closed, which can be long after the channel is closed.
+          // As a result, this error can be hit during normal operation.
           throw new Error('pool returned a channel already associated ' +
               'with a SOCKS client: ' + tag);
         }
