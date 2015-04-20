@@ -38,7 +38,7 @@ class Pool {
   private localPool_ :LocalPool;
 
   constructor(
-      pc:peerconnection.PeerConnection<any>,
+      pc:peerconnection.PeerConnection<Object>,
       name_:string) {
     this.localPool_ = new LocalPool(pc, name_);
     var remotePool = new RemotePool(pc, name_);
@@ -59,7 +59,7 @@ class LocalPool {
   private pool_ = new queue.Queue<PoolChannel>();
 
   constructor(
-      private pc_:peerconnection.PeerConnection<any>,
+      private pc_:peerconnection.PeerConnection<Object>,
       private name_:string) {}
 
   public openDataChannel = () : Promise<PoolChannel> => {
@@ -325,7 +325,7 @@ class PoolChannel implements datachannel.DataChannel {
   }
 
   public toString = () : string => {
-    return "PoolChannel wrapping " + this.dc_.toString();
+    return 'PoolChannel(' + this.dc_.toString() + ')';
   }
 }
 
