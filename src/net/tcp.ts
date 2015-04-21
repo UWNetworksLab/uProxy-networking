@@ -65,6 +65,12 @@ function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket) : Promise<void> 
 // Promise and handler queue-based TCP server with freedomjs sockets.
 // TODO: protection against multiple calls to methods such as listen
 export class Server {
+  // Count of sockets created to date.
+  private static numCreations_ :number = 0;
+
+  // Unique ID, for logging purposes.
+  private id_ :string;
+
   private socket_ :freedom_TcpSocket.Socket;
 
   // Active connections to the server.
@@ -94,6 +100,8 @@ export class Server {
 
   constructor(private endpoint_ :net.Endpoint,
       private maxConnections_ :number = DEFAULT_MAX_CONNECTIONS) {
+    this.id_ = 'S' + (Server.numCreations_++);
+
     this.onceListening_.then((unused:any) => {
       this.isListening_ = true;
     }, (e:Error) => {
@@ -111,7 +119,7 @@ export class Server {
 
   // Invoked when the socket terminates.
   private onDisconnectHandler_ = (info:freedom_TcpSocket.DisconnectInfo) : void => {
-    log.debug('disconnected: %1', JSON.stringify(info));
+    log.debug('%1: disconnected: %2', this.id_, JSON.stringify(info));
     if (info.errcode === 'SUCCESS') {
       this.fulfillShutdown_(SocketCloseKind.WE_CLOSED_IT);
     } else {
@@ -141,11 +149,12 @@ export class Server {
   // Invoked each time a new connection is established with the server.
   private onConnectionHandler_ = (
       acceptValue:freedom_TcpSocket.ConnectInfo) : void => {
-    log.debug('new connection');
+    log.debug('%1: new connection', this.id_);
     var socketId = acceptValue.socket;
 
     if (this.connectionsCount() >= this.maxConnections_) {
-      log.warn('hit maximum connections count, dropping new connection');
+      log.warn('%1: hit maximum connections count, dropping new connection',
+          this.id_);
       destroyFreedomSocket_(freedom['core.tcpsocket'](socketId));
       return;
     }
@@ -157,10 +166,12 @@ export class Server {
 
     var discard = () => {
       delete this.connections_[socketId];
-      log.debug('discarded connection (%1 remaining)', this.connectionsCount());
+      log.debug('%1: discarded connection (%2 remaining)',
+          this.id_, this.connectionsCount());
     };
     connection.onceClosed.then(discard, (e:Error) => {
-      log.error('connection %1 rejected on close: %2', socketId, e.message);
+      log.error('%1: connection %2 rejected on close: %3',
+          this.id_, socketId, e.message);
       discard();
     });
 
@@ -170,7 +181,7 @@ export class Server {
   // Closes the server socket then closes all active connections.
   // Equivalent to calling stopListening followed by closeAll.
   public shutdown = () : Promise<void> => {
-    log.debug('shutdown');
+    log.debug('%1: shutdown', this.id_);
     // This order is important: make sure no new connections happen while
     // we're trying to close all the connections.
     return this.stopListening().then(this.closeAll);
@@ -179,13 +190,14 @@ export class Server {
   // Closes the server socket, preventing any new connections.
   // Does not affect active connections to the server.
   public stopListening = () : Promise<void> => {
-    log.debug('closing socket, no new connections will be accepted');
+    log.debug('%1: closing socket, no new connections will be accepted',
+        this.id_);
     return destroyFreedomSocket_(this.socket_);
   }
 
   // Closes all active connections.
   public closeAll = () : Promise<void> => {
-    log.debug('closing all connections');
+    log.debug('%1: closing all connections', this.id_);
 
     var promises :Promise<SocketCloseKind>[] = [];
     for (var socketId in this.connections_) {
