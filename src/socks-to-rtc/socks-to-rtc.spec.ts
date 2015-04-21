@@ -73,6 +73,7 @@ describe('SOCKS server', function() {
 
     mockPeerConnection = <any>{
       dataChannels: {},
+      peerOpenedChannelQueue: new handler.Queue<signals.Message, void>(),
       signalForPeerQueue: new handler.Queue<signals.Message, void>(),
       negotiateConnection: jasmine.createSpy('negotiateConnection'),
       onceConnecting: noopPromise,

@@ -1,5 +1,4 @@
 var benchmark = require('../build/benchmark/benchmark.js').Benchmark;
-var runner = new benchmark.RequestManager([1024]);
 // babar isn't in DefinitelyTyped, I didn't feel like putting it in yet.
 var babar = require('babar');
 var argv = require('yargs')
@@ -12,6 +11,8 @@ var argv = require('yargs')
     .alias('s', 'speed')
     .default('maxtimeouts', 10)
     .alias('m', 'maxtimeouts')
+    .default('R', 1024)
+    .alias('R', 'requestsize')
     .argv;
 
 var should_sleep = true;
@@ -20,6 +21,7 @@ var verbosity = argv.verbose;
 var concurrency = argv.concurrency
 var tail_lat = 1000 / argv.speed;
 var max_timeouts = argv.maxtimeouts;
+var runner = new benchmark.RequestManager([argv.requestsize]);
 console.log("Configured arguments: num tests: " + num_tests + ", concurrency: " + concurrency + 
             ", max timeouts: " + max_timeouts);
 
