@@ -93,9 +93,7 @@ export class Server {
   });
 
   constructor(private endpoint_ :net.Endpoint,
-      private maxConnections_ ?:number) {
-    this.maxConnections_ = this.maxConnections_ || DEFAULT_MAX_CONNECTIONS;
-
+      private maxConnections_ :number = DEFAULT_MAX_CONNECTIONS) {
     this.onceListening_.then((unused:any) => {
       this.isListening_ = true;
     }, (e:Error) => {
