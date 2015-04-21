@@ -188,8 +188,8 @@ export class Server {
     log.debug('closing all connections');
 
     var promises :Promise<SocketCloseKind>[] = [];
-    for (var i in this.connections_) {
-      var connection = this.connections_[i];
+    for (var socketId in this.connections_) {
+      var connection = this.connections_[socketId];
       promises.push(connection.close());
     }
 
