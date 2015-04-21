@@ -69,7 +69,7 @@ export class Server {
 
   // Active connections to the server.
   // TODO: index by connectionId rather than socketID
-  private connections_:{[socketId:number] : Connection} = {};
+  private connections_ :{[socketId:number] : Connection} = {};
 
   public connectionsQueue :handler.Queue<Connection, void> =
       new handler.Queue<Connection, void>();
