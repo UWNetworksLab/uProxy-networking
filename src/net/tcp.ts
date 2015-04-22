@@ -226,12 +226,9 @@ export class Server {
   }
 
   public toString = () : string => {
-    var s = 'Tcp.Server(' + JSON.stringify(this.endpoint_) +
-        ') ' + this.connectionsCount() + ' connections: {';
-    for (var socketId in this.connections_) {
-      s += '  ' + this.connections_[socketId].toString() + '\n';
-    }
-    return s += '}';
+    return 'TCP server ' + this.id_ + ': ' + JSON.stringify(this.endpoint_) +
+        ', ' + this.connectionsCount() + ' connections: ' +
+        this.connections().join(', ');
   }
 }
 
