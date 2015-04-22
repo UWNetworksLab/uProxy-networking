@@ -80,8 +80,6 @@ export class Server {
   public connectionsQueue :handler.Queue<Connection, void> =
       new handler.Queue<Connection, void>();
 
-  private isListening_ :boolean = false;
-
   private fulfillListening_ :(endpoint:net.Endpoint) => void;
   private rejectListening_ :(e:Error) => void;
 
@@ -89,8 +87,6 @@ export class Server {
     this.fulfillListening_ = F;
     this.rejectListening_ = R;
   });
-
-  private isShutdown_ :boolean = false;
 
   private fulfillShutdown_ :(kind:SocketCloseKind) => void;
 
@@ -102,14 +98,8 @@ export class Server {
       private maxConnections_ :number = DEFAULT_MAX_CONNECTIONS) {
     this.id_ = 'S' + (Server.numCreations_++);
 
-    this.onceListening_.then((unused:any) => {
-      this.isListening_ = true;
-    }, (e:Error) => {
+    this.onceListening_.catch((e:Error) => {
       this.fulfillShutdown_(SocketCloseKind.NEVER_CONNECTED);
-    });
-
-    this.onceShutdown_.then((unused:any) => {
-      this.isShutdown_ = true;
     });
 
     this.socket_ = freedom['core.tcpsocket']();
@@ -222,21 +212,11 @@ export class Server {
     return Object.keys(this.connections_).length;
   }
 
-  // Returns true iff the promise returned by onceListening has fulfilled.
-  public isListening = () : boolean => {
-    return this.isListening_;
-  };
-
   // Returns a promise which fulfills once the socket is accepting
   // connections and rejects if there is any error creating the socket
   // or listening for connections.
   public onceListening = () : Promise<net.Endpoint> => {
     return this.onceListening_;
-  }
-
-  // Returns true iff the promise returned by onceShutdown has fulfilled.
-  public isShutdown = () : boolean => {
-    return this.isShutdown_;
   }
 
   // Returns a promise which fulfills once the socket has stopped
