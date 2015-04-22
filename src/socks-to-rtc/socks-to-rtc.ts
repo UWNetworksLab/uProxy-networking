@@ -80,16 +80,6 @@ module SocksToRtc {
     // events compatibly with and without freedom
     // (https://github.com/uProxy/uproxy/issues/733).
 
-    // From WebRTC data-channel labels to their TCP connections. Most of the
-    // wiring to manage this relationship happens via promises of the
-    // TcpConnection. We need this only for data being received from a peer-
-    // connection data channel get raised with data channel label.  TODO:
-    // https://github.com/uProxy/uproxy/issues/315 when closed allows
-    // DataChannel and PeerConnection to be used directly and not via a freedom
-    // interface. Then all work can be done by promise binding and this can be
-    // removed.
-    private sessions_ :{ [channelLabel:string] : Session } = {};
-
     // Note: The optional |dispatchEvent_| is for when this class is loaded as a
     // freedom module.
     constructor(private dispatchEvent_?:(t:string, m:Object) => void) {
@@ -229,15 +219,6 @@ module SocksToRtc {
       this.pool_.openDataChannel()
           .then((channel:peerconnection.DataChannel) => {
         var tag = channel.getLabel();
-        if (tag in this.sessions_) {
-          // TODO: This logic is buggy: channels may be reused as soon as
-          // they are closed, but the session discard doesn't run until the
-          // session is closed, which can be long after the channel is closed.
-          // As a result, this error can be hit during normal operation.
-          throw new Error('pool returned a channel already associated ' +
-              'with a SOCKS client: ' + tag);
-        }
-
         log.info('associating channel %1 with new SOCKS client', tag);
         var session = new Session();
         session.start(
@@ -245,25 +226,19 @@ module SocksToRtc {
             channel,
             this.bytesSentToPeer_,
             this.bytesReceivedFromPeer_)
-        .then(() => {
-          this.sessions_[tag] = session;
-        }, (e:Error) => {
+        .catch((e:Error) => {
           log.warn('session %1 failed to connect to remote endpoint: %2', [
               tag, e.message]);
         });
 
-        var discard = () => {
-          delete this.sessions_[tag];
-          log.info('discarded session %1 (%2 remaining)', [
-              tag, Object.keys(this.sessions_).length]);
-        };
-        session.onceStopped.then(discard, (e:Error) => {
+        session.onceStopped.then(() => {
+          log.info('discarded session %1', tag);
+        }, (e:Error) => {
           log.error('session %1 terminated with error: %2', [
               tag, e.message]);
-          discard();
         });
       }, (e:Error) => {
-        log.error('failed to open channel for new SOCKS client: %2 ',
+        log.error('failed to open channel for new SOCKS client: %1 ',
             e.message);
         // TODO: return bytes to the client!
       });
@@ -278,11 +253,7 @@ module SocksToRtc {
       var ret :string;
       var sessionsAsStrings :string[] = [];
       var label :string;
-      for (label in this.sessions_) {
-        sessionsAsStrings.push(this.sessions_[label].toString());
-      }
-      ret = JSON.stringify({ tcpServer_: this.tcpServer_.toString(),
-                             sessions_: sessionsAsStrings });
+      ret = JSON.stringify({ tcpServer_: this.tcpServer_.toString() });
       return ret;
     }
   }  // class SocksToRtc
