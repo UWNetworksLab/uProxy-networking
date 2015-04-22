@@ -211,8 +211,8 @@ export class Server {
   // Returns all active connections.
   public connections = () : Connection[] => {
     var connections : Connection[] = [];
-    for (var i in this.connections_) {
-      connections.push(this.connections_[i]);
+    for (var socketId in this.connections_) {
+      connections.push(this.connections_[socketId]);
     }
     return connections;
   }
