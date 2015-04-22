@@ -218,8 +218,8 @@ module SocksToRtc {
     private makeTcpToRtcSession_ = (tcpConnection:tcp.Connection) : void => {
       this.pool_.openDataChannel()
           .then((channel:peerconnection.DataChannel) => {
-        var tag = channel.getLabel();
-        log.info('associating channel %1 with new SOCKS client', tag);
+        var channelLabel = channel.getLabel();
+        log.info('associating channel %1 with new SOCKS client', channelLabel);
         var session = new Session();
         session.start(
             tcpConnection,
@@ -228,14 +228,14 @@ module SocksToRtc {
             this.bytesReceivedFromPeer_)
         .catch((e:Error) => {
           log.warn('session %1 failed to connect to remote endpoint: %2', [
-              tag, e.message]);
+              channelLabel, e.message]);
         });
 
         session.onceStopped.then(() => {
-          log.info('discarded session %1', tag);
+          log.info('discarded session %1', channelLabel);
         }, (e:Error) => {
           log.error('session %1 terminated with error: %2', [
-              tag, e.message]);
+              channelLabel, e.message]);
         });
       }, (e:Error) => {
         log.error('failed to open channel for new SOCKS client: %1 ',
@@ -335,6 +335,8 @@ module SocksToRtc {
       }, this.fulfillStopping_);
 
       // Once shutdown has been requested, free resources.
+      // TODO: This promise is only used for logging, so we should probably
+      // remove it, or at least make it private.
       this.onceStopped = this.onceStopping_.then(this.stopResources_);
 
       return this.onceReady;
@@ -518,7 +520,7 @@ module SocksToRtc {
           } else {
             log.error('%1: failed to send data on socket: %2', [
                 this.longId(),
-                e.errcode]);
+                e]);
           }
         });
       };
