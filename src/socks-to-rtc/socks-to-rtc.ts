@@ -161,13 +161,9 @@ module SocksToRtc {
       // Shutdown if startup fails or when the server socket or
       // peerconnection terminates.
       onceReady.catch(this.fulfillStopping_);
-      this.tcpServer_.onceShutdown()
-        .then(() => {
-          log.info('server socket closed');
-        }, (e:Error) => {
-          log.error('server socket closed with error: %1', [e.message]);
-        })
-        .then(this.fulfillStopping_);
+      this.tcpServer_.onceShutdown().then((kind:tcp.SocketCloseKind) => {
+        log.info('server socket closed: %1', tcp.SocketCloseKind[kind]);
+      }).then(this.fulfillStopping_);
       this.peerConnection_.onceDisconnected
         .then(() => {
           log.info('peerconnection terminated');
