@@ -2,7 +2,11 @@
 /// <reference path='../../../../third_party/typings/jasmine/jasmine.d.ts' />
 
 import socks = require('../../socks-common/socks-headers');
-import ProxyIntegrationTester = require('./proxy-integration-test.types');
+
+import proxyintegrationtesttypes = require('./proxy-integration-test.types');
+import ProxyIntegrationTester = proxyintegrationtesttypes.ProxyIntegrationTester;
+import ReceivedDataEvent = proxyintegrationtesttypes.ReceivedDataEvent;
+
 import arraybuffers = require('../../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 
 import freedom_types = require('freedom.types');
@@ -10,7 +14,7 @@ import freedom_types = require('freedom.types');
 function slowTestDescription(useChurn:boolean) {
   var testerFactoryManager
         :freedom_types.FreedomModuleFactoryManager<ProxyIntegrationTester>;
-  var getTestModule = function(denyLocalhost?:boolean)
+  var createTestModule = function(denyLocalhost?:boolean)
       :ProxyIntegrationTester {
     return testerFactoryManager(denyLocalhost, useChurn);
   };
@@ -37,7 +41,7 @@ function slowTestDescription(useChurn:boolean) {
     var blockSize = 1024;
     var testBlock :ArrayBuffer = new ArrayBuffer(blockSize);
     var repeat :number = 250;
-    var testModule = getTestModule();
+    var testModule = createTestModule();
     testModule.setRepeat(repeat);
     testModule.startEchoServer().then((port:number) => {
       var connectionPromises :Promise<string>[] = [];
@@ -51,18 +55,17 @@ function slowTestDescription(useChurn:boolean) {
         var result :Promise<void> = new Promise<void>((F, R) => { resolve = F; });
         var isDone = false;
         var outputString = '';
-        testModule.on('pong', (pong:any) => {
-          if (pong.connectionId != connectionId) {
+        testModule.on('receivedData', (event:ReceivedDataEvent) => {
+          if (event.connectionId != connectionId) {
             return;
           }
           expect(isDone).toBe(false);
-          outputString += arraybuffers.arrayBufferToString(pong.response);
-          if (outputString.length == repeat * blockSize) {
+          if (event.response.byteLength === repeat * blockSize) {
             isDone = true;
             resolve();
           }
         });
-        return testModule.ping(connectionId, testBlock).then(() => {
+        return testModule.sendData(connectionId, testBlock).then(() => {
           return result;
         });
       });
@@ -73,7 +76,7 @@ function slowTestDescription(useChurn:boolean) {
   it('upload load test', (done) => {
     var size = 250 * 1024;
     var testBlock :ArrayBuffer = new ArrayBuffer(size);
-    var testModule = getTestModule();
+    var testModule = createTestModule();
     testModule.setRepeat(0);  // Don't send a reply at all.
     testModule.startEchoServer().then((port:number) => {
       var connectionPromises :Promise<string>[] = [];
@@ -83,10 +86,10 @@ function slowTestDescription(useChurn:boolean) {
       return Promise.all(connectionPromises);
     }).then((connectionIds:string[]) : Promise<void>[] => {
       return connectionIds.map((connectionId:string) : Promise<void> => {
-        return testModule.ping(connectionId, testBlock);
+        return testModule.sendData(connectionId, testBlock);
       });
-    }).then((pingResults:Promise<void>[]) : Promise<[any]> => {
-      return Promise.all(pingResults);
+    }).then((sendResults:Promise<void>[]) : Promise<[any]> => {
+      return Promise.all(sendResults);
     }).catch((e:any) => {
       expect(e).toBeUndefined();
     }).then(done);
@@ -95,7 +98,7 @@ function slowTestDescription(useChurn:boolean) {
   it('100 MB echo load test', (done) => {
     var size = 100 * 1024 * 1024;  // Larger than the 16 MB internal buffer in Chrome.
     var input = new ArrayBuffer(size);
-    var testModule = getTestModule();
+    var testModule = createTestModule();
     testModule.startEchoServer().then((port:number) => {
       return testModule.connect(port);
     }).then((connectionId:string) => {
@@ -109,7 +112,7 @@ function slowTestDescription(useChurn:boolean) {
   });
 
   it('attempt to connect to a nonexistent IP address', (done) => {
-    var testModule = getTestModule();
+    var testModule = createTestModule();
     // 192.0.2.0/24 is a reserved IP address range.
     testModule.connect(80, '192.0.2.111').then((connectionId:string) => {
       // This code should not run, because this is a reserved IP address.

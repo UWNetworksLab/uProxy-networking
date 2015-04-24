@@ -542,7 +542,7 @@ module.exports = (grunt) ->
         ]
         options:
           outDir: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp_slow/'
-          keepRunner: false
+          keepRunner: true
 
     clean:
       build: [ 'build/dev', 'build/dist', '.tscache/' ]

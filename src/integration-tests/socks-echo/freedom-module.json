@@ -52,11 +52,11 @@
         "value": ["string", ["array", "buffer"]],
         "ret": ["array", "buffer"]
       },
-      "ping": {
+      "sendData": {
         "type": "method",
         "value": ["string", "buffer"]
       },
-      "pong": {
+      "receivedData": {
         "type": "event",
         "value": {
           "connectionId": "string",

@@ -8,7 +8,11 @@ import socks_to_rtc = require('../../socks-to-rtc/socks-to-rtc');
 import net = require('../../net/net.types');
 import tcp = require('../../net/tcp');
 import socks = require('../../socks-common/socks-headers');
-import ProxyIntegrationTester = require('./proxy-integration-test.types');
+
+import proxyintegrationtesttypes = require('./proxy-integration-test.types');
+import ProxyIntegrationTester = proxyintegrationtesttypes.ProxyIntegrationTester;
+import ReceivedDataEvent = proxyintegrationtesttypes.ReceivedDataEvent;
+
 import arraybuffers = require('../../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
 
 // This abstract class is converted into a real class by Freedom, which
@@ -161,12 +165,12 @@ class AbstractProxyIntegrationTest implements ProxyIntegrationTester {
     }
   }
 
-  public ping = (connectionId:string, content:ArrayBuffer) : Promise<void> => {
+  public sendData = (connectionId:string, content:ArrayBuffer) : Promise<void> => {
     try {
       var connection = this.connections_[connectionId];
       connection.send(content);
       connection.dataFromSocketQueue.setSyncHandler((response:ArrayBuffer) => {
-        this.dispatchEvent_('pong', {
+        this.dispatchEvent_('receivedData', {
           connectionId: connectionId,
           response: response
         });
