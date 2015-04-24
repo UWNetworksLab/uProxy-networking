@@ -19,6 +19,7 @@ import churn = require('../churn/churn');
 import net = require('../net/net.types');
 import tcp = require('../net/tcp');
 import socks = require('../socks-common/socks-headers');
+import Pool = require('../pool/pool');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 
@@ -105,6 +106,9 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
     private peerConnection_
         :peerconnection.PeerConnection<signals.Message> = null;
 
+    // This pool manages the data channels for the PeerConnection.
+    private pool_ :Pool;
+
     // The |sessions_| map goes from WebRTC data-channel labels to the Session.
     // Most of the wiring to manage this relationship happens via promises. We
     // need this only for data being received from a peer-connection data
@@ -142,10 +146,11 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
         throw new Error('already configured');
       }
       this.peerConnection_ = peerconnection;
+      this.pool_ = new Pool(peerconnection, 'RtcToNet');
       this.proxyConfig = proxyConfig;
 
       this.signalsForPeer = this.peerConnection_.signalForPeerQueue;
-      this.peerConnection_.peerOpenedChannelQueue.setSyncHandler(
+      this.pool_.peerOpenedChannelQueue.setSyncHandler(
           this.onPeerOpenedChannel_);
 
       // TODO: this.onceReady should reject if |this.onceStopping_|
@@ -275,10 +280,6 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
   export class Session {
     private tcpConnection_ :tcp.Connection;
 
-    // TODO: There's no equivalent of datachannel.isClosed():
-    //         https://github.com/uProxy/uproxy/issues/1075
-    private isChannelClosed_ :boolean = false;
-
     // Fulfills once a connection has been established with the remote peer.
     // Rejects if a connection cannot be made for any reason.
     public onceReady :Promise<void>;
@@ -343,15 +344,15 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
 
       this.onceReady.then(this.linkSocketAndChannel_, this.fulfillStopping_);
 
-      // Shutdown once the data channel terminates and has drained.
+      // Shutdown once the data channel terminates.
       this.dataChannel_.onceClosed.then(() => {
-        this.isChannelClosed_ = true;
-        if (this.dataChannel_.dataFromPeerQueue.getLength() === 0) {
-          log.info('%1: channel closed, all incoming data processed', this.longId());
-          this.fulfillStopping_();
+        if (this.dataChannel_.dataFromPeerQueue.getLength() > 0) {
+          log.warn('%1: channel closed with %2 unprocessed incoming messages',
+              this.longId(), this.dataChannel_.dataFromPeerQueue.getLength());
         } else {
-          log.info('%1: channel closed, still processing incoming data', this.longId());
+          log.info('%1: channel closed', this.longId());
         }
+        this.fulfillStopping_();
       });
 
       this.onceStopped_ = this.onceStopping_.then(this.stopResources_);
@@ -417,7 +418,9 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
             return;
           }
 
-          log.info('%1: received endpoint from peer: %2', [
+          // The domain name is very sensitive, so we keep it out of the
+          // info-level logs, which may be uploaded.
+          log.debug('%1: received endpoint from peer: %2', [
               this.longId(), JSON.stringify(request.endpoint)]);
           F(request.endpoint);
           return;
@@ -484,9 +487,6 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
     // Sends a packet over the data channel.
     // Invoked when a packet is received over the TCP socket.
     private sendOnChannel_ = (data:ArrayBuffer) : Promise<void> => {
-      log.debug('%1: socket received %2 bytes', [
-          this.longId(),
-          data.byteLength]);
       this.socketReceivedBytes_ += data.byteLength;
 
       return this.dataChannel_.send({buffer: data});
@@ -500,9 +500,6 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
         return Promise.reject(new Error(
             'received non-buffer data from datachannel'));
       }
-      log.debug('%1: datachannel received %2 bytes', [
-          this.longId(),
-          data.buffer.byteLength]);
       this.bytesReceivedFromPeer_.handle(data.buffer.byteLength);
       this.channelReceivedBytes_ += data.buffer.byteLength;
 
@@ -513,6 +510,7 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
     // and vice versa. Should only be called once both socket and channel have
     // been successfully established.
     private linkSocketAndChannel_ = () : void => {
+      log.info('%1: linking socket and channel', this.longId());
       var socketReader = (data:ArrayBuffer) => {
         this.sendOnChannel_(data).then(() => {
           this.bytesSentToPeer_.handle(data.byteLength);
@@ -537,24 +535,9 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
         this.fulfillStopping_();
       });
 
-      // Session.nextTick_ (i.e. setTimeout) is used to preserve system
-      // responsiveness when large amounts of data are being sent:
-      //   https://github.com/uProxy/uproxy/issues/967
-      var channelReadLoop = (data:peerconnection.Data) : void => {
+      var channelReader = (data:peerconnection.Data) : void => {
         this.sendOnSocket_(data).then((writeInfo:freedom_TcpSocket.WriteInfo) => {
           this.socketSentBytes_ += data.buffer.byteLength;
-          // Shutdown once the data channel terminates and has drained,
-          // otherwise keep draining.
-          if (this.isChannelClosed_ &&
-              this.dataChannel_.dataFromPeerQueue.getLength() === 0) {
-            log.info('%1: channel drained', this.longId());
-            this.fulfillStopping_();
-          } else {
-            Session.nextTick_(() => {
-              this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
-                  channelReadLoop);
-            });
-          }
         }, (e:{ errcode: string }) => {
           // TODO: e is actually a freedom.Error (uproxy-lib 20+)
           // errcode values are defined here:
@@ -572,8 +555,7 @@ import logging = require('../../../third_party/uproxy-lib/logging/logging');
           }
         });
       };
-      this.dataChannel_.dataFromPeerQueue.setSyncNextHandler(
-          channelReadLoop);
+      this.dataChannel_.dataFromPeerQueue.setSyncHandler(channelReader);
 
       // The TCP connection starts in the paused state.  However, in extreme
       // cases, enough data can arrive before the pause takes effect to put

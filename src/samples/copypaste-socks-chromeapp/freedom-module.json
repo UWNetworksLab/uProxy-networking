@@ -11,12 +11,16 @@
       "url": "uproxy-lib/loggingprovider/freedom-module.json",
       "api": "loggingcontroller"
     },
+    "logginglistener": {
+      "url": "uproxy-lib/loggingprovider/freedom-module.json",
+      "api": "logginglistener"
+    },
     "churnPipe": {
       "url": "uproxy-networking/churn-pipe/freedom-module.json",
       "api": "churnPipe"
     },
     "pgp": {
-      "url": "lib/freedom-pgp-e2e/dist/pgpapi.json",
+      "url": "freedom-pgp-e2e/dist/pgpapi.json",
       "api": "crypto"
     }
   },

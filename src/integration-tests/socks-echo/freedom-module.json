@@ -10,6 +10,10 @@
       "url": "uproxy-lib/loggingprovider/freedom-module.json",
       "api": "loggingcontroller"
     },
+    "logginglistener": {
+      "url": "uproxy-lib/loggingprovider/freedom-module.json",
+      "api": "logginglistener"
+    },
     "churnPipe": {
       "url": "uproxy-networking/churn-pipe/freedom-module.json",
       "api": "churnPipe"
@@ -34,6 +38,10 @@
         "value": ["number", "string"],
         "ret": "string"
       },
+      "setRepeat": {
+        "type": "method",
+        "value": ["number"]
+      },
       "echo": {
         "type": "method",
         "value": ["string", "buffer"],
@@ -44,13 +52,16 @@
         "value": ["string", ["array", "buffer"]],
         "ret": ["array", "buffer"]
       },
-      "ping": {
+      "sendData": {
         "type": "method",
         "value": ["string", "buffer"]
       },
-      "pong": {
+      "receivedData": {
         "type": "event",
-        "value": "buffer"
+        "value": {
+          "connectionId": "string",
+          "response": "buffer"
+        }
       }
     }
   },

@@ -23,7 +23,7 @@ import net = require('../net/net.types');
 import churn_pipe_types = require('./freedom-module.interface');
 import Message = churn_pipe_types.Message;
 
-var log :logging.Log = new logging.Log('churn pipe');
+var log :logging.Log = new logging.Log('churn-pipe');
 
 /**
  * Listens on a port for UDP datagrams -- emitting a Freedom message for each
