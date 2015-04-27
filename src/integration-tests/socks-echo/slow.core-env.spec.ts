@@ -37,6 +37,7 @@ function slowTestDescription(useChurn:boolean) {
   // set a test timeout of four minutes.
   jasmine.DEFAULT_TIMEOUT_INTERVAL = 240000;
 
+  // Opens 200 connections, sends 1 KB on each, and receives 250 KB on each
   it('download load test', (done) => {
     var blockSize = 1024;
     var testBlock :ArrayBuffer = new ArrayBuffer(blockSize);
@@ -73,6 +74,7 @@ function slowTestDescription(useChurn:boolean) {
     });
   });
 
+  // Opens 200 connections, sends 250 KB on each, and receives 0 KB on each
   it('upload load test', (done) => {
     var size = 250 * 1024;
     var testBlock :ArrayBuffer = new ArrayBuffer(size);
