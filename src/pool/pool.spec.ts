@@ -27,7 +27,6 @@ describe('pool', function() {
   beforeEach(function() {
     mockDataChannels = [];
 
-    var noopPromise = new Promise<void>((F, R) => {});
     mockPeerConnection = <any>{
       openDataChannel: jasmine.createSpy('openDataChannel').and.callFake(() => {
         var mockDataChannel = createMockDataChannel('foo' + mockDataChannels.length);
