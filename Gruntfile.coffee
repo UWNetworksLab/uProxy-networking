@@ -26,6 +26,7 @@ taskManager.add 'test', [
   'browserify:rtcToNetSpec'
   'browserify:turnFrontEndMessagesSpec'
   'browserify:turnFrontEndSpec'
+  'browserify:poolSpec'
   'jasmine'
 ]
 
@@ -147,6 +148,10 @@ taskManager.add 'integrationTestModules', [
   'socksEchoIntegrationTestModule'
 ]
 
+taskManager.add 'integrationSlow', [
+  'socksEchoIntegrationTestModule'
+  'jasmine_chromeapp:socksEchoSlow'
+]
 
 
 #-------------------------------------------------------------------------
@@ -415,6 +420,7 @@ module.exports = (grunt) ->
     jasmine:
       churn: Rule.jasmineSpec 'churn'
       net: Rule.jasmineSpec 'net'
+      pool: Rule.jasmineSpec 'pool'
       rtcToNet: Rule.jasmineSpec 'rtc-to-net'
       simpleTransformers: Rule.jasmineSpec 'simple-transformers'
       socksCommon: Rule.jasmineSpec('socks-common',
@@ -431,6 +437,7 @@ module.exports = (grunt) ->
       tcpSpec: Rule.browserifySpec 'net/tcp'
       turnFrontEndMessagesSpec: Rule.browserifySpec 'turn-frontend/messages'
       turnFrontEndSpec: Rule.browserifySpec 'turn-frontend/turn-frontend'
+      poolSpec: Rule.browserifySpec 'pool/pool'
 
       # Freedom Modules
       churnPipeFreedomModule: Rule.browserify(
@@ -528,7 +535,7 @@ module.exports = (grunt) ->
           {
             cwd: devBuildPath + '/integration-tests/socks-echo/',
             src: ['**/*', '!jasmine_chromeapp*/**']
-            dest: '/uproxy-networking/',
+            dest: './',
             expand: true
           }
         ]
@@ -538,7 +545,7 @@ module.exports = (grunt) ->
         ]
         options:
           outDir: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp_slow/'
-          keepRunner: false
+          keepRunner: true
 
     clean:
       build: [ 'build/dev', 'build/dist', '.tscache/' ]

@@ -8,15 +8,24 @@ import socks_to_rtc = require('../../socks-to-rtc/socks-to-rtc');
 import net = require('../../net/net.types');
 import tcp = require('../../net/tcp');
 import socks = require('../../socks-common/socks-headers');
-import ProxyIntegrationTester = require('./proxy-integration-test.types');
 
-class ProxyIntegrationTestClass implements ProxyIntegrationTester {
+import proxyintegrationtesttypes = require('./proxy-integration-test.types');
+import ProxyIntegrationTester = proxyintegrationtesttypes.ProxyIntegrationTester;
+import ReceivedDataEvent = proxyintegrationtesttypes.ReceivedDataEvent;
+
+import arraybuffers = require('../../../../third_party/uproxy-lib/arraybuffers/arraybuffers');
+
+// This abstract class is converted into a real class by Freedom, which
+// fills in the unimplemented on(...) method in the process of
+// constructing a module.
+class AbstractProxyIntegrationTest implements ProxyIntegrationTester {
   private socksToRtc_ :socks_to_rtc.SocksToRtc;
   private rtcToNet_ :rtc_to_net.RtcToNet;
   private socksEndpoint_ : Promise<net.Endpoint>;
   private echoServers_ :tcp.Server[] = [];
   private connections_ :{ [index:string]: tcp.Connection; } = {};
   private localhost_ :string = '127.0.0.1';
+  private repeat_ :number = 1;
 
   constructor(private dispatchEvent_:(name:string, args:any) => void,
                                       denyLocalhost?:boolean,
@@ -32,7 +41,12 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
 
     server.connectionsQueue.setSyncHandler((tcpConnection:tcp.Connection) => {
       tcpConnection.dataFromSocketQueue.setSyncHandler((buffer:ArrayBuffer) => {
-        tcpConnection.send(buffer);
+        var multiBuffer :ArrayBuffer[] = []
+        for (var i = 0; i < this.repeat_; ++i) {
+          multiBuffer.push(buffer);
+        }
+        var concatenated = arraybuffers.concat(multiBuffer);
+        tcpConnection.send(concatenated);
       });
     });
 
@@ -40,6 +54,11 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
     this.echoServers_.push(server);
     return server.listen().then((endpoint:net.Endpoint) => { return endpoint.port; });
   }
+
+  public setRepeat = (repeat:number) : Promise<void> => {
+    this.repeat_ = repeat;
+    return Promise.resolve<void>();
+  };
 
   private startSocksPair_ = (denyLocalhost?:boolean, obfuscate?:boolean) : Promise<net.Endpoint> => {
     var socksToRtcEndpoint :net.Endpoint = {
@@ -117,7 +136,7 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
   public echo = (connectionId:string, content:ArrayBuffer) : Promise<ArrayBuffer> => {
     return this.echoMultiple(connectionId, [content])
         .then((responses:ArrayBuffer[]) : ArrayBuffer => {
-          return responses[0];
+          return arraybuffers.concat(responses);
         });
   }
 
@@ -146,18 +165,25 @@ class ProxyIntegrationTestClass implements ProxyIntegrationTester {
     }
   }
 
-  public ping = (connectionId:string, content:ArrayBuffer) : Promise<void> => {
+  public sendData = (connectionId:string, content:ArrayBuffer) : Promise<void> => {
     try {
       var connection = this.connections_[connectionId];
       connection.send(content);
       connection.dataFromSocketQueue.setSyncHandler((response:ArrayBuffer) => {
-        this.dispatchEvent_('pong', response);
+        this.dispatchEvent_('receivedData', {
+          connectionId: connectionId,
+          response: response
+        });
       });
       return Promise.resolve<void>();
     } catch (e) {
       return Promise.reject(e);
     }
   }
+
+  public on = (name:string, listener:(event:any) => void) : void => {
+    throw new Error('Placeholder function to keep Typescript happy');
+  }
 }
 
-export = ProxyIntegrationTestClass;
+export = AbstractProxyIntegrationTest;
