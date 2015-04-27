@@ -26,6 +26,7 @@ taskManager.add 'test', [
   'browserify:rtcToNetSpec'
   'browserify:turnFrontEndMessagesSpec'
   'browserify:turnFrontEndSpec'
+  'browserify:poolSpec'
   'jasmine'
 ]
 
@@ -415,6 +416,7 @@ module.exports = (grunt) ->
     jasmine:
       churn: Rule.jasmineSpec 'churn'
       net: Rule.jasmineSpec 'net'
+      pool: Rule.jasmineSpec 'pool'
       rtcToNet: Rule.jasmineSpec 'rtc-to-net'
       simpleTransformers: Rule.jasmineSpec 'simple-transformers'
       socksCommon: Rule.jasmineSpec('socks-common',
@@ -431,6 +433,7 @@ module.exports = (grunt) ->
       tcpSpec: Rule.browserifySpec 'net/tcp'
       turnFrontEndMessagesSpec: Rule.browserifySpec 'turn-frontend/messages'
       turnFrontEndSpec: Rule.browserifySpec 'turn-frontend/turn-frontend'
+      poolSpec: Rule.browserifySpec 'pool/pool'
 
       # Freedom Modules
       churnPipeFreedomModule: Rule.browserify(

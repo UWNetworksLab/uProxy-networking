@@ -101,7 +101,9 @@ class LocalPool {
   // Resets the channel, making it ready for use again, and adds it
   // to the pool.
   private onChannelClosed_ = (poolChannel:PoolChannel) : void => {
-    poolChannel.reset();
+    if (!poolChannel.reset()) {
+      return;
+    }
     this.pool_.push(poolChannel);
     log.debug('%1: returned channel %2 to the pool (new size: %3)',
         this.name_, poolChannel.getLabel(), this.pool_.length);
@@ -132,7 +134,9 @@ class RemotePool {
       this.peerOpenedChannelQueue.handle(poolChannel);
     });
     poolChannel.onceClosed.then(() => {
-      poolChannel.reset();
+      if (!poolChannel.reset()) {
+        return;
+      }
       this.listenForOpenAndClose_(poolChannel);
     });
   }
@@ -150,7 +154,8 @@ enum ControlMessage {
 enum State {
   OPEN,
   CLOSING,  // Waiting for CLOSE ack
-  CLOSED
+  CLOSED,
+  PERMANENTLY_CLOSED
 }
 
 // Each PoolChannel wraps an actual DataChannel, and provides behavior
@@ -172,15 +177,24 @@ class PoolChannel implements datachannel.DataChannel {
   public dataFromPeerQueue :handler.Queue<datachannel.Data,void>;
   private lastDataFromPeerHandled_ : Promise<void>;
 
-  private state_ :State;
+  private state_ :State = State.CLOSED;
 
   // dc_.onceOpened must already have resolved
   constructor(private dc_:datachannel.DataChannel) {
     this.reset();
     this.dc_.dataFromPeerQueue.setSyncHandler(this.onDataFromPeer_);
+
+    this.dc_.onceClosed.then(() => {
+      this.state_ = State.PERMANENTLY_CLOSED;
+      this.fulfillClosed_();
+    });
   }
 
-  public reset = () => {
+  public reset = () : boolean => {
+    if (this.state_ !== State.CLOSED) {
+      return false;
+    }
+
     this.dataFromPeerQueue = new handler.Queue<datachannel.Data,void>();
     this.lastDataFromPeerHandled_ = Promise.resolve<void>();
     this.onceOpened = new Promise<void>((F, R) => {
@@ -190,13 +204,18 @@ class PoolChannel implements datachannel.DataChannel {
       this.fulfillClosed_ = F;
     });
 
-    this.state_ = State.CLOSED;
     this.onceOpened.then(() => {
-      this.state_ = State.OPEN;
+      if (this.state_ === State.CLOSED) {
+        this.state_ = State.OPEN;
+      }
     });
     this.onceClosed.then(() => {
-      this.state_ = State.CLOSED;
+      if (this.state_ !== State.PERMANENTLY_CLOSED) {
+        this.state_ = State.CLOSED;
+      }
     });
+
+    return true;
   }
 
   public getLabel = () : string => {
