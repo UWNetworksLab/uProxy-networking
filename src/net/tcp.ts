@@ -46,20 +46,15 @@ export function endpointOfSocketInfo(info:freedom_TcpSocket.SocketInfo)
   return retval;
 }
 
-// Closes a socket, along with its freedomjs interface object.
-function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket) : Promise<void> {
-  // Note:
-  //   freedom['core.tcpsocket'].close != freedom['core.tcpsocket']().close
-  // The former destroys the freedom interface & communication channels.
-  // The latter is a method on the constructed interface object that is on
-  // the instance of the freedomjs TCP socket API.
-  var destroy = () => {
-    freedom['core.tcpsocket'].close(socket);
-  };
-  return socket.close().then(destroy, (e:Error) => {
-    destroy();
-    return e;
-  });
+// Closes a socket's freedomjs interface object, i.e.:
+//   freedom['core.tcpsocket']().close
+//
+// This is different from:
+//   freedom['core.tcpsocket'].close
+// The former is a method on freedomjs TCP socket API while the latter destroys
+// the freedomjs interface and communication channels.
+function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket) : void {
+  freedom['core.tcpsocket'].close(socket);
 }
 
 // Promise and handler queue-based TCP server with freedomjs sockets.
@@ -116,6 +111,18 @@ export class Server {
       // TODO: investigate which other values occur
       this.fulfillShutdown_(SocketCloseKind.UNKOWN);
     }
+
+    // Since there may be other calls to this provider in progress which will
+    // fail to resolve if we destroy the communication channel now, postpone
+    // doing so until the next iteration of the event loop.
+    setTimeout(() => {
+      try {
+        destroyFreedomSocket_(this.socket_);
+      } catch (e) {
+        log.error('%1: failed to destroy freedomjs socket instance: %2',
+            this.id_, e.message);
+      }
+    }, 0);
   }
 
   // Listens for connections, returning onceListening.
@@ -145,7 +152,18 @@ export class Server {
     if (this.connectionsCount() >= this.maxConnections_) {
       log.warn('%1: hit maximum connections count, dropping new connection',
           this.id_);
-      destroyFreedomSocket_(freedom['core.tcpsocket'](socketId));
+      var newConnection :freedom_TcpSocket.Socket =
+          freedom['core.tcpsocket'](socketId);
+      newConnection.close().then(() => {
+        destroyFreedomSocket_(newConnection);
+      }, (e:Error) => {
+        log.error('%1: failed to close new connection socket: %2',
+            this.id_, e.message);
+        destroyFreedomSocket_(newConnection);
+      }).catch((e:Error) => {
+        log.error('%1: failed to destroy socket provider: %2',
+            this.id_, e.message);
+      });
       return;
     }
 
@@ -182,7 +200,7 @@ export class Server {
   public stopListening = () : Promise<void> => {
     log.debug('%1: closing socket, no new connections will be accepted',
         this.id_);
-    return destroyFreedomSocket_(this.socket_);
+    return this.socket_.close();
   }
 
   // Closes all active connections.
@@ -371,15 +389,25 @@ export class Connection {
     // CONSIDER: can this happen after a onceConnected promise rejection? if so,
     // do we want to preserve the SocketCloseKind.NEVER_CONNECTED result for
     // onceClosed?
-    destroyFreedomSocket_(this.connectionSocket_).then(() => {
-      if (info.errcode === 'SUCCESS') {
-        this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
-      } else if (info.errcode === 'CONNECTION_CLOSED') {
-        this.fulfillClosed_(SocketCloseKind.REMOTELY_CLOSED);
-      } else {
-        this.fulfillClosed_(SocketCloseKind.UNKOWN);
+    if (info.errcode === 'SUCCESS') {
+      this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
+    } else if (info.errcode === 'CONNECTION_CLOSED') {
+      this.fulfillClosed_(SocketCloseKind.REMOTELY_CLOSED);
+    } else {
+      this.fulfillClosed_(SocketCloseKind.UNKOWN);
+    }
+
+    // Since there may be other calls to this provider in progress which will
+    // fail to resolve if we destroy the communication channel now, postpone
+    // doing so the next iteration of the event loop.
+    setTimeout(() => {
+      try {
+        destroyFreedomSocket_(this.connectionSocket_);
+      } catch (e) {
+        log.error('%1: failed to destroy socket provider: %2',
+            this.connectionId, e.message);
       }
-    });
+    }, 0);
   }
 
   public pause = () => {
