@@ -88,8 +88,9 @@ var log :logging.Log = new logging.Log('churn');
       : NatPair => {
     // TODO: Note that we cannot currently support IPv6 addresses:
     //         https://github.com/uProxy/uproxy/issues/1107
-    var address :string;
-    var port :number;
+    var publicHostCandidates :net.Endpoint[] = [];
+    var srflxCandidates :NatPair[] = [];
+    var privateHostCandidates :net.Endpoint[] = [];
     for (var i = 0; i < candidates.length; ++i) {
       var line = candidates[i].candidate;
       var tokens = splitCandidateLine_(line);
@@ -99,11 +100,11 @@ var log :logging.Log = new logging.Log('churn');
       }
       var typ = tokens[7];
       if (typ === 'srflx') {
-        address = tokens[4];
-        if (ipaddr.process(address).kind() === 'ipv6') {
+        var srflxAddress = tokens[4];
+        if (ipaddr.process(srflxAddress).kind() === 'ipv6') {
           continue;
         }
-        port = parseInt(tokens[5]);
+        var port = parseInt(tokens[5]);
         if (tokens[8] != 'raddr') {
           throw new Error('no raddr in candidate line: ' + line);
         }
@@ -115,37 +116,44 @@ var log :logging.Log = new logging.Log('churn');
           throw new Error('no rport in candidate line: ' + line);
         }
         var rport = parseInt(tokens[11]);
-        // TODO: Return the most preferred srflx candidate, not
-        // just the first.
-        return {
+        srflxCandidates.push({
           external: {
-            address: address,
+            address: srflxAddress,
             port: port
           },
           internal: {
             address: raddr,
             port: rport
           }
-        };
+        });
       } else if (typ === 'host') {
+        var hostAddress = ipaddr.process(tokens[4]);
         // Store the host address in case no srflx candidates are found.
-        if (ipaddr.process(tokens[4]).kind() !== 'ipv6') {
-          address = tokens[4];
-          port = parseInt(tokens[5]);
+        if (hostAddress.kind() !== 'ipv6') {
+          var endpoint :net.Endpoint = {
+            address: tokens[4],
+            port: parseInt(tokens[5])
+          };
+          if (hostAddress.range() === 'unicast') {
+            publicHostCandidates.push(endpoint);
+          } else {
+            privateHostCandidates.push(endpoint);
+          }
         }
       }
     }
-    // No 'srflx' candidate found.
-    if (address) {
-      // A host candidate must have been found.  Let's hope it's routable.
-      var endpoint = {
-        address: address,
-        port: port
-      };
+    if (publicHostCandidates.length > 0) {
       return {
-        internal: endpoint,
-        external: endpoint
-      };
+        internal: publicHostCandidates[0],
+        external: publicHostCandidates[0]
+      }
+    } else if (srflxCandidates.length > 0) {
+      return srflxCandidates[0];
+    } else if (privateHostCandidates.length > 0) {
+      return {
+        internal: privateHostCandidates[0],
+        external: privateHostCandidates[0]
+      }
     }
     throw new Error('no srflx or host candidate found');
   };
@@ -158,7 +166,7 @@ var log :logging.Log = new logging.Log('churn');
   // Retry an async function with exponential backoff for up to 2 seconds
   // before failing.
   var retry_ = (func:() => Promise<void>, delayMs?:number) : Promise<void> => {
-    delayMs = delayMs || 10;  // milliseconds
+    delayMs = delayMs || 10;
     return func().catch((err) => {
       delayMs *= 2;
       if (delayMs > 2000) {
@@ -326,6 +334,8 @@ var log :logging.Log = new logging.Log('churn');
         remoteEndpoint:net.Endpoint,
         publicPipe:ChurnPipe)
         : Promise<ChurnPipe> => {
+      log.info('%1: Adding local pipe between %2 and %3',
+          this.peerName, webRtcEndpoint, remoteEndpoint);
       var key = makeEndpointKey_(remoteEndpoint);
       if (this.mirrorPipes_[key]) {
         log.warn('%1: Got redundant call to add local pipe for %2',
@@ -439,8 +449,11 @@ var log :logging.Log = new logging.Log('churn');
           localPipe.send(m.data);
         } else if (this.pcState == peerconnection.State.WAITING ||
                    this.pcState == peerconnection.State.CONNECTING) {
+          log.info('%1: Got packet from new source; peer has symmetric NAT?',
+              this.peerName);
           this.addLocalPipe_(webRtcEndpoint, m.source, publicPipe).then(
               (localPipe:ChurnPipe) => {
+            // Don't drop the first packet.
             localPipe.send(m.data);
           });
         } else {
