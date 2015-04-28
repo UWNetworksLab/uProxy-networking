@@ -22,6 +22,9 @@
     },
     "request/request.d.ts": {
       "commit": "338059f48e4e32ef11472bd5a54ad91fb67f8c36"
+    },
+    "circular-json/circular-json.d.ts": {
+      "commit": "9c2d795cc1d98cd3e11186de9290776c66578ea0"
     }
   }
 }
