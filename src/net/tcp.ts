@@ -46,13 +46,10 @@ export function endpointOfSocketInfo(info:freedom_TcpSocket.SocketInfo)
   return retval;
 }
 
-// Closes a socket's freedomjs interface object, i.e.:
-//   freedom['core.tcpsocket']().close
-//
-// This is different from:
+// Closes a TCP socket provider's communication channel, causing freedomjs
+// to "forget" about the instance, i.e.:
 //   freedom['core.tcpsocket'].close
-// The former is a method on freedomjs TCP socket API while the latter destroys
-// the freedomjs interface and communication channels.
+// This is different from calling close on the provider instance.
 function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket) : void {
   freedom['core.tcpsocket'].close(socket);
 }
