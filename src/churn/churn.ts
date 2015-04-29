@@ -83,6 +83,19 @@ var log :logging.Log = new logging.Log('churn');
     external: net.Endpoint;
   }
 
+  // This function implements a heuristic to select the single candidate
+  // that is most likely to work for this connection.  The heuristic
+  // expresses a preference ordering:
+  // Most preferred: public IP address bound as a host candidate
+  //  - rare outside of servers, but offers the very best connectivity
+  // Next best: server-reflexive IP address
+  //  - most common
+  // Worst: private IP address in a host candidate
+  //  - indicates that STUN has failed.  Connection is still possible
+  //    if the other side is directly routable.
+  // If none of these are present, the function will throw an exception.
+  // TODO: Allow selecting more than one public address.  This would help
+  // when there are multiple interfaces or IPv6 and IPv4.
   export var selectPublicAddress =
       (candidates:freedom_RTCPeerConnection.RTCIceCandidate[])
       : NatPair => {
