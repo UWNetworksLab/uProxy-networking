@@ -59,12 +59,12 @@ parentModule.on('shutdown', () => {
     var client = new tcp.Connection({endpoint: endpoint});
     server.connectionsQueue.setSyncHandler((connection:tcp.Connection) => {
       client.onceConnected.then(() => {
-    server.shutdown();
+        server.shutdown();
         return Promise.all<any>([connection.onceClosed, client.onceClosed,
             server.onceShutdown()]);
       })
       .then((values:any) => {
-    parentModule.emit('shutdown');
+        parentModule.emit('shutdown');
       });
     });
   });
