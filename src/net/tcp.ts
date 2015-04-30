@@ -311,6 +311,9 @@ export class Connection {
   // A private function called to invoke fullfil onceClosed.
   private fulfillClosed_ :(reason:SocketCloseKind)=>void;
 
+  // Number of pending (asynchronous) requests to the socket.
+  private numInflightSocketOps_= 0;
+
   // A TCP connection for a given socket.
   constructor(connectionKind:Connection.Kind, private startPaused_?:boolean) {
     this.connectionId = 'N' + Connection.globalConnectionId_++;
@@ -336,8 +339,8 @@ export class Connection {
       // So we get a handler to the old freedom socket.
       this.connectionSocket_ =
           freedom['core.tcpsocket'](connectionKind.existingSocketId);
-      this.onceConnected =
-          this.connectionSocket_.getInfo().then(endpointOfSocketInfo);
+      this.onceConnected = wrap(this.preSocketOp_, this.postSocketOp_,
+          this.connectionSocket_.getInfo).then(endpointOfSocketInfo);
       this.state_ = Connection.State.CONNECTED;
       this.connectionId = this.connectionId + '.A' +
           connectionKind.existingSocketId;
@@ -348,8 +351,8 @@ export class Connection {
       // which we have connected.  To speed this process up, we immediately
       // pause the socket as soon as it's connected, so that CPU time is not
       // wasted sending events that we can't pass on until getInfo returns.
-      this.onceConnected =
-          this.connectionSocket_
+      this.onceConnected = wrap(this.preSocketOp_, this.postSocketOp_, () => {
+        return this.connectionSocket_
               .connect(connectionKind.endpoint.address,
                        connectionKind.endpoint.port)
               .then(this.pause)
@@ -359,7 +362,8 @@ export class Connection {
                   this.resume();
                 }
                 return endpointOfSocketInfo(info);
-              })
+              });
+      });
       this.state_ = Connection.State.CONNECTING;
       this.onceConnected
           .then(() => {
@@ -390,7 +394,10 @@ export class Connection {
     // |dataToSocketQueue| allows a class using this connection to start
     // queuing data to be send to the socket.
     this.onceConnected.then(() => {
-      this.dataToSocketQueue.setHandler(this.connectionSocket_.write);
+      this.dataToSocketQueue.setHandler((buffer:ArrayBuffer) => {
+        return wrap(this.preSocketOp_, this.postSocketOp_,
+            this.connectionSocket_.write.bind(undefined, buffer));
+      });
     });
     this.onceConnected.catch((e:Error) => {
       this.fulfillClosed_(SocketCloseKind.NEVER_CONNECTED);
@@ -418,6 +425,8 @@ export class Connection {
       return;
     }
 
+    this.postSocketOp_();
+
     this.state_ = Connection.State.CLOSED;
     this.dataToSocketQueue.stopHandling();
     this.dataToSocketQueue.clear();
@@ -432,26 +441,34 @@ export class Connection {
     } else {
       this.fulfillClosed_(SocketCloseKind.UNKOWN);
     }
+  }
 
-    // Since there may be other calls to this provider in progress which will
-    // fail to resolve if we destroy the communication channel now, postpone
-    // doing so the next iteration of the event loop.
-    setTimeout(() => {
+  private preSocketOp_ = () : void => {
+    this.numInflightSocketOps_++;
+  }
+
+  // Closes the socket instance's channel if there are no more
+  // inflight calls to the socket.
+  // See #destroyFreedomSocket_.
+  private postSocketOp_ = () : void => {
+    this.numInflightSocketOps_--;
+    if (this.numInflightSocketOps_ < 0) {
       try {
         destroyFreedomSocket_(this.connectionSocket_);
+        log.debug('%1: closed socket channel', this.connectionId);
       } catch (e) {
-        log.error('%1: failed to destroy socket provider: %2',
+        log.error('%1: error closing socket channel: %2',
             this.connectionId, e.message);
       }
-    }, 0);
+    }
   }
 
   public pause = () => {
-    this.connectionSocket_.pause();
+    wrap(this.preSocketOp_, this.postSocketOp_, this.connectionSocket_.pause);
   }
 
   public resume = () => {
-    this.connectionSocket_.resume();
+    wrap(this.preSocketOp_, this.postSocketOp_, this.connectionSocket_.resume);
   }
 
   // This is called to close the underlying socket. This fulfills the
@@ -463,7 +480,8 @@ export class Connection {
       log.debug('%1: close called when already closed', [
           this.connectionId]);
     } else {
-      this.connectionSocket_.close();
+      wrap(this.preSocketOp_, this.postSocketOp_,
+          this.connectionSocket_.close);
     }
 
     // The onDisconnect handler (which should only
