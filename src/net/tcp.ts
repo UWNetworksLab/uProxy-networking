@@ -54,6 +54,28 @@ function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket) : void {
   freedom['core.tcpsocket'].close(socket);
 }
 
+// Sandwiches a call to an asynchronous function between two other
+// (synchronous) functions. Intended for tracking the number of calls
+// inflight to a freedom provider, which may fail to resolve if the
+// provider's communication channel is destroyed while the call is
+// pending (this can happen even on a normal call to the provider's
+// close method).
+function wrap<T>(
+    before:() => void,
+    after:() => void,
+    f:() => Promise<T>) : Promise<T> {
+  return new Promise<T>((F, R) => {
+    before();
+    return f().then((result:T) => {
+      after();
+      F(result);
+    }).catch((e:Error) => {
+      after();
+      R(e);
+    })
+  });
+}
+
 // Promise and handler queue-based TCP server with freedomjs sockets.
 // TODO: protection against multiple calls to methods such as listen
 export class Server {
@@ -86,6 +108,9 @@ export class Server {
     this.fulfillShutdown_ = F;
   });
 
+  // Number of pending (asynchronous) requests to the socket.
+  private numInflightSocketOps_= 0;
+
   constructor(private endpoint_ :net.Endpoint,
       private maxConnections_ :number = DEFAULT_MAX_CONNECTIONS) {
     this.id_ = 'S' + (Server.numCreations_++);
@@ -102,32 +127,46 @@ export class Server {
   // Invoked when the socket terminates.
   private onDisconnectHandler_ = (info:freedom_TcpSocket.DisconnectInfo) : void => {
     log.debug('%1: disconnected: %2', this.id_, JSON.stringify(info));
+
+    this.postSocketOp_();
+
     if (info.errcode === 'SUCCESS') {
       this.fulfillShutdown_(SocketCloseKind.WE_CLOSED_IT);
     } else {
       // TODO: investigate which other values occur
       this.fulfillShutdown_(SocketCloseKind.UNKOWN);
     }
+  }
 
-    // Since there may be other calls to this provider in progress which will
-    // fail to resolve if we destroy the communication channel now, postpone
-    // doing so until the next iteration of the event loop.
-    setTimeout(() => {
+  private preSocketOp_ = () : void => {
+    this.numInflightSocketOps_++;
+  }
+
+  // Closes the socket instance's channel if there are no more
+  // inflight calls to the socket.
+  // See #destroyFreedomSocket_.
+  private postSocketOp_ = () : void => {
+    this.numInflightSocketOps_--;
+    if (this.numInflightSocketOps_ < 0) {
       try {
         destroyFreedomSocket_(this.socket_);
+        log.debug('%1: closed socket channel', this.id_);
       } catch (e) {
-        log.error('%1: failed to destroy freedomjs socket instance: %2',
+        log.error('%1: error closing socket channel: %2',
             this.id_, e.message);
       }
-    }, 0);
+    }
   }
 
   // Listens for connections, returning onceListening.
   // Should only be called once.
   public listen = () : Promise<net.Endpoint> => {
-    this.socket_.listen(this.endpoint_.address,
-        this.endpoint_.port).then(this.socket_.getInfo).then(
-        (info:freedom_TcpSocket.SocketInfo) => {
+    wrap(this.preSocketOp_, this.postSocketOp_, () => {
+      return this.socket_.listen(this.endpoint_.address,
+          this.endpoint_.port).then(() => {
+        return this.socket_.getInfo();
+      });
+    }).then((info:freedom_TcpSocket.SocketInfo) => {
       this.endpoint_ = {
         address: info.localAddress,
         port: info.localPort
@@ -197,7 +236,7 @@ export class Server {
   public stopListening = () : Promise<void> => {
     log.debug('%1: closing socket, no new connections will be accepted',
         this.id_);
-    return this.socket_.close();
+    return wrap(this.preSocketOp_, this.postSocketOp_, this.socket_.close);
   }
 
   // Closes all active connections.
