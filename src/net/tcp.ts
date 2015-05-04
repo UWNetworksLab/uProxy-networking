@@ -403,7 +403,8 @@ export class Connection {
     this.onceConnected.then(() => {
       this.dataToSocketQueue.setHandler((buffer:ArrayBuffer) => {
         return wrap(this.preSocketOp_, this.postSocketOp_,
-            this.connectionSocket_.write.bind(undefined, buffer));
+            this.connectionSocket_.write.bind(
+                this.connectionSocket_, buffer));
       });
     });
     this.onceConnected.catch((e:Error) => {
