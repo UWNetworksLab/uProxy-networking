@@ -6,6 +6,7 @@
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
 import net = require('./net.types');
+import counter = require('./counter');
 
 var log :logging.Log = new logging.Log('tcp');
 
@@ -54,33 +55,6 @@ function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket) : void {
   freedom['core.tcpsocket'].close(socket);
 }
 
-// Sandwiches a call to an asynchronous function between two other
-// (synchronous) functions. Intended for tracking the number of calls
-// inflight to a freedom provider, which may fail to resolve if the
-// provider's communication channel is destroyed while the call is
-// pending (this can happen even on a normal call to the provider's
-// close method).
-// Throws synchronously if the before function raises an error; the
-// returned promise rejects if the after function raises an error.
-function wrap<T>(
-    before:() => void,
-    after:() => void,
-    f:() => Promise<T>) : Promise<T> {
-  try {
-    before();
-  } catch (e) {
-    after();
-    throw e;
-  }
-  return f().then((result:T) => {
-    after();
-    return result;
-  }, (e:Error) => {
-    after();
-    throw e;
-  });
-}
-
 // Promise and handler queue-based TCP server with freedomjs sockets.
 // TODO: protection against multiple calls to methods such as listen
 export class Server {
@@ -91,6 +65,9 @@ export class Server {
   private id_ :string;
 
   private socket_ :freedom_TcpSocket.Socket;
+
+  // Tracks calls to the socket, for safe destruction.
+  private counter_ :counter.Counter;
 
   // Active connections to the server.
   // TODO: index by connectionId rather than socketID
@@ -113,9 +90,6 @@ export class Server {
     this.fulfillShutdown_ = F;
   });
 
-  // Number of pending (asynchronous) requests to the socket.
-  private numInflightSocketOps_= 0;
-
   constructor(private endpoint_ :net.Endpoint,
       private maxConnections_ :number = DEFAULT_MAX_CONNECTIONS) {
     this.id_ = 'S' + (Server.numCreations_++);
@@ -127,15 +101,21 @@ export class Server {
     this.socket_ = freedom['core.tcpsocket']();
     this.socket_.on('onConnection', this.onConnectionHandler_);
     this.socket_.on('onDisconnect', this.onDisconnectHandler_);
+
+    this.counter_ = new counter.Counter(destroyFreedomSocket_.bind(
+        undefined, this.socket_));
+    this.counter_.onceDestroyed().then(() => {
+      log.debug('%1: closed socket channel', this.id_);
+    }, (e:Error) => {
+      log.error('%1: error closing socket channel: %2', this.id_, e.message);
+    });
   }
 
   // Invoked when the socket terminates.
   private onDisconnectHandler_ = (info:freedom_TcpSocket.DisconnectInfo) : void => {
     log.debug('%1: disconnected: %2', this.id_, JSON.stringify(info));
 
-    // Call this without incrementing this.inflight_ to drive the counter
-    // below zero, which is the termination condition.
-    this.postSocketOp_();
+    this.counter_.discard();
 
     if (info.errcode === 'SUCCESS') {
       this.fulfillShutdown_(SocketCloseKind.WE_CLOSED_IT);
@@ -145,30 +125,10 @@ export class Server {
     }
   }
 
-  private preSocketOp_ = () : void => {
-    this.numInflightSocketOps_++;
-  }
-
-  // Closes the socket instance's channel if there are no more
-  // inflight calls to the socket.
-  // See #destroyFreedomSocket_.
-  private postSocketOp_ = () : void => {
-    this.numInflightSocketOps_--;
-    if (this.numInflightSocketOps_ < 0) {
-      try {
-        destroyFreedomSocket_(this.socket_);
-        log.debug('%1: closed socket channel', this.id_);
-      } catch (e) {
-        log.error('%1: error closing socket channel: %2',
-            this.id_, e.message);
-      }
-    }
-  }
-
   // Listens for connections, returning onceListening.
   // Should only be called once.
   public listen = () : Promise<net.Endpoint> => {
-    wrap(this.preSocketOp_, this.postSocketOp_, () => {
+    counter.wrap(this.counter_, () => {
       return this.socket_.listen(this.endpoint_.address,
           this.endpoint_.port).then(() => {
         return this.socket_.getInfo();
@@ -243,7 +203,7 @@ export class Server {
   public stopListening = () : Promise<void> => {
     log.debug('%1: closing socket, no new connections will be accepted',
         this.id_);
-    return wrap(this.preSocketOp_, this.postSocketOp_, this.socket_.close);
+    return counter.wrap(this.counter_, this.socket_.close);
   }
 
   // Closes all active connections.
@@ -315,11 +275,12 @@ export class Connection {
   private state_ :Connection.State;
   // The underlying Freedom TCP socket.
   private connectionSocket_ :freedom_TcpSocket.Socket;
+
+  // Tracks calls to the socket, for safe destruction.
+  private counter_ :counter.Counter;
+
   // A private function called to invoke fullfil onceClosed.
   private fulfillClosed_ :(reason:SocketCloseKind)=>void;
-
-  // Number of pending (asynchronous) requests to the socket.
-  private numInflightSocketOps_= 0;
 
   // A TCP connection for a given socket.
   constructor(connectionKind:Connection.Kind, private startPaused_?:boolean) {
@@ -346,7 +307,9 @@ export class Connection {
       // So we get a handler to the old freedom socket.
       this.connectionSocket_ =
           freedom['core.tcpsocket'](connectionKind.existingSocketId);
-      this.onceConnected = wrap(this.preSocketOp_, this.postSocketOp_,
+      this.counter_ = new counter.Counter(destroyFreedomSocket_.bind(
+          undefined, this.connectionSocket_));
+      this.onceConnected = counter.wrap(this.counter_,
           this.connectionSocket_.getInfo).then(endpointOfSocketInfo);
       this.state_ = Connection.State.CONNECTED;
       this.connectionId = this.connectionId + '.A' +
@@ -354,11 +317,13 @@ export class Connection {
     } else if (connectionKind.endpoint) {
       // Create a new tcp socket to the given endpoint.
       this.connectionSocket_ = freedom['core.tcpsocket']();
+      this.counter_ = new counter.Counter(destroyFreedomSocket_.bind(
+          undefined, this.connectionSocket_));
       // We don't declare ourselves connected until we know the IP address to
       // which we have connected.  To speed this process up, we immediately
       // pause the socket as soon as it's connected, so that CPU time is not
       // wasted sending events that we can't pass on until getInfo returns.
-      this.onceConnected = wrap(this.preSocketOp_, this.postSocketOp_, () => {
+      this.onceConnected = counter.wrap(this.counter_, () => {
         return this.connectionSocket_
               .connect(connectionKind.endpoint.address,
                        connectionKind.endpoint.port)
@@ -387,6 +352,13 @@ export class Connection {
           JSON.stringify(connectionKind)));
     }
 
+    this.counter_.onceDestroyed().then(() => {
+      log.debug('%1: closed socket channel', this.connectionId);
+    }, (e:Error) => {
+      log.error('%1: error closing socket channel: %2',
+          this.connectionId, e.message);
+    });
+
     // Use the dataFromSocketQueue handler for data from the socket.
     this.connectionSocket_.on('onData',
         (readInfo:freedom_TcpSocket.ReadInfo) : void => {
@@ -402,8 +374,7 @@ export class Connection {
     // queuing data to be send to the socket.
     this.onceConnected.then(() => {
       this.dataToSocketQueue.setHandler((buffer:ArrayBuffer) => {
-        return wrap(this.preSocketOp_, this.postSocketOp_,
-            this.connectionSocket_.write.bind(
+        return counter.wrap(this.counter_, this.connectionSocket_.write.bind(
                 this.connectionSocket_, buffer));
       });
     });
@@ -433,9 +404,7 @@ export class Connection {
       return;
     }
 
-    // Call this without incrementing this.inflight_ to drive the counter
-    // below zero, which is the termination condition.
-    this.postSocketOp_();
+    this.counter_.discard();
 
     this.state_ = Connection.State.CLOSED;
     this.dataToSocketQueue.stopHandling();
@@ -453,32 +422,12 @@ export class Connection {
     }
   }
 
-  private preSocketOp_ = () : void => {
-    this.numInflightSocketOps_++;
-  }
-
-  // Closes the socket instance's channel if there are no more
-  // inflight calls to the socket.
-  // See #destroyFreedomSocket_.
-  private postSocketOp_ = () : void => {
-    this.numInflightSocketOps_--;
-    if (this.numInflightSocketOps_ < 0) {
-      try {
-        destroyFreedomSocket_(this.connectionSocket_);
-        log.debug('%1: closed socket channel', this.connectionId);
-      } catch (e) {
-        log.error('%1: error closing socket channel: %2',
-            this.connectionId, e.message);
-      }
-    }
-  }
-
   public pause = () => {
-    wrap(this.preSocketOp_, this.postSocketOp_, this.connectionSocket_.pause);
+    counter.wrap(this.counter_, this.connectionSocket_.pause);
   }
 
   public resume = () => {
-    wrap(this.preSocketOp_, this.postSocketOp_, this.connectionSocket_.resume);
+    counter.wrap(this.counter_, this.connectionSocket_.resume);
   }
 
   // This is called to close the underlying socket. This fulfills the
@@ -490,8 +439,7 @@ export class Connection {
       log.debug('%1: close called when already closed', [
           this.connectionId]);
     } else {
-      wrap(this.preSocketOp_, this.postSocketOp_,
-          this.connectionSocket_.close);
+      counter.wrap(this.counter_, this.connectionSocket_.close);
     }
 
     // The onDisconnect handler (which should only
