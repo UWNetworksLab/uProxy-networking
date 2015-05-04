@@ -60,19 +60,24 @@ function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket) : void {
 // provider's communication channel is destroyed while the call is
 // pending (this can happen even on a normal call to the provider's
 // close method).
+// Throws synchronously if the before function raises an error; the
+// returned promise rejects if the after function raises an error.
 function wrap<T>(
     before:() => void,
     after:() => void,
     f:() => Promise<T>) : Promise<T> {
-  return new Promise<T>((F, R) => {
+  try {
     before();
-    return f().then((result:T) => {
-      after();
-      F(result);
-    }).catch((e:Error) => {
-      after();
-      R(e);
-    })
+  } catch (e) {
+    after();
+    throw e;
+  }
+  return f().then((result:T) => {
+    after();
+    return result;
+  }, (e:Error) => {
+    after();
+    throw e;
   });
 }
 
