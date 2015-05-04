@@ -133,6 +133,8 @@ export class Server {
   private onDisconnectHandler_ = (info:freedom_TcpSocket.DisconnectInfo) : void => {
     log.debug('%1: disconnected: %2', this.id_, JSON.stringify(info));
 
+    // Call this without incrementing this.inflight_ to drive the counter
+    // below zero, which is the termination condition.
     this.postSocketOp_();
 
     if (info.errcode === 'SUCCESS') {
@@ -430,6 +432,8 @@ export class Connection {
       return;
     }
 
+    // Call this without incrementing this.inflight_ to drive the counter
+    // below zero, which is the termination condition.
     this.postSocketOp_();
 
     this.state_ = Connection.State.CLOSED;
