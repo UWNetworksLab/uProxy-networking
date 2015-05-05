@@ -104,11 +104,6 @@ export class Server {
 
     this.counter_ = new counter.Counter(destroyFreedomSocket_.bind(
         undefined, this.socket_));
-    this.counter_.onceDestroyed().then(() => {
-      log.debug('%1: closed socket channel', this.id_);
-    }, (e:Error) => {
-      log.error('%1: error closing socket channel: %2', this.id_, e.message);
-    });
   }
 
   // Invoked when the socket terminates.
@@ -117,12 +112,18 @@ export class Server {
 
     this.counter_.discard();
 
-    if (info.errcode === 'SUCCESS') {
-      this.fulfillShutdown_(SocketCloseKind.WE_CLOSED_IT);
-    } else {
-      // TODO: investigate which other values occur
+    this.counter_.onceDestroyed().then(() => {
+      log.debug('%1: closed socket channel', this.id_);
+      if (info.errcode === 'SUCCESS') {
+        this.fulfillShutdown_(SocketCloseKind.WE_CLOSED_IT);
+      } else {
+        // TODO: investigate which other values occur
+        this.fulfillShutdown_(SocketCloseKind.UNKOWN);
+      }
+    }, (e:Error) => {
+      log.error('%1: error closing socket channel: %2', this.id_, e.message);
       this.fulfillShutdown_(SocketCloseKind.UNKOWN);
-    }
+    });
   }
 
   // Listens for connections, returning onceListening.
@@ -352,13 +353,6 @@ export class Connection {
           JSON.stringify(connectionKind)));
     }
 
-    this.counter_.onceDestroyed().then(() => {
-      log.debug('%1: closed socket channel', this.connectionId);
-    }, (e:Error) => {
-      log.error('%1: error closing socket channel: %2',
-          this.connectionId, e.message);
-    });
-
     // Use the dataFromSocketQueue handler for data from the socket.
     this.connectionSocket_.on('onData',
         (readInfo:freedom_TcpSocket.ReadInfo) : void => {
@@ -410,16 +404,22 @@ export class Connection {
     this.dataToSocketQueue.stopHandling();
     this.dataToSocketQueue.clear();
 
-    // CONSIDER: can this happen after a onceConnected promise rejection? if so,
-    // do we want to preserve the SocketCloseKind.NEVER_CONNECTED result for
-    // onceClosed?
-    if (info.errcode === 'SUCCESS') {
-      this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
-    } else if (info.errcode === 'CONNECTION_CLOSED') {
-      this.fulfillClosed_(SocketCloseKind.REMOTELY_CLOSED);
-    } else {
-      this.fulfillClosed_(SocketCloseKind.UNKOWN);
-    }
+    this.counter_.onceDestroyed().then(() => {
+      log.debug('%1: closed socket channel', this.connectionId);
+      // CONSIDER: can this happen after a onceConnected promise rejection? if so,
+      // do we want to preserve the SocketCloseKind.NEVER_CONNECTED result for
+      // onceClosed?
+      if (info.errcode === 'SUCCESS') {
+        this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
+      } else if (info.errcode === 'CONNECTION_CLOSED') {
+        this.fulfillClosed_(SocketCloseKind.REMOTELY_CLOSED);
+      } else {
+        this.fulfillClosed_(SocketCloseKind.UNKOWN);
+      }
+    }, (e:Error) => {
+      log.error('%1: error closing socket channel: %2',
+          this.connectionId, e.message);
+    });
   }
 
   public pause = () => {
