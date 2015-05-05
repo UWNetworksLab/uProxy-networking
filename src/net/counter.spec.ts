@@ -11,17 +11,17 @@ describe('socket call counter', function() {
     };
 
     var callCounter = new counter.Counter(destructor);
-    spyOn(callCounter, 'before').and.callThrough();
-    spyOn(callCounter, 'after').and.callThrough();
+    var beforeSpy = spyOn(callCounter, 'before_').and.callThrough();
+    var afterSpy = spyOn(callCounter, 'after_').and.callThrough();
 
-    counter.wrap(callCounter, () => {
-      expect(callCounter.before).toHaveBeenCalled();
-      expect(callCounter.after).not.toHaveBeenCalled();
+    callCounter.wrap(() => {
+      expect(beforeSpy).toHaveBeenCalled();
+      expect(afterSpy).not.toHaveBeenCalled();
 
       return Promise.resolve(1);
     }).then((result:number) => {
       expect(result).toEqual(1);
-      expect(callCounter.after).toHaveBeenCalled();
+      expect(afterSpy).toHaveBeenCalled();
       expect(destroyCalled).toBeFalsy();
 
       callCounter.discard();

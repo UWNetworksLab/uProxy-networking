@@ -129,7 +129,7 @@ export class Server {
   // Listens for connections, returning onceListening.
   // Should only be called once.
   public listen = () : Promise<net.Endpoint> => {
-    counter.wrap(this.counter_, () => {
+    this.counter_.wrap(() => {
       return this.socket_.listen(this.endpoint_.address,
           this.endpoint_.port).then(() => {
         return this.socket_.getInfo();
@@ -204,7 +204,7 @@ export class Server {
   public stopListening = () : Promise<void> => {
     log.debug('%1: closing socket, no new connections will be accepted',
         this.id_);
-    return counter.wrap(this.counter_, this.socket_.close);
+    return this.counter_.wrap(this.socket_.close);
   }
 
   // Closes all active connections.
@@ -310,7 +310,7 @@ export class Connection {
           freedom['core.tcpsocket'](connectionKind.existingSocketId);
       this.counter_ = new counter.Counter(destroyFreedomSocket_.bind(
           undefined, this.connectionSocket_));
-      this.onceConnected = counter.wrap(this.counter_,
+      this.onceConnected = this.counter_.wrap(
           this.connectionSocket_.getInfo).then(endpointOfSocketInfo);
       this.state_ = Connection.State.CONNECTED;
       this.connectionId = this.connectionId + '.A' +
@@ -324,7 +324,7 @@ export class Connection {
       // which we have connected.  To speed this process up, we immediately
       // pause the socket as soon as it's connected, so that CPU time is not
       // wasted sending events that we can't pass on until getInfo returns.
-      this.onceConnected = counter.wrap(this.counter_, () => {
+      this.onceConnected = this.counter_.wrap(() => {
         return this.connectionSocket_
               .connect(connectionKind.endpoint.address,
                        connectionKind.endpoint.port)
@@ -368,7 +368,7 @@ export class Connection {
     // queuing data to be send to the socket.
     this.onceConnected.then(() => {
       this.dataToSocketQueue.setHandler((buffer:ArrayBuffer) => {
-        return counter.wrap(this.counter_, this.connectionSocket_.write.bind(
+        return this.counter_.wrap(this.connectionSocket_.write.bind(
                 this.connectionSocket_, buffer));
       });
     });
@@ -423,11 +423,11 @@ export class Connection {
   }
 
   public pause = () => {
-    counter.wrap(this.counter_, this.connectionSocket_.pause);
+    this.counter_.wrap(this.connectionSocket_.pause);
   }
 
   public resume = () => {
-    counter.wrap(this.counter_, this.connectionSocket_.resume);
+    this.counter_.wrap(this.connectionSocket_.resume);
   }
 
   // This is called to close the underlying socket. This fulfills the
@@ -439,7 +439,7 @@ export class Connection {
       log.debug('%1: close called when already closed', [
           this.connectionId]);
     } else {
-      counter.wrap(this.counter_, this.connectionSocket_.close);
+      this.counter_.wrap(this.connectionSocket_.close);
     }
 
     // The onDisconnect handler (which should only

@@ -1,28 +1,10 @@
 /// <reference path='../../../third_party/typings/es6-promise/es6-promise.d.ts' />
 
-// Counts calls to an object with asynchronous functions, running some
-// function once that counter reaches zero *and* a discard() function
-// has been called.
+// Wraps asycnronous function calls, tracking the number of calls still
+// resolving and invoking a function once that number reaches zero *and* a
+// discard() function has been called.
 // Intended for safely destroying freedomjs providers, which may emit
 // disconnect notifications before all outstanding calls have resolved.
-
-// Sandwiches a call, using the given call counter.
-export function wrap<T>(
-    counter:Counter,
-    f:() => Promise<T>) : Promise<T> {
-  // expect() should never throw.
-  counter.before();
-  return f().then((result:T) => {
-    counter.after();
-    return result;
-  }, (e:Error) => {
-    counter.after();
-    throw e;
-  });
-}
-
-// Counts calls, notifying when discard() has been called and there are no
-// more calls inflight.
 export class Counter {
   private counter_ = 0;
 
@@ -35,23 +17,34 @@ export class Counter {
 
   constructor(private destructor_ :() => void) {}
 
+  // Calls f, keeping count of the number of calls yet to resolve.
+  public wrap = <T>(f:() => Promise<T>) : Promise<T> => {
+    // Should never throw.
+    this.before_();
+    return f().then((result:T) => {
+      this.after_();
+      return result;
+    }, (e:Error) => {
+      this.after_();
+      throw e;
+    });
+  }
+
   public discard = () : void => {
-    // By decrementing the counter without first incrementing it, this will
-    // help drive the counter to -1, which is the termination condition.
-    this.after();
+    // By decrementing the counter without first incrementing it we can
+    // help drive the counter to -1, the termination condition.
+    this.after_();
   }
 
   public onceDestroyed = () : Promise<void> => {
     return this.onceDestroyed_;
   }
 
-  // Intended for use only by wrap().
-  public before = () : void => {
+  private before_ = () : void => {
     this.counter_++;
   }
 
-  // Intended for use only by wrap().
-  public after = () : void => {
+  private after_ = () : void => {
     this.counter_--;
     if (this.counter_ < 0) {
       try {
