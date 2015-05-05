@@ -144,7 +144,10 @@ class Pipe {
   public getLocalEndpoint = () : Promise<net.Endpoint> => {
     return this.socket_.getInfo().then((socketInfo:freedom_UdpSocket.SocketInfo) => {
       return {
-        address: socketInfo.localAddress,
+        // freedom-for-firefox currently reports the bound address as 'localhost',
+        // which is unsupported in candidate lines by Firefox:
+        //   https://github.com/freedomjs/freedom-for-firefox/issues/62
+        address: '127.0.0.1',
         port: socketInfo.localPort
       }
     });
