@@ -1,7 +1,7 @@
 {
   "name": "uproxy-networking",
   "description": "uProxy's networking library: SOCKS5 over WebRTC",
-  "version": "10.0.3",
+  "version": "10.0.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/uProxy/uproxy-networking"
