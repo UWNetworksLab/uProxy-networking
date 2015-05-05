@@ -36,6 +36,8 @@ export class Counter {
   constructor(private destructor_ :() => void) {}
 
   public discard = () : void => {
+    // By decrementing the counter without first incrementing it, this will
+    // help drive the counter to -1, which is the termination condition.
     this.after();
   }
 
