@@ -39,6 +39,37 @@ var retry_ = <T>(func:() => Promise<T>, delayMs?:number) : Promise<T> => {
   });
 }
 
+var makeTransformer_ = (
+    // Name of transformer to use, e.g. 'rabbit' or 'none'.
+    name :string,
+    // Key for transformer, if any.
+    key ?:ArrayBuffer,
+    // JSON-encoded configuration, if any.
+    config ?:string)
+  : Transformer => {
+  var transformer :Transformer;
+  // TODO(ldixon): re-enable rabbit and FTE once we can figure out why they
+  // don't load in freedom.
+  /* if (name == 'rabbit') {
+     transformer = Rabbit.Transformer();
+     } else if (name == 'fte') {
+     transformer = Fte.Transformer();
+     } else */ if (name == 'caesar') {
+       transformer = new CaesarCipher();
+     } else if (name == 'none') {
+       transformer = new PassThrough();
+     } else {
+       throw new Error('unknown transformer: ' + name);
+     }
+  if (key) {
+    transformer.setKey(key);
+  }
+  if (config) {
+    transformer.configure(config);
+  }
+  return transformer;
+}
+
 /**
  * A Churn Pipe is a transparent obfuscator/deobfuscator for transforming the
  * apparent type of browser-generated UDP datagrams.
@@ -61,7 +92,7 @@ class Pipe {
   private mirrorSockets_ : { [k: string]: freedom_UdpSocket.Socket } = {};
 
   // Obfuscates and deobfuscates messages.
-  private transformer_ :Transformer = Pipe.makeTransformer_('none');
+  private transformer_ :Transformer = makeTransformer_('none');
 
   // Endpoint to which all incoming obfuscated messages are forwarded.
   private browserEndpoint_ :net.Endpoint;
@@ -76,7 +107,7 @@ class Pipe {
       key ?:ArrayBuffer,
       config ?:string) : Promise<void> => {
     try {
-      this.transformer_ = Pipe.makeTransformer_(transformerName, key, config);
+      this.transformer_ = makeTransformer_(transformerName, key, config);
       return Promise.resolve<void>();
     } catch (e) {
       return Promise.reject(e);
@@ -118,22 +149,31 @@ class Pipe {
    * constructs a corresponding mirror socket, and returns its endpoint.
    */
   public bindRemote = (remoteEndpoint:net.Endpoint) : Promise<net.Endpoint> => {
+    return this.getMirrorSocket_(remoteEndpoint).then(
+        (mirrorSocket:freedom_UdpSocket.Socket) => {
+      return mirrorSocket.getInfo();
+    }).then(Pipe.endpointFromInfo_);
+  }
+
+  private getMirrorSocket_ = (remoteEndpoint:net.Endpoint)
+      : Promise<freedom_UdpSocket.Socket> => {
     var key = Pipe.makeEndpointKey_(remoteEndpoint);
     if (key in this.mirrorSockets_) {
-      return this.mirrorSockets_[key].getInfo().then(Pipe.endpointFromInfo_);
+      return Promise.resolve(this.mirrorSockets_[key]);
     }
-    var mirrorSocket = freedom['core.udpsocket']();
+
+    var mirrorSocket :freedom_UdpSocket.Socket = freedom['core.udpsocket']();
     this.mirrorSockets_[key] = mirrorSocket;
-    return mirrorSocket.bind('127.0.0.1', 0).then((resultCode:number) => {
+    return mirrorSocket.bind('127.0.0.1', 0).then((resultCode:number)
+        : freedom_UdpSocket.Socket => {
       if (resultCode != 0) {
-        return Promise.reject(new Error(
-          'bindRemote failed with result code ' + resultCode));
+        throw new Error('bindRemote failed with result code ' + resultCode);
       }
       mirrorSocket.on('onData', (recvFromInfo:freedom_UdpSocket.RecvFromInfo) => {
         this.sendTo_(recvFromInfo.data, remoteEndpoint);
       });
-      return mirrorSocket.getInfo();
-    }).then(Pipe.endpointFromInfo_);
+      return mirrorSocket;
+    });
   }
 
   private static endpointFromInfo_ = (socketInfo:freedom_UdpSocket.SocketInfo) => {
@@ -149,37 +189,6 @@ class Pipe {
   private static makeEndpointKey_ = (endpoint:net.Endpoint) : string => {
     return endpoint.address + ':' + endpoint.port;
   };
-
-  private static makeTransformer_ = (
-      // Name of transformer to use, e.g. 'rabbit' or 'none'.
-      name :string,
-      // Key for transformer, if any.
-      key ?:ArrayBuffer,
-      // JSON-encoded configuration, if any.
-      config ?:string)
-      : Transformer => {
-    var transformer :Transformer;
-    // TODO(ldixon): re-enable rabbit and FTE once we can figure out why they
-    // don't load in freedom.
-    /* if (name == 'rabbit') {
-      transformer = Rabbit.Transformer();
-    } else if (name == 'fte') {
-      transformer = Fte.Transformer();
-    } else */ if (name == 'caesar') {
-      transformer = new CaesarCipher();
-    } else if (name == 'none') {
-      transformer = new PassThrough();
-    } else {
-      throw new Error('unknown transformer: ' + name);
-    }
-    if (key) {
-      transformer.setKey(key);
-    }
-    if (config) {
-      transformer.configure(config);
-    }
-    return transformer;
-  }
 
   /**
    * Sends a message over the network to the specified destination.
@@ -207,23 +216,12 @@ class Pipe {
       address: recvFromInfo.address,
       port: recvFromInfo.port
     };
-    var key = Pipe.makeEndpointKey_(source);
-    var mirrorSocket = this.mirrorSockets_[key];
-    if (mirrorSocket) {
+    this.getMirrorSocket_(source).then((mirrorSocket:freedom_UdpSocket.Socket) => {
       mirrorSocket.sendTo(
-        buffer,
-        this.browserEndpoint_.address,
-        this.browserEndpoint_.port);
-    } else {
-      this.bindRemote(source).then(() => {
-        // Don't drop the first packet.
-        mirrorSocket = this.mirrorSockets_[key];
-        mirrorSocket.sendTo(
           buffer,
           this.browserEndpoint_.address,
           this.browserEndpoint_.port);
-      });
-    }
+    });
   }
 }
 
