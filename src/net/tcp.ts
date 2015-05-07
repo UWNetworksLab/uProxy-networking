@@ -111,6 +111,8 @@ export class Server {
     if (info) {
       log.debug('%1: onDisconnect: %2', this.id_, info);
     } else {
+      // TODO: Consider removing this check when this issue is fixed:
+      //         https://github.com/freedomjs/freedom-for-firefox/issues/63
       log.warn('%1: onDisconnect without info', this.id_);
     }
 
