@@ -58,22 +58,21 @@ var pcConfig :freedom_RTCPeerConnection.RTCConfiguration = {
 // will act as the SOCKS backend.
 var socksRtc:socks_to_rtc.SocksToRtc;
 var rtcNet:rtc_to_net.RtcToNet;
+
+
+// Listen for GET/GIVE requests, to control the app without user
+// interaction.
 var tcpServer:tcp.Server;
 var localhostControlEndpoint:net.Endpoint =
     { address: '127.0.0.1', port: 9000 };
 
-log.info("Starting TCP Server");
 tcpServer = new tcp.Server(localhostControlEndpoint);
 tcpServer.connectionsQueue.setSyncHandler((conn:tcp.Connection) => {
-  log.info("Got a TCP connection");
   conn.dataFromSocketQueue.setSyncHandler((buf:ArrayBuffer) => {
-    log.info("Got 1st data buffer");
     var str = arraybuffers.arrayBufferToString(buf);
     if (str.substr(0,3).toUpperCase() == "GET") {
-      log.info("Got a GET");
       doStart();
       setTimeout(() => {
-        log.info("Emitting gatherMessage");
         parentModule.emit('gatherMessage');
       }, 500);
     } else if (str.substr(0,4).toUpperCase() == "GIVE") {
@@ -81,15 +80,16 @@ tcpServer.connectionsQueue.setSyncHandler((conn:tcp.Connection) => {
       // skip past space, and then read SDP.
       var sdp = str.substr(5);
       parentModule.emit('giveWithSDP', sdp);
-      //model.inboundMesageValue = str.substr(5);
-      //conn.write(model.outboundMessageValue);
-      //consumeInboundText();
     } else {
-      log.info("Unrecognized string: " + str);
+      log.info("I don't understand that command. (" + str + ")");
     }
   });
 });
-tcpServer.listen();
+tcpServer.listen().then((endpoint) => {
+  log.info('Remote-commands available on %1', endpoint);
+}).catch((e:Error) => {
+  log.error('Failed to listen on remote-command socket: %1', e.message);
+});
 
 parentModule.on('giveSendBack', (data:ArrayBuffer) => {
   log.info('giveSendBack: with arraybuf of ' + data.byteLength);
