@@ -105,14 +105,25 @@ describe("selectPublicAddress", function() {
     port: 56635
   };
 
+  var publicEndpoint :net.Endpoint = {
+    address: '18.19.20.21',
+    port: 10011
+  };
+
   var srflxCandidate = {
     candidate: 'a=candidate:129713316 2 udp 2122129151 ' +
       srflxEndpoint.address + ' ' + srflxEndpoint.port + ' typ srflx raddr ' +
       baseEndpoint.address + ' rport ' + baseEndpoint.port + ' generation 0'
   };
+
   var hostCandidate = {
     candidate: 'a=candidate:9097 1 udp 4175 ' + baseEndpoint.address + ' ' +
         baseEndpoint.port + ' typ host generation 0'
+  };
+
+  var publicHostCandidate = {
+    candidate: 'a=candidate:1234321 1 udp 4567 ' + publicEndpoint.address + ' ' +
+        publicEndpoint.port + ' typ host generation 0'
   };
 
   var relayCandidate = {
@@ -165,6 +176,17 @@ describe("selectPublicAddress", function() {
     expect(natPair).toEqual(correctNatPair);
 
     natPair = churn.selectPublicAddress([hostCandidate, relayCandidate]);
+    expect(natPair).toEqual(correctNatPair);
+  });
+
+  it('use public host if it is present', () => {
+    var correctNatPair = {
+      internal: publicEndpoint,
+      external: publicEndpoint
+    };
+
+    var natPair = churn.selectPublicAddress(
+        [hostCandidate, relayCandidate, srflxCandidate, publicHostCandidate]);
     expect(natPair).toEqual(correctNatPair);
   });
 });

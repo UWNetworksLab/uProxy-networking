@@ -2,10 +2,10 @@ const {Cu} = require("chrome");
 var self = require("sdk/self");
 var {setTimeout} = require("sdk/timers");
 
-Cu.import(self.data.url("lib/freedom/freedom-for-firefox.jsm"));
+Cu.import(self.data.url("freedom-for-firefox/freedom-for-firefox.jsm"));
 
-var manifest = self.data.url("lib/uproxy-networking/simple-socks/freedom-module.json");
-var loggingProviderManifest = self.data.url("lib/uproxy-lib/loggingprovider/loggingprovider.json");
+var manifest = self.data.url("uproxy-networking/simple-socks/freedom-module.json");
+var loggingProviderManifest = self.data.url("uproxy-lib/loggingprovider/freedom-module.json");
 freedom(manifest, {
   'logger': loggingProviderManifest,
   'debug': 'debug'

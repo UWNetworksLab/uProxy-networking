@@ -26,6 +26,7 @@ taskManager.add 'test', [
   'browserify:rtcToNetSpec'
   'browserify:turnFrontEndMessagesSpec'
   'browserify:turnFrontEndSpec'
+  'browserify:poolSpec'
   'jasmine'
 ]
 
@@ -35,7 +36,7 @@ taskManager.add 'integration', [
 ]
 
 taskManager.add 'dist', [
-  'base', 'samples', 'test', 'integration', 'copy:dist'
+  'base', 'samples', 'test', 'copy:dist', 'integration'
 ]
 
 # -----------------------------------------------------------------------------
@@ -128,7 +129,6 @@ taskManager.add 'socksEchoIntegrationTestModule', [
 taskManager.add 'socksEchoIntegrationTest', [
   'socksEchoIntegrationTestModule'
   'jasmine_chromeapp:socksEcho'
-  #'jasmine_chromeapp:socksEchoChurn'
 ]
 
 taskManager.add 'tcpIntegrationTestModule', [
@@ -148,6 +148,10 @@ taskManager.add 'integrationTestModules', [
   'socksEchoIntegrationTestModule'
 ]
 
+taskManager.add 'integrationSlow', [
+  'socksEchoIntegrationTestModule'
+  'jasmine_chromeapp:socksEchoSlow'
+]
 
 
 #-------------------------------------------------------------------------
@@ -261,10 +265,18 @@ module.exports = (grunt) ->
             nonull: true,
             expand: true,
             cwd: devBuildPath,
-            src: ['**/*',
-                  '!**/*.spec.js',
-                  '!**/*.spec.*.js',
-                  '!samples/**/*',],
+            src: ['**/*'
+                  '!**/*.ts'
+                  '**/*.d.ts'
+                  '!**/*.spec.d.ts'
+                  '!**/*.spec.js'
+                  '!**/*.spec.*.js'
+                  '!**/SpecRunner.html'
+                  '!samples'
+                  '!samples/**/*'
+                  '!**/jasmine_chromeapp'
+                  '!**/jasmine_chromeapp/**/*'
+                  ],
             dest: 'build/dist/',
             onlyIf: 'modified'
           }
@@ -305,7 +317,7 @@ module.exports = (grunt) ->
           npmLibNames: ['freedom-for-firefox']
           pathsFromDevBuild: ['echo']
           pathsFromThirdPartyBuild: ['uproxy-lib/loggingprovider']
-          localDestPath: 'samples/echo-server-firefoxapp/lib/'
+          localDestPath: 'samples/echo-server-firefoxapp/data/'
       libsForSimpleSocksChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
@@ -323,7 +335,7 @@ module.exports = (grunt) ->
             'uproxy-lib/loggingprovider'
             'uproxy-obfuscators'
           ]
-          localDestPath: 'samples/simple-socks-firefoxapp/lib/'
+          localDestPath: 'samples/simple-socks-firefoxapp/data/'
       libsForSimpleChurnChatChromeApp:
         Rule.copyLibs
           npmLibNames: ['freedom-for-chrome']
@@ -408,6 +420,7 @@ module.exports = (grunt) ->
     jasmine:
       churn: Rule.jasmineSpec 'churn'
       net: Rule.jasmineSpec 'net'
+      pool: Rule.jasmineSpec 'pool'
       rtcToNet: Rule.jasmineSpec 'rtc-to-net'
       simpleTransformers: Rule.jasmineSpec 'simple-transformers'
       socksCommon: Rule.jasmineSpec('socks-common',
@@ -424,6 +437,7 @@ module.exports = (grunt) ->
       tcpSpec: Rule.browserifySpec 'net/tcp'
       turnFrontEndMessagesSpec: Rule.browserifySpec 'turn-frontend/messages'
       turnFrontEndSpec: Rule.browserifySpec 'turn-frontend/turn-frontend'
+      poolSpec: Rule.browserifySpec 'pool/pool'
 
       # Freedom Modules
       churnPipeFreedomModule: Rule.browserify(
@@ -498,28 +512,12 @@ module.exports = (grunt) ->
         ]
         options:
           outDir: devBuildPath + '/integration-tests/tcp/jasmine_chromeapp/'
-          keepRunner: true
+          keepRunner: false
       socksEcho:
         files: [
           {
             cwd: devBuildPath + '/integration-tests/socks-echo/',
-            src: ['**/*', '!jasmine_chromeapp/**/*']
-            dest: './',
-            expand: true
-          }
-        ]
-        scripts: [
-          'freedom-for-chrome/freedom-for-chrome.js'
-          'nochurn.core-env.spec.static.js'
-        ]
-        options:
-          outDir: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp/'
-          keepRunner: true
-      socksEchoChurn:
-        files: [
-          {
-            cwd: devBuildPath + '/integration-tests/socks-echo/',
-            src: ['**/*', '!jasmine_chromeapp/**/*']
+            src: ['**/*', '!jasmine_chromeapp*/**']
             dest: './',
             expand: true
           }
@@ -527,16 +525,17 @@ module.exports = (grunt) ->
         scripts: [
           'freedom-for-chrome/freedom-for-chrome.js'
           'churn.core-env.spec.static.js'
+          'nochurn.core-env.spec.static.js'
         ]
         options:
           outDir: devBuildPath + '/integration-tests/socks-echo/jasmine_chromeapp/'
-          keepRunner: true
+          keepRunner: false
       socksEchoSlow:
         files: [
           {
             cwd: devBuildPath + '/integration-tests/socks-echo/',
-            src: ['**/*', '!jasmine_chromeapp']
-            dest: '/uproxy-networking/',
+            src: ['**/*', '!jasmine_chromeapp*/**']
+            dest: './',
             expand: true
           }
         ]

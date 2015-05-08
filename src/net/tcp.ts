@@ -3,17 +3,14 @@
 /// <reference path='../../../third_party/freedom-typings/freedom-module-env.d.ts' />
 /// <reference path='../../../third_party/freedom-typings/tcp-socket.d.ts' />
 
-/*
- * This is a TCP server based on Freedom's sockets API.
- */
-
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
 import handler = require('../../../third_party/uproxy-lib/handler/queue');
 import net = require('./net.types');
+import counter = require('./counter');
 
 var log :logging.Log = new logging.Log('tcp');
 
-// Code for how a Tcp Connection is closed.
+// Indicates how a socket (server or client) terminated.
 export enum SocketCloseKind {
   WE_CLOSED_IT,
   REMOTELY_CLOSED,
@@ -26,11 +23,10 @@ export interface ConnectionInfo {
   remote ?:net.Endpoint;
 }
 
-// A limit on the max number of TCP connections before we start rejecting
-// new ones.
+// Maximum per-server number of TCP connections.
 var DEFAULT_MAX_CONNECTIONS = 1048576;
 
-// Private function, exported only for unit tests
+// Public only for unit tests.
 export function endpointOfSocketInfo(info:freedom_TcpSocket.SocketInfo)
     : ConnectionInfo {
   var retval :ConnectionInfo = {};
@@ -51,198 +47,212 @@ export function endpointOfSocketInfo(info:freedom_TcpSocket.SocketInfo)
   return retval;
 }
 
-// A static helper function to close a freedom socket object and then
-// appropriately deallocate it's interface object.
-function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket)
-    : Promise<void> {
-  // Note that :
-  // freedom['core.tcpsocket'].close != freedom['core.tcpsocket']().close
-  // The former destroys the freedom interface & communication channels.
-  // The latter is a method on the constructed interface object that is on
-  // the instance of the freedom tcp-socket's API.
-  return socket.close().then(
-    () => { freedom['core.tcpsocket'].close(socket); },
-    (e) => { freedom['core.tcpsocket'].close(socket); return e; });
+// Closes a TCP socket provider's communication channel, causing freedomjs
+// to "forget" about the instance, i.e.:
+//   freedom['core.tcpsocket'].close
+// This is different from calling close on the provider instance.
+function destroyFreedomSocket_(socket:freedom_TcpSocket.Socket) : void {
+  freedom['core.tcpsocket'].close(socket);
 }
 
-// Tcp.Server: a TCP Server. This listens for connections when listen is
-// called, and handles the new connection as specified by the onConnection
-// argument to the constructor.
+// Promise and handler queue-based TCP server with freedomjs sockets.
+// TODO: protection against multiple calls to methods such as listen
 export class Server {
-  private serverSocket_ :freedom_TcpSocket.Socket;
-  // TODO: index by connectionId not socketID. More stable & string based.
-  private conns:{[socketId:number] : Connection} = {};
+  // Count of sockets created to date.
+  private static numCreations_ :number = 0;
 
-  public connectionsQueue :handler.Queue<Connection, void>;
+  // Unique ID, for logging purposes.
+  private id_ :string;
 
-  // The address and port that the tcp server is told to listening on. The
-  // initial assignment may set the port to 0, which indicates that the port
-  // is being dynamically allocated. When the port is actually assigned
-  // (right before the listen promise fulfills), the endpoint is set to the
-  // port that is actually being listened on.
-  private endpoint_ :net.Endpoint;
+  private socket_ :freedom_TcpSocket.Socket;
 
-  // The |onceShutdown| promise is fulfilled when the server is shutdown and
-  // no longer listening.
-  private onceShutdown_ :Promise<void>;
-  public onceShutdown = () : Promise<void> => { return this.onceShutdown_; }
-  // isShutdown can become true, but never false again. It gives synchronous
-  // access to test if |onceShutdown_| fulfilled.
-  private isShutdown_ :boolean = false;
-  public isShutdown = () : boolean => { return this.isShutdown_; }
+  // Tracks calls to the socket, for safe destruction.
+  private counter_ :counter.Counter;
 
-  private onceListening_ :Promise<net.Endpoint>;
-  public onceListening = () : Promise<net.Endpoint> => {
+  // Active connections to the server.
+  // TODO: index by connectionId rather than socketID
+  private connections_ :{[socketId:number] : Connection} = {};
+
+  public connectionsQueue :handler.Queue<Connection, void> =
+      new handler.Queue<Connection, void>();
+
+  private fulfillListening_ :(endpoint:net.Endpoint) => void;
+  private rejectListening_ :(e:Error) => void;
+
+  private onceListening_ = new Promise<net.Endpoint>((F, R) => {
+    this.fulfillListening_ = F;
+    this.rejectListening_ = R;
+  });
+
+  private fulfillShutdown_ :(kind:SocketCloseKind) => void;
+
+  private onceShutdown_ = new Promise<SocketCloseKind>((F, R) => {
+    this.fulfillShutdown_ = F;
+  });
+
+  constructor(private endpoint_ :net.Endpoint,
+      private maxConnections_ :number = DEFAULT_MAX_CONNECTIONS) {
+    this.id_ = 'S' + (Server.numCreations_++);
+
+    this.onceListening_.catch((e:Error) => {
+      this.fulfillShutdown_(SocketCloseKind.NEVER_CONNECTED);
+    });
+
+    this.socket_ = freedom['core.tcpsocket']();
+    this.socket_.on('onConnection', this.onConnectionHandler_);
+    this.socket_.on('onDisconnect', this.onDisconnectHandler_);
+
+    this.counter_ = new counter.Counter(destroyFreedomSocket_.bind(
+        undefined, this.socket_));
+  }
+
+  // Invoked when the socket terminates.
+  private onDisconnectHandler_ = (info:freedom_TcpSocket.DisconnectInfo) : void => {
+    log.debug('%1: disconnected: %2', this.id_, JSON.stringify(info));
+
+    this.counter_.discard();
+
+    this.counter_.onceDestroyed().then(() => {
+      log.debug('%1: closed socket channel', this.id_);
+      if (info.errcode === 'SUCCESS') {
+        this.fulfillShutdown_(SocketCloseKind.WE_CLOSED_IT);
+      } else {
+        // TODO: investigate which other values occur
+        this.fulfillShutdown_(SocketCloseKind.UNKOWN);
+      }
+    }, (e:Error) => {
+      log.error('%1: error closing socket channel: %2', this.id_, e.message);
+      this.fulfillShutdown_(SocketCloseKind.UNKOWN);
+    });
+  }
+
+  // Listens for connections, returning onceListening.
+  // Should only be called once.
+  public listen = () : Promise<net.Endpoint> => {
+    this.counter_.wrap(() => {
+      return this.socket_.listen(this.endpoint_.address,
+          this.endpoint_.port).then(() => {
+        return this.socket_.getInfo();
+      });
+    }).then((info:freedom_TcpSocket.SocketInfo) => {
+      this.endpoint_ = {
+        address: info.localAddress,
+        port: info.localPort
+      };
+      this.fulfillListening_(this.endpoint_);
+    }).catch((e:Error) => {
+      this.rejectListening_(new Error('failed to listen: ' + e.message));
+    });
+
     return this.onceListening_;
   }
-  private fulfillListening_ :(endpoint:net.Endpoint) => void;
-  private isListening_ :boolean = false;
-  public isListening = () : boolean => { return this.isListening_; };
 
-  // Create TCP server.
-  // `endpoint` = Address and port to be listening on. Port 0 is used for
-  // dynamic port allocation.
-  // `port` = the port to listen on; 0 = dynamic allocation.
-  // `onConnection` = the handler for new TCP Connections.
-  // `maxConnections` = the number of connections after which all new ones
-  // will be closed as soon as they connect.
-  constructor(endpoint :net.Endpoint,
-              public maxConnections ?:number) {
-    this.endpoint_ = endpoint;
-    this.maxConnections = maxConnections || DEFAULT_MAX_CONNECTIONS;
-    this.serverSocket_ = freedom['core.tcpsocket']();
-    // When `serverSocket_` gets new connections, handle them. This only
-    // happens after the server's listen function is called.
-    this.serverSocket_.on('onConnection', this.onConnectionHandler_);
-    this.connectionsQueue = new handler.Queue<Connection, void>();
-    this.onceShutdown_ = new Promise<void>((F,R) => {
-      this.serverSocket_.on('onDisconnect', () => {
-        F();
-        this.isShutdown_ = true;
-      });
-    });
-    this.onceListening_ = new Promise<net.Endpoint>((F,R) => {
-      this.fulfillListening_ = F;
-    });
-  }
-
-  // CONSIDER: use a generic util class for better object management, e.g.
-  // below should just be return conns.values().
-  public connections = () => {
-    var allConnectionsList : Connection[] = [];
-    for (var i in this.conns) { allConnectionsList.push(this.conns[i]); }
-    return allConnectionsList;
-  }
-
-  public connectionsCount = () => {
-    return Object.keys(this.conns).length;
-  }
-
-
-  // Listens on the serverSocket_ to `address:port` for new TCP connections.
-  // Returns a Promise that this server is now listening with the endpoint it
-  // is listening on. If 0 was passed as the port, a dynamic port is chosen.
-  public listen = () : Promise<net.Endpoint> => {
-    if (this.isShutdown_) {
-      return Promise.reject(new Error('Cannot listen on a shutdown server.'));
-    }
-    return this.serverSocket_.listen(this.endpoint_.address,
-                                     this.endpoint_.port)
-        .then(this.serverSocket_.getInfo)
-        .then((info : freedom_TcpSocket.SocketInfo) => {
-          this.endpoint_ = { address: info.localAddress,
-                             port: info.localPort };
-          this.fulfillListening_(this.endpoint_);
-          this.isListening_ = true;
-          return this.endpoint_;
-        });
-  }
-
-  // onConnectionHandler_ is more or less TCP Accept: it is called when a new
-  // TCP connection is established.
-  private onConnectionHandler_ =
-      (acceptValue:freedom_TcpSocket.ConnectInfo) : void => {
+  // Invoked each time a new connection is established with the server.
+  private onConnectionHandler_ = (
+      acceptValue:freedom_TcpSocket.ConnectInfo) : void => {
+    log.debug('%1: new connection', this.id_);
     var socketId = acceptValue.socket;
 
-    // Check that we haven't reach the maximum number of connections
-    var connectionsCount = Object.keys(this.conns).length;
-    if (connectionsCount >= this.maxConnections) {
-      // Stop too many connections.  We create a new socket here from the
-      // incoming Id and immediately close it, because we don't yet have a
-      // reference to the incomming socket.
-      destroyFreedomSocket_(freedom['core.tcpsocket'](socketId));
-      //log.error('Too many connections: ' + connectionsCount);
+    if (this.connectionsCount() >= this.maxConnections_) {
+      log.warn('%1: hit maximum connections count, dropping new connection',
+          this.id_);
+      var newConnection :freedom_TcpSocket.Socket =
+          freedom['core.tcpsocket'](socketId);
+      newConnection.close().then(() => {
+        destroyFreedomSocket_(newConnection);
+      }, (e:Error) => {
+        log.error('%1: failed to close new connection socket: %2',
+            this.id_, e.message);
+        destroyFreedomSocket_(newConnection);
+      }).catch((e:Error) => {
+        log.error('%1: failed to destroy socket provider: %2',
+            this.id_, e.message);
+      });
       return;
     }
 
-    // Create new connection.
-    //log.debug('Tcp.Server accepted connection on socket id ' + socketId);
-    var conn = new Connection({existingSocketId:socketId});
-    // When the connection is disconnected correctly, or by error, remove
-    // from the server's list of connections.
-    conn.onceClosed.then(
-      () => {
-        delete this.conns[socketId];
-        //log.debug('Tcp.Server(' + JSON.stringify(this.endpoint) +
-        //    ') : connection closed (' + socketId + '). Conn Count: ' +
-        //    Object.keys(this.conns).length + ']');
-      },
-      (e) => {
-        delete this.conns[socketId];
-        //log.warn('Tcp.Server(' + JSON.stringify(this.endpoint) +
-        //    ') : connection closed by error (' + socketId + '): ' +
-        //    e.toString() + ' . Conn Count: ' +
-        //    Object.keys(this.conns).length + ']');
-      })
-    this.conns[socketId] = conn;
-    //log.debug(this.toString());
-    this.connectionsQueue.handle(conn);
-  }
-
-  // Mostly useful fro debugging
-  public toString = () : string => {
-    var s = 'Tcp.Server(' + JSON.stringify(this.endpoint_) +
-        ') connections: ' + Object.keys(this.conns).length + '\n{';
-    for(var socketId in this.conns) {
-      s += '  ' + this.conns[socketId].toString() + '\n';
-    }
-    return s += '}';
-  }
-
-  // Closes all active connections.
-  public closeAll = () : Promise<void> => {
-    var allPromises :Promise<SocketCloseKind>[] = [];
-
-    // Close all Tcp connections.
-    for (var i in this.conns) {
-      var c = this.conns[i];
-      allPromises.push(c.close());
-    }
-
-    // Wait for all promises to complete.
-    return Promise.all(allPromises).then(() => {
-      //log.debug('successfully closed all Tcp Connections.');
+    var connection = new Connection({
+      existingSocketId: socketId
     });
+    this.connections_[socketId] = connection;
+
+    var discard = () => {
+      delete this.connections_[socketId];
+      log.debug('%1: discarded connection (%2 remaining)',
+          this.id_, this.connectionsCount());
+    };
+    connection.onceClosed.then(discard, (e:Error) => {
+      log.error('%1: connection %2 rejected on close: %3',
+          this.id_, socketId, e.message);
+      discard();
+    });
+
+    this.connectionsQueue.handle(connection);
   }
 
-  public stopListening = () : Promise<void> => {
-    // Close the server socket. Note: freedom doesn't give a socket Id for a
-    // listening socket, so we just pass 0 back here: it's only for
-    // debugging/console logging, so it doesn't matter.
-    return destroyFreedomSocket_(this.serverSocket_).then(() => {
-      this.isListening_ = false;
-    })
-    //.then(() => {
-      //log.debug('successfully stopped listening for more connections.');
-    //});
-  }
-
+  // Closes the server socket then closes all active connections.
+  // Equivalent to calling stopListening followed by closeAll.
   public shutdown = () : Promise<void> => {
+    log.debug('%1: shutdown', this.id_);
     // This order is important: make sure no new connections happen while
     // we're trying to close all the connections.
     return this.stopListening().then(this.closeAll);
   }
-}  // class Tcp.Server
+
+  // Closes the server socket, preventing any new connections.
+  // Does not affect active connections to the server.
+  public stopListening = () : Promise<void> => {
+    log.debug('%1: closing socket, no new connections will be accepted',
+        this.id_);
+    return this.counter_.wrap(this.socket_.close);
+  }
+
+  // Closes all active connections.
+  public closeAll = () : Promise<void> => {
+    log.debug('%1: closing all connections', this.id_);
+
+    var promises :Promise<SocketCloseKind>[] = [];
+    for (var socketId in this.connections_) {
+      var connection = this.connections_[socketId];
+      promises.push(connection.close());
+    }
+
+    return Promise.all(promises).then((unused:any) => {});
+  }
+
+  // Returns all active connections.
+  public connections = () : Connection[] => {
+    var connections : Connection[] = [];
+    for (var socketId in this.connections_) {
+      connections.push(this.connections_[socketId]);
+    }
+    return connections;
+  }
+
+  // Returns the number of the active connections.
+  public connectionsCount = () => {
+    return Object.keys(this.connections_).length;
+  }
+
+  // Returns a promise which fulfills once the socket is accepting
+  // connections and rejects if there is any error creating the socket
+  // or listening for connections.
+  public onceListening = () : Promise<net.Endpoint> => {
+    return this.onceListening_;
+  }
+
+  // Returns a promise which fulfills once the socket has stopped
+  // accepting new connections, or the call to listen has failed.
+  public onceShutdown = () : Promise<SocketCloseKind> => {
+    return this.onceShutdown_;
+  }
+
+  public toString = () : string => {
+    return 'TCP server ' + this.id_ + ': ' + JSON.stringify(this.endpoint_) +
+        ', ' + this.connectionsCount() + ' connections: ' +
+        this.connections().join(', ');
+  }
+}
 
 // Tcp.Connection - Manages up a single TCP connection.
 export class Connection {
@@ -266,6 +276,10 @@ export class Connection {
   private state_ :Connection.State;
   // The underlying Freedom TCP socket.
   private connectionSocket_ :freedom_TcpSocket.Socket;
+
+  // Tracks calls to the socket, for safe destruction.
+  private counter_ :counter.Counter;
+
   // A private function called to invoke fullfil onceClosed.
   private fulfillClosed_ :(reason:SocketCloseKind)=>void;
 
@@ -294,20 +308,24 @@ export class Connection {
       // So we get a handler to the old freedom socket.
       this.connectionSocket_ =
           freedom['core.tcpsocket'](connectionKind.existingSocketId);
-      this.onceConnected =
-          this.connectionSocket_.getInfo().then(endpointOfSocketInfo);
+      this.counter_ = new counter.Counter(destroyFreedomSocket_.bind(
+          undefined, this.connectionSocket_));
+      this.onceConnected = this.counter_.wrap(
+          this.connectionSocket_.getInfo).then(endpointOfSocketInfo);
       this.state_ = Connection.State.CONNECTED;
       this.connectionId = this.connectionId + '.A' +
           connectionKind.existingSocketId;
     } else if (connectionKind.endpoint) {
       // Create a new tcp socket to the given endpoint.
       this.connectionSocket_ = freedom['core.tcpsocket']();
+      this.counter_ = new counter.Counter(destroyFreedomSocket_.bind(
+          undefined, this.connectionSocket_));
       // We don't declare ourselves connected until we know the IP address to
       // which we have connected.  To speed this process up, we immediately
       // pause the socket as soon as it's connected, so that CPU time is not
       // wasted sending events that we can't pass on until getInfo returns.
-      this.onceConnected =
-          this.connectionSocket_
+      this.onceConnected = this.counter_.wrap(() => {
+        return this.connectionSocket_
               .connect(connectionKind.endpoint.address,
                        connectionKind.endpoint.port)
               .then(this.pause)
@@ -317,7 +335,8 @@ export class Connection {
                   this.resume();
                 }
                 return endpointOfSocketInfo(info);
-              })
+              });
+      });
       this.state_ = Connection.State.CONNECTING;
       this.onceConnected
           .then(() => {
@@ -348,7 +367,10 @@ export class Connection {
     // |dataToSocketQueue| allows a class using this connection to start
     // queuing data to be send to the socket.
     this.onceConnected.then(() => {
-      this.dataToSocketQueue.setHandler(this.connectionSocket_.write);
+      this.dataToSocketQueue.setHandler((buffer:ArrayBuffer) => {
+        return this.counter_.wrap(this.connectionSocket_.write.bind(
+                this.connectionSocket_, buffer));
+      });
     });
     this.onceConnected.catch((e:Error) => {
       this.fulfillClosed_(SocketCloseKind.NEVER_CONNECTED);
@@ -376,14 +398,17 @@ export class Connection {
       return;
     }
 
+    this.counter_.discard();
+
     this.state_ = Connection.State.CLOSED;
     this.dataToSocketQueue.stopHandling();
     this.dataToSocketQueue.clear();
 
-    // CONSIDER: can this happen after a onceConnected promise rejection? if so,
-    // do we want to preserve the SocketCloseKind.NEVER_CONNECTED result for
-    // onceClosed?
-    destroyFreedomSocket_(this.connectionSocket_).then(() => {
+    this.counter_.onceDestroyed().then(() => {
+      log.debug('%1: closed socket channel', this.connectionId);
+      // CONSIDER: can this happen after a onceConnected promise rejection? if so,
+      // do we want to preserve the SocketCloseKind.NEVER_CONNECTED result for
+      // onceClosed?
       if (info.errcode === 'SUCCESS') {
         this.fulfillClosed_(SocketCloseKind.WE_CLOSED_IT);
       } else if (info.errcode === 'CONNECTION_CLOSED') {
@@ -391,15 +416,18 @@ export class Connection {
       } else {
         this.fulfillClosed_(SocketCloseKind.UNKOWN);
       }
+    }, (e:Error) => {
+      log.error('%1: error closing socket channel: %2',
+          this.connectionId, e.message);
     });
   }
 
   public pause = () => {
-    this.connectionSocket_.pause();
+    this.counter_.wrap(this.connectionSocket_.pause);
   }
 
   public resume = () => {
-    this.connectionSocket_.resume();
+    this.counter_.wrap(this.connectionSocket_.resume);
   }
 
   // This is called to close the underlying socket. This fulfills the
@@ -411,7 +439,7 @@ export class Connection {
       log.debug('%1: close called when already closed', [
           this.connectionId]);
     } else {
-      this.connectionSocket_.close();
+      this.counter_.wrap(this.connectionSocket_.close);
     }
 
     // The onDisconnect handler (which should only

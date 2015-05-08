@@ -28,6 +28,7 @@ import random = require('../../../third_party/uproxy-lib/crypto/random');
 import signals = require('../../../third_party/uproxy-lib/webrtc/signals');
 
 import ChurnSignallingMessage = churn_types.ChurnSignallingMessage;
+import ChurnPipe = churn_pipe_types.freedom_ChurnPipe;
 
 var log :logging.Log = new logging.Log('churn');
 
@@ -82,13 +83,27 @@ var log :logging.Log = new logging.Log('churn');
     external: net.Endpoint;
   }
 
+  // This function implements a heuristic to select the single candidate
+  // that is most likely to work for this connection.  The heuristic
+  // expresses a preference ordering:
+  // Most preferred: public IP address bound as a host candidate
+  //  - rare outside of servers, but offers the very best connectivity
+  // Next best: server-reflexive IP address
+  //  - most common
+  // Worst: private IP address in a host candidate
+  //  - indicates that STUN has failed.  Connection is still possible
+  //    if the other side is directly routable.
+  // If none of these are present, the function will throw an exception.
+  // TODO: Allow selecting more than one public address.  This would help
+  // when there are multiple interfaces or IPv6 and IPv4.
   export var selectPublicAddress =
       (candidates:freedom_RTCPeerConnection.RTCIceCandidate[])
       : NatPair => {
     // TODO: Note that we cannot currently support IPv6 addresses:
     //         https://github.com/uProxy/uproxy/issues/1107
-    var address :string;
-    var port :number;
+    var publicHostCandidates :net.Endpoint[] = [];
+    var srflxCandidates :NatPair[] = [];
+    var privateHostCandidates :net.Endpoint[] = [];
     for (var i = 0; i < candidates.length; ++i) {
       var line = candidates[i].candidate;
       var tokens = splitCandidateLine_(line);
@@ -98,11 +113,11 @@ var log :logging.Log = new logging.Log('churn');
       }
       var typ = tokens[7];
       if (typ === 'srflx') {
-        address = tokens[4];
-        if (ipaddr.process(address).kind() === 'ipv6') {
+        var srflxAddress = tokens[4];
+        if (ipaddr.process(srflxAddress).kind() === 'ipv6') {
           continue;
         }
-        port = parseInt(tokens[5]);
+        var port = parseInt(tokens[5]);
         if (tokens[8] != 'raddr') {
           throw new Error('no raddr in candidate line: ' + line);
         }
@@ -114,37 +129,44 @@ var log :logging.Log = new logging.Log('churn');
           throw new Error('no rport in candidate line: ' + line);
         }
         var rport = parseInt(tokens[11]);
-        // TODO: Return the most preferred srflx candidate, not
-        // just the first.
-        return {
+        srflxCandidates.push({
           external: {
-            address: address,
+            address: srflxAddress,
             port: port
           },
           internal: {
             address: raddr,
             port: rport
           }
-        };
+        });
       } else if (typ === 'host') {
+        var hostAddress = ipaddr.process(tokens[4]);
         // Store the host address in case no srflx candidates are found.
-        if (ipaddr.process(tokens[4]).kind() !== 'ipv6') {
-          address = tokens[4];
-          port = parseInt(tokens[5]);
+        if (hostAddress.kind() !== 'ipv6') {
+          var endpoint :net.Endpoint = {
+            address: tokens[4],
+            port: parseInt(tokens[5])
+          };
+          if (hostAddress.range() === 'unicast') {
+            publicHostCandidates.push(endpoint);
+          } else {
+            privateHostCandidates.push(endpoint);
+          }
         }
       }
     }
-    // No 'srflx' candidate found.
-    if (address) {
-      // A host candidate must have been found.  Let's hope it's routable.
-      var endpoint = {
-        address: address,
-        port: port
-      };
+    if (publicHostCandidates.length > 0) {
       return {
-        internal: endpoint,
-        external: endpoint
-      };
+        internal: publicHostCandidates[0],
+        external: publicHostCandidates[0]
+      }
+    } else if (srflxCandidates.length > 0) {
+      return srflxCandidates[0];
+    } else if (privateHostCandidates.length > 0) {
+      return {
+        internal: privateHostCandidates[0],
+        external: privateHostCandidates[0]
+      }
     }
     throw new Error('no srflx or host candidate found');
   };
@@ -206,13 +228,16 @@ var log :logging.Log = new logging.Log('churn');
       this.haveRemoteEndpoint_ = F;
     });
 
-    // Fulfills once we've successfully allocated the forwarding socket.
+    // Fulfills once we've successfully allocated the mirror pipe representing the
+    // remote peer's signalled transport address.
     // At that point, we can inject its address into candidate messages destined
     // for the local RTCPeerConnection.
     private haveForwardingSocketEndpoint_ :(endpoint:net.Endpoint) => void;
     private onceHaveForwardingSocketEndpoint_ = new Promise((F, R) => {
       this.haveForwardingSocketEndpoint_ = F;
     });
+
+    private pipe_ :ChurnPipe;
 
     private static internalConnectionId_ = 0;
 
@@ -241,7 +266,7 @@ var log :logging.Log = new logging.Log('churn');
       Promise.all([this.onceHaveWebRtcEndpoint_,
                    this.onceHaveRemoteEndpoint_,
                    this.onceProbingComplete_]).then((answers:any[]) => {
-        this.configurePipes_(answers[0], answers[1], answers[2]);
+        this.configurePipe_(answers[0], answers[1], answers[2]);
       });
 
       // Handle |pcState| and related promises.
@@ -284,88 +309,36 @@ var log :logging.Log = new logging.Log('churn');
         if (message.type === signals.Type.CANDIDATE) {
           this.probeCandidates_.push(message.candidate);
         } else if (message.type === signals.Type.NO_MORE_CANDIDATES) {
-          this.probeConnection_.close();
-          this.probingComplete_(selectPublicAddress(this.probeCandidates_));
+          this.probeConnection_.close().then(() => {
+            this.probingComplete_(selectPublicAddress(this.probeCandidates_));
+          });
         }
       });
       this.probeConnection_.negotiateConnection();
     }
 
-    // Establishes the two pipes required to sustain the obfuscated
-    // connection:
-    //  - a non-obfuscated, local only, between WebRTC and a new,
-    //    automatically allocated, port
-    //  - remote, obfuscated, port
-    private configurePipes_ = (
+    private configurePipe_ = (
         webRtcEndpoint:net.Endpoint,
         remoteEndpoint:net.Endpoint,
         natEndpoints:NatPair) : void => {
-      var localPipe = freedom['churnPipe']();
-      localPipe.bind(
-          '127.0.0.1',
-          0,
-          webRtcEndpoint.address,
-          webRtcEndpoint.port,
-          'none', // no need to obfuscate local-only traffic.
-          undefined,
-          undefined)
-      .catch((e:Error) => {
-        log.error('%1: error establishing local pipe: %2',
-            this.peerName,
-            e.message);
-      })
-      .then(localPipe.getLocalEndpoint)
-      .then((forwardingSocketEndpoint:net.Endpoint) => {
-        this.haveForwardingSocketEndpoint_(forwardingSocketEndpoint);
-        log.info('%1: configured local pipe between %2 and %3',
-            this.peerName,
-            JSON.stringify(forwardingSocketEndpoint),
-            JSON.stringify(webRtcEndpoint));
-
-        var publicPipe = freedom['churnPipe']();
-        publicPipe.bind(
-            natEndpoints.internal.address,
-            natEndpoints.internal.port,
-            remoteEndpoint.address,
-            remoteEndpoint.port,
-            'caesar',
-            new Uint8Array([13]).buffer,
-            {})
-        // TODO(ldixon): renable FTE support instead of caesar cipher.
-        // publicPipe.bind(
-        //     natEndpoints.internal.address,
-        //     natEndpoints.internal.port,
-        //     remoteEndpoint.address,
-        //     remoteEndpoint.port,
-        //     'fte',
-        //     arraybuffers.stringToArrayBuffer('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'),
-        //     JSON.stringify({
-        //       'plaintext_dfa': regex2dfa('^.*$'),
-        //       'plaintext_max_len': 1400,
-        //       // This is equivalent to Rabbit cipher.
-        //       'ciphertext_dfa': regex2dfa('^.*$'),
-        //       'ciphertext_max_len': 1450
-        //     }))
-        .then(() => {
-          log.info('%1: configured obfuscating pipe between %2 and %3',
-              this.peerName,
-              JSON.stringify(natEndpoints.internal),
-              JSON.stringify(remoteEndpoint));
-
-          // Connect the local pipe to the remote, obfuscating, pipe.
-          localPipe.on('message', (m:churn_pipe_types.Message) => {
-            publicPipe.send(m.data);
-          });
-          publicPipe.on('message', (m:churn_pipe_types.Message) => {
-            localPipe.send(m.data);
-          });
-        })
-        .catch((e:Error) => {
-          log.error('%1: error establishing obfuscated pipe: %2',
-            this.peerName,
-            e.message);
-        });
-      });
+      log.debug('%1: configuring pipes...', this.peerName);
+      this.pipe_ = freedom['churnPipe']();
+      this.pipe_.setTransformer('caesar',
+          new Uint8Array([13]).buffer,
+          '{}');
+      // TODO(ldixon): renable FTE support instead of caesar cipher.
+      //     'fte',
+      //     arraybuffers.stringToArrayBuffer('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'),
+      //     JSON.stringify({
+      //       'plaintext_dfa': regex2dfa('^.*$'),
+      //       'plaintext_max_len': 1400,
+      //       // This is equivalent to Rabbit cipher.
+      //       'ciphertext_dfa': regex2dfa('^.*$'),
+      //       'ciphertext_max_len': 1450
+      //     }
+      this.pipe_.bindLocal(natEndpoints.internal);
+      this.pipe_.setBrowserEndpoint(webRtcEndpoint);
+      this.pipe_.bindRemote(remoteEndpoint).then(this.haveForwardingSocketEndpoint_);
     }
 
     private configureObfuscatedConnection_ = () => {

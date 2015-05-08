@@ -6,21 +6,25 @@ import socks_to_rtc = require('../socks-to-rtc/socks-to-rtc');
 import net = require('../net/net.types');
 
 import logging = require('../../../third_party/uproxy-lib/logging/logging');
+import loggingTypes = require('../../../third_party/uproxy-lib/loggingprovider/loggingprovider.types');
 
 export var moduleName = 'simple-socks';
 export var log :logging.Log = new logging.Log(moduleName);
 
-// Set each module to I, W, E, or D depending on which module
-// you're debugging. Since the proxy outputs quite a lot of messages,
-// show only warnings by default from the rest of the system.
-// Note that the proxy is extremely slow in debug (D) mode.
+// Set each module to info, warn, error, or debug depending on which module
+// you're debugging. Since the proxy outputs quite a lot of messages, show only
+// warnings by default from the rest of the system.  Note that the proxy is
+// extremely slow in debug mode.
 export var loggingController = freedom['loggingcontroller']();
 
 // Example to show how to manuall configure console filtering.
-loggingController.setConsoleFilter([
-    'simple-socks:D',
-    'SocksToRtc:I',
-    'RtcToNet:I']);
+loggingController.setDefaultFilter(loggingTypes.Destination.console,
+                                   loggingTypes.Level.info);
+loggingController.setFilters(loggingTypes.Destination.console, {
+  'simple-socks': loggingTypes.Level.debug,
+  'SocksToRtc': loggingTypes.Level.info,
+  'RtcToNet': loggingTypes.Level.info
+});
 
 //-----------------------------------------------------------------------------
 var localhostEndpoint:net.Endpoint = { address: '127.0.0.1', port:9999 };
