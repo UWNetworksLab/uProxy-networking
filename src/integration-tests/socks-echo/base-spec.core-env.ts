@@ -58,7 +58,7 @@ export function socksEchoTestDescription(useChurn:boolean) {
 
   it('detects a remote close', (done) => {
     var input = arraybuffers.stringToArrayBuffer('arbitrary test string');
-    var testModule = getTestModule();
+    var testModule = createTestModule();
     var connId : string;
     testModule.startEchoServer().then((port:number) => {
       return testModule.connect(port);
