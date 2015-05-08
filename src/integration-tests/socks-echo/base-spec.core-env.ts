@@ -59,19 +59,17 @@ export function socksEchoTestDescription(useChurn:boolean) {
   it('detects a remote close', (done) => {
     var input = arraybuffers.stringToArrayBuffer('arbitrary test string');
     var testModule = getTestModule();
-    var connid : string;
-    var testModuleCopy:any;
-    testModuleCopy = testModule;
+    var connId : string;
     testModule.startEchoServer().then((port:number) => {
       return testModule.connect(port);
     }).then((connectionId:string) => {
-      connid = connectionId;
+      connId = connectionId;
       return testModule.echo(connectionId, input);
     }).then((output:ArrayBuffer) => {
       expect(arraybuffers.byteEquality(input, output)).toBe(true);
-      testModule.notifyClose(connid).then(() => {
-        testModuleCopy.on('sockClosed', (cnnid:string) => {
-          expect(cnnid).toBe(connid);
+      testModule.notifyClose(connId).then(() => {
+        testModule.on('sockClosed', (cnnid:string) => {
+          expect(cnnid).toBe(connId);
           done();
         });
         testModule.closeEchoConnections();});
