@@ -63,33 +63,44 @@ var rtcNet:rtc_to_net.RtcToNet;
 // Listen for GET/GIVE requests, to control the app without user
 // interaction.
 var tcpServer:tcp.Server;
-var localhostControlEndpoint:net.Endpoint =
-    { address: '127.0.0.1', port: 9000 };
 
-tcpServer = new tcp.Server(localhostControlEndpoint);
-tcpServer.connectionsQueue.setSyncHandler((conn:tcp.Connection) => {
-  conn.dataFromSocketQueue.setSyncHandler((buf:ArrayBuffer) => {
-    var str = arraybuffers.arrayBufferToString(buf);
-    if (str.substr(0,3).toUpperCase() == "GET") {
-      doStart();
-      setTimeout(() => {
-        parentModule.emit('gatherMessage');
-      }, 500);
-    } else if (str.substr(0,4).toUpperCase() == "GIVE") {
-      log.info("GIVE found.");
-      // skip past space, and then read SDP.
-      var sdp = str.substr(5);
-      parentModule.emit('giveWithSDP', sdp);
-    } else {
-      log.info("I don't understand that command. (" + str + ")");
+var localhostControlEndpoints:[net.Endpoint] = [
+  { address: '127.0.0.1', port: 9000 },
+  { address: '127.0.0.1', port: 9010 },
+  { address: '127.0.0.1', port: 9020 }];
+
+function setupServer(endpoint:net.Endpoint) {
+  tcpServer = new tcp.Server(endpoint);
+  tcpServer.connectionsQueue.setSyncHandler((conn:tcp.Connection) => {
+    conn.dataFromSocketQueue.setSyncHandler((buf:ArrayBuffer) => {
+      var str = arraybuffers.arrayBufferToString(buf);
+      if (str.substr(0,3).toUpperCase() == "GET") {
+        doStart();
+        setTimeout(() => {
+          parentModule.emit('gatherMessage');
+        }, 500);
+      } else if (str.substr(0,4).toUpperCase() == "GIVE") {
+        log.info("GIVE found.");
+        // skip past space, and then read SDP.
+        var sdp = str.substr(5);
+        parentModule.emit('giveWithSDP', sdp);
+      } else {
+        log.info("I don't understand that command. (" + str + ")");
+      }
+    });
+  });
+
+  tcpServer.listen().then((endpoint) => {
+    log.info('Remote-commands available on %1', endpoint);
+  }).catch((e:Error) => {
+    log.error('Failed to listen on remote-command socket: %1', e.message);
+    if (localhostControlEndpoints.length > 1) {
+      setupServer(localhostControlEndpoints.shift());
     }
   });
-});
-tcpServer.listen().then((endpoint) => {
-  log.info('Remote-commands available on %1', endpoint);
-}).catch((e:Error) => {
-  log.error('Failed to listen on remote-command socket: %1', e.message);
-});
+}
+
+setupServer(localhostControlEndpoints[0]);
 
 parentModule.on('giveSendBack', (data:ArrayBuffer) => {
   log.info('giveSendBack: with arraybuf of ' + data.byteLength);
