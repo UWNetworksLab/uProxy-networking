@@ -1,8 +1,0 @@
-{
-  "name": "uproxy-networking",
-  "version": "1.0.0",
-  "homepage": "https://github.com/uProxy/uproxy-networking",
-  "dependencies": {
-    "polymer": "Polymer/polymer#~0.4.2"
-  }
-}
